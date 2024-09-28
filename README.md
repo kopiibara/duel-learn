@@ -9,3 +9,4 @@ A web-based platform using AI and OCR to transform study materials into gamified
 ## Contact Us
 
 Cj Juliane - juliane.carljamesbscs2022@gmail.com
+Bea Lugtu - lugtu.beaalyssabscs2022@gmail.com
