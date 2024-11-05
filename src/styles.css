@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Importing Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Aribau+Rounded&display=swap');
+
+/* Custom Background Color */
+.custom-bg {
+    background-color: #080511; /* Custom background color */
+}
+
+/* Example usage of the font */
+body {
+    font-family: 'Aribau Rounded', sans-serif; /* Fallback to sans-serif */
+}
