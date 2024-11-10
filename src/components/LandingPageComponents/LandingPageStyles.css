@@ -1,0 +1,541 @@
+.content1-container {
+    width: 100%;
+    height: 100%;
+    padding-top: 50px;
+    padding-bottom: 50px;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 50px;
+    display: inline-flex;
+  }
+
+  .graphics-left,
+.graphics-right {
+  width: 100%;
+  height: 570px;
+  background: #d9d9d9;
+  border-radius: 10px;
+}
+
+.content-style {
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 70px;
+  display: inline-flex;
+}
+
+.title-container{
+    display: flex;
+min-width: 800px;
+flex-direction: column;
+align-items: flex-start;
+gap: 40px;
+align-self: stretch;
+}
+
+.button-container{
+    display: flex;
+width: 450px;
+flex-direction: column;
+align-items: flex-start;
+gap: 23px;
+}
+
+.button-primary {
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    background: #a38ce6;
+    border-radius: 20px;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    display: inline-flex;
+  }
+  
+  .button-secondary {
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    border-radius: 20px;
+    border: 3px #a38ce6 solid;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    display: inline-flex;
+  }
+  
+  .button-text-primary {
+    flex: 1 1 0;
+    align-self: stretch;
+    text-align: center;
+    color: white;
+    font-size: 24px;
+    font-family: 'Aribau Rounded VF Trial';
+    font-weight: 700;
+    word-wrap: break-word;
+  }
+  
+  .button-text-secondary {
+    flex: 1 1 0;
+    align-self: stretch;
+    text-align: center;
+    color: #a38ce6;
+    font-size: 24px;
+    font-family: 'Aribau Rounded VF Trial';
+    font-weight: 700;
+    word-wrap: break-word;
+  }
+
+  .content2-container{
+display: flex;
+padding: 3.125rem;
+justify-content: center;
+align-items: center;
+gap: 7.5rem;
+align-self: stretch;
+  }
+
+.square-graphic{
+width: 100%;
+max-width: 30%;
+height: 24.25rem;
+max-height: 76%;
+border-radius: 0.625rem;
+opacity: 0.5;
+background: #D9D9D9;
+  }
+.content2-style{
+    display: flex;
+width: 100%;
+flex-direction: column;
+align-items: flex-start;
+gap: 2.5rem;
+}
+.book-container{
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.book-image {
+    width: 100%;
+    height: auto;
+}
+
+.book-page-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.leftpage,
+.rightpage {
+    width: 45%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+.leftpage {
+    align-items: flex-start;
+}
+
+.rightpage {
+    align-items: flex-end;
+}
+
+.content3-container {
+    display: flex;
+    max-height: 850px;
+    padding: 50px;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 40px;
+    align-self: stretch;
+    position: relative;
+  }
+
+  
+  
+.book-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+  
+  .book-image {
+    max-width: 100%;
+    height: auto;
+  }
+  
+  .book-page-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+  }
+
+    .content4-container{
+    display: flex;
+    padding: 50px;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+    align-self: stretch;
+  }
+
+  .content4-paragraph-container{
+    display: flex;
+    width: 820px;
+    max-width: 820px;
+    flex-direction: column;
+    align-items: center;
+    gap: 40px;
+  }
+  .text-large-bold {
+    width: 100%;
+    height: 100%;
+    color: #2F1971;
+    text-align: center;
+    font-family: "Aribau Rounded Trial";
+    font-size: 40px;
+    font-style: normal;
+    font-weight: 700;
+    line-height: 48px; /* Adjusted line-height */
+  }
+  
+  .text-medium {
+    width: 100%;
+    text-align: center;
+    color: #373737;
+    font-size: 29px;
+    font-family: 'Aribau Rounded Trial';
+    font-weight: 400;
+    line-height: 45px;
+    word-wrap: break-word;
+  }
+  
+  .text-button {
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    color: white;
+    font-size: 24px;
+    font-family: 'Aribau Rounded VF Trial';
+    font-weight: 700;
+    word-wrap: break-word;
+  }
+  
+  .text-title {
+    width: 100%;
+    color: #2f1971;
+    font-size: 40px;
+    font-family: 'Aribau Rounded Trial';
+    font-weight: 700;
+    word-wrap: break-word;
+    text-align: center;
+
+  }
+  
+  .text-paragraph {
+    width: 100%;
+    color: #373737;
+    font-size: 25px;
+    font-family: 'Aribau Rounded Trial';
+    font-style: normal;
+    font-weight: 400;
+    line-height: 40px;
+    letter-spacing: 0.25px;
+    word-wrap: break-word;
+    
+  }
+  
+  .text-paragraph-bold {
+    font-weight: 700;
+  }
+  
+  .text-paragraph-italic {
+    font-style: italic;
+  }
+  
+  .text-quote {
+    width: 100%;
+    text-align: right;
+    color: black;
+    font-size: 25px;
+    font-family: 'Aribau Rounded Trial';
+    font-weight: 400;
+    line-height: 40px;
+    word-wrap: break-word;
+  }
+  
+  .text-subtitle {
+    text-align: center;
+    color: #2f1971;
+    font-size: 40px;
+    font-family: 'Aribau Rounded Trial';
+    font-weight: 700;
+    word-wrap: break-word;
+  }
+  
+  .text-large {
+    width: 100%;
+    text-align: center;
+    color: white;
+    font-size: 48px;
+    font-family: 'Aribau Rounded Trial';
+    font-weight: 700;
+    line-height: 56px;
+    word-wrap: break-word;
+  }
+  
+  .text-small {
+    width: 100%;
+    text-align: center;
+    color: #2f1971;
+    font-size: 19px;
+    font-family: 'Aribau Rounded Trial';
+    font-weight: 400;
+    line-height: 28px;
+    word-wrap: break-word;
+  }
+  
+  .text-medium-bold {
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    color: #2f1971;
+    font-size: 24px;
+    font-family: 'Aribau Rounded Trial';
+    font-weight: 700;
+    line-height: 30px;
+    word-wrap: break-word;
+  }.card-feature {
+    width: 100%;
+    height: 100%;
+    padding-left: 37px;
+    padding-right: 37px;
+    padding-top: 51px;
+    padding-bottom: 51px;
+    background: #E0DBF1;
+    border-radius: 38px;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 26px;
+    display: inline-flex;
+    max-width: 380px;
+    margin-bottom: 30px;
+    margin-left: 15px;
+    margin-right: 30px;
+}
+
+.card-feature-icon {
+    width: 40px;
+    height: 40px;
+    
+}
+.CardFeature-container {
+    display: flex;
+align-items: center;
+align-content: center;
+gap: 30px;
+align-self: stretch;
+flex-wrap: wrap;
+justify-content: center;
+}
+
+.card-feature-content {
+    width: 297px;
+    height: 122px;
+    position: relative;
+}
+
+.card-feature-text {
+    width: 297px;
+    left: 0;
+    top: 66px;
+    position: absolute;
+    text-align: center;
+    color: #2F1971;
+    font-size: 19px;
+    font-family: 'Aribau Rounded Trial';
+    font-weight: 400;
+    line-height: 28px;
+    word-wrap: break-word;
+}
+
+.card-feature-title {
+    width: 287px;
+    height: 55px;
+    left: 5px;
+    top: 0;
+    position: absolute;
+    text-align: center;
+    color: #2F1971;
+    font-size: 24px;
+    font-family: 'Aribau Rounded Trial';
+    font-weight: 700;
+    line-height: 30px;
+    word-wrap: break-word;
+}
+
+/* Responsive styles*/
+@media (max-width: 768px) {
+    .CardFeature-container {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .card-feature {
+        width: 100%;
+        max-width: none;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .content4-paragraph-container {
+        width: 100%;
+        max-width: none;
+        padding: 0 20px;
+    }
+
+    .text-title {
+        font-size: 32px;
+    }
+
+    .text-paragraph {
+        font-size: 20px;
+    }
+
+    .content1-container {
+        flex-direction: column;
+        padding: 20px;
+    }
+
+    .graphics-left,
+    .graphics-right {
+        width: 100%;
+        height: auto;
+    }
+
+    .title-container {
+        min-width: 100%;
+        padding: 0 20px;
+    }
+
+    .button-container {
+        width: 100%;
+        padding: 0 20px;
+    }
+
+    .content2-container {
+        flex-direction: column;
+        padding: 20px;
+        gap: 20px;
+    }
+
+    .square-graphic {
+        max-width: 100%;
+        height: auto;
+    }
+
+    .content2-style {
+        align-items: center;
+        padding: 0 20px;
+    }
+
+    .content3-container {
+        padding: 20px;
+        gap: 20px;
+    }
+
+    .book-container {
+        flex-direction: column;
+        height: auto;
+    }
+
+    .leftpage,
+    .rightpage {
+        width: 100%;
+        height: auto;
+        padding: 20px;
+    }
+
+    .content4-container {
+        padding: 20px;
+        gap: 20px;
+    }
+
+    .content4-paragraph-container {
+        width: 100%;
+        max-width: none;
+        padding: 0 20px;
+    }
+
+    .text-title {
+        font-size: 32px;
+    }
+
+    .text-paragraph {
+        font-size: 20px;
+    }
+
+    .CardFeature-container {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .card-feature {
+        width: 100%;
+        max-width: none;
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .book-page-container {
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        padding: 10px;
+    }
+
+    .leftpage,
+    .rightpage {
+        width: 100%;
+        height: auto;
+        padding: 10px;
+        align-items: center;
+        text-align: center;
+    }
+
+    .leftpage {
+        margin-bottom: 20px;
+    }
+}
