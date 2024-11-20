@@ -1,36 +1,33 @@
-import React, { createContext, useState, useContext, useEffect } from "react";
+import React, { createContext, useState, useEffect } from "react";
 import axios from "axios";
 
-const UserContext = createContext();
+// Create the UserContext
+export const UserContext = createContext();
 
-// This function fetches user profile data from the server if a user is not already set.
-const fetchUserProfile = async (setUser) => {
-    try {
-        const { data } = await axios.get('/welcome', { withCredentials: true });
-        setUser(data);
-    } catch (error) {
-        console.error("Failed to fetch user profile:", error);
-    }
+export const UserProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await axios.get("http://localhost:8000/welcome", {
+          withCredentials: true, // Ensure this is necessary for your case
+        });
+        setUser(response.data); // Set user data from API response
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  return (
+    <UserContext.Provider value={{ user, loading }}>
+      {children}
+    </UserContext.Provider>
+  );
 };
-
-const UserContextProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-
-    useEffect(() => {
-        if (!user) {
-            fetchUserProfile(setUser);
-        }
-    }, [user]);
-
-    return (
-        <UserContext.Provider value={{ user, setUser }}>
-            {children}
-        </UserContext.Provider>
-    );
-};
-
-const useUserContext = () => {
-    return useContext(UserContext);
-};
-
-export { UserContext, UserContextProvider, useUserContext };

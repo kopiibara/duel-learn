@@ -1,10 +1,13 @@
-const express = require('express');
-const dotenv = require('dotenv').config();
-const cors = require('cors');
-const { mongoose } = require('mongoose');
-const app = express();
-const cookieParser = require('cookie-parser');
+import express from 'express';
+import dotenv from 'dotenv';
+import cors from 'cors';
+import mongoose from 'mongoose';
+import cookieParser from 'cookie-parser';
 
+dotenv.config();
+const app = express();
+
+// Database connection
 mongoose.connect(process.env.MONGO_URL)
     .then(() => {
         console.log("Database is connected");
@@ -20,18 +23,21 @@ app.use(express.urlencoded({ extended: false }));
 
 // Updated CORS configuration
 app.use(cors({
-    origin: 'http://localhost:5173',  // Update with your frontend URL
-    credentials: true                 // Allow cookies to be sent
+    origin: 'http://localhost:5173',  // Replace with your frontend URL
+    credentials: true,                // Allow credentials (cookies)
 }));
 
+
 // Routes
-app.use('/', require('./routes/authRoutes'));
+import authRoutes from './routes/authRoutes.js'; // Ensure this file exists and is correct
+app.use('/', authRoutes);
 
 // Add the /welcome route
 app.get('/welcome', (req, res) => {
     res.send("Welcome!");
 });
 
+// Set the server port
 const port = 8000;
 app.listen(port, () => {
     console.log(`Server is listening on port ${port}`);
