@@ -1,6 +1,8 @@
-const User = require('../models/user');
-const { hashPassword, comparePassword } = require('../helpers/auth');
-const jwt = require('jsonwebtoken');
+import User from '../models/user.js';  // Import User using 'import'
+
+import { hashPassword, comparePassword } from '../helpers/auth.js';  // Named imports
+
+import jwt from 'jsonwebtoken';
 
 const test = (req, res) => {
     res.json("test is working");
@@ -59,11 +61,12 @@ const loginUser = async (req, res) => {
             );
 
             res.cookie('token', token, {
-                httpOnly: true,           // Cookie only accessible by web server
+                httpOnly: true,               // Cookie only accessible by web server
                 secure: process.env.NODE_ENV === 'production', // Use HTTPS in production
-                sameSite: 'strict',       // CSRF protection
-                maxAge: 3600000           // Optional: Set cookie expiration time (1 hour in ms)
+                sameSite: 'strict',           // CSRF protection
+                maxAge: 3600000               // Set cookie expiration time (1 hour in ms)
             }).json({ user });
+
         } else {
             res.json({ error: 'Invalid credentials' });
         }
@@ -78,23 +81,14 @@ const getProfile = (req, res) => {
     if (token) {
         jwt.verify(token, process.env.JWT_SECRET, {}, (err, user) => {
             if (err) {
-                // Return an error if token verification fails
                 return res.status(401).json({ error: 'Invalid token' });
             }
-            // If token is valid, send the user data
-            res.json(user);
+            res.json(user);  // Return user profile data
         });
     } else {
-        // If there is no token, respond with null
-        res.json(null);
+        res.json(null);  // No token available, return null or handle accordingly
     }
 };
 
-    
 
-module.exports = {
-                test,
-                signUpUser,
-                loginUser,
-                getProfile
-            };
+export { test, signUpUser, loginUser, getProfile };
