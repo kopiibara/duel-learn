@@ -1,8 +1,8 @@
 import React from "react";
-import Sidebar from "../components/Sidebar";
-import "../index.css";
+import "../../index.css";
 
 const Home = () => {
+  console.log('home')
   return (
     <div className="flex">
       <h1 className=" text-[#E2DDF3] text-2xl"> Home</h1>

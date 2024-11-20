@@ -7,8 +7,6 @@ import App from "./App.jsx";
 createRoot(document.getElementById("root")).render(
   <StrictMode>
     <UserProvider>
-      {" "}
-      {/* Wrap App with UserContextProvider */}
       <App />
     </UserProvider>
   </StrictMode>

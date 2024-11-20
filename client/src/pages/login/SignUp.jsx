@@ -60,7 +60,7 @@ const SignUp = () => {
           confirmPasswordError: "",
         });
         toast.success("Register Successful. Welcome!");
-        navigate("/login");
+        navigate("/");
       }
     } catch (error) {
       console.error("Registration error:", error);
@@ -193,7 +193,7 @@ const SignUp = () => {
         <p className="mt-4 text-center text-sm text-[#9F9BAE]">
           Already have an account?{" "}
           <button
-            onClick={() => navigate("/login")}
+            onClick={() => navigate("/")}
             className="text-[#4D18E8] hover:underline"
           >
             Log in

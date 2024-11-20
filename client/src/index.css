@@ -13,13 +13,19 @@
   background-color: #080511;
 }
 
-/* Small screens: Hide Exit Button, Show Arrow Button */
-@media (max-width: 991px) {
-  .btn-exit {
-    display: none !important;
+
+@keyframes pop {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
   }
-  .btn-back {
-    display: flex !important;
-    padding-left: 100px;
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
   }
 }
+
