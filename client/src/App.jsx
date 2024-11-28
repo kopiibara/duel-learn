@@ -24,6 +24,7 @@ import ConfirmationAccount from "./pages/login/ConfirmationAccount";
 import SecurityCode from "./pages/login/SecurityCode";
 import ResetPassword from "./pages/login/ResetPassword";
 import SuccessReset from "./pages/login/SuccessReset";
+import WelcomePage from "./pages/dashboard/WelcomePage";
 
 // Set Axios defaults
 axios.defaults.baseURL = "http://localhost:8000";
@@ -63,7 +64,10 @@ function App() {
             path="/success-reset-password"
             element={<SuccessReset />}
           />
-
+          <Route
+            path="/welcome-page"
+            element={<WelcomePage />}
+          />
 
           {/* Private Routes */}
           <Route element={<PrivateRoute />}>
