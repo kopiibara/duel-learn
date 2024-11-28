@@ -6,6 +6,7 @@ import axios from "axios";
 import { TextField, IconButton, InputAdornment } from "@mui/material";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
+import ExitIcon from '../../assets/images/Exit.png';
 
 const Login = () => {
   const [data, setData] = useState({
@@ -68,15 +69,31 @@ const Login = () => {
   };
 
   const handleInputChange = (field, value) => {
-    // Reset the individual error as the user types
+    // Update the input value
     setData((prevData) => ({ ...prevData, [field]: value }));
+
+    // Only reset the specific field's error
     setErrors((prevErrors) => ({ ...prevErrors, [field]: "" }));
-    setError({ general: "" }); // Clear general error when user starts typing
+
+    // Clear the general error when typing in either field
+    setError({ general: "" });
   };
 
+
+
   return (
-    <div className="h-screen flex items-center justify-center ">
+    <div className="h-screen flex flex-col items-center justify-center ">
+      <div className="w-[430px] sm:w-[500px] md:w-[700px] lg:w-[800px] pb-6 text-right flex justify-end">
+        <img
+          src={ExitIcon}
+          alt=""
+          style={{ width: '39px' }}
+          className="hover:scale-110 cursor-pointer"
+        />
+      </div>
+
       <div className="w-full max-w-md rounded-lg p-8 shadow-md">
+
         {/* Heading */}
         <h1 className="text-4xl font-bold text-center text-white mb-2">
           Login your Account
@@ -104,43 +121,59 @@ const Login = () => {
               value={data.username}
               autoComplete="off"
               onChange={(e) => handleInputChange("username", e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  // Validate the username only when Enter is pressed
+                  if (!data.username) {
+                    setErrors((prevErrors) => ({
+                      ...prevErrors,
+                      username: "Username is required.", // Set error if username is empty
+                    }));
+                    e.preventDefault(); // Prevent focus shift and form submission
+                  } else {
+                    // If no errors, move focus to the password field
+                    document.getElementById("password-field").focus();
+                  }
+                }
+              }}
+              error={!!errors.username} // This ensures error styling is applied when there's an error
               sx={{
-                width: "100%",
-                backgroundColor: "#3B354D",
-                color: "#E2DDF3",
-                marginBottom: "16px",
-                borderRadius: "8px",
-                "& .MuiInputBase-root": {
-                  color: "#E2DDF3",
-                  backgroundColor: "#3B354D",
-                  borderRadius: "8px",
-                  "&:hover": {
-                    backgroundColor: "#3B354D",
+                width: '100%',
+                backgroundColor: '#3B354D',
+                color: '#E2DDF3',
+                marginBottom: '14px',
+                borderRadius: '8px',
+                '& .MuiInputBase-root': {
+                  color: '#E2DDF3', // Text color
+                  backgroundColor: '#3B354D', // Background color
+                  borderRadius: '8px',
+                  '&:hover': {
+                    backgroundColor: '#3B354D', // Keep the same background color on hover
                   },
-                  "&.Mui-focused": {
-                    backgroundColor: "#3B354D",
+                  '&.Mui-focused': {
+                    backgroundColor: '#3B354D', // Keep the background color when focused
                   },
                 },
-                "& .MuiInputLabel-root": {
-                  color: "#E2DDF3",
+                '& .MuiInputLabel-root': {
+                  color: '#9F9BAE', // Label color
                 },
-                "& .MuiInput-underline:before": {
-                  borderBottomColor: "#9F9BAE",
+                '& .MuiInput-underline:before': {
+                  borderBottomColor: '#9F9BAE', // Initial border color
                 },
-                "& .MuiInput-underline:after": {
-                  borderBottomColor: "#4D18E8",
+                '& .MuiInput-underline:after': {
+                  borderBottomColor: '#4D18E8', // Border color when focused
                 },
-                "&:focus-within": {
-                  outline: "none",
-                  boxShadow: "0 0 0 2px #4D18E8",
-                },
-                "& input::placeholder": {
-                  color: "#E2DDF3", // Keep placeholder color consistent
-                  opacity: 1,      // Ensure it remains visible
+                // Conditionally apply red border when there's an error
+                '& .MuiFilledInput-root': {
+                  borderColor: errors.username ? 'red' : '#9F9BAE', // Red border when error
+                  '&:hover': {
+                    borderColor: errors.username ? 'red' : '#9F9BAE', // Hover color when there's an error
+                  },
                 },
               }}
-              error={!!errors.username} // Show error style when there's an error
             />
+
+
             {/* Error message for username */}
             {errors.username && (
               <div className="text-red-500 text-sm mt-[-9px] mb-4">{errors.username}</div>
@@ -149,45 +182,47 @@ const Login = () => {
           {/* Password Input */}
           <div className="">
             <TextField
-              id="filled-basic"
+              id="password-field"
               label="Enter your password"
               variant="filled"
               type={showPassword ? "text" : "password"}
               value={data.password}
               onChange={(e) => handleInputChange("password", e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  handleSubmit(e); // Submit form when Enter is pressed in password field
+                }
+              }}
               fullWidth
               sx={{
-                backgroundColor: "#3B354D",
-                color: "#E2DDF3",
-                borderRadius: "8px",
-                marginBottom: "10px",
-                "& .MuiInputBase-root": {
-                  color: "#E2DDF3", // Text color
-                  backgroundColor: "#3B354D", // Background color
-                  borderRadius: "8px",
-                  "&:hover": {
-                    backgroundColor: "#3B354D", // Keep the same background color on hover
+                width: '100%',
+                backgroundColor: '#3B354D', // Maintain background color even when focused
+                color: '#E2DDF3',
+                marginBottom: '14px',
+                borderRadius: '8px',
+                '& .MuiInputBase-root': {
+                  color: '#E2DDF3', // Text color
+                  backgroundColor: '#3B354D', // Background color
+                  borderRadius: '8px',
+                  '&:hover': {
+                    backgroundColor: '#3B354D', // Keep the same background color on hover
                   },
-                  "&.Mui-focused": {
-                    backgroundColor: "#3B354D", // Keep the background color when focused
+                  '&.Mui-focused': {
+                    backgroundColor: '#3B354D', // Keep the background color when focused
                   },
                 },
-                "& .MuiInputLabel-root": {
-                  color: errors.password ? "red" : "#9F9BAE", // Label color turns red if there's an error
+                '& .MuiInputLabel-root': {
+                  color: '#9F9BAE', // Label color
                 },
-                "& .MuiInput-underline:before": {
-                  borderBottomColor: errors.password ? "red" : "#9F9BAE", // Initial border color
+                '& .MuiInput-underline:before': {
+                  borderBottomColor: '#9F9BAE', // Initial border color
                 },
-                "& .MuiInput-underline:after": {
-                  borderBottomColor: errors.password ? "red" : "#4D18E8", // Border color when focused
+                '& .MuiInput-underline:after': {
+                  borderBottomColor: '#4D18E8', // Border color when focused
                 },
-                "&:focus-within": {
-                  outline: "none",
-                  boxShadow: "0 0 0 2px #4D18E8", // Focus ring when the input is focused
-                },
-                "& input::placeholder": {
-                  color: errors.password ? "red" : "#9F9BAE", // Placeholder turns red when error exists
-                  opacity: 1,
+                '&:focus-within': {
+                  outline: 'none',
+                  boxShadow: '0 0 0 2px #4D18E8', // Focus ring when the input is focused
                 },
               }}
               slotProps={{

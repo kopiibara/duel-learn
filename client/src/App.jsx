@@ -20,6 +20,10 @@ import Shop from "./pages/dashboard/Shop";
 import PrivateRoute from "./PrivateRoute"; // Private Route wrapper
 import NotFound from "./pages/login/NotFoundPage"; // Not Found component
 import "./index.css";
+import ConfirmationAccount from "./pages/login/ConfirmationAccount";
+import SecurityCode from "./pages/login/SecurityCode";
+import ResetPassword from "./pages/login/ResetPassword";
+import SuccessReset from "./pages/login/SuccessReset";
 
 // Set Axios defaults
 axios.defaults.baseURL = "http://localhost:8000";
@@ -29,23 +33,40 @@ function App() {
   return (
     <UserProvider>
       <Router>
-          <Routes>
-            {/* Public Routes */}
-            <Route
-              path="/"
-              element={<Login />}
-            />
-            <Route
-              path="/sign-up"
-              element={<SignUp />}
-            />
-            <Route
-              path="/forgot-password"
-              element={<ForgotPass />}
-            />
+        <Routes>
+          {/* Public Routes */}
+          <Route
+            path="/"
+            element={<Login />}
+          />
+          <Route
+            path="/sign-up"
+            element={<SignUp />}
+          />
+          <Route
+            path="/forgot-password"
+            element={<ForgotPass />}
+          />
+          <Route
+            path="/confirmation-account"
+            element={<ConfirmationAccount />}
+          />
+          <Route
+            path="/security-code"
+            element={<SecurityCode />}
+          />
+          <Route
+            path="/reset-password"
+            element={<ResetPassword />}
+          />
+          <Route
+            path="/success-reset-password"
+            element={<SuccessReset />}
+          />
 
-            {/* Private Routes */}
-            <Route element={<PrivateRoute />}>
+
+          {/* Private Routes */}
+          <Route element={<PrivateRoute />}>
             <Route
               path="/dashboard/*"
               element={
@@ -68,16 +89,16 @@ function App() {
                 </div>
               }
             />
-            </Route>
+          </Route>
 
-            {/* Catch-All Route for Public Paths */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <Toaster
-            position="top-right"
-            reverseOrder={false}
-            toastOptions={{ duration: 2000 }}
-          />
+          {/* Catch-All Route for Public Paths */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+        <Toaster
+          position="top-right"
+          reverseOrder={false}
+          toastOptions={{ duration: 2000 }}
+        />
       </Router>
     </UserProvider>
   );

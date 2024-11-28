@@ -4,15 +4,15 @@ import React, { useState } from "react";
 import { TextField } from "@mui/material";
 import axios from 'axios'; // Ensure axios is imported
 
-const ForgotPass = () => {
+const SecurityCode = () => {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    email: "", // Only email is used here
+    code: "", // Only email is used here
   });
 
   const [errors, setErrors] = useState({
-    email: "",
+    code: "",
   });
 
   const [error, setError] = useState({ general: "" }); // For general errors
@@ -21,11 +21,11 @@ const ForgotPass = () => {
     event.preventDefault();
     const { email } = formData; // Only handle email for password recovery
     let formIsValid = true;
-    let newErrors = { email: "" };
+    let newErrors = { code: "" };
 
     // Validation for empty fields
     if (!email) {
-      newErrors.email = "Email or Phone is required."; // Error message for email
+      newErrors.code = "Enter your Code."; // Error message for email
       formIsValid = false;
     }
 
@@ -37,7 +37,7 @@ const ForgotPass = () => {
 
     try {
       const response = await axios.post(
-        "/forgot-password", // Assuming you have an endpoint for this
+        "/security-code", // Assuming you have an endpoint for this
         { email },
         { withCredentials: true } // Include credentials in the request
       );
@@ -48,7 +48,7 @@ const ForgotPass = () => {
       } else {
         setFormData({ email: "" }); // Clear form data on success
         setError({ general: "" }); // Reset general error on success
-        navigate("/confirmation-account"); // Redirect to a reset page (or wherever)
+        navigate("/reset-password"); // Redirect to a reset page (or wherever)
       }
     } catch (error) {
       setError({ general: "Server error. Please try again later." }); // Handle server error
@@ -85,11 +85,10 @@ const ForgotPass = () => {
       <div className="w-full max-w-md rounded-lg p-8 shadow-md">
         {/* Heading */}
         <h1 className="text-[42px] font-bold text-center text-white mb-2">
-          Forgot Password
+          Enter Code
         </h1>
         <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
-          Please enter your email or phone to search for your account.
-        </p>
+        Please enter the security code we’ve sent to your email.        </p>
 
         {/* Error Message Box */}
         {error.general && (
@@ -104,13 +103,13 @@ const ForgotPass = () => {
           <div className="mt-0 mb-0">
             <TextField
               id="email"
-              label="Enter your email or phone"
+              label="Enter code"
               variant="filled"
               type="text"
               value={formData.email}
               autoComplete="off"
-              onChange={(e) => handleInputChange("email", e.target.value)}
-              error={!!errors.email} // Apply error state if there's an error
+              onChange={(e) => handleInputChange("code", e.target.value)}
+              error={!!errors.code} // Apply error state if there's an error
               sx={{
                 width: '100%',
                 backgroundColor: '#3B354D',
@@ -147,8 +146,8 @@ const ForgotPass = () => {
               }}
             />
 
-            {errors.email && (
-              <div className="text-red-500 mb-3 text-sm mt-[-9px]">{errors.email}</div>
+            {errors.code && (
+              <div className="text-red-500 mb-3 text-sm mt-[-9px]">{errors.code}</div>
             )}
           </div>
 
@@ -157,7 +156,7 @@ const ForgotPass = () => {
             type="submit"
             className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
           >
-            Submit
+            Continue
           </button>
         </form>
       </div>
@@ -165,4 +164,4 @@ const ForgotPass = () => {
   );
 };
 
-export default ForgotPass;
+export default SecurityCode;
