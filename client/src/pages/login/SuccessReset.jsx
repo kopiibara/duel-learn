@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
 import ProfileAvatar from '../../assets/images/profileAvatar.png'
+import sampleAvatar2 from '../../assets/images/sampleAvatar2.jpg';
 
 const SuccessReset = () => {
     const navigate = useNavigate();
@@ -13,7 +14,8 @@ const SuccessReset = () => {
         <div className="h-screen  flex flex-col items-center justify-center">
 
             <div className="flex flex-col mb-11 items-center justify-center">
-                <img src={ProfileAvatar} alt="" className="w-40 h-40" />
+                {/* <img src={ProfileAvatar} alt="" className="w-40 h-40" /> */}
+                <img src={sampleAvatar2} style={{ width: '200px' }} alt="Profile Avatar" />
             </div>
 
 

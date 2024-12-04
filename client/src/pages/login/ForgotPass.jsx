@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import ExitIcon from '../../assets/images/Exit.png';
 import React, { useState } from "react";
-import { TextField } from "@mui/material";
+import { TextField, CircularProgress } from "@mui/material";  // Import CircularProgress for the loading spinner
 import axios from 'axios'; // Ensure axios is imported
 
 const ForgotPass = () => {
@@ -16,6 +16,8 @@ const ForgotPass = () => {
   });
 
   const [error, setError] = useState({ general: "" }); // For general errors
+  const [success, setSuccess] = useState(""); // For success messages
+  const [loading, setLoading] = useState(false); // Loading state
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -25,7 +27,7 @@ const ForgotPass = () => {
 
     // Validation for empty fields
     if (!email) {
-      newErrors.email = "Email or Phone is required."; // Error message for email
+      newErrors.email = "Email is required."; // Error message for email
       formIsValid = false;
     }
 
@@ -35,24 +37,46 @@ const ForgotPass = () => {
       return;
     }
 
+    setLoading(true); // Set loading to true when the form is being submitted
+
     try {
-      const response = await axios.post(
+      const { data: response } = await axios.post(
         "/forgot-password", // Assuming you have an endpoint for this
         { email },
         { withCredentials: true } // Include credentials in the request
       );
 
-      if (response.data.error) {
-        // Set general error if something goes wrong with the request
-        setError({ general: "Invalid input. Please check your information." });
-      } else {
+      console.log("Server Response:", response);
+
+      // Check if response contains a message or an error
+      if (response && response.message) {
+        // Success message for valid email
         setFormData({ email: "" }); // Clear form data on success
         setError({ general: "" }); // Reset general error on success
-        navigate("/confirmation-account"); // Redirect to a reset page (or wherever)
+        navigate("/confirmation-account", { state: { email } });
+      } else if (response && response.error) {
+        // If the email is not found or other error, show an error message
+        setError({ general: response.error }); // Use the dynamic error message from the backend
+      } else {
+        // Handle unexpected responses
+        setError({ general: "An unexpected response was received from the server." });
       }
+
     } catch (error) {
-      setError({ general: "Server error. Please try again later." }); // Handle server error
-      console.error("Server error:", error); // Handle server error
+      console.error("Server error:", error);
+      // Handle different types of errors
+      if (error.response) {
+        // Handle server response errors (e.g., 4xx, 5xx)
+        setError({ general: error.response.data.error || "Server error" }); // Use the dynamic error message from backend
+      } else if (error.request) {
+        // Handle no response received
+        setError({ general: "No response from server. Please try again." });
+      } else {
+        // Handle any other error (e.g., configuration, setup)
+        setError({ general: "An unexpected error occurred." });
+      }
+    } finally {
+      setLoading(false); // Set loading to false after the request completes (whether success or error)
     }
   };
 
@@ -66,6 +90,7 @@ const ForgotPass = () => {
     // Clear the general error when typing in either field
     setError({ general: "" });
   };
+
   const handleExitClick = () => {
     navigate("/"); // Navigate to home when the exit icon is clicked
   };
@@ -95,6 +120,13 @@ const ForgotPass = () => {
         {error.general && (
           <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-md border border-red-300">
             {error.general}
+          </div>
+        )}
+
+        {/* Success Message Box */}
+        {success && (
+          <div className="w-full max-w-sm mb-4 px-4 py-2 bg-green-100 text-green-600 rounded-md border border-green-300">
+            {success}
           </div>
         )}
 
@@ -156,8 +188,13 @@ const ForgotPass = () => {
           <button
             type="submit"
             className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
+            disabled={loading} // Disable the button while loading
           >
-            Submit
+            {loading ? (
+              <CircularProgress size={24} sx={{ color: '#fff' }} /> // Show loading spinner
+            ) : (
+              "Submit"
+            )}
           </button>
         </form>
       </div>

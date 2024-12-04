@@ -36,3 +36,32 @@
     transform: rotate(360deg);
   }
 }
+
+
+/* Loader animation with smooth spinning */
+.loader {
+  border-width: 3px;
+  border-right-color: transparent;
+  animation: spin 1s linear infinite;
+}
+
+/* Pulse effect for enhanced visual feedback */
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.5;
+  }
+}

@@ -1,13 +1,18 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import ExitIcon from '../../assets/images/Exit.png';
 import React, { useState } from "react";
-import { TextField, InputAdornment, IconButton } from "@mui/material";
+import { TextField, InputAdornment, IconButton, CircularProgress  } from "@mui/material";
 import axios from 'axios'; // Ensure axios is imported
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 
 const ResetPassword = () => {
     const navigate = useNavigate();
+    const location = useLocation(); // Get location object
+    // Retrieve the email passed from the previous page
+    const { email } = location.state || {};
+
+    console.log("Email received from location SecurityCode:", email); // Check if email is properly received
 
     const [formData, setFormData] = useState({
         newpassword: "", // Only password is used here
@@ -18,6 +23,8 @@ const ResetPassword = () => {
         newpassword: "",
         confirmPassword: "", // Error for confirm password
     });
+
+    const [loading, setLoading] = useState(false); // Loading state for the submit button
 
     const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
     const [showConfirmPassword, setShowConfirmPassword] = useState(false); // State for toggling confirm password visibility
@@ -35,7 +42,7 @@ const ResetPassword = () => {
         const { newpassword, confirmPassword } = formData; // Get new password and confirm password
         let formIsValid = true;
         let newErrors = { newpassword: "", confirmPassword: "" };
-    
+
         // Password validation
         if (!newpassword) {
             newErrors.newpassword = "Enter your new password."; // Error message for password
@@ -56,7 +63,7 @@ const ResetPassword = () => {
             newErrors.newpassword = "Password must contain at least one special character."; // Special character validation
             formIsValid = false;
         }
-    
+
         // Confirm Password validation
         if (!confirmPassword) {
             newErrors.confirmPassword = "Please confirm your password."; // Error if confirm password is empty
@@ -65,20 +72,23 @@ const ResetPassword = () => {
             newErrors.confirmPassword = "Passwords do not match."; // Error if passwords do not match
             formIsValid = false;
         }
-    
+
         // If form is not valid, set errors and stop form submission
         if (!formIsValid) {
             setErrors(newErrors);
             return;
         }
-    
+
+        setLoading(true); // Start loading spinner
+
+
         try {
             const response = await axios.post(
                 "/reset-password", // Assuming you have an endpoint for this
-                { newpassword },
+                { email, newpassword },
                 { withCredentials: true } // Include credentials in the request
             );
-    
+
             if (response.data.error) {
                 // Set general error if something goes wrong with the request
                 setError({ general: "Invalid input. Please check your information." });
@@ -92,7 +102,7 @@ const ResetPassword = () => {
             console.error("Server error:", error); // Handle server error
         }
     };
-    
+
 
     const handleInputChange = (field, value) => {
         // Update the input value
@@ -293,8 +303,13 @@ const ResetPassword = () => {
                     <button
                         type="submit"
                         className="w-full bg-[#4D18E8] text-white py-3 rounded-md hover:bg-[#4D18E8] focus:ring-4 focus:ring-[#4D18E8]"
+                        disabled={loading} // Disable the button when loading
                     >
-                        Reset Password
+                        {loading ? (
+                            <CircularProgress size={24} color="inherit" /> // Show the loading spinner
+                        ) : (
+                            "Reset Password"
+                        )}
                     </button>
                 </form>
             </div>

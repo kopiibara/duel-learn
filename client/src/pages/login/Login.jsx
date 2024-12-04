@@ -60,7 +60,7 @@ const Login = () => {
       } else {
         setData({}); // Clear data
         setError({ general: "" }); // Reset general error on success
-        navigate("/dashboard"); // Redirect on success
+        navigate("/dashboard/home"); // Redirect on success
       }
     } catch (error) {
       setError({ general: "Server error. Please try again later." }); // Handle server error

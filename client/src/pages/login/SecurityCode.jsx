@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import ExitIcon from '../../assets/images/Exit.png';
 import React, { useState } from "react";
 import { TextField } from "@mui/material";
@@ -6,55 +6,63 @@ import axios from 'axios'; // Ensure axios is imported
 
 const SecurityCode = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // Get location object
+  // Retrieve the email passed from the previous page
+  const { email } = location.state || {};
+  console.log("Email received from location:", email); // Check if email is properly received
 
   const [formData, setFormData] = useState({
-    code: "", // Only email is used here
+    code: "",
+    email: email || "", // Ensure email is correctly initialized
   });
+
 
   const [errors, setErrors] = useState({
     code: "",
   });
 
   const [error, setError] = useState({ general: "" }); // For general errors
+  const [buttonLoading, setButtonLoading] = useState(false); // Button loading state
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const { email } = formData; // Only handle email for password recovery
-    let formIsValid = true;
+    const { code, email } = formData;
+    let isValid = true;
     let newErrors = { code: "" };
-
-    // Validation for empty fields
-    if (!email) {
-      newErrors.code = "Enter your Code."; // Error message for email
-      formIsValid = false;
+  
+    // Validation
+    if (!code) {
+      newErrors.code = "Please enter the security code.";
+      isValid = false;
     }
-
-    // If form is not valid, set errors and stop form submission
-    if (!formIsValid) {
+  
+    if (!isValid) {
       setErrors(newErrors);
       return;
     }
-
+  
+    setButtonLoading(true);
+  
+    console.log("Submitting data:", { email, code });  // Check the values for debugging
+  
     try {
-      const response = await axios.post(
-        "/security-code", // Assuming you have an endpoint for this
-        { email },
-        { withCredentials: true } // Include credentials in the request
-      );
-
-      if (response.data.error) {
-        // Set general error if something goes wrong with the request
-        setError({ general: "Invalid input. Please check your information." });
+      // Send email and code to the backend for verification
+      const response = await axios.post("/security-code", { email, code });
+  
+      if (response.data.success) {
+        navigate("/reset-password", { state: { email } }); // Navigate on success, pass email
       } else {
-        setFormData({ email: "" }); // Clear form data on success
-        setError({ general: "" }); // Reset general error on success
-        navigate("/reset-password"); // Redirect to a reset page (or wherever)
+        // Display an error message if the security code is invalid
+        setError(response.data.message || "Invalid security code. Please try again.");
       }
     } catch (error) {
-      setError({ general: "Server error. Please try again later." }); // Handle server error
-      console.error("Server error:", error); // Handle server error
+      setError("Server error. Please try again later.");
+      console.error("Error verifying code:", error);
+    } finally {
+      setButtonLoading(false);
     }
   };
+  
 
   const handleInputChange = (field, value) => {
     // Update the input value
@@ -88,7 +96,7 @@ const SecurityCode = () => {
           Enter Code
         </h1>
         <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
-        Please enter the security code we’ve sent to your email.        </p>
+          Please enter the security code we’ve sent to your email.        </p>
 
         {/* Error Message Box */}
         {error.general && (
@@ -96,6 +104,7 @@ const SecurityCode = () => {
             {error.general}
           </div>
         )}
+
 
         {/* Form */}
         <form onSubmit={handleSubmit}>
@@ -106,7 +115,7 @@ const SecurityCode = () => {
               label="Enter code"
               variant="filled"
               type="text"
-              value={formData.email}
+              value={formData.code}
               autoComplete="off"
               onChange={(e) => handleInputChange("code", e.target.value)}
               error={!!errors.code} // Apply error state if there's an error
@@ -154,9 +163,13 @@ const SecurityCode = () => {
           {/* Submit Button */}
           <button
             type="submit"
-            className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
+            className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors flex justify-center items-center"
           >
-            Continue
+            {buttonLoading ? (
+              <div className="loader border-2 border-t-2 border-white rounded-full w-6 h-6 animate-spin"></div>
+            ) : (
+              "Verify"
+            )}
           </button>
         </form>
       </div>
