@@ -1,122 +1,131 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import ExitIcon from '../../assets/images/Exit.png';
-import React, { useState } from "react";
+import React, {useEffect, useState } from "react";
 import { TextField, InputAdornment, IconButton, CircularProgress  } from "@mui/material";
-import axios from 'axios'; // Ensure axios is imported
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
+import { verifyPasswordResetCode, confirmPasswordReset, sendPasswordResetEmail } from "firebase/auth";
+import { auth, db } from "../../config"; // Adjust the path as needed
+import { collection, query, where, getDocs } from "firebase/firestore";
 
 const ResetPassword = () => {
     const navigate = useNavigate();
-    const location = useLocation(); // Get location object
-    // Retrieve the email passed from the previous page
+    const location = useLocation();
     const { email } = location.state || {};
+    useEffect(() => {
+        const oobCode = new URLSearchParams(location.search).get("oobCode");
+        if (!oobCode) {
+          setError({ general: "Invalid or missing reset code." });
+          setLoading(false);
+          return;
+        }
+      
+        const validateCode = async () => {
+          try {
+            await verifyPasswordResetCode(auth, oobCode);
+          } catch (err) {
+            setError({ general: "Reset code is invalid or expired." });
+          } finally {
+            setLoading(false);
+          }
+        };
+        validateCode();
+      }, [location.search]);
+      
 
-    console.log("Email received from location SecurityCode:", email); // Check if email is properly received
+    console.log("Email received from location SecurityCode:", email);
 
     const [formData, setFormData] = useState({
-        newpassword: "", // Only password is used here
-        confirmPassword: "", // New field for confirming password
+        newpassword: "",
+        confirmPassword: "",
     });
 
     const [errors, setErrors] = useState({
         newpassword: "",
-        confirmPassword: "", // Error for confirm password
+        confirmPassword: "",
     });
 
-    const [loading, setLoading] = useState(false); // Loading state for the submit button
+    const [loading, setLoading] = useState(false);
 
-    const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
-    const [showConfirmPassword, setShowConfirmPassword] = useState(false); // State for toggling confirm password visibility
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const togglePassword = () => {
-        setShowPassword(!showPassword); // Toggle password visibility
+        setShowPassword(!showPassword);
     };
     const toggleConfirmPassword = () => {
-        setShowConfirmPassword(!showConfirmPassword); // Toggle confirm password visibility
+        setShowConfirmPassword(!showConfirmPassword);
     };
 
-    const [error, setError] = useState({ general: "" }); // For general errors
+    const [error, setError] = useState({ general: "" });
 
     const handleSubmit = async (event) => {
         event.preventDefault();
-        const { newpassword, confirmPassword } = formData; // Get new password and confirm password
+        const { newpassword, confirmPassword } = formData;
         let formIsValid = true;
-        let newErrors = { newpassword: "", confirmPassword: "" };
-
-        // Password validation
+        
         if (!newpassword) {
-            newErrors.newpassword = "Enter your new password."; // Error message for password
+            newErrors.newpassword = "Enter your new password.";
             formIsValid = false;
         } else if (newpassword.length < 8) {
-            newErrors.newpassword = "Password must be at least 8 characters."; // Password length validation
+            newErrors.newpassword = "Password must be at least 8 characters.";
             formIsValid = false;
         } else if (!/[A-Z]/.test(newpassword)) {
-            newErrors.newpassword = "Password must contain at least one uppercase letter."; // Uppercase letter validation
+            newErrors.newpassword = "Password must contain at least one uppercase letter.";
             formIsValid = false;
         } else if (!/[a-z]/.test(newpassword)) {
-            newErrors.newpassword = "Password must contain at least one lowercase letter."; // Lowercase letter validation
+            newErrors.newpassword = "Password must contain at least one lowercase letter.";
             formIsValid = false;
         } else if (!/[0-9]/.test(newpassword)) {
-            newErrors.newpassword = "Password must contain at least one number."; // Number validation
+            newErrors.newpassword = "Password must contain at least one number.";
             formIsValid = false;
         } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(newpassword)) {
-            newErrors.newpassword = "Password must contain at least one special character."; // Special character validation
+            newErrors.newpassword = "Password must contain at least one special character.";
             formIsValid = false;
         }
 
-        // Confirm Password validation
         if (!confirmPassword) {
-            newErrors.confirmPassword = "Please confirm your password."; // Error if confirm password is empty
+            newErrors.confirmPassword = "Please confirm your password.";
             formIsValid = false;
         } else if (newpassword !== confirmPassword) {
-            newErrors.confirmPassword = "Passwords do not match."; // Error if passwords do not match
+            newErrors.confirmPassword = "Passwords do not match.";
             formIsValid = false;
         }
 
-        // If form is not valid, set errors and stop form submission
         if (!formIsValid) {
             setErrors(newErrors);
             return;
-        }
-
-        setLoading(true); // Start loading spinner
-
+          }
+        
+          setLoading(true);
+          try {
+            const oobCode = new URLSearchParams(location.search).get("oobCode");
+            await confirmPasswordReset(auth, oobCode, newpassword);
+            alert("Password successfully reset!");
+            navigate("/login");
+          } catch (err) {
+            setError({ general: "Failed to reset password." });
+          } finally {
+            setLoading(false);
+          }
 
         try {
-            const response = await axios.post(
-                "/reset-password", // Assuming you have an endpoint for this
-                { email, newpassword },
-                { withCredentials: true } // Include credentials in the request
-            );
-
-            if (response.data.error) {
-                // Set general error if something goes wrong with the request
-                setError({ general: "Invalid input. Please check your information." });
-            } else {
-                setFormData({ newpassword: "", confirmPassword: "" }); // Clear form data on success
-                setError({ general: "" }); // Reset general error on success
-                navigate("/success-reset-password"); // Redirect to a success page or wherever
-            }
-        } catch (error) {
-            setError({ general: "Server error. Please try again later." }); // Handle server error
-            console.error("Server error:", error); // Handle server error
-        }
+            await confirmPasswordReset(auth, oobCode, password);
+            alert("Password successfully reset! You can now log in with your new password.");
+            onClose();
+          } catch (err) {
+            setError("Failed to reset the password. Please try again.");
+            console.error("Error resetting password:", err);
+          };
     };
 
-
     const handleInputChange = (field, value) => {
-        // Update the input value
         setFormData((prevData) => ({ ...prevData, [field]: value }));
-
-        // Only reset the specific field's error
         setErrors((prevErrors) => ({ ...prevErrors, [field]: "" }));
-
-        // Clear the general error when typing in either field
         setError({ general: "" });
     };
 
     const handleExitClick = () => {
-        navigate("/"); // Navigate to home when the exit icon is clicked
+        navigate("/");
     };
 
     return (
@@ -132,7 +141,6 @@ const ResetPassword = () => {
             </div>
 
             <div className="w-full max-w-md rounded-lg p-8 shadow-md">
-                {/* Heading */}
                 <h1 className="text-[42px] font-bold text-center text-white mb-2">
                     Reset Password
                 </h1>
@@ -140,16 +148,13 @@ const ResetPassword = () => {
                     Your new password must be different from your previously used password.
                 </p>
 
-                {/* Error Message Box */}
                 {error.general && (
                     <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-md border border-red-300">
                         {error.general}
                     </div>
                 )}
 
-                {/* Form */}
                 <form onSubmit={handleSubmit}>
-                    {/* New Password Input */}
                     <div className="mb-4">
                         <TextField
                             id="password-field"
@@ -160,39 +165,39 @@ const ResetPassword = () => {
                             onChange={(e) => handleInputChange("newpassword", e.target.value)}
                             onKeyDown={(e) => {
                                 if (e.key === "Enter") {
-                                    handleSubmit(e); // Submit form when Enter is pressed in password field
+                                    handleSubmit(e);
                                 }
                             }}
                             fullWidth
                             sx={{
                                 width: '100%',
-                                backgroundColor: '#3B354D', // Maintain background color even when focused
+                                backgroundColor: '#3B354D',
                                 color: '#E2DDF3',
                                 marginBottom: '-3px',
                                 borderRadius: '8px',
                                 '& .MuiInputBase-root': {
-                                    color: '#E2DDF3', // Text color
-                                    backgroundColor: '#3B354D', // Background color
+                                    color: '#E2DDF3',
+                                    backgroundColor: '#3B354D',
                                     borderRadius: '8px',
                                     '&:hover': {
-                                        backgroundColor: '#3B354D', // Keep the same background color on hover
+                                        backgroundColor: '#3B354D',
                                     },
                                     '&.Mui-focused': {
-                                        backgroundColor: '#3B354D', // Keep the background color when focused
+                                        backgroundColor: '#3B354D',
                                     },
                                 },
                                 '& .MuiInputLabel-root': {
-                                    color: '#9F9BAE', // Label color
+                                    color: '#9F9BAE',
                                 },
                                 '& .MuiInput-underline:before': {
-                                    borderBottomColor: '#9F9BAE', // Initial border color
+                                    borderBottomColor: '#9F9BAE',
                                 },
                                 '& .MuiInput-underline:after': {
-                                    borderBottomColor: '#4D18E8', // Border color when focused
+                                    borderBottomColor: '#4D18E8',
                                 },
                                 '&:focus-within': {
                                     outline: 'none',
-                                    boxShadow: '0 0 0 2px #4D18E8', // Focus ring when the input is focused
+                                    boxShadow: '0 0 0 2px #4D18E8',
                                 },
                             }}
                             slotProps={{
@@ -203,7 +208,7 @@ const ResetPassword = () => {
                                                 onClick={togglePassword}
                                                 sx={{
                                                     color: "#9F9BAE",
-                                                    paddingRight: "18px", // Add padding to the right side
+                                                    paddingRight: "18px",
                                                 }}
                                                 edge="end"
                                             >
@@ -217,14 +222,13 @@ const ResetPassword = () => {
                                     ),
                                 },
                             }}
-                            error={!!errors.newpassword} // Show error style when there's an error
+                            error={!!errors.newpassword}
                         />
                         {errors.newpassword && (
                             <div className="text-red-500 text-sm mt-[-1px] mb-2">{errors.newpassword}</div>
                         )}
                     </div>
 
-                    {/* Confirm Password Input */}
                     <div className="mb-4">
                         <TextField
                             id="confirm-password-field"
@@ -235,39 +239,39 @@ const ResetPassword = () => {
                             onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                             onKeyDown={(e) => {
                                 if (e.key === "Enter") {
-                                    handleSubmit(e); // Submit form when Enter is pressed in confirm password field
+                                    handleSubmit(e);
                                 }
                             }}
                             fullWidth
                             sx={{
                                 width: '100%',
-                                backgroundColor: '#3B354D', // Maintain background color even when focused
+                                backgroundColor: '#3B354D',
                                 color: '#E2DDF3',
                                 marginBottom: '14px',
                                 borderRadius: '8px',
                                 '& .MuiInputBase-root': {
-                                    color: '#E2DDF3', // Text color
-                                    backgroundColor: '#3B354D', // Background color
+                                    color: '#E2DDF3',
+                                    backgroundColor: '#3B354D',
                                     borderRadius: '8px',
                                     '&:hover': {
-                                        backgroundColor: '#3B354D', // Keep the same background color on hover
+                                        backgroundColor: '#3B354D',
                                     },
                                     '&.Mui-focused': {
-                                        backgroundColor: '#3B354D', // Keep the background color when focused
+                                        backgroundColor: '#3B354D',
                                     },
                                 },
                                 '& .MuiInputLabel-root': {
-                                    color: '#9F9BAE', // Label color
+                                    color: '#9F9BAE',
                                 },
                                 '& .MuiInput-underline:before': {
-                                    borderBottomColor: '#9F9BAE', // Initial border color
+                                    borderBottomColor: '#9F9BAE',
                                 },
                                 '& .MuiInput-underline:after': {
-                                    borderBottomColor: '#4D18E8', // Border color when focused
+                                    borderBottomColor: '#4D18E8',
                                 },
                                 '&:focus-within': {
                                     outline: 'none',
-                                    boxShadow: '0 0 0 2px #4D18E8', // Focus ring when the input is focused
+                                    boxShadow: '0 0 0 2px #4D18E8',
                                 },
                             }}
                             slotProps={{
@@ -278,7 +282,7 @@ const ResetPassword = () => {
                                                 onClick={toggleConfirmPassword}
                                                 sx={{
                                                     color: "#9F9BAE",
-                                                    paddingRight: "18px", // Add padding to the right side
+                                                    paddingRight: "18px",
                                                 }}
                                                 edge="end"
                                             >
@@ -292,21 +296,20 @@ const ResetPassword = () => {
                                     ),
                                 },
                             }}
-                            error={!!errors.confirmPassword} // Show error style when there's an error
+                            error={!!errors.confirmPassword}
                         />
                         {errors.confirmPassword && (
                             <div className="text-red-500 text-sm mt-[-1px] mb-2">{errors.confirmPassword}</div>
                         )}
                     </div>
 
-                    {/* Submit Button */}
                     <button
                         type="submit"
                         className="w-full bg-[#4D18E8] text-white py-3 rounded-md hover:bg-[#4D18E8] focus:ring-4 focus:ring-[#4D18E8]"
-                        disabled={loading} // Disable the button when loading
+                        disabled={loading}
                     >
                         {loading ? (
-                            <CircularProgress size={24} color="inherit" /> // Show the loading spinner
+                            <CircularProgress size={24} color="inherit" />
                         ) : (
                             "Reset Password"
                         )}

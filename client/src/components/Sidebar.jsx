@@ -1,10 +1,13 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import "../index.css";
 import Avatar from "@mui/material/Avatar";
-import { UserContext } from "/context/userContext";
 import { Tooltip } from "@mui/material";
 import IconButton from "@mui/material/IconButton";
+import { auth } from "../config";
+import { onAuthStateChanged } from "firebase/auth";
+import { getFirestore, doc, getDoc } from "firebase/firestore";
+
 
 // Icons
 import DuelLearnRoundedIcon from "@mui/icons-material/AutoStoriesRounded";
@@ -30,10 +33,35 @@ import Logout from "../components/Logout";
 const Sidebar = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, loading } = useContext(UserContext);
 
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
+  const [username, setUsername] = useState(""); // Default state
+  
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+          if (user) {
+            const fetchedUsername = await fetchUsername(user.uid);
+            setUsername(fetchedUsername);
+          } else {
+            navigate("/");
+          }
+        });
+      
+        return () => unsubscribe();
+      }, [navigate]);
+      const fetchUsername = async (uid) => {
+        const db = getFirestore();
+        const userDoc = doc(db, "users", uid);
+        const userSnapshot = await getDoc(userDoc);
+      
+        if (userSnapshot.exists()) {
+          return userSnapshot.data().username;
+        } else {
+          console.log("No such document!");
+          return "User";
+        }
+      };
 
   const Menus = [
     {
@@ -71,16 +99,6 @@ const Sidebar = () => {
   const handleMenuClick = (menu) => {
     navigate(menu.path);
   };
-
-  useEffect(() => {
-    if (user) {
-      console.log(`Welcome, ${user.username}!`);
-    }
-  }, [user]);
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
 
   return (
     <div
@@ -197,9 +215,7 @@ const Sidebar = () => {
           <>
             <Avatar src="/broken-image.jpg" variant="rounded" />
             <div className="ml-2">
-              <h1 className="text-s text-[#E2DDF3]">
-                {user ? user.username : "Guest"}
-              </h1>
+              <h1 className="text-s text-[#E2DDF3]">{username}</h1>
               <p className="text-sm text-[#3F3565]">LVL. 10</p>
             </div>
           </>

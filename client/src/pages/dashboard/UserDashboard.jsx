@@ -7,13 +7,16 @@ import Profile from "./Profile";
 import Shop from "./Shop";
 import NotFound from "../login/NotFoundPage"; // Not Found component
 
+import { auth } from "../../config";
+import { onAuthStateChanged } from "firebase/auth";
+
 function UserDashboard() {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   return (
     <div className="h-screen flex flex-col">
       {/* Header */}
-    <Headers/>
+      <Headers />
 
       {/* Main Content */}
       <div className="flex flex-1">

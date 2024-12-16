@@ -3,11 +3,12 @@ import { useNavigate } from "react-router-dom";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import googleIcon from "../../assets/images/googleIcon.png";
-import axios from "axios";
-import { TextField, InputAdornment, IconButton } from "@mui/material"
+import { sendEmail, createUserEmail, signInWithGooglePopup, googleProvider } from "../../config"; // Import the function from config.js
+import { TextField, InputAdornment, IconButton } from "@mui/material";
 import "../../index.css";
 import ExitIcon from '../../assets/images/Exit.png';
-
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { auth, db } from "../../config"; // Import the db object from your Firebase configuration file
 
 const SignUp = () => {
   const [formData, setFormData] = useState({
@@ -15,20 +16,18 @@ const SignUp = () => {
     password: "",
     confirmPassword: "",
     email: "",
-    terms: false, // Add this to track the checkbox status
+    terms: false,
     passwordError: "",
     confirmPasswordError: "",
     usernameError: "",
     emailError: "",
-    termsError: "", // Add this to track terms and conditions error
+    termsError: "",
   });
-
 
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");  // Add state for success message
-
+  const [successMessage, setSuccessMessage] = useState("");
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
@@ -39,14 +38,14 @@ const SignUp = () => {
   };
 
   const validateForm = async (event) => {
-    event.preventDefault(); // Prevent form submission by default
+    event.preventDefault();
     setFormData((prev) => ({
       ...prev,
       passwordError: "",
       confirmPasswordError: "",
       usernameError: "",
       emailError: "",
-      termsError: "", // Reset the terms error
+      termsError: "",
     }));
 
     const { username, password, confirmPassword, email, terms } = formData;
@@ -113,37 +112,97 @@ const SignUp = () => {
       hasError = true;
     }
 
-    if (hasError) return; // Stop if there are errors
+    if (hasError) return;
 
     try {
-      const response = await axios.post("/sign-up", { username, password, email });
-      console.log(response);  // Log response for debugging
+      const userCredential = await createUserEmail(auth,email, password);
+      console.log("formData:", formData);
 
-      if (response.data.error) {
-        setFormData((prev) => ({ ...prev, emailError: response.data.error }));
-      } else {
-        setFormData({
-          username: "",
-          password: "",
-          confirmPassword: "",
-          email: "",
-          terms: false, // Reset the checkbox after submission
-          passwordError: "",
-          confirmPasswordError: "",
-          usernameError: "",
-          emailError: "",
-          termsError: "",
+      console.log(userCredential);
+      const user = userCredential.user;
+      await setDoc(doc(db, "users", user.uid), {
+        username: username,
+        email: email,
+        dateCreated: serverTimestamp(),
+      });
+      await sendEmail(userCredential.user);
+      setFormData({
+        username: "",
+        password: "",
+        confirmPassword: "",
+        email: "",
+        terms: false,
+        passwordError: "",
+        confirmPasswordError: "",
+        usernameError: "",
+        emailError: "",
+        termsError: "",
+      });
+      setSuccessMessage("Account successfully created! Redirecting to login...");
+      setTimeout(() => {
+        navigate("/");
+      }, 2000);
+    } catch (error) {
+      console.error("Registration error:", error);
+      setFormData((prev) => ({ ...prev, emailError: error.message }));
+    }
+
+  };
+  const handleGoogleSignUp = async () => {
+    try {
+      // Sign in with Google
+      const result = await signInWithGooglePopup(auth, googleProvider);
+      const user = result.user;
+  
+      if (user) {
+        const profilePicUrl = user.photoURL; // URL of the Google profile picture
+        console.log("Profile Pic URL:", profilePicUrl);
+  
+        // Fetch image as Blob
+        const fetchImageAsBlob = async (url) => {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error("Failed to fetch image.");
+          return await response.blob(); // Returns Blob
+        };
+  
+        // Convert Blob to Base64
+        const blobToBase64 = (blob) => {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result); // Base64 string
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+          });
+        };
+  
+        // Fetch and convert profile picture
+        const blob = await fetchImageAsBlob(profilePicUrl);
+        const base64String = await blobToBase64(blob);
+        console.log("Base64 String:", base64String);
+  
+        // Save user details to Firestore
+        await setDoc(doc(db, "users", user.uid), {
+          username: user.displayName,
+          email: user.email,
+          dateCreated: serverTimestamp(),
+          profilePic: base64String, // Save Base64 string
         });
-        setSuccessMessage("Account successfully created! Redirecting to login...");
+  
+        // Notify user and redirect
+        setSuccessMessage("Account successfully created with Google! Redirecting to login...");
         setTimeout(() => {
-          navigate("/"); // Redirect to login after 2 seconds
+          navigate("/");
         }, 2000);
+  
+        // Optional: Send confirmation email
+        sendEmail(auth.currentUser);
       }
     } catch (error) {
-      console.error("Registration error:", error);  // Log any errors
+      console.error("Google sign-in error:", error);
+      setFormData((prev) => ({ ...prev, emailError: error.message }));
     }
   };
-
+  
 
   return (
     <div className="font-aribau min-h-screen flex flex-col items-center justify-center">
@@ -163,8 +222,6 @@ const SignUp = () => {
           Please enter your details to sign up.
         </p>
 
-
-        {/* Success Message Container */}
         {successMessage && (
           <div className="bg-green-700 text-white text-center py-2 mb-4 rounded">
             {successMessage}
@@ -182,54 +239,51 @@ const SignUp = () => {
               setFormData({
                 ...formData,
                 username: e.target.value,
-                usernameError: "", // Clear error when typing
+                usernameError: "",
               })
             }
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                // Validate the username only when Enter is pressed
                 if (!formData.username) {
-                  // Set error if username is empty
                   setFormData((prevData) => ({
                     ...prevData,
                     usernameError: "Username is required.",
                   }));
-                  e.preventDefault(); // Prevent focus shift and form submission
+                  e.preventDefault();
                 } else if (!formData.usernameError) {
-                  // Only move to the next field if there's no error in the username field
-                  document.getElementById("email").focus(); // Move to email field on Enter
+                  document.getElementById("email").focus();
                 }
               }
             }}
             sx={{
               width: '100%',
-              backgroundColor: '#3B354D', // Maintain background color even when focused
+              backgroundColor: '#3B354D',
               color: '#E2DDF3',
               marginBottom: '14px',
               borderRadius: '8px',
               '& .MuiInputBase-root': {
-                color: '#E2DDF3', // Text color
-                backgroundColor: '#3B354D', // Background color
+                color: '#E2DDF3',
+                backgroundColor: '#3B354D',
                 borderRadius: '8px',
                 '&:hover': {
-                  backgroundColor: '#3B354D', // Keep the same background color on hover
+                  backgroundColor: '#3B354D',
                 },
                 '&.Mui-focused': {
-                  backgroundColor: '#3B354D', // Keep the background color when focused
+                  backgroundColor: '#3B354D',
                 },
               },
               '& .MuiInputLabel-root': {
-                color: '#9F9BAE', // Label color
+                color: '#9F9BAE',
               },
               '& .MuiInput-underline:before': {
-                borderBottomColor: '#9F9BAE', // Initial border color
+                borderBottomColor: '#9F9BAE',
               },
               '& .MuiInput-underline:after': {
-                borderBottomColor: '#4D18E8', // Border color when focused
+                borderBottomColor: '#4D18E8',
               },
               '&:focus-within': {
                 outline: 'none',
-                boxShadow: '0 0 0 2px #4D18E8', // Focus ring when the input is focused
+                boxShadow: '0 0 0 2px #4D18E8',
               },
             }}
             error={!!formData.usernameError}
@@ -250,49 +304,46 @@ const SignUp = () => {
             }
             onKeyDown={(e) => {
               if (e.key === "Enter") {
-                // Validate the email only when Enter is pressed
                 if (!formData.email) {
-                  // Set error if email is empty
                   setFormData((prevData) => ({
                     ...prevData,
                     emailError: "Email is required.",
                   }));
-                  e.preventDefault(); // Prevent focus shift and form submission
+                  e.preventDefault();
                 } else if (!formData.emailError) {
-                  // Only move to the next field if there's no error in the email field
-                  document.getElementById("password").focus(); // Move to password field on Enter
+                  document.getElementById("password").focus();
                 }
               }
             }}
             sx={{
               width: '100%',
-              backgroundColor: '#3B354D', // Maintain background color even when focused
+              backgroundColor: '#3B354D',
               color: '#E2DDF3',
               marginBottom: '14px',
               borderRadius: '8px',
               '& .MuiInputBase-root': {
-                color: '#E2DDF3', // Text color
-                backgroundColor: '#3B354D', // Background color
+                color: '#E2DDF3',
+                backgroundColor: '#3B354D',
                 borderRadius: '8px',
                 '&:hover': {
-                  backgroundColor: '#3B354D', // Keep the same background color on hover
+                  backgroundColor: '#3B354D',
                 },
                 '&.Mui-focused': {
-                  backgroundColor: '#3B354D', // Keep the background color when focused
+                  backgroundColor: '#3B354D',
                 },
               },
               '& .MuiInputLabel-root': {
-                color: '#9F9BAE', // Label color
+                color: '#9F9BAE',
               },
               '& .MuiInput-underline:before': {
-                borderBottomColor: '#9F9BAE', // Initial border color
+                borderBottomColor: '#9F9BAE',
               },
               '& .MuiInput-underline:after': {
-                borderBottomColor: '#4D18E8', // Border color when focused
+                borderBottomColor: '#4D18E8',
               },
               '&:focus-within': {
                 outline: 'none',
-                boxShadow: '0 0 0 2px #4D18E8', // Focus ring when the input is focused
+                boxShadow: '0 0 0 2px #4D18E8',
               },
             }}
             error={!!formData.emailError}
@@ -314,50 +365,47 @@ const SignUp = () => {
               }
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  // Validate the password only when Enter is pressed
                   if (!formData.password) {
-                    // Set error if password is empty
                     setFormData((prevData) => ({
                       ...prevData,
                       passwordError: "Password is required.",
                     }));
-                    e.preventDefault(); // Prevent focus shift and form submission
+                    e.preventDefault();
                   } else if (!formData.passwordError) {
-                    // Only move to the next field if there's no error in the password field
-                    document.getElementById("confirmPassword").focus(); // Move to confirm password field on Enter
+                    document.getElementById("confirmPassword").focus();
                   }
                 }
               }}
               fullWidth
               sx={{
                 width: '100%',
-                backgroundColor: '#3B354D', // Maintain background color even when focused
+                backgroundColor: '#3B354D',
                 color: '#E2DDF3',
                 marginBottom: '14px',
                 borderRadius: '8px',
                 '& .MuiInputBase-root': {
-                  color: '#E2DDF3', // Text color
-                  backgroundColor: '#3B354D', // Background color
+                  color: '#E2DDF3',
+                  backgroundColor: '#3B354D',
                   borderRadius: '8px',
                   '&:hover': {
-                    backgroundColor: '#3B354D', // Keep the same background color on hover
+                    backgroundColor: '#3B354D',
                   },
                   '&.Mui-focused': {
-                    backgroundColor: '#3B354D', // Keep the background color when focused
+                    backgroundColor: '#3B354D',
                   },
                 },
                 '& .MuiInputLabel-root': {
-                  color: '#9F9BAE', // Label color
+                  color: '#9F9BAE',
                 },
                 '& .MuiInput-underline:before': {
-                  borderBottomColor: '#9F9BAE', // Initial border color
+                  borderBottomColor: '#9F9BAE',
                 },
                 '& .MuiInput-underline:after': {
-                  borderBottomColor: '#4D18E8', // Border color when focused
+                  borderBottomColor: '#4D18E8',
                 },
                 '&:focus-within': {
                   outline: 'none',
-                  boxShadow: '0 0 0 2px #4D18E8', // Focus ring when the input is focused
+                  boxShadow: '0 0 0 2px #4D18E8',
                 },
               }}
               slotProps={{
@@ -368,7 +416,7 @@ const SignUp = () => {
                         onClick={togglePassword}
                         sx={{
                           color: '#9F9BAE',
-                          paddingRight: '18px', // Add padding to the right side
+                          paddingRight: '18px',
                         }}
                         edge="end"
                       >
@@ -397,7 +445,7 @@ const SignUp = () => {
               }
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  validateForm(); // Trigger the form validation on Enter press
+                  validateForm();
                 }
               }}
               fullWidth
@@ -463,7 +511,6 @@ const SignUp = () => {
             )}
           </div>
 
-
           <div className="flex items-center mb-6">
             <input
               type="checkbox"
@@ -485,7 +532,6 @@ const SignUp = () => {
             <p className="text-red-500 text-sm mt-[-16px] mb-4">{formData.termsError}</p>
           )}
 
-
           <button
             type="submit"
             className="w-full py-3 text-white bg-[#4D18E8] rounded-lg hover:bg-[#3814b6] focus:outline-none focus:ring-4 focus:ring-[#4D18E8]"
@@ -500,8 +546,7 @@ const SignUp = () => {
           <hr className="flex-grow border-t border-[#9F9BAE]" />
         </div>
 
-        {/* Google Sign-In */}
-        <button className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors">
+        <button onClick={handleGoogleSignUp} className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors">
           <img src={googleIcon} alt="Google Icon" className="w-10  mr-2" />
           Sign in with Google
         </button>

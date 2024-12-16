@@ -2,80 +2,60 @@ import { useNavigate, useLocation } from "react-router-dom";
 import ExitIcon from '../../assets/images/Exit.png';
 import React, { useState } from "react";
 import { TextField } from "@mui/material";
-import axios from 'axios'; // Ensure axios is imported
 
 const SecurityCode = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // Get location object
-  // Retrieve the email passed from the previous page
+  const location = useLocation();
   const { email } = location.state || {};
-  console.log("Email received from location:", email); // Check if email is properly received
+  console.log("Email received from location:", email);
 
   const [formData, setFormData] = useState({
     code: "",
-    email: email || "", // Ensure email is correctly initialized
+    email: email || "",
   });
-
 
   const [errors, setErrors] = useState({
     code: "",
   });
 
-  const [error, setError] = useState({ general: "" }); // For general errors
-  const [buttonLoading, setButtonLoading] = useState(false); // Button loading state
+  const [error, setError] = useState({ general: "" });
+  const [buttonLoading, setButtonLoading] = useState(false);
 
-  const handleSubmit = async (event) => {
+  const handleSubmit = (event) => {
     event.preventDefault();
-    const { code, email } = formData;
+    const { code } = formData;
     let isValid = true;
     let newErrors = { code: "" };
-  
-    // Validation
+
     if (!code) {
       newErrors.code = "Please enter the security code.";
       isValid = false;
     }
-  
+
     if (!isValid) {
       setErrors(newErrors);
       return;
     }
-  
+
     setButtonLoading(true);
-  
-    console.log("Submitting data:", { email, code });  // Check the values for debugging
-  
-    try {
-      // Send email and code to the backend for verification
-      const response = await axios.post("/security-code", { email, code });
-  
-      if (response.data.success) {
-        navigate("/reset-password", { state: { email } }); // Navigate on success, pass email
-      } else {
-        // Display an error message if the security code is invalid
-        setError(response.data.message || "Invalid security code. Please try again.");
-      }
-    } catch (error) {
-      setError("Server error. Please try again later.");
-      console.error("Error verifying code:", error);
-    } finally {
+
+    console.log("Submitting data:", { email, code });
+
+    // Simulate successful verification
+    setTimeout(() => {
       setButtonLoading(false);
-    }
+      navigate("/reset-password", { state: { email } });
+    }, 1000);
   };
-  
 
   const handleInputChange = (field, value) => {
-    // Update the input value
     setFormData((prevData) => ({ ...prevData, [field]: value }));
-
-    // Only reset the specific field's error
     setErrors((prevErrors) => ({ ...prevErrors, [field]: "" }));
-
-    // Clear the general error when typing in either field
     setError({ general: "" });
   };
+
   const handleExitClick = () => {
-    navigate("/"); // Navigate to home when the exit icon is clicked
+    navigate("/");
   };
 
   return (
@@ -91,24 +71,20 @@ const SecurityCode = () => {
       </div>
 
       <div className="w-full max-w-md rounded-lg p-8 shadow-md">
-        {/* Heading */}
         <h1 className="text-[42px] font-bold text-center text-white mb-2">
           Enter Code
         </h1>
         <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
-          Please enter the security code we’ve sent to your email.        </p>
+          Please enter the security code we’ve sent to your email.
+        </p>
 
-        {/* Error Message Box */}
         {error.general && (
           <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-md border border-red-300">
             {error.general}
           </div>
         )}
 
-
-        {/* Form */}
         <form onSubmit={handleSubmit}>
-          {/* Email or Phone Input */}
           <div className="mt-0 mb-0">
             <TextField
               id="email"
@@ -118,7 +94,7 @@ const SecurityCode = () => {
               value={formData.code}
               autoComplete="off"
               onChange={(e) => handleInputChange("code", e.target.value)}
-              error={!!errors.code} // Apply error state if there's an error
+              error={!!errors.code}
               sx={{
                 width: '100%',
                 backgroundColor: '#3B354D',
@@ -145,11 +121,10 @@ const SecurityCode = () => {
                 '& .MuiInput-underline:after': {
                   borderBottomColor: '#4D18E8',
                 },
-                // Apply error styles if there's an error
                 '& .MuiFilledInput-root': {
-                  borderColor: errors.email ? 'red' : '#9F9BAE', // Border color when there's an error
+                  borderColor: errors.email ? 'red' : '#9F9BAE',
                   '&:hover': {
-                    borderColor: errors.email ? 'red' : '#9F9BAE', // Border color on hover when there's an error
+                    borderColor: errors.email ? 'red' : '#9F9BAE',
                   },
                 },
               }}
@@ -160,7 +135,6 @@ const SecurityCode = () => {
             )}
           </div>
 
-          {/* Submit Button */}
           <button
             type="submit"
             className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors flex justify-center items-center"

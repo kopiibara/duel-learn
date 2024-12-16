@@ -5,19 +5,16 @@ import {
   Routes,
   Navigate,
 } from "react-router-dom";
-import { UserProvider } from "/context/userContext"; // Fixed import path
 import { Toaster } from "react-hot-toast";
 import Login from "./pages/login/Login";
 import SignUp from "./pages/login/SignUp";
 import ForgotPass from "./pages/login/ForgotPass";
-import axios from "axios";
 import Sidebar from "./components/Sidebar";
 import Home from "./pages/dashboard/Home";
 import Explore from "./pages/dashboard/Explore";
 import YourLibrary from "./pages/dashboard/YourLibrary";
 import Profile from "./pages/dashboard/Profile";
 import Shop from "./pages/dashboard/Shop";
-import PrivateRoute from "./PrivateRoute"; // Private Route wrapper
 import NotFound from "./pages/login/NotFoundPage"; // Not Found component
 import "./index.css";
 import ConfirmationAccount from "./pages/login/ConfirmationAccount";
@@ -26,13 +23,8 @@ import ResetPassword from "./pages/login/ResetPassword";
 import SuccessReset from "./pages/login/SuccessReset";
 import WelcomePage from "./pages/dashboard/WelcomePage";
 
-// Set Axios defaults
-axios.defaults.baseURL = "http://localhost:8000";
-axios.defaults.withCredentials = true;
-
 function App() {
   return (
-    <UserProvider>
       <Router>
         <Routes>
           {/* Default Route (Redirect to Login) */}
@@ -51,8 +43,7 @@ function App() {
           <Route path="/success-reset-password" element={<SuccessReset />} />
           <Route path="/welcome-page" element={<WelcomePage />} />
 
-          {/* Private Routes */}
-          <Route element={<PrivateRoute />}>
+          <Route >
             <Route
               path="/dashboard/*"
               element={
@@ -86,7 +77,6 @@ function App() {
           toastOptions={{ duration: 2000 }}
         />
       </Router>
-    </UserProvider>
   );
 }
 

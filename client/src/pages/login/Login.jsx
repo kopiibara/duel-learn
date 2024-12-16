@@ -1,12 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../index.css";
 import googleIcon from "../../assets/images/googleIcon.png";
-import axios from "axios";
 import { TextField, IconButton, InputAdornment } from "@mui/material";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import ExitIcon from "../../assets/images/Exit.png";
+import { auth, signIn, googleProvider,sendEmail } from "../../config";
+import { signInWithPopup } from "firebase/auth";
+import { getFirestore, collection, query, where, getDocs, setDoc, doc, serverTimestamp } from "firebase/firestore";
 
 const Login = () => {
   const [data, setData] = useState({
@@ -17,12 +19,17 @@ const Login = () => {
     username: "",
     password: "",
   });
-  const [error, setError] = useState({ general: "" }); // For general errors
-  const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
+  const [error, setError] = useState({ general: "" });
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
+  useEffect(() => {
+    document.head.appendChild(document.createElement("meta")).httpEquiv = "Cross-Origin-Opener-Policy";
+    document.head.appendChild(document.createElement("meta")).content = "same-origin-allow-popups";
+  }, []);
+
   const togglePassword = () => {
-    setShowPassword(!showPassword); // Toggle password visibility
+    setShowPassword(!showPassword);
   };
 
   const handleSubmit = async (event) => {
@@ -31,9 +38,8 @@ const Login = () => {
     let formIsValid = true;
     let newErrors = { username: "", password: "" };
 
-    // Validation for empty fields
     if (!username) {
-      newErrors.username = "Username is required.";
+      newErrors.username = "Username or email is required.";
       formIsValid = false;
     }
     if (!password) {
@@ -41,41 +47,126 @@ const Login = () => {
       formIsValid = false;
     }
 
-    // If form is not valid, set errors and stop form submission
     if (!formIsValid) {
       setErrors(newErrors);
       return;
     }
 
-    try {
-      const { data: response } = await axios.post(
-        "/login",
-        { username, password },
-        { withCredentials: true } // Include credentials in the request
-      );
+    const db = getFirestore();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-      if (response.error) {
-        // Set general error if credentials do not match
-        setError({ general: "Invalid input. Please check your credentials." });
-      } else {
-        setData({}); // Clear data
-        setError({ general: "" }); // Reset general error on success
-        navigate("/dashboard/home"); // Redirect on success
+    if (emailRegex.test(username)) {
+      signIn(auth, username, password)
+        .then((userCredential) => {
+          const user = userCredential.user;
+          if (!user.emailVerified) {
+            sendEmail(userCredential.user);
+            setError({ general: "Please verify your email. A verification email has been sent." });
+          } else {
+           // sendEmail(userCredential.user);
+            navigate("/dashboard");
+            
+          }
+        })
+        .catch(() => {
+          setError({ general: "Invalid email or password." });
+        });
+    } else {
+      const q = query(collection(db, "users"), where("username", "==", username));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        setError({ general: "Invalid username or password." });
+        return;
       }
-    } catch (error) {
-      setError({ general: "Server error. Please try again later." }); // Handle server error
-      console.error("Server error:", error); // Handle server error
+
+      let email = "";
+      querySnapshot.forEach((doc) => {
+        email = doc.data().email;
+      });
+
+      signIn(auth, email, password)
+        .then((userCredential) => {
+          const user = userCredential.user;
+          if (!user.emailVerified) {
+            sendEmail(userCredential.user);
+            setError({ general: "Please verify your email. A verification email has been sent." });
+            
+          } else {
+            //sendEmail(userCredential.user);
+            navigate("/dashboard");
+          }
+        })
+        .catch(() => {
+          setError({ general: "Invalid username or password." });
+        });
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    try {
+      // Sign in with Google
+      const result = await signInWithPopup(auth, googleProvider);
+      const user = result.user;
+  
+      // Ensure user is valid
+      if (!user || !user.email) {
+        setError({ general: "Google sign-in failed. Missing email or user data." });
+        return;
+      }
+  
+      const db = getFirestore();
+  
+      // Query Firestore for existing user
+      const q = query(collection(db, "users"), where("email", "==", user.email));
+      const querySnapshot = await getDocs(q);
+  
+      // Fetch profile picture as Base64
+      const fetchProfilePicBase64 = async (url) => {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Failed to fetch profile picture.");
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result); // Base64 string
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      };
+  
+      // Prepare profile picture Base64 (if available)
+      let profilePicBase64 = null;
+      if (user.photoURL) {
+        profilePicBase64 = await fetchProfilePicBase64(user.photoURL);
+      }
+  
+      // Check if user exists in Firestore
+      if (querySnapshot.empty) {
+        // Create new user document
+        await setDoc(doc(db, "users", user.uid), {
+          username: user.displayName || "Anonymous",
+          email: user.email,
+          dateCreated: serverTimestamp(),
+          profilePic: profilePicBase64 || null,
+        });
+  
+        // Notify new account creation
+        setSuccessMessage("Account successfully created with Google! Redirecting to dashboard...");
+      } else {
+        console.log("User already exists in Firestore.");
+      }
+  
+      // Redirect user to the dashboard
+      navigate("/dashboard/home");
+    } catch (error) {
+      setError({ general: "Google sign-in failed. Please try again later." });
+      console.error("Google sign-in error:", error);
+    }
+  };
+  
   const handleInputChange = (field, value) => {
-    // Update the input value
     setData((prevData) => ({ ...prevData, [field]: value }));
-
-    // Only reset the specific field's error
     setErrors((prevErrors) => ({ ...prevErrors, [field]: "" }));
-
-    // Clear the general error when typing in either field
     setError({ general: "" });
   };
 
@@ -91,7 +182,6 @@ const Login = () => {
       </div>
 
       <div className="w-full max-w-md rounded-lg p-8 shadow-md">
-        {/* Heading */}
         <h1 className="text-4xl font-bold text-center text-white mb-2">
           Login your Account
         </h1>
@@ -99,16 +189,13 @@ const Login = () => {
           Please enter your details to login.
         </p>
 
-        {/* Error Message Box */}
         {error.general && (
           <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-md border border-red-300">
             {error.general}
           </div>
         )}
 
-        {/* Form */}
         <form onSubmit={handleSubmit}>
-          {/* Username Input */}
           <div className="mt-0 mb-0">
             <TextField
               id="filled-basic"
@@ -120,20 +207,18 @@ const Login = () => {
               onChange={(e) => handleInputChange("username", e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  // Validate the username only when Enter is pressed
                   if (!data.username) {
                     setErrors((prevErrors) => ({
                       ...prevErrors,
-                      username: "Username is required.", // Set error if username is empty
+                      username: "Username is required.",
                     }));
-                    e.preventDefault(); // Prevent focus shift and form submission
+                    e.preventDefault();
                   } else {
-                    // If no errors, move focus to the password field
                     document.getElementById("password-field").focus();
                   }
                 }
               }}
-              error={!!errors.username} // This ensures error styling is applied when there's an error
+              error={!!errors.username}
               sx={{
                 width: "100%",
                 backgroundColor: "#3B354D",
@@ -141,43 +226,39 @@ const Login = () => {
                 marginBottom: "14px",
                 borderRadius: "8px",
                 "& .MuiInputBase-root": {
-                  color: "#E2DDF3", // Text color
-                  backgroundColor: "#3B354D", // Background color
+                  color: "#E2DDF3",
+                  backgroundColor: "#3B354D",
                   borderRadius: "8px",
                   "&:hover": {
-                    backgroundColor: "#3B354D", // Keep the same background color on hover
+                    backgroundColor: "#3B354D",
                   },
                   "&.Mui-focused": {
-                    backgroundColor: "#3B354D", // Keep the background color when focused
+                    backgroundColor: "#3B354D",
                   },
                 },
                 "& .MuiInputLabel-root": {
-                  color: "#9F9BAE", // Label color
+                  color: "#9F9BAE",
                 },
                 "& .MuiInput-underline:before": {
-                  borderBottomColor: "#9F9BAE", // Initial border color
+                  borderBottomColor: "#9F9BAE",
                 },
                 "& .MuiInput-underline:after": {
-                  borderBottomColor: "#4D18E8", // Border color when focused
+                  borderBottomColor: "#4D18E8",
                 },
-                // Conditionally apply red border when there's an error
                 "& .MuiFilledInput-root": {
-                  borderColor: errors.username ? "red" : "#9F9BAE", // Red border when error
+                  borderColor: errors.username ? "red" : "#9F9BAE",
                   "&:hover": {
-                    borderColor: errors.username ? "red" : "#9F9BAE", // Hover color when there's an error
+                    borderColor: errors.username ? "red" : "#9F9BAE",
                   },
                 },
               }}
             />
-
-            {/* Error message for username */}
             {errors.username && (
               <div className="text-red-500 text-sm mt-[-9px] mb-4">
                 {errors.username}
               </div>
             )}
           </div>
-          {/* Password Input */}
           <div className="">
             <TextField
               id="password-field"
@@ -188,39 +269,39 @@ const Login = () => {
               onChange={(e) => handleInputChange("password", e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  handleSubmit(e); // Submit form when Enter is pressed in password field
+                  handleSubmit(e);
                 }
               }}
               fullWidth
               sx={{
                 width: "100%",
-                backgroundColor: "#3B354D", // Maintain background color even when focused
+                backgroundColor: "#3B354D",
                 color: "#E2DDF3",
                 marginBottom: "14px",
                 borderRadius: "8px",
                 "& .MuiInputBase-root": {
-                  color: "#E2DDF3", // Text color
-                  backgroundColor: "#3B354D", // Background color
+                  color: "#E2DDF3",
+                  backgroundColor: "#3B354D",
                   borderRadius: "8px",
                   "&:hover": {
-                    backgroundColor: "#3B354D", // Keep the same background color on hover
+                    backgroundColor: "#3B354D",
                   },
                   "&.Mui-focused": {
-                    backgroundColor: "#3B354D", // Keep the background color when focused
+                    backgroundColor: "#3B354D",
                   },
                 },
                 "& .MuiInputLabel-root": {
-                  color: "#9F9BAE", // Label color
+                  color: "#9F9BAE",
                 },
                 "& .MuiInput-underline:before": {
-                  borderBottomColor: "#9F9BAE", // Initial border color
+                  borderBottomColor: "#9F9BAE",
                 },
                 "& .MuiInput-underline:after": {
-                  borderBottomColor: "#4D18E8", // Border color when focused
+                  borderBottomColor: "#4D18E8",
                 },
                 "&:focus-within": {
                   outline: "none",
-                  boxShadow: "0 0 0 2px #4D18E8", // Focus ring when the input is focused
+                  boxShadow: "0 0 0 2px #4D18E8",
                 },
               }}
               slotProps={{
@@ -231,7 +312,7 @@ const Login = () => {
                         onClick={togglePassword}
                         sx={{
                           color: "#9F9BAE",
-                          paddingRight: "18px", // Add padding to the right side
+                          paddingRight: "18px",
                         }}
                         edge="end"
                       >
@@ -245,9 +326,8 @@ const Login = () => {
                   ),
                 },
               }}
-              error={!!errors.password} // Show error style when there's an error
+              error={!!errors.password}
             />
-            {/* Error message for password */}
             {errors.password && (
               <div className="text-red-500 text-sm mt-[-1px] mb-2">
                 {errors.password}
@@ -255,7 +335,6 @@ const Login = () => {
             )}
           </div>
 
-          {/* Forgot Password */}
           <div className="text-right">
             <Link
               to="/forgot-password"
@@ -265,7 +344,6 @@ const Login = () => {
             </Link>
           </div>
 
-          {/* Login Button */}
           <button
             type="submit"
             className="w-full mt-7 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
@@ -274,20 +352,20 @@ const Login = () => {
           </button>
         </form>
 
-        {/* Divider */}
         <div className="flex items-center my-6">
           <div className="flex-grow border-t border-[#3B354D]"></div>
           <span className="text-sm text-[#9F9BAE] mx-3">or</span>
           <div className="flex-grow border-t border-[#3B354D]"></div>
         </div>
 
-        {/* Google Sign-In */}
-        <button className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors">
+        <button
+          className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors"
+          onClick={handleGoogleSignIn}
+        >
           <img src={googleIcon} alt="Google Icon" className="w-10 mr-2" />
           Sign in with Google
         </button>
 
-        {/* Footer */}
         <p className="text-center text-sm text-[#9F9BAE] mt-6">
           Don’t have an account?{" "}
           <Link

@@ -4,19 +4,17 @@ import MenuList from "@mui/material/MenuList";
 import MenuItem from "@mui/material/MenuItem";
 import Typography from "@mui/material/Typography";
 import { useNavigate } from "react-router-dom";
-import { useContext } from "react";
-import { UserContext } from "/context/userContext"; // Adjust the import path
+import { auth, signOutUser } from "../config"; // Adjust the path as necessary
 
 export default function Logout() {
   const navigate = useNavigate();
-  const { logout } = useContext(UserContext); // Destructure setUser to update user context
 
   // Logout function
   const handleLogout = () => {
-    // Clear user data from context (or localStorage/sessionStorage/cookies if necessary)
-    logout(); // Set user to null (assuming `setUser` updates your context)
+    // Call the signOut function from config.js
+    signOutUser(auth);
 
-    // Clear cookies or localStorage if necessary
+    // Clear user data from context (or localStorage/sessionStorage/cookies if necessary)
     // Example: localStorage.removeItem("userToken");
 
     // Redirect to login page and block back navigation

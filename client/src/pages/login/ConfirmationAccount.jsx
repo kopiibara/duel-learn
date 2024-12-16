@@ -1,74 +1,94 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom"; // Import useLocation
-import axios from "axios"; // Import axios for making HTTP requests
+import { useNavigate, useLocation } from "react-router-dom";
 import ExitIcon from '../../assets/images/Exit.png';
-import sampleAvatarDeployment from '../../assets/images/sampleAvatarDeployment.jpg';
-
+import sampleAvatarDeployment from '../../assets/images/AVATARSAMPLE.png';
+import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { auth ,sendResetEmail, verifyResetCode, confirmResetPassword} from "../../config";
 const ConfirmationAccount = () => {
   const navigate = useNavigate();
-  const location = useLocation(); // Get location object
-  const { email } = location.state || {}; // Retrieve email from state
-  const [username, setUsername] = useState(""); // State to hold the username
-  const [loading, setLoading] = useState(true); // Loading state
-  const [buttonLoading, setButtonLoading] = useState(false); // Button loading state
-  const [error, setError] = useState(""); // Error state
+  const location = useLocation();
+  const { email } = location.state || {};
+  const [username, setUsername] = useState("");  
+  const [profilePic, setProfilePic] = useState("");  
+
+  const [loading, setLoading] = useState(true); 
+  const [buttonLoading, setButtonLoading] = useState(false); 
+  const [error, setError] = useState("");
+  
+
+  useEffect(() => {
+    if (!email) {
+      setError("No email provided");
+      setLoading(false);
+      return;
+    }
+  }, [email]);
 
   useEffect(() => {
     const fetchUsername = async () => {
-      if (!email) {
-        setError("No email provided");
-        setLoading(false);
-        return;
-      }
-
-      console.log('Email being sent to API:', email);
-
       try {
-        const response = await axios.get('/confirmation-account', {
-          params: { email }
-        });
-
-        if (response.data.username) {
-          setUsername(response.data.username); // Set username to state
+        const db = getFirestore();
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("email", "==", email));
+    
+        const querySnapshot = await getDocs(q);
+        console.log("Query Snapshot:", querySnapshot);  // Log the query result
+    
+        if (!querySnapshot.empty) {
+          const userDoc = querySnapshot.docs[0];
+          setUsername(userDoc.data().username);
+          setProfilePic(userDoc.data().profilePic);
         } else {
-          setError("Username not found for the email");
+          setError("User not found");
         }
-      } catch (error) {
-        setError("Error fetching username");
-        console.error("Error fetching username:", error);
+      } catch (err) {
+        setError("Failed to fetch user data");
+        console.error("Error fetching user data:", err); // Log the error for more details
       } finally {
-        setLoading(false); // Stop loading once the request is complete
+        setLoading(false);
       }
     };
+    
 
-    fetchUsername();
+    if (email) {
+      fetchUsername();
+    }
   }, [email]);
 
   const handlePhoneInsteadClick = () => {
-    navigate("/forgot-password"); // Navigate to forgot password if user chooses phone
+    //("/forgot-password");
   };
-
-  const handleContinueClick = async () => {
-    setButtonLoading(true); // Set button loading state
+  const handleSendPasswordResetEmail = async () => {
     try {
-      const response = await axios.post('/confirmation-account', { email });
-
-      if (response.status === 200) {
-        console.log("Email sent successfully:", response.data.message);
-        navigate("/security-code", { state: { email } }); // Navigate to the security code page
-      } else {
-        setError("Failed to send email. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error sending email:", error);
-      setError("An error occurred while sending the email.");
-    } finally {
-      setButtonLoading(false); // Stop button loading once the request is complete
+      await sendResetEmail(auth, email, {
+        url: "http://localhost:5173/Reset-Password?mode=resetPassword",
+        handleCodeInApp: true,
+      });
+    } catch (err) {
+      setError("Failed to send password reset email");
     }
   };
+  
+
+  const handleContinueClick = async () => {
+    setButtonLoading(true);
+    try {
+      await handleSendPasswordResetEmail();
+      alert("Password reset email has been sent!");
+    //  navigate("/reset-password"); // Or a confirmation page
+    } catch (err) {
+      console.error("Error sending password reset email:", err);
+    } finally {
+      setButtonLoading(false);
+    }
+  };
+  
+
+  
 
   const handleExitClick = () => {
-    navigate("/"); // Navigate to home when the exit icon is clicked
+    navigate("/");
   };
 
   return (
@@ -84,7 +104,7 @@ const ConfirmationAccount = () => {
       </div>
 
       <div className="flex flex-col items-center justify-center">
-        <img src={sampleAvatarDeployment} style={{ width: '100px' }} alt="Profile Avatar" />
+        <img src={profilePic || sampleAvatarDeployment} style={{ width: '100px' }} alt="Profile Avatar" />
         {loading ? (
           <h2 className="text-white uppercase text-lg text-center mt-5">Loading...</h2>
         ) : error ? (
@@ -106,7 +126,7 @@ const ConfirmationAccount = () => {
           type="submit"
           className={`w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors flex justify-center items-center`}
           onClick={handleContinueClick}
-          disabled={buttonLoading} // Disable button while loading
+          disabled={buttonLoading}
         >
           {buttonLoading ? (
             <div className="relative">
@@ -117,7 +137,6 @@ const ConfirmationAccount = () => {
             "Continue"
           )}
         </button>
-
 
         <button
           type="submit"
