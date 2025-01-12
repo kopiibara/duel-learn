@@ -1,58 +1,62 @@
-import React from "react";
-import PremiumAdsBG from "../../assets/images/PremiumAdsBG.png"
+import React, { useState } from "react";
+import PremiumAdsBG from "../../assets/images/PremiumAdsBG.png";
+import CoinIcon from "../../assets/images/CoinIcon.png";
 
 const Shop = () => {
-  const items = [
+  const [items, setItems] = useState([
     {
       id: 1,
       name: "Mana Regen Band",
       description: "Restores your mana fully.",
       useLabel: "Use",
-      buyLabel: "Buy for 50",
+      buyLabel: "50",
+      owned: 0, // Example of owned amount
     },
     {
       id: 2,
       name: "Tech Pass",
       description: "Usable for AI Cross-Referencing and OCR features.",
       useLabel: null,
-      buyLabel: "Buy for 50",
+      buyLabel: "50",
+      owned: 3,
     },
     {
       id: 3,
       name: "Rewards Multiplier Badge",
       description: "Doubles XP and coin rewards for 24 hours.",
       useLabel: "Use",
-      buyLabel: "Buy for 50",
+      buyLabel: "50",
+      owned: 0,
     },
     {
       id: 4,
       name: "Fortune Coin",
-      description:
-        "Increases the chance for rare power card to each game for 3 turns.",
+      description: "Increases the chance for rare power card to each game for 3 turns.",
       useLabel: "Use",
-      buyLabel: "Buy for 50",
+      buyLabel: "50",
+      owned: 0,
     },
     {
       id: 5,
       name: "Insightful Token",
-      description:
-        "Keeps your wins track event intact, even on a loss streak.",
+      description: "Keeps your wins track event intact, even on a loss streak.",
       useLabel: "Use",
-      buyLabel: "Buy for 50",
+      buyLabel: "50",
+      owned: 0,
     },
     {
       id: 6,
       name: "Study Starter Pack",
-      description:
-        "Grants a base XP boost, coins, mana refill, and insightful card.",
+      description: "Grants a base XP boost, coins, mana refill, and insightful card.",
       useLabel: "Use",
-      buyLabel: "Buy for 50",
+      buyLabel: "50",
+      owned: 0,
     },
-  ];
+  ]);
 
   return (
     <div className="min-h-screen text-white p-6">
-<div
+      <div
         className="h-[232px] rounded-lg p-6 text-center mb-6 flex flex-col justify-center items-center"
         style={{
           backgroundImage: `url(${PremiumAdsBG})`,
@@ -70,14 +74,26 @@ const Shop = () => {
         </button>
       </div>
 
+      {/* White 5px line break */}
+      <hr className="border-t-1 my-9 border-[#b3b3b3] my-6" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         {items.map((item) => (
           <div
             key={item.id}
-            className="border-2 border-[#6F658D] rounded-lg shadow-lg pt-9 px-6 flex flex-col items-center pb-4"
+            className="border-2 border-[#6F658D] rounded-lg shadow-lg py-7 px-7 flex flex-col items-center pb-4 aspect-w-1 aspect-h-1 relative"
           >
-            <div className="w-16 h-16 bg-[#9F87E5] rounded mb-4"></div>
+            <div className="relative">
+              {/* Show owned text only if useLabel is null */}
+              {item.useLabel === null && (
+                <div className="absolute top-0 left-8 w-[91px] rounded-lg bg-white text-black rounded px-2 py-1 text-xs">
+                  OWNED {item.owned} / 5
+                </div>
+              )}
+
+              <div className="w-24 h-24 bg-[#6F658D] rounded mb-4"></div>
+            </div>
+
             <h2 className="text-lg font-bold mb-2">{item.name}</h2>
             <p className="text-sm text-gray-400 mb-4 text-center">
               {item.description}
@@ -87,29 +103,32 @@ const Shop = () => {
             <div className="flex-grow"></div>
 
             {/* Buttons at the bottom */}
-            <div className="flex gap-2 w-full">
+            <div className="flex gap-2 mb-3 w-full">
               {item.useLabel && (
-                <button className="flex-1 border border-[#afafaf] rounded text-white py-2">
+                <button className="flex-1 border rounded-lg border-[#afafaf] rounded text-white py-2">
                   {item.useLabel}
                 </button>
               )}
               {item.buyLabel && (
                 <button
                   className={`${item.useLabel ? "flex-1" : "flex-grow"
-                    } border border-[#afafaf] rounded text-black py-2 bg-white`}
+                    } border rounded-lg border-[#afafaf] rounded text-black py-2 bg-white flex items-center justify-center`}
                 >
-                  {item.buyLabel}
+                  <span>Buy for </span>
+                  <img src={CoinIcon} alt="Coin" className="w-5 h-5 ml-2" />
+                  <span style={{ color: "#9C8307", marginLeft: '7px', fontWeight: 'bold' }}>{item.buyLabel}</span>
                 </button>
               )}
             </div>
           </div>
-
         ))}
       </div>
 
-      <footer className="mt-6 text-center text-gray-500">
-        <p>Privacy</p>
-        <p>Terms</p>
+      <footer className="mt-10 mb-4 flex justify-between text-gray-500">
+        <div className="flex gap-6">
+          <p>Privacy</p>
+          <p>Terms</p>
+        </div>
         <p>© 2024 Duel-Learn Inc.</p>
       </footer>
     </div>

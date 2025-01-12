@@ -55,8 +55,8 @@ const SideListNavi = () => {
                   </div>
                 </div>
                 <div className="flex space-x-2">
-                  <button className="bg-green-600 p-2 rounded-full text-white">✔</button>
-                  <button className="bg-red-600 p-2 rounded-full text-white">✖</button>
+                  <button className="bg-green-600 py-3 px-4 rounded-full text-xs text-white">✔</button>
+                  <button className="bg-red-600 py-3 px-4 rounded-full text-xs text-white">✖</button>
                 </div>
               </div>
             ))}
