@@ -5,26 +5,19 @@ import {
   Routes,
   Navigate,
 } from "react-router-dom";
-import { UserProvider } from "/context/userContext"; // Fixed import path
+import { UserProvider } from "/context/userContext";
 import { Toaster } from "react-hot-toast";
 import Login from "./pages/login/Login";
 import SignUp from "./pages/login/SignUp";
 import ForgotPass from "./pages/login/ForgotPass";
 import axios from "axios";
-import Sidebar from "./components/Sidebar";
-import Home from "./pages/dashboard/Home";
-import Explore from "./pages/dashboard/Explore";
-import YourLibrary from "./pages/dashboard/YourLibrary";
-import Profile from "./pages/dashboard/Profile";
-import Shop from "./pages/dashboard/Shop";
-import PrivateRoute from "./PrivateRoute"; // Private Route wrapper
 import NotFound from "./pages/login/NotFoundPage"; // Not Found component
-import "./index.css";
 import ConfirmationAccount from "./pages/login/ConfirmationAccount";
 import SecurityCode from "./pages/login/SecurityCode";
 import ResetPassword from "./pages/login/ResetPassword";
 import SuccessReset from "./pages/login/SuccessReset";
 import WelcomePage from "./pages/dashboard/WelcomePage";
+import UserDashboardRoutes from "./pages/dashboard/UserDashboardRoutes"; // UserDashboard includes Sidebar and Header
 
 // Set Axios defaults
 axios.defaults.baseURL = "http://localhost:8000";
@@ -36,64 +29,22 @@ function App() {
       <Router>
         <Routes>
           {/* Public Routes */}
-          <Route
-            path="/"
-            element={<Login />}
-          />
-          <Route
-            path="/sign-up"
-            element={<SignUp />}
-          />
-          <Route
-            path="/forgot-password"
-            element={<ForgotPass />}
-          />
-          <Route
-            path="/confirmation-account"
-            element={<ConfirmationAccount />}
-          />
-          <Route
-            path="/security-code"
-            element={<SecurityCode />}
-          />
-          <Route
-            path="/reset-password"
-            element={<ResetPassword />}
-          />
-          <Route
-            path="/success-reset-password"
-            element={<SuccessReset />}
-          />
-          <Route
-            path="/welcome-page"
-            element={<WelcomePage />}
-          />
+          <Route path="/" element={<Login />} />
+          <Route path="/sign-up" element={<SignUp />} />
+          <Route path="/forgot-password" element={<ForgotPass />} />
+          <Route path="/confirmation-account" element={<ConfirmationAccount />} />
+          <Route path="/security-code" element={<SecurityCode />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/success-reset-password" element={<SuccessReset />} />
+          <Route path="/welcome-page" element={<WelcomePage />} />
 
           {/* Private Routes */}
-          <Route element={<PrivateRoute />}>
-            <Route
-              path="/dashboard/*"
-              element={
-                <div className="flex">
-                  <Sidebar />
-                  <div className="flex-1 p-7 h-screen overflow-auto">
-                    <Routes>
-                      {/* Default Route */}
-                      <Route index element={<Navigate to="home" replace />} />
-                      {/* Nested Routes */}
-                      <Route path="home" element={<Home />} />
-                      <Route path="explore" element={<Explore />} />
-                      <Route path="your-library" element={<YourLibrary />} />
-                      <Route path="profile" element={<Profile />} />
-                      <Route path="shop" element={<Shop />} />
-                      {/* Catch-All Route */}
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </div>
-                </div>
-              }
-            />
-          </Route>
+          {/* <Route element={<PrivateRoute />}> */}
+          <Route
+            path="/dashboard/*"
+            element={<UserDashboardRoutes />}
+          />
+          {/* </Route> */}
 
           {/* Catch-All Route for Public Paths */}
           <Route path="*" element={<NotFound />} />

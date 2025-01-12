@@ -80,9 +80,9 @@ const Sidebar = () => {
   }
 
   return (
-    <div className={`h-screen ${isCollapsed ? 'w-28' : 'w-64'} text-[#E2DDF3] flex flex-col p-5 mx-2 transition-all relative`}>
+    <div className={`h-screen ${isCollapsed ? 'w-28' : 'w-64'} text-[#E2DDF3] flex flex-col  p-5 mx-2 transition-all relative`}>
       {/** Header */}
-      <div className={`flex items-center p-2 mb-4 gap-2  transition-all ${isCollapsed ? 'justify-center' : ''}`}>
+      <div className={`flex items-center p-2 mb-4 gap-2 pt-6 transition-all ${isCollapsed ? 'justify-center' : ''}`}>
         {/* Collapse/Expand Button in the Header */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
@@ -102,7 +102,7 @@ const Sidebar = () => {
 
 
       {/** Create New */}
-      <div className="space-y-4 w-full text-left rounded-xl gap-2">
+      <div className="space-y-4 w-full text-left rounded-xl gap-2 mt-3">
         <button className={`w-full bg-[#381898] text-[#E2DDF3] py-2 rounded-lg hover:bg-[#4D18E8] flex items-center justify-center gap-2 ${isCollapsed ? 'justify-center' : ''}`}>
           <AddRoundedIcon />
           {/* Text hides when collapsed */}
@@ -154,29 +154,8 @@ const Sidebar = () => {
           </button>
         </Tooltip>
       ))}
-
-      {/** Profile Section */}
-      <div className="flex mt-auto mb-7 gap-3 w-full items-center">
-        {isCollapsed ? (
-          <Avatar src="/broken-image.jpg" variant="rounded" />
-        ) : (
-          <>
-            <Avatar src="/broken-image.jpg" variant="rounded" />
-            <div className="ml-2">
-              <h1 className="text-s text-[#E2DDF3]">
-                {user ? user.username : "Guest"}
-              </h1>
-              <p className="text-sm text-[#3F3565]">LVL. 10</p>
-            </div>
-          </>
-        )}
-        <span className="ml-auto">
-          <MoreVertIcon />
-        </span>
-      </div>
+      
     </div>
-
-
 
   );
 };

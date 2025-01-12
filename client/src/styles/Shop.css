@@ -1,0 +1,152 @@
+/* General container styling */
+.shop-container {
+    min-height: 100vh;
+    padding: 2rem;
+    font-family: Arial, sans-serif;
+  }
+  
+  /* Premium Section Styling */
+  .premium-section {
+    text-align: center;
+    position: relative;
+    margin-bottom: 2rem;
+  }
+  
+  .premium-title {
+    font-size: 2rem;
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .premium-description {
+    color: #555;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .premium-button {
+    background-color: #6b46c1;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    font-weight: bold;
+    border-radius: 999px;
+    margin-top: 1rem;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+  }
+  
+  .premium-button:hover {
+    background-color: #553c9a;
+  }
+  
+  /* Cloud styling */
+  .cloud {
+    position: absolute;
+    background: #e0c3fc;
+    width: 120px;
+    height: 60px;
+    border-radius: 50%;
+    z-index: 0;
+  }
+  
+  .cloud1 {
+    top: -40px;
+    left: 20%;
+  }
+  
+  .cloud2 {
+    top: -50px;
+    left: 50%;
+  }
+  
+  .cloud3 {
+    top: -40px;
+    left: 70%;
+  }
+  
+  /* Divider styling */
+  .divider {
+    border: 1px solid #ddd;
+    margin: 2rem 0;
+  }
+  
+  /* Shop Items Styling */
+  .shop-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+  }
+  
+  .shop-item {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .item-icon {
+    width: 64px;
+    height: 64px;
+    background-color: #f4f4f4;
+    border-radius: 50%;
+    margin: 0 auto 1rem;
+  }
+  
+  .item-title {
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .item-description {
+    color: #777;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+  }
+  
+  .item-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+  
+  .button {
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  
+  .use-button {
+    background-color: #48bb78;
+    color: white;
+  }
+  
+  .use-button:hover {
+    background-color: #38a169;
+  }
+  
+  .buy-button {
+    background-color: #f6ad55;
+    color: white;
+  }
+  
+  .buy-button:hover {
+    background-color: #ed8936;
+  }
+  
+  /* Footer Styling */
+  .footer {
+    text-align: center;
+    margin-top: 2rem;
+    color: #888;
+    font-size: 0.9rem;
+  }
+  

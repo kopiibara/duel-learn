@@ -27,45 +27,46 @@ const Login = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    const { username, password } = data;
-    let formIsValid = true;
-    let newErrors = { username: "", password: "" };
+    navigate("/dashboard/home");
+    // const { username, password } = data;
+    // let formIsValid = true;
+    // let newErrors = { username: "", password: "" };
 
-    // Validation for empty fields
-    if (!username) {
-      newErrors.username = "Username is required.";
-      formIsValid = false;
-    }
-    if (!password) {
-      newErrors.password = "Password is required.";
-      formIsValid = false;
-    }
+    // // Validation for empty fields
+    // if (!username) {
+    //   newErrors.username = "Username is required.";
+    //   formIsValid = false;
+    // }
+    // if (!password) {
+    //   newErrors.password = "Password is required.";
+    //   formIsValid = false;
+    // }
 
-    // If form is not valid, set errors and stop form submission
-    if (!formIsValid) {
-      setErrors(newErrors);
-      return;
-    }
+    // // If form is not valid, set errors and stop form submission
+    // if (!formIsValid) {
+    //   setErrors(newErrors);
+    //   return;
+    // }
 
-    try {
-      const { data: response } = await axios.post(
-        "/login",
-        { username, password },
-        { withCredentials: true } // Include credentials in the request
-      );
+    // try {
+    //   const { data: response } = await axios.post(
+    //     "/login",
+    //     { username, password },
+    //     { withCredentials: true } // Include credentials in the request
+    //   );
 
-      if (response.error) {
-        // Set general error if credentials do not match
-        setError({ general: "Invalid input. Please check your credentials." });
-      } else {
-        setData({}); // Clear data
-        setError({ general: "" }); // Reset general error on success
-        navigate("/dashboard/home"); // Redirect on success
-      }
-    } catch (error) {
-      setError({ general: "Server error. Please try again later." }); // Handle server error
-      console.error("Server error:", error); // Handle server error
-    }
+    //   if (response.error) {
+    //     // Set general error if credentials do not match
+    //     setError({ general: "Invalid input. Please check your credentials." });
+    //   } else {
+    //     setData({}); // Clear data
+    //     setError({ general: "" }); // Reset general error on success
+    //     navigate("/dashboard/home"); // Redirect on success
+    //   }
+    // } catch (error) {
+    //   setError({ general: "Server error. Please try again later." }); // Handle server error
+    //   console.error("Server error:", error); // Handle server error
+    // }
   };
 
   const handleInputChange = (field, value) => {
