@@ -1,8 +1,11 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 import PremiumAdsBG from "../../assets/images/PremiumAdsBG.png";
 import CoinIcon from "../../assets/images/CoinIcon.png";
+import Footer from "../../components/Footer";
 
 const Shop = () => {
+  const navigate = useNavigate(); // Initialize navigate function
   const [items, setItems] = useState([
     {
       id: 1,
@@ -10,7 +13,7 @@ const Shop = () => {
       description: "Restores your mana fully.",
       useLabel: "Use",
       buyLabel: "50",
-      owned: 0, // Example of owned amount
+      owned: 0,
     },
     {
       id: 2,
@@ -55,7 +58,7 @@ const Shop = () => {
   ]);
 
   return (
-    <div className="min-h-screen text-white p-6">
+    <div className="min-h-screen text-white px-6 pb-6 ">
       <div
         className="h-[232px] rounded-lg p-6 text-center mb-6 flex flex-col justify-center items-center"
         style={{
@@ -69,12 +72,14 @@ const Shop = () => {
           Unlock advanced tools. Earn exclusive rewards.
           Enjoy ad-free learning!
         </p>
-        <button className="mt-4 px-10 py-2 text-[19px] bg-white text-[#9F87E5] rounded-full font-bold">
+        <button
+          className="mt-4 px-10 py-2 text-[19px] bg-white text-[#9F87E5] rounded-full font-bold"
+          onClick={() => navigate("/dashboard/shop/buy-premium-account")} // Navigate on click
+        >
           TRY IT NOW
         </button>
       </div>
 
-      {/* White 5px line break */}
       <hr className="border-t-1 my-9 border-[#b3b3b3] my-6" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
@@ -84,39 +89,40 @@ const Shop = () => {
             className="border-2 border-[#6F658D] rounded-lg shadow-lg py-7 px-7 flex flex-col items-center pb-4 aspect-w-1 aspect-h-1 relative"
           >
             <div className="relative">
-              {/* Show owned text only if useLabel is null */}
               {item.useLabel === null && (
                 <div className="absolute top-0 left-8 w-[91px] rounded-lg bg-white text-black rounded px-2 py-1 text-xs">
                   OWNED {item.owned} / 5
                 </div>
               )}
-
               <div className="w-24 h-24 bg-[#6F658D] rounded mb-4"></div>
             </div>
-
             <h2 className="text-lg font-bold mb-2">{item.name}</h2>
             <p className="text-sm text-gray-400 mb-4 text-center">
               {item.description}
             </p>
-
-            {/* Spacer to push buttons to the bottom */}
             <div className="flex-grow"></div>
-
-            {/* Buttons at the bottom */}
             <div className="flex gap-2 mb-3 w-full">
               {item.useLabel && (
-                <button className="flex-1 border rounded-lg border-[#afafaf] rounded text-white py-2">
+                <button className="flex-1 border rounded-lg border-[#afafaf] text-white py-2">
                   {item.useLabel}
                 </button>
               )}
               {item.buyLabel && (
                 <button
                   className={`${item.useLabel ? "flex-1" : "flex-grow"
-                    } border rounded-lg border-[#afafaf] rounded text-black py-2 bg-white flex items-center justify-center`}
+                    } border rounded-lg border-[#afafaf] text-black py-2 bg-white flex items-center justify-center`}
                 >
                   <span>Buy for </span>
                   <img src={CoinIcon} alt="Coin" className="w-5 h-5 ml-2" />
-                  <span style={{ color: "#9C8307", marginLeft: '7px', fontWeight: 'bold' }}>{item.buyLabel}</span>
+                  <span
+                    style={{
+                      color: "#9C8307",
+                      marginLeft: "7px",
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {item.buyLabel}
+                  </span>
                 </button>
               )}
             </div>
@@ -124,13 +130,7 @@ const Shop = () => {
         ))}
       </div>
 
-      <footer className="mt-10 mb-4 flex justify-between text-gray-500">
-        <div className="flex gap-6">
-          <p>Privacy</p>
-          <p>Terms</p>
-        </div>
-        <p>© 2024 Duel-Learn Inc.</p>
-      </footer>
+      <Footer />
     </div>
   );
 };

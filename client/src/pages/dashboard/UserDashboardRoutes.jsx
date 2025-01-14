@@ -7,10 +7,12 @@ import YourLibrary from "./YourLibrary";
 import Profile from "./Profile";
 import Shop from "./Shop";
 import NotFound from "../login/NotFoundPage";
+import BuyPremium from "../../components/Shop/BuyPremium";
 
 const UserDashboardRoutes = () => {
     return (
         <Routes>
+            {/* Routes with UserDashboardLayout */}
             <Route path="/" element={<UserDashboardLayout />}>
                 <Route index element={<Navigate to="home" replace />} />
                 <Route path="home" element={<Home />} />
@@ -20,8 +22,10 @@ const UserDashboardRoutes = () => {
                 <Route path="shop" element={<Shop />} />
                 <Route path="*" element={<NotFound />} />
             </Route>
-        </Routes>
 
+            {/* Standalone Route for BuyPremium */}
+            <Route path="/shop/buy-premium-account" element={<BuyPremium />} />
+        </Routes>
     );
 };
 
