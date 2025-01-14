@@ -80,7 +80,7 @@ const Shop = () => {
         </button>
       </div>
 
-      <hr className="border-t-1 my-9 border-[#b3b3b3] my-6" />
+      <hr className="border-t-1 my-9 border-[#b3b3b3]" />
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         {items.map((item) => (
@@ -90,7 +90,7 @@ const Shop = () => {
           >
             <div className="relative">
               {item.useLabel === null && (
-                <div className="absolute top-0 left-8 w-[91px] rounded-lg bg-white text-black rounded px-2 py-1 text-xs">
+                <div className="absolute top-0 left-8 w-[91px] rounded-lg bg-white text-black px-2 py-1 text-xs">
                   OWNED {item.owned} / 5
                 </div>
               )}
