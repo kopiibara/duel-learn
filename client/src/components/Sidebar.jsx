@@ -29,7 +29,18 @@ const Sidebar = () => {
   const Menus = [
     {
       title: "Home",
-      icon: <HomeRoundedIcon />,
+      icon: (
+        <HomeRoundedIcon
+          sx={{
+            fill: "none",
+            stroke: "currentColor",
+            strokeWidth: 2,
+            "&:hover, &:active": {
+              fill: "#4D18E8",
+            },
+          }}
+        />
+      ),
       path: "/home",
       element: <Home />,
     },
@@ -75,16 +86,16 @@ const Sidebar = () => {
   }
 
   return (
-    <div className="h-screen w-64 text-[#E2DDF3] flex flex-col p-4 space-4 ml-3">
+    <div className="h-screen w-64 text-[#E2DDF3] flex flex-col p-6 space-4">
       {/** Header */}
-      <div className="flex items-center p-2 mb-4 gap-2">
-        <DuelLearnRoundedIcon />
-        <span className="ml-2 text-xl font-bold">Duel Learn</span>
+      <div className="flex items-center mb-8 mt-6 gap-2">
+        <DuelLearnRoundedIcon fontSize="large" />
+        <span className="ml-2 text-3xl font-bold">Duel Learn</span>
       </div>
 
       {/** Create New */}
-      <div className="space-y-4 w-full text-left rounded-xl gap-2 m-1">
-        <button className="w-full bg-[#381898] text-[#E2DDF3] py-2 rounded-lg hover:bg-[#4D18E8]">
+      <div className="space-y-4 w-full text-left rounded-xl gap-2 border-b">
+        <button className="w-full bg-[#381898] border-2 border-[#381898]  text-[#E2DDF3] py-2 rounded-lg hover:bg-[#4D18E8]">
           + Create New
         </button>
         <button className="w-full border-2 border-[#E2DDF3] text-white py-2 rounded-xl flex items-center justify-center hover:bg-[#4D18E8] hover:border-2 hover:border-[#4D18E8]">
@@ -101,7 +112,7 @@ const Sidebar = () => {
           key={index}
           className={`flex items-center p-2 w-full text-left rounded-xl gap-2 m-1 ${
             selectedMenu === menu.title
-              ? "border-2 border-[#4D18E8] text-[#4D18E8]"
+              ? "border-2 border-[#4D18E8] text-[#4D18E8] "
               : "hover:text-[#A38CE6]"
           }`}
           onClick={() => handleMenuClick(menu)}
