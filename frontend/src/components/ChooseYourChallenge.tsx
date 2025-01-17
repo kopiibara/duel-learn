@@ -1,0 +1,134 @@
+//import * as React from "react";
+import { Box, Card, CardContent, Typography } from "@mui/material";
+import { styled } from "@mui/system";
+
+const ModeCard = styled(Card)({
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "flex-end",
+  alignItems: "flex-start",
+  padding: "2rem",
+  borderRadius: "1rem",
+  height: "200px",
+  cursor: "pointer",
+  background: "linear-gradient(to bottom, #ECE6FF, #DDD3FF)",
+  position: "relative",
+  "&:hover": {
+    transform: "scale(1.03)",
+    transition: "all 0.3s",
+  },
+});
+
+const ChooseYourChallenge = () => {
+  return (
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: "1fr",
+        gap: 4,
+        mt: 6,
+        "@media (min-width: 768px)": {
+          gridTemplateColumns: "repeat(3, 1fr)",
+        },
+      }}
+    >
+      {/* Peaceful Mode */}
+      <ModeCard>
+        <CardContent
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            paddingBottom: "16px",
+          }}
+        >
+          <Box
+            sx={{
+              position: "absolute",
+              bottom: 28,
+              left: 28,
+              textAlign: "left",
+            }}
+          >
+            <Typography
+              variant="h6"
+              fontWeight="bold"
+              className="text-[#080511]"
+            >
+              Peaceful Mode
+            </Typography>
+            <Typography variant="body2" className="text-[#322168]">
+              Study your way, no rush, just flow!
+            </Typography>
+          </Box>
+        </CardContent>
+      </ModeCard>
+
+      {/* Time Pressured Mode */}
+      <ModeCard>
+        <CardContent
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            paddingBottom: "16px",
+          }}
+        >
+          <Box
+            sx={{
+              position: "absolute",
+              bottom: 28,
+              left: 28,
+              textAlign: "left",
+            }}
+          >
+            <Typography
+              variant="h6"
+              fontWeight="bold"
+              className="text-[#080511]"
+            >
+              Time Pressured
+            </Typography>
+            <Typography variant="body2" className="text-[#322168]">
+              Beat the clock, challenge your speed!
+            </Typography>
+          </Box>
+        </CardContent>
+      </ModeCard>
+
+      {/* PvP Mode */}
+      <ModeCard>
+        <CardContent
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "flex-end",
+            paddingBottom: "16px",
+          }}
+        >
+          <Box
+            sx={{
+              position: "absolute",
+              bottom: 28,
+              left: 28,
+              textAlign: "left",
+            }}
+          >
+            <Typography
+              variant="h6"
+              fontWeight="bold"
+              className="text-[#080511]"
+            >
+              PvP Mode
+            </Typography>
+            <Typography variant="body2" className="text-[#322168]">
+              Face off, outsmart your opponent, and win!
+            </Typography>
+          </Box>
+        </CardContent>
+      </ModeCard>
+    </Box>
+  );
+};
+
+export default ChooseYourChallenge;
