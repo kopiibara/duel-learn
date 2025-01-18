@@ -6,6 +6,7 @@ import Explore from "../pages/dashboard/explore/ExplorePage";
 import YourLibrary from "../pages/dashboard/my-library/MyLibrary";
 import Profile from "../pages/dashboard/profile/ProfilePage";
 import Shop from "../pages/dashboard/shop/ShopPage";
+import BuyPremium from "../pages/dashboard/shop/BuyPremium";
 
 const PrivateRoutes = () => {
   return (
@@ -17,6 +18,10 @@ const PrivateRoutes = () => {
         <Route path="profile" element={<Profile />} />
         <Route path="shop" element={<Shop />} />
       </Route>
+
+
+      <Route path="/shop/buy-premium-account" element={<BuyPremium />} />
+
     </Routes>
   );
 };

@@ -26,7 +26,7 @@ export default function Header() {
   const open = Boolean(anchorEl);
 
   return (
-    <Box className="flex-1 pt-12 pb-4">
+    <Box className="flex-1 pt-10 pb-4">
       <AppBar position="sticky" elevation={0} color="transparent">
         <Toolbar className="gap-3">
           <SearchField />
