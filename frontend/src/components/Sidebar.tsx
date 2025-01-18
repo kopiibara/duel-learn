@@ -108,10 +108,10 @@ export default function BasicList() {
   return (
     <Box style={{ display: "flex", position: "relative" }}>
       <Stack
-        className="h-full w-full pl-4 py-12 flex flex-col justify-between"
+        className="h-full w-full pl-2 mx-2  py-12 flex flex-col justify-between"
         spacing={2}
         sx={{
-          width: collapsed ? "5.5rem" : "15rem",
+          width: collapsed ? "5.5rem" : "w-64",
           transition: "width 0.35s",
         }}
       >
@@ -176,7 +176,7 @@ export default function BasicList() {
             />,
             "Create",
             "contained",
-            () => {}
+            () => { }
           )}
           {renderButton(
             <PlayIcon
@@ -185,7 +185,7 @@ export default function BasicList() {
             />,
             "Play",
             "outlined",
-            () => {}
+            () => { }
           )}
           <Divider className="bg-[#3F3565]" />
         </Stack>

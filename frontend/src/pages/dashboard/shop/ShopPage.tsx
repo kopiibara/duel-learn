@@ -1,13 +1,17 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Box } from "@mui/material";
-import CoinIcon from "/coin-icon.svg";
-import PremiumAdsBG from "../../../assets/premium-ads-bg.png";
-import DocumentHead from "../../../components/DocumentHead";
+import PremiumAdsBG from "../../../assets/shop-picture/premium-ads-bg.png";
+import PremiumActivatedBG from "../../../assets/shop-picture/PremiumActivatedBG.png";
+import CoinIcon from "../../../assets/CoinIcon.png";
+import Footer from "../../../components/Footer";
 
-const ShopPage = () => {
-  const navigate = useNavigate(); // Initialize navigate function
-  const [items] = useState([
+const Shop = () => {
+  const navigate = useNavigate();
+
+  // Set initial state for premium account
+  const [isPremium, setIsPremium] = useState(false); // Change this value to true to simulate premium status
+
+  const items = [
     {
       id: 1,
       name: "Mana Regen Band",
@@ -35,8 +39,7 @@ const ShopPage = () => {
     {
       id: 4,
       name: "Fortune Coin",
-      description:
-        "Increases the chance for rare power card to each game for 3 turns.",
+      description: "Increases the chance for rare power card to each game for 3 turns.",
       useLabel: "Use",
       buyLabel: "50",
       owned: 0,
@@ -52,36 +55,62 @@ const ShopPage = () => {
     {
       id: 6,
       name: "Study Starter Pack",
-      description:
-        "Grants a base XP boost, coins, mana refill, and insightful card.",
+      description: "Grants a base XP boost, coins, mana refill, and insightful card.",
       useLabel: "Use",
       buyLabel: "50",
       owned: 0,
     },
-  ]);
+  ];
 
   return (
-    <Box className="min-h-screen text-white px-6 pb-6 ">
-      <DocumentHead title="Shop" />
-      <div
-        className="h-[232px] rounded-lg p-6 text-center mb-6 flex flex-col justify-center items-center"
-        style={{
-          backgroundImage: `url(${PremiumAdsBG})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
-        <h1 className="text-3xl mb-2 font-bold">Go Premium!</h1>
-        <p className="text-[16px] w-[360px]">
-          Unlock advanced tools. Earn exclusive rewards. Enjoy ad-free learning!
-        </p>
-        <button
-          className="mt-4 px-10 py-2 text-[19px] bg-white text-[#9F87E5] rounded-full font-bold"
-          onClick={() => navigate("/dashboard/shop/buy-premium-account")} // Navigate on click
+    <div className="min-h-screen text-white px-6 pb-6">
+      {/* Show this section only if the user is not premium */}
+      {!isPremium && (
+        <div
+          className="h-[232px] rounded-lg p-6 text-center mb-6 flex flex-col justify-center items-center"
+          style={{
+            backgroundImage: `url(${PremiumAdsBG})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
         >
-          TRY IT NOW
-        </button>
-      </div>
+          <h1 className="text-3xl mb-2 font-bold">Go Premium!</h1>
+          <p className="text-[16px] w-[360px]">
+            Unlock advanced tools. Earn exclusive rewards.
+            Enjoy ad-free learning!
+          </p>
+          <button
+            className="mt-4 px-10 py-2 text-[19px] bg-white text-[#9F87E5] rounded-full font-bold"
+            onClick={() => navigate("/dashboard/shop/buy-premium-account")}
+          >
+            TRY IT NOW
+          </button>
+        </div>
+      )}
+
+      {/* Show this section only if the user is premium */}
+      {isPremium && (
+        <div
+          className="h-[232px] rounded-lg p-6 text-center mb-6 flex flex-col justify-center items-center"
+          style={{
+            backgroundImage: `url(${PremiumActivatedBG})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        >
+          <h1 className="text-3xl mb-2 font-bold">Premium Perks Unlocked!</h1>
+          <p className="text-[15px] my-21 w-[390px]">
+            You're all set to access the best tools and rewards.
+            Stay ahead with ad-free, uninterrupted learning.
+          </p>
+          <button
+            className="mt-4 px-10 py-2 text-[15px] bg-white text-[#3e2880] rounded-full font-bold"
+            onClick={() => navigate("/dashboard/shop/buy-premium-account")}
+          >
+            ENDS IN 24D 1H
+          </button>
+        </div>
+      )}
 
       <hr className="border-t-1 my-9 border-[#b3b3b3]" />
 
@@ -112,9 +141,8 @@ const ShopPage = () => {
               )}
               {item.buyLabel && (
                 <button
-                  className={`${
-                    item.useLabel ? "flex-1" : "flex-grow"
-                  } border rounded-lg border-[#afafaf] text-black py-2 bg-white flex items-center justify-center`}
+                  className={`${item.useLabel ? "flex-1" : "flex-grow"
+                    } border rounded-lg border-[#afafaf] text-black py-2 bg-white flex items-center justify-center`}
                 >
                   <span>Buy for </span>
                   <img src={CoinIcon} alt="Coin" className="w-5 h-5 ml-2" />
@@ -133,8 +161,10 @@ const ShopPage = () => {
           </div>
         ))}
       </div>
-    </Box>
+
+      <Footer />
+    </div>
   );
 };
 
-export default ShopPage;
+export default Shop;

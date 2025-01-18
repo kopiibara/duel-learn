@@ -1,21 +1,32 @@
-import { Box, Typography } from "@mui/material";
-import DocumentHead from "../../../components/DocumentHead";
-import ProfileHeader from "./ProfileHeader";
-import Statistics from "./Statistics";
-import Achievements from "./Achievements";
-import Leaderboards from "./Leaderboards";
+import React from "react";
+import ProfileHeader from "./ProfileHeader"
+import Statictics from "./Statistics"
+import Achievements from "./Achievements"
+import Footer from "../../../components/Footer"
+import Leaderboards from "./Leaderboards"
 
-const ProfilePage = () => {
+const Profile = () => {
   return (
-    <Box className="">
-      <DocumentHead title="Profile" />
-      <Typography variant="h3">Profile Page</Typography>
+    <div className="min-h-screen text-white px-7">
+      {/* Profile Header */}
       <ProfileHeader />
-      <Statistics />
+
+      {/* Statistics Section */}
+      <Statictics />
+
+      {/* Achievements Section */}
       <Achievements />
+
+      {/* Leaderboards Section */}
       <Leaderboards />
-    </Box>
+
+      {/* Footer */}
+      <div className="mb-11">
+      <Footer />
+      </div>
+
+    </div>
   );
 };
 
-export default ProfilePage;
+export default Profile;
