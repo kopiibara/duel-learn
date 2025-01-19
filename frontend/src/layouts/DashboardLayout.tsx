@@ -4,10 +4,11 @@ import Sidebar from "../components/Sidebar";
 import Header from "../components/header/Header";
 import RightSideBar from "../components/RighSideBar/RightSideBar";
 import { Box } from "@mui/system";
+import "../styles/custom-scrollbar.css";
 
 const DashboardLayout = () => {
   return (
-    <Box className="h-screen px-1 flex flex-col lg:flex-row ">
+    <Box className="h-screen px-1 flex flex-col lg:flex-row w-screen overflow-x-hidden">
       {/* Sidebar (hidden on small screens) */}
       <aside className="hidden lg:block pl-4 pr-5 top-0 h-screen ">
         <Sidebar />

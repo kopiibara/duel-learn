@@ -25,8 +25,9 @@ const ChooseYourChallenge = () => {
       sx={{
         display: "grid",
         gridTemplateColumns: "1fr",
-        gap: 4,
+        gap: 2,
         mt: 6,
+        paddingX: 1,
         "@media (min-width: 768px)": {
           gridTemplateColumns: "repeat(3, 1fr)",
         },
