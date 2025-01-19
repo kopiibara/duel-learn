@@ -67,16 +67,21 @@ const CardComponent: React.FC<CardComponentProps> = ({
             >
               {title}
             </Typography>
-            <Chip
-              label={tags.join(", ")}
-              sx={{
-                backgroundColor: "#3B354D",
-                color: "#E2DDF3",
-                borderRadius: "0.5rem",
-                padding: "1rem",
-                width: "fit-content",
-              }}
-            />
+            <Stack direction="row" spacing={1}>
+              {tags.map((tag, index) => (
+                <Chip
+                  key={index}
+                  label={tag}
+                  sx={{
+                    backgroundColor: "#3B354D",
+                    color: "#E2DDF3",
+                    borderRadius: "0.5rem",
+                    padding: "1rem",
+                    width: "fit-content",
+                  }}
+                />
+              ))}
+            </Stack>
             <Typography variant="body2" className="text-[#322168]">
               Made by <strong>{creator}</strong>
             </Typography>
