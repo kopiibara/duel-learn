@@ -22,7 +22,9 @@
     "react-helmet-async": "^2.0.5",
     "react-hot-toast": "^2.5.1",
     "react-router-dom": "^7.1.1",
-    "styled-components": "^6.1.14"
+    "styled-components": "^6.1.14",
+    "tailwind-scrollbar": "^3.1.0",
+    "typewriter-effect": "^2.21.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
