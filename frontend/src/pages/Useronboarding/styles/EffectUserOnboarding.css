@@ -78,10 +78,12 @@
     position: absolute;
     width: 32px;
     height: 32px;
-    background-image: url('https://cdn-icons-png.flaticon.com/128/3504/3504652.png'); /* Add wand image */
+    background-image: url('https://cdn-icons-png.flaticon.com/128/3504/3504652.png'); /* Wand image */
     background-size: cover;
     pointer-events: none;
     z-index: 1000;
+    top: -50px; /* Start offscreen */
+    left: -50px; /* Start offscreen */
 }
 
 

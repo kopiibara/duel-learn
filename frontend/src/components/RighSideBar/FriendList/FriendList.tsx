@@ -1,10 +1,10 @@
 import React, { useState } from "react";
-import Profile from "../../assets/profile-picture/bunny-picture.png";
-import ProfileIcon from "../../assets/profile-picture/kopibara-picture.png";
+import Profile from "../../../assets/profile-picture/bunny-picture.png";
+import ProfileIcon from "../../../assets/profile-picture/kopibara-picture.png";
 import PeopleIcon from "@mui/icons-material/People";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import PersonSearchIcon from "@mui/icons-material/PersonSearch";
-import Modal from "./Modals/FriendListModal";
+import Modal from "./FriendListModal"
 
 const FriendList: React.FC = () => {
     const [friendList] = useState([

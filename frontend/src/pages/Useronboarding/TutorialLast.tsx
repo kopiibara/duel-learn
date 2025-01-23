@@ -4,7 +4,7 @@ import "./styles/EffectUserOnboarding.css";
 import { useNavigate } from "react-router-dom";
 import useWandCursor from "./hooks/useWandCursor"; // Import the reusable wand cursor hook
 
-const TutorialOnePage: React.FC = () => {
+const TutorialLast: React.FC = () => {
     const [animate, setAnimate] = useState<boolean>(false);
     const [showFullText, setShowFullText] = useState<boolean>(false); // New state for skipping animation
     const navigate = useNavigate();
@@ -22,7 +22,7 @@ const TutorialOnePage: React.FC = () => {
             className="flex flex-col items-center justify-center h-screen bg-[#080511] relative overflow-hidden cursor-none"
             onClick={() => {
                 console.log("Screen clicked, navigating...");
-                navigate("/tutorial/step-two");
+                navigate("/my-preferences");
             }}
         >
             {/* Sparkles Container */}
@@ -51,16 +51,17 @@ const TutorialOnePage: React.FC = () => {
                             onInit={(typewriter) => {
                                 typewriter
                                     .typeString(
-                                        `Congratulations on stepping into the magical world of <span class="font-bold">Duel Learn</span>! Let me show you the spells you'll be casting here.`
+                                        `Ready to embark on your journey, <span class="font-bold">Magician</span>? Well then, let's get started.`
                                     )
                                     .start();
                             }}
                             options={{
                                 autoStart: true,
                                 loop: false,
-                                delay: 50,
+                                delay: 40,
                             }}
                         />
+
                     )}
                 </div>
                 {/* Triangle for the speech bubble */}
@@ -69,16 +70,14 @@ const TutorialOnePage: React.FC = () => {
 
             {/* Image Container */}
             <div
-                className={`relative z-10 w-[210px] h-[210px] bg-[#D9D9D9] rounded mt-16 mb-28 transition-transform duration-1000 ${
-                    animate ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"
-                }`}
+                className={`relative z-10 w-[210px] h-[210px] bg-[#D9D9D9] rounded mt-16 mb-28 transition-transform duration-1000 ${animate ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"
+                    }`}
             ></div>
 
             {/* Click to Continue Text */}
             <p
-                className={`absolute bottom-[10%] text-[18px] text-[#9F9BAE] transition-opacity duration-1000 ${
-                    animate ? "opacity-100" : "opacity-0"
-                }`}
+                className={`absolute bottom-[10%] text-[18px] text-[#9F9BAE] transition-opacity duration-1000 ${animate ? "opacity-100" : "opacity-0"
+                    }`}
                 style={{ animation: "fadeInOut 3s infinite" }}
             >
                 Tap anywhere on the screen to continue
@@ -87,4 +86,4 @@ const TutorialOnePage: React.FC = () => {
     );
 };
 
-export default TutorialOnePage;
+export default TutorialLast;
