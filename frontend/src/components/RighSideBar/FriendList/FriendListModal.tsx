@@ -1,8 +1,8 @@
 import React from "react";
 import CloseIcon from "@mui/icons-material/Close";
-import YourFriends from "../Modals/Components/YourFriends";
-import FriendRequests from "../Modals/Components/FriendRequest";
-import FindFriends from "../Modals/Components/FindFriends";
+import YourFriends from "./Modals/YourFriends";
+import FriendRequests from "./Modals/FriendRequest";
+import FindFriends from "./Modals/FindFriends";
 import ModalIconFriendList from "../../../assets/General/ModalFriendList.png";
 
 interface ModalProps {
@@ -45,8 +45,8 @@ const FriendListModal: React.FC<ModalProps> = ({ isOpen, onClose, activeTab, set
                     <button
                         onClick={() => setActiveTab("YOUR FRIENDS")}
                         className={`flex-1 py-2 text-sm text-center ${activeTab === "YOUR FRIENDS"
-                                ? "text-white border-b-2 border-[#FF6600] font-semibold"
-                                : "text-gray-400 hover:text-white"
+                            ? "text-white border-b-2 border-[#FF6600] font-semibold"
+                            : "text-gray-400 hover:text-white"
                             }`}
                     >
                         YOUR FRIENDS
@@ -54,8 +54,8 @@ const FriendListModal: React.FC<ModalProps> = ({ isOpen, onClose, activeTab, set
                     <button
                         onClick={() => setActiveTab("FRIEND REQUESTS")}
                         className={`flex-1 py-2 text-sm text-center ${activeTab === "FRIEND REQUESTS"
-                                ? "text-white border-b-2 border-[#FF6600] font-semibold"
-                                : "text-gray-400 hover:text-white"
+                            ? "text-white border-b-2 border-[#FF6600] font-semibold"
+                            : "text-gray-400 hover:text-white"
                             }`}
                     >
                         FRIEND REQUESTS
@@ -63,20 +63,20 @@ const FriendListModal: React.FC<ModalProps> = ({ isOpen, onClose, activeTab, set
                     <button
                         onClick={() => setActiveTab("FIND FRIENDS")}
                         className={`flex-1 py-2 text-sm text-center ${activeTab === "FIND FRIENDS"
-                                ? "text-white border-b-2 border-[#FF6600] font-semibold"
-                                : "text-gray-400 hover:text-white"
+                            ? "text-white border-b-2 border-[#FF6600] font-semibold"
+                            : "text-gray-400 hover:text-white"
                             }`}
                     >
                         FIND FRIENDS
                     </button>
                 </div>
 
-             {/* Content */}
-<div className="p-5 rounded-md overflow-y-auto max-h-[360px] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent">
-    {activeTab === "YOUR FRIENDS" && <YourFriends />}
-    {activeTab === "FRIEND REQUESTS" && <FriendRequests />}
-    {activeTab === "FIND FRIENDS" && <FindFriends />}
-</div>
+                {/* Content */}
+                <div className="p-5 rounded-md overflow-y-auto max-h-[360px] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent">
+                    {activeTab === "YOUR FRIENDS" && <YourFriends />}
+                    {activeTab === "FRIEND REQUESTS" && <FriendRequests />}
+                    {activeTab === "FIND FRIENDS" && <FindFriends />}
+                </div>
 
             </div>
         </div>

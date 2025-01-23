@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import useWandCursor from "./hooks/useWandCursor"; // Import the wand cursor hook
 import { useNavigate } from "react-router-dom";
 
-export default function TutorialTwo() {
+export default function TutorialFour() {
     // Initialize the wand cursor effect
     useWandCursor();
     const navigate = useNavigate();
@@ -14,15 +14,13 @@ export default function TutorialTwo() {
         navigate("/my-preferences"); // Navigate directly using React Router
     };
 
-
-
     return (
         <main
             className="relative flex flex-col items-center px-20 py-20 text-white h-screen bg-[#080511] overflow-hidden cursor-none"
             role="main"
             onClick={() => {
                 console.log("Screen clicked, navigating...");
-                navigate("/tutorial/step-three");
+                navigate("/tutorial/step-five");
             }}
         >
             {/* Magic Wand Cursor */}
@@ -46,7 +44,6 @@ export default function TutorialTwo() {
                 <span className="text-[14px] md:text-lg font-bold text-white">SKIP TUTORIAL</span>
             </button>
 
-
             {/* Video Section */}
             <div className="flex justify-center items-center w-full mt-10 md:mt-16 z-10">
                 <div className="w-full max-w-[801px] h-[297px] bg-zinc-300 rounded-xl"></div>
@@ -65,8 +62,7 @@ export default function TutorialTwo() {
                         onInit={(typewriter) => {
                             typewriter
                                 .typeString(
-                                    `First, you'll want to ${"<strong>create study materials</strong>"}.
-                                    Think of them as your magical tomes—crafted manually or with the help of our assistive tools such as ${"<strong>OCR and AI</strong>"}!`
+                                    `<span class="font-bold">Peaceful Mode</span> for relaxed practice and review. The best way to retain those lessons in your head, Magician.`
                                 )
                                 .start();
                         }}
