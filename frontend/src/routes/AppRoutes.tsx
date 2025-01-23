@@ -5,6 +5,12 @@ import PrivateRoutes from "./PrivateRoutes";
 import WelcomePage from "../pages/Useronboarding/WelcomePage";
 import TutorialOnePage from "../pages/Useronboarding/TutorialOne";
 import TutorialTwo from "../pages/Useronboarding/TutorialTwo";
+import TutorialThree from "../pages/Useronboarding/TutorialThree";
+import TutorialFour from "../pages/Useronboarding/TutorialFour";
+import TutorialFive from "../pages/Useronboarding/TutorialFive";
+import TutorialSix from "../pages/Useronboarding/TutorialSix";
+import TutorialLast from "../pages/Useronboarding/TutorialLast";
+
 import Personalization from "../pages/Useronboarding/Personalization";
 import LandingPage from "../pages/landing-page/LandingPage";
 import Login from "../pages/user-account/Login";
@@ -25,8 +31,12 @@ const AppRoutes: React.FC = () => {
         <Route path="/welcome" element={<WelcomePage />} />
         <Route path="/tutorial/step-one" element={<TutorialOnePage />} />
         <Route path="/tutorial/step-two" element={<TutorialTwo />} />
+        <Route path="/tutorial/step-three" element={<TutorialThree />} />
+        <Route path="/tutorial/step-four" element={<TutorialFour />} />
+        <Route path="/tutorial/step-five" element={<TutorialFive />} />
+        <Route path="/tutorial/step-six" element={<TutorialSix />} />
+        <Route path="/tutorial/step-seven" element={<TutorialLast />} />
         <Route path="/my-preferences" element={<Personalization />} />
-
 
         <Route path="/dashboard/*" element={<PrivateRoutes />} />
       </Routes>
