@@ -1,7 +1,22 @@
 // src/components/DrawerRightSideBar.tsx
 
-import React from "react";
+import React, { useState } from "react";
 import { Drawer, Box } from "@mui/material";
+import { useLocation } from "react-router-dom";
+
+// Importing the necessary content components
+import Leaderboards from "./RighSideBar/Leaderboards/Leaderboards";
+import FriendList from "./RighSideBar/FriendList/FriendList";
+import EmptyLB from "./RighSideBar/Leaderboards/EmptyLB";
+import EmptyFriendList from "./RighSideBar/FriendList/EmptyFriendList";
+
+// Define the possible route paths based on the PrivateRoutes
+type RoutePath =
+  | "/dashboard/home"
+  | "/dashboard/explore"
+  | "/dashboard/my-library"
+  | "/dashboard/profile"
+  | "/dashboard/shop";
 
 interface DrawerProps {
   open: boolean;
@@ -9,6 +24,27 @@ interface DrawerProps {
 }
 
 const DrawerRightSideBar: React.FC<DrawerProps> = ({ open, toggleDrawer }) => {
+  const location = useLocation();
+
+  // State to simulate the number of friends (replace with actual logic if dynamic)
+  const [friendCount, setFriendCount] = useState<number>(6); // Example: Change this to dynamically update based on data
+
+  // Determine whether to show EmptyLB or Leaderboards
+  const leaderboardContent = friendCount >= 5 ? <Leaderboards /> : <EmptyLB />;
+  const friendListContent = friendCount >= 1 ? <FriendList /> : <EmptyFriendList />;
+
+  // Mapping route paths to content components
+  const contentMap: Record<RoutePath, JSX.Element> = {
+    "/dashboard/home": <>{friendListContent}<div className="my-7"></div>{leaderboardContent}</>,
+    "/dashboard/explore": leaderboardContent,
+    "/dashboard/my-library": <>{friendListContent}<div className="my-7"></div>{leaderboardContent}</>,
+    "/dashboard/profile": friendListContent,
+    "/dashboard/shop": <>{friendListContent}<div className="my-7"></div>{leaderboardContent}</>
+  };
+
+  // Get the content based on the current route
+  const content = contentMap[location.pathname as RoutePath] || <div>No Content</div>;
+
   return (
     <Drawer
       anchor="bottom"
@@ -25,10 +61,11 @@ const DrawerRightSideBar: React.FC<DrawerProps> = ({ open, toggleDrawer }) => {
         },
       }}
     >
-      <Box className="p-4">
-        {/* Add content for the drawer here */}
-        <h3>Drawer Content</h3>
-        <p>This can contain your leaderboards or friend list content</p>
+      <Box className="p-4 flex justify-center">
+        {/* Render the content based on route */}
+        <div className="side-list-navi pr-8 mb-10 p-4 flex-shrink-0">
+          {content}
+        </div>
       </Box>
     </Drawer>
   );
