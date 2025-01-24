@@ -44,7 +44,55 @@ const Shop = () => {
   return (
     <div className="min-h-screen text-white px-6 pb-6">
       {/* Your premium section and items display logic */}
-      
+      {/* Show this section only if the user is not premium */}
+      {!isPremium && (
+        <div
+          className="h-[232px] rounded-lg p-6 text-center mb-6 flex flex-col justify-center items-center"
+          style={{
+            backgroundImage: `url(${PremiumAdsBG})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        >
+          <h1 className="text-3xl mb-2 font-bold">Go Premium!</h1>
+          <p className="text-[16px] w-[360px]">
+            Unlock advanced tools. Earn exclusive rewards.
+            Enjoy ad-free learning!
+          </p>
+          <button
+            className="mt-4 px-10 py-2 text-[19px] bg-white text-[#9F87E5] rounded-full font-bold"
+            onClick={() => navigate("/dashboard/shop/buy-premium-account")}
+          >
+            TRY IT NOW
+          </button>
+        </div>
+      )}
+
+      {/* Show this section only if the user is premium */}
+      {isPremium && (
+        <div
+          className="h-[232px] rounded-lg p-6 text-center mb-6 flex flex-col justify-center items-center"
+          style={{
+            backgroundImage: `url(${PremiumActivatedBG})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        >
+          <h1 className="text-3xl mb-2 font-bold">Premium Perks Unlocked!</h1>
+          <p className="text-[15px] my-21 w-[390px]">
+            You're all set to access the best tools and rewards.
+            Stay ahead with ad-free, uninterrupted learning.
+          </p>
+          <button
+            className="mt-4 px-10 py-2 text-[15px] bg-white text-[#3e2880] rounded-full font-bold"
+            onClick={() => navigate("/dashboard/shop/buy-premium-account")}
+          >
+            ENDS IN 24D 1H
+          </button>
+        </div>
+      )}
+
+      <hr className="border-t-1 my-9 border-[#b3b3b3]" />
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
         {items.map((item) => (
           <div
