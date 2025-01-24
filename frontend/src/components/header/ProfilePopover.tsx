@@ -1,6 +1,4 @@
-// ProfilePopover.js
-import { Popover, Stack, Box, Button } from "@mui/material";
-
+import { Popover, Stack, Box, Button, Divider } from "@mui/material";
 import { PopoverProps } from "@mui/material";
 
 interface ProfilePopoverProps {
@@ -27,13 +25,91 @@ export default function ProfilePopover({
         vertical: "top",
         horizontal: "right",
       }}
+      PaperProps={{
+        sx: {
+          backgroundColor: "#120F1B", // Dark background
+          color: "#ffffff", // White text
+          borderRadius: "8px", // Rounded corners
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)", // Subtle shadow
+          padding: 3, // Adjust padding inside the popover
+          mt: 2, // Space between the popover and profile button
+        },
+      }}
     >
-      <Box sx={{ p: 2, width: 220 }}>
+      <Box sx={{ width: 220 }}>
         <Stack spacing={1}>
-          {" "}
-          <Button variant="text">Profile</Button>
-          <Button variant="text">Settings</Button>
-          <Button variant="text">Logout</Button>
+          <Button
+            variant="text"
+            sx={{
+              justifyContent: "flex-start",
+              textTransform: "none",
+              color: "inherit",
+              fontWeight: 400,
+              ":hover": {
+                fontWeight: 700, // Make text bold on hover
+              },
+            }}
+          >
+            Settings
+          </Button>
+          <Button
+            variant="text"
+            sx={{
+              justifyContent: "flex-start",
+              textTransform: "none",
+              color: "inherit",
+              fontWeight: 400,
+              ":hover": {
+                fontWeight: 700, // Make text bold on hover
+              },
+            }}
+          >
+            Go Premium
+          </Button>
+          <Button
+            variant="text"
+            sx={{
+              justifyContent: "flex-start",
+              textTransform: "none",
+              color: "inherit",
+              fontWeight: 400,
+              ":hover": {
+                fontWeight: 700, // Make text bold on hover
+              },
+            }}
+          >
+            Privacy Policy
+          </Button>
+          <Button
+            variant="text"
+            sx={{
+              justifyContent: "flex-start",
+              textTransform: "none",
+              color: "inherit",
+              fontWeight: 400,
+              ":hover": {
+                fontWeight: 700, // Make text bold on hover
+              },
+            }}
+          >
+            Help and Feedback
+          </Button>
+          {/* Divider with more space above */}
+          <Divider sx={{ mt: 3, mb: 2, backgroundColor: "#444" }} />
+          <Button
+            variant="text"
+            sx={{
+              justifyContent: "flex-start",
+              textTransform: "none",
+              color: "inherit",
+              fontWeight: 400,
+              ":hover": {
+                fontWeight: 700, // Make text bold on hover
+              },
+            }}
+          >
+            Logout
+          </Button>
         </Stack>
       </Box>
     </Popover>
