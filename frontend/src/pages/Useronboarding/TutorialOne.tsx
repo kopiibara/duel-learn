@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import Typewriter from "typewriter-effect"; // Import the Typewriter component
 import "./styles/EffectUserOnboarding.css";
 import { useNavigate } from "react-router-dom";
-import useWandCursor from "./hooks/useWandCursor"; // Import the reusable wand cursor hook
+import useWandCursor from "./data/useWandCursor"; // Import the reusable wand cursor hook
 
 const TutorialOnePage: React.FC = () => {
     const [animate, setAnimate] = useState<boolean>(false);

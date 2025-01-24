@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@mui/material";
 import PersonalizationBG from "../../assets/UserOnboarding/PersonalizationBG.png";
 import { useNavigate } from "react-router-dom";
-import { topics } from "./hooks/topics";  // Import the topics from the separate file
+import { topics } from "./data/topics";  // Import the topics from the separate file
 
 const Personalization: React.FC = () => {
     const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);

@@ -1,63 +1,61 @@
-import { useState } from "react";
-import {
-  Box,
-  IconButton,
-  AppBar,
-  Toolbar,
-  Avatar,
-  Tooltip,
-  Zoom,
-} from "@mui/material";
-import ProfilePopover from "./ProfilePopover";
+// src/components/Header.tsx
+
+import React, { useState } from "react";
+import { Box, IconButton, AppBar, Toolbar, Avatar, Tooltip, Zoom, useMediaQuery } from "@mui/material";
+import MenuIcon from "@mui/icons-material/Menu";
+import { useNavigate } from "react-router-dom";
+import DrawerSidebar from "./DrawerSidebar"; // Import the new Drawer component
 import SearchField from "./SearchField";
-import ManaCoins from "./ManaCoins";
+import StatsNProfile from "./StatsNProfile";
 
-export default function Header() {
-  const [anchorEl, setAnchorEl] = useState<HTMLButtonElement | null>(null);
+const Header = () => {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const navigate = useNavigate();
 
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
-    setAnchorEl(event.currentTarget);
+  const toggleDrawer = (open: boolean) => {
+    setDrawerOpen(open);
   };
 
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const open = Boolean(anchorEl);
+  const isMobile = useMediaQuery("(max-width:1022px)");
 
   return (
-    <Box className="flex-1 pt-10 pb-4">
-      <AppBar position="sticky" elevation={0} color="transparent">
-        <Toolbar className="gap-3">
-          <SearchField />
-          <Box flexGrow={1} />
-          <ManaCoins />
-          <Tooltip title="Profile" arrow slots={{ transition: Zoom }}>
-            <IconButton
-              aria-label="profile"
-              onClick={handleClick}
-              sx={{
-                "&:hover": {
-                  backgroundColor: "rgba(75, 23, 205, 0.1)",
-                },
-              }}
-            >
-              <Avatar
-                alt="Profile"
-                variant="rounded"
-                src="/mock-data/profile-picture/kopibara.jpg"
-              />
-            </IconButton>
-          </Tooltip>
-        </Toolbar>
-      </AppBar>
+    <div className="w-full h-28 pt-6 text-white shadow flex ps-7 pe-3 items-center justify-between">
+      {isMobile && (
+        <IconButton
+          edge="start"
+          color="inherit"
+          aria-label="menu"
+          onClick={() => toggleDrawer(true)}
+          sx={{
+            display: "block",
+            mr: "10px",
+          }}
+        >
+          <MenuIcon />
+        </IconButton>
+      )}
 
-      {/* ProfilePopover Component */}
-      <ProfilePopover
-        anchorEl={anchorEl}
-        open={open}
-        handleClose={handleClose}
+      {/* Search Field */}
+      <div className="flex-1 max-w-xl pr-6">
+        <SearchField />
+      </div>
+
+      {/* Icon Section */}
+      <div className="flex items-center space-x-2 sm:space-x-6 sm:pr-4">
+        <StatsNProfile />
+      </div>
+
+      <DrawerSidebar
+        open={drawerOpen}
+        toggleDrawer={toggleDrawer}
+        collapsed={collapsed}
+        selectedIndex={selectedIndex}
+        setSelectedIndex={setSelectedIndex}
       />
-    </Box>
+    </div>
   );
-}
+};
+
+export default Header;
