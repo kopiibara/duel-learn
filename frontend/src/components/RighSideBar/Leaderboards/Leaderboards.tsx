@@ -56,7 +56,7 @@ const Leaderboards = () => {
           className="w-full p-4 text-[#48405f] bg-[#120F1C] text-center"
           onClick={openModal}
         >
-          VIEW FULL LEADERBOARD
+          VIEW MORE
         </button>
       </div>
 

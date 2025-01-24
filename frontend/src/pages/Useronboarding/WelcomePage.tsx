@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./styles/EffectUserOnboarding.css";
 import { useNavigate } from "react-router-dom";
-import useWandCursor from "./hooks/useWandCursor"; // Import the custom hook
+import useWandCursor from "./data/useWandCursor"; // Import the custom hook
 
 const WelcomePage = () => {
     const [fadeIn, setFadeIn] = useState(false);
