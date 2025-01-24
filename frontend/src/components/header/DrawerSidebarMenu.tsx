@@ -4,6 +4,9 @@ import { useNavigate } from "react-router-dom";
 import AddIcon from "@mui/icons-material/Add";
 import PlayIcon from "@mui/icons-material/PlayArrowRounded";
 import clsx from "clsx";
+import ChooseModeModal from '../modals/ChooseModeModal'; // Adjust path accordingly
+import { useState } from "react";
+
 
 const menuItems = [
   {
@@ -52,7 +55,10 @@ export default function DrawerSidebarMenu({
   hoveredIndex,
   setHoveredIndex,
 }: DrawerMenuProps) {
+  const [modalOpen, setModalOpen] = useState(false);
   const navigate = useNavigate();
+  const handleOpenModal = () => setModalOpen(true);
+  const handleCloseModal = () => setModalOpen(false);
 
   const renderButton = (
     icon: React.ReactNode,
@@ -163,10 +169,11 @@ export default function DrawerSidebarMenu({
               />,
               "Play",
               "outlined",
-              () => { }
+              handleOpenModal
             )}
             <Divider className="bg-[#3F3565]" />
           </Stack>
+
           <nav aria-label="sidebar">
             <List>
               {menuItems.map((item, index) => (
@@ -236,6 +243,9 @@ export default function DrawerSidebarMenu({
           </nav>
         </Stack>
       </Box>
+
+      {/* Render the ChooseModeModal */}
+      <ChooseModeModal open={modalOpen} handleClose={handleCloseModal} />
     </Drawer>
   );
 }
