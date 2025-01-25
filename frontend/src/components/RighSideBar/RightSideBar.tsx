@@ -13,6 +13,7 @@ type RoutePath =
   | "/dashboard/explore"
   | "/dashboard/my-library"
   | "/dashboard/profile"
+  | "/dashboard/study-material/create"
   | "/dashboard/shop";
 
 const RightSideBar: React.FC = () => {
@@ -23,22 +24,52 @@ const RightSideBar: React.FC = () => {
 
   // Determine whether to show EmptyLB or Leaderboards
   const leaderboardContent = friendCount >= 5 ? <Leaderboards /> : <EmptyLB />;
-  const friendListContent = friendCount >= 1 ? <FriendList /> : <EmptyFriendList />;
+  const friendListContent =
+    friendCount >= 1 ? <FriendList /> : <EmptyFriendList />;
 
   // Mapping route paths to content components
   const contentMap: Record<RoutePath, JSX.Element> = {
-    "/dashboard/home": <>{friendListContent}<div className="my-7"></div>{leaderboardContent}</>,
+    "/dashboard/home": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
     "/dashboard/explore": leaderboardContent,
-    "/dashboard/my-library": <>{friendListContent}<div className="my-7"></div>{leaderboardContent}</>,
+    "/dashboard/my-library": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
+    "/dashboard/study-material/create": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
     "/dashboard/profile": friendListContent,
-    "/dashboard/shop": <>{friendListContent}<div className="my-7"></div>{leaderboardContent}</>
+    "/dashboard/shop": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
   };
 
   // Get the content based on the current route
-  const content = contentMap[location.pathname as RoutePath] || <div>No Content</div>;
+  const content = contentMap[location.pathname as RoutePath] || (
+    <div>No Content</div>
+  );
 
   return (
-    <div className="hidden side-list-navi pr-8 lg:block sm:w-[20rem] md:w-[24rem] mb-10 lg:w-[28rem] p-4 flex-shrink-0">{content}</div>
+    <div className="hidden side-list-navi pr-8 lg:block sm:w-[20rem] md:w-[24rem] mb-10 lg:w-[28rem] p-4 flex-shrink-0">
+      {content}
+    </div>
   );
 };
 
