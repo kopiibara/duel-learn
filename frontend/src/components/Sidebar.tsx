@@ -1,6 +1,11 @@
-import { useNavigate } from "react-router-dom";
 import React from "react";
 import {
+  Box,
+  Button,
+  Fab,
+  Tooltip,
+  IconButton,
+  Typography,
   Stack,
   List,
   ListItem,
@@ -8,18 +13,14 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
-  IconButton,
-  Box,
-  Typography,
-  Button,
-  Fab,
-  Tooltip,
 } from "@mui/material";
 import clsx from "clsx";
 import AddIcon from "@mui/icons-material/Add";
 import PlayIcon from "@mui/icons-material/PlayArrowRounded";
 import ArrowBackIcon from "@mui/icons-material/ArrowBackIosNewRounded";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForwardIosRounded";
+import { useNavigate } from "react-router-dom";
+import ChooseModeModal from "./modals/ChooseModeModal"; // Import the modal component
 
 const menuItems = [
   {
@@ -55,6 +56,10 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = React.useState(false);
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
   const [fromCreate, setFromCreate] = React.useState(false); // Tracks if navigation came from Create button
+
+  const [openModal, setOpenModal] = React.useState(false); // Modal state
+  const handleModalOpen = () => setOpenModal(true);
+  const handleModalClose = () => setOpenModal(false);
 
   const handleItemClick = (index: number, path: string) => {
     setSelectedIndex(index);
@@ -195,7 +200,7 @@ export default function Sidebar() {
             />,
             "Play",
             "outlined",
-            () => {}
+            handleModalOpen // Opens the modal when "Play" is clicked
           )}
           <Divider className="bg-[#3F3565]" />
         </Stack>
@@ -269,6 +274,9 @@ export default function Sidebar() {
           </List>
         </nav>
       </Stack>
+
+      {/* Modal */}
+      <ChooseModeModal open={openModal} handleClose={handleModalClose} />
     </Box>
   );
 }
