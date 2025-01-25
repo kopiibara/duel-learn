@@ -88,8 +88,8 @@ const MyLibraryPage = () => {
   return (
     <Box>
       <DocumentHead title="My Library" />
-      <Stack spacing={2}>
-        <Stack direction={"row"} spacing={1} className="pl-6">
+      <Stack spacing={2} className="px-8">
+        <Stack direction={"row"} spacing={1} className="flex items-center">
           <Typography variant="h5" color="inherit">
             My Library
           </Typography>

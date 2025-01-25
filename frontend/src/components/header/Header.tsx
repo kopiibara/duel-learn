@@ -2,9 +2,10 @@
 import { useState } from "react";
 import { IconButton, useMediaQuery } from "@mui/material";
 import MenuIcon from "@mui/icons-material/Menu";
-import DrawerSidebarMenu from "./DrawerSidebarMenu";  // Import the new DrawerMenu component
+import DrawerSidebarMenu from "./DrawerSidebarMenu"; // Import the new DrawerMenu component
 import SearchField from "./SearchField";
 import StatsNProfile from "./StatsNProfile";
+import { Box } from "@mui/system";
 
 export default function Header() {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -15,12 +16,13 @@ export default function Header() {
   const toggleDrawer = (open: boolean) => {
     setDrawerOpen(open);
   };
-  
+
   const isMobile = useMediaQuery("(max-width:1022px)");
 
-
   return (
-    <div className="w-full h-28 pt-6 text-white shadow flex ps-7 pe-3 items-center justify-between">      {/* Mobile Menu Icon */}
+    <Box className="w-full h-28 pt-6 text-white shadow flex ps-7 pe-3 items-center justify-between">
+      {" "}
+      {/* Mobile Menu Icon */}
       {isMobile && (
         <IconButton
           edge="start"
@@ -29,24 +31,20 @@ export default function Header() {
           onClick={() => toggleDrawer(true)}
           sx={{
             display: "block",
-            mr: "10px"
+            mr: "10px",
           }}
         >
           <MenuIcon />
         </IconButton>
       )}
-
-
       {/* Search Field */}
       <div className="flex-1 max-w-xl pr-6">
         <SearchField />
       </div>
-
       {/* Icon Section */}
       <div className="flex items-center space-x-2 sm:space-x-6 sm:pr-4">
         <StatsNProfile />
       </div>
-
       {/* Drawer Menu Component */}
       <DrawerSidebarMenu
         drawerOpen={drawerOpen}
@@ -57,6 +55,6 @@ export default function Header() {
         hoveredIndex={hoveredIndex}
         setHoveredIndex={setHoveredIndex}
       />
-    </div>
+    </Box>
   );
 }

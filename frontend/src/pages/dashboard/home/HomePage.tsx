@@ -8,7 +8,7 @@ const HomePage = () => {
   return (
     <Box>
       <DocumentHead title="Home" />
-      <Stack spacing={2}>
+      <Stack spacing={2} className="px-6">
         {/* Choose Your Challenge */}
         <Stack spacing={2} className="pb-6">
           <Stack

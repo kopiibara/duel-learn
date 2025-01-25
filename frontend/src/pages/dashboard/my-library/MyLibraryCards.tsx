@@ -22,7 +22,7 @@ const MyLibraryCards = ({ cards }: MyLibraryCardsProps) => {
   const filteredCards = cards.filter((item) => item.createdBy === "you");
 
   return (
-    <Box sx={{ padding: "1rem" }}>
+    <Box>
       <Grid container spacing={2}>
         {filteredCards.map((item, index) => (
           <Grid item xs={12} sm={6} md={4} key={index}>

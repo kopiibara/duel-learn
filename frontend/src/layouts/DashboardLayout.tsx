@@ -1,13 +1,14 @@
 // src/layouts/DashboardLayout.tsx
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/header/Header";
 import RightSideBar from "../components/RighSideBar/RightSideBar";
 import DrawerRightSideBar from "../components/DrawerRightSideBar"; // Import the new Drawer component
 import { Box } from "@mui/system";
-import WidgetsIcon from '@mui/icons-material/Widgets';
+import "../styles/custom-scrollbar.css";
+import WidgetsIcon from "@mui/icons-material/Widgets";
 import { useMediaQuery } from "@mui/material"; // Import useMediaQuery from Material-UI
 
 const DashboardLayout = () => {
@@ -19,15 +20,17 @@ const DashboardLayout = () => {
   };
 
   return (
-    <Box className="h-screen px-1 flex flex-col lg:flex-row">
+    <Box className="h-screen px-1 flex flex-col lg:flex-row w-screen overflow-x-hidden">
       {/* Sidebar (hidden on small screens) */}
       <aside className="hidden lg:block pl-4 pr-5 top-0 h-screen">
-        <Sidebar />
+        <Box className="sticky top-0">
+          <Sidebar />
+        </Box>
       </aside>
 
       {/* Main Section */}
       <Box className="flex-1 flex flex-col">
-        <header className="w-full pr-2">
+        <header className="w-full pr-2 top-0 ">
           <Header />
         </header>
 
@@ -49,7 +52,9 @@ const DashboardLayout = () => {
 
           {/* Right Sidebar */}
           <aside className="hidden lg:block pr-2">
-            <RightSideBar />
+            <Box className="sticky top-0">
+              <RightSideBar />
+            </Box>
           </aside>
         </Box>
       </Box>
