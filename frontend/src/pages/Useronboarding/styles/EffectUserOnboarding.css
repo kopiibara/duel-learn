@@ -87,3 +87,40 @@
 }
 
 
+/* Define the up and down animation */
+@keyframes updown {
+    0% {
+        transform: translateY(10px);
+    }
+    50% {
+        transform: translateY(-15px); /* Moves up */
+    }
+    100% {
+        transform: translateY(10px); /* Moves back to original position */
+    }
+}
+
+/* Apply the animation to the image container */
+.animate-updown {
+    animation: updown 3s ease-in-out infinite; /* 3s duration, smooth in-out, infinite loop */
+}
+
+
+/* Define the up and down animation */
+@keyframes updown-tutorial1 {
+    0% {
+        transform: translateY(5px);
+    }
+    50% {
+        transform: translateY(-5px); /* Moves up */
+    }
+    100% {
+        transform: translateY(5px); /* Moves back to original position */
+    }
+}
+
+/* Apply the animation to the image container */
+.animate-tutorial1 {
+    animation: updown-tutorial1 3s ease-in-out infinite; /* 3s duration, smooth in-out, infinite loop */
+}
+

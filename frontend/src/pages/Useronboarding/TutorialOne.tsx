@@ -3,6 +3,7 @@ import Typewriter from "typewriter-effect"; // Import the Typewriter component
 import "./styles/EffectUserOnboarding.css";
 import { useNavigate } from "react-router-dom";
 import useWandCursor from "./data/useWandCursor"; // Import the reusable wand cursor hook
+import Tutorial1Magician from "../../assets/UserOnboarding/Tutorial1Magician.png"
 
 const TutorialOnePage: React.FC = () => {
     const [animate, setAnimate] = useState<boolean>(false);
@@ -69,14 +70,18 @@ const TutorialOnePage: React.FC = () => {
 
             {/* Image Container */}
             <div
-                className={`relative z-10 w-[210px] h-[210px] bg-[#D9D9D9] rounded mt-16 mb-28 transition-transform duration-1000 ${
-                    animate ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0"
-                }`}
+                className="relative mt-20 z-10 w-72 h-72 rounded bg-center animate-tutorial1"
+                style={{
+                    backgroundImage: `url(${Tutorial1Magician})`,
+                    backgroundSize: "contain", // Ensure the image fits without cropping
+                    backgroundRepeat: "no-repeat", // Prevents repeating the image
+                    backgroundPosition: "center", // Keeps the image centered
+                }}
             ></div>
 
             {/* Click to Continue Text */}
             <p
-                className={`absolute bottom-[10%] text-[18px] text-[#9F9BAE] transition-opacity duration-1000 ${
+                className={`absolute bottom-[10%] text-[18px] text-[#3B354D] transition-opacity duration-1000 ${
                     animate ? "opacity-100" : "opacity-0"
                 }`}
                 style={{ animation: "fadeInOut 3s infinite" }}
