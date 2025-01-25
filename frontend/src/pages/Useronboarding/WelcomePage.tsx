@@ -1,10 +1,14 @@
 import React, { useEffect, useState } from "react";
-import "./EffectUserOnboarding.css";
+import "./styles/EffectUserOnboarding.css";
 import { useNavigate } from "react-router-dom";
+import useWandCursor from "./data/useWandCursor"; // Import the custom hook
 
 const WelcomePage = () => {
     const [fadeIn, setFadeIn] = useState(false);
     const navigate = useNavigate();
+
+    // Use the wand cursor effect
+    useWandCursor();
 
     useEffect(() => {
         const timer = setTimeout(() => setFadeIn(true), 500);
@@ -13,7 +17,7 @@ const WelcomePage = () => {
 
     return (
         <div
-            className="flex flex-col gap-[65px] items-center justify-center h-screen bg-[#080511] relative overflow-hidden cursor-pointer"
+            className="flex flex-col gap-[65px] items-center justify-center h-screen bg-[#080511] relative overflow-hidden cursor-none"
             onClick={() => {
                 console.log("Screen clicked, navigating...");
                 navigate("/tutorial/step-one");
@@ -36,9 +40,10 @@ const WelcomePage = () => {
 
             {/* Click to Continue Text */}
             <p
-                className={`absolute bottom-[10%] text-[18px] text-[#3B354D] animate-fadeInOut ${
+                className={`absolute bottom-[10%] text-[18px] text-[#3B354D] transition-opacity duration-1000 ${
                     fadeIn ? "opacity-100" : "opacity-0"
                 }`}
+                style={{ animation: "fadeInOut 3s infinite" }}
             >
                 Tap anywhere on the screen to continue
             </p>

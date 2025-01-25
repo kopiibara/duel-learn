@@ -13,9 +13,10 @@ const ModeCard = styled(Card)({
   cursor: "pointer",
   background: "linear-gradient(to bottom, #ECE6FF, #DDD3FF)",
   position: "relative",
+  transform: "scale(1)", // Initial transform state
+  transition: "all 0.3s", // Ensure smooth transition between hover and unhover states
   "&:hover": {
-    transform: "scale(1.03)",
-    transition: "all 0.3s",
+    transform: "scale(1.03)", // Scales slightly on hover
   },
 });
 

@@ -25,16 +25,16 @@ const CardComponent: React.FC<CardComponentProps> = ({
     flexDirection: "column",
     justifyContent: "flex-end",
     alignItems: "flex-start",
-    padding: "2rem",
     borderRadius: "1rem",
     height: "16rem",
     cursor: "pointer",
     maxHeight: "100%",
     background: "linear-gradient(to bottom, #ECE6FF, #DDD3FF)",
     position: "relative",
+    transform: "scale(1)", // Initial transform state
+    transition: "all 0.3s", // Ensure smooth transition between hover and unhover states
     "&:hover": {
-      transform: "scale(1.03)",
-      transition: "all 0.3s",
+      transform: "scale(1.03)", // Scales slightly on hover
     },
   }));
 
@@ -45,7 +45,6 @@ const CardComponent: React.FC<CardComponentProps> = ({
           display: "flex",
           flexDirection: "column",
           justifyContent: "flex-end",
-          paddingBottom: "16px",
         }}
       >
         <Box
