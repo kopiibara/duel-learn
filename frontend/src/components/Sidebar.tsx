@@ -49,18 +49,28 @@ const menuItems = [
   },
 ];
 
-export default function BasicList() {
+export default function Sidebar() {
   const navigate = useNavigate();
-  const [selectedIndex, setSelectedIndex] = React.useState(0);
+  const [selectedIndex, setSelectedIndex] = React.useState<number | null>(0);
   const [collapsed, setCollapsed] = React.useState(false);
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
+  const [fromCreate, setFromCreate] = React.useState(false); // Tracks if navigation came from Create button
 
   const handleItemClick = (index: number, path: string) => {
     setSelectedIndex(index);
+    setCollapsed(fromCreate ? false : collapsed); // Uncollapse if navigation came from Create button
+    setFromCreate(false); // Reset the Create navigation state
     navigate(path);
   };
 
   const toggleCollapse = () => setCollapsed(!collapsed);
+
+  const handleCreateStudyMaterial = () => {
+    setSelectedIndex(null); // Deselect the list items
+    setFromCreate(true); // Mark that navigation originated from Create button
+    setCollapsed(true); // Collapse the sidebar
+    navigate("/dashboard/study-material/create");
+  };
 
   const renderButton = (
     icon: React.ReactNode,
@@ -176,7 +186,7 @@ export default function BasicList() {
             />,
             "Create",
             "contained",
-            () => {}
+            handleCreateStudyMaterial
           )}
           {renderButton(
             <PlayIcon
@@ -211,6 +221,8 @@ export default function BasicList() {
                       },
                       justifyContent: collapsed ? "center" : "center",
                       padding: "0.5rem 1.4rem",
+                      borderRadius: "0.8rem",
+                      transition: "all 0.15s",
                     }}
                     onMouseEnter={() => setHoveredIndex(index)}
                     onMouseLeave={() => setHoveredIndex(null)}
@@ -223,7 +235,8 @@ export default function BasicList() {
                         alignItems: "center",
                         marginRight: collapsed ? 0 : "1rem",
                         width: collapsed ? "100%" : "auto",
-                        transition: "margin-right 0.35s, width 0.35s",
+                        transition:
+                          "margin-right 0.35s, width 0.35s, opacity 0.35s",
                       }}
                     >
                       <img
@@ -246,6 +259,7 @@ export default function BasicList() {
                       sx={{
                         whiteSpace: "nowrap",
                         overflow: "hidden",
+                        transition: "opacity 0.35s",
                       }}
                     />
                   </ListItemButton>

@@ -1,18 +1,14 @@
 import React, { useState } from "react";
-import Profile from "../../assets/profile-picture/bunny-picture.png";
-import ProfileIcon from "../../assets/profile-picture/kopibara-picture.png";
+import { Button } from "@mui/material";
+import Profile from "../../../assets/profile-picture/bunny-picture.png"; // Placeholder profile picture
+import Modal from "./FriendListModal";
 import PeopleIcon from "@mui/icons-material/People";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import PersonSearchIcon from "@mui/icons-material/PersonSearch";
-import Modal from "./Modals/FriendListModal";
+import ProfileIcon from "../../../assets/profile-picture/kopibara-picture.png";
 
-const FriendList: React.FC = () => {
-    const [friendList] = useState([
-        { id: 1, name: "PeraltaMalakas", level: 1, avatar: Profile },
-        { id: 2, name: "CJdimarunong", level: 6, avatar: ProfileIcon },
-        { id: 3, name: "CJdimarunong", level: 6, avatar: ProfileIcon },
-    ]);
 
+const EmptyFriendList: React.FC = () => {
     const [modalOpen, setModalOpen] = useState(false);
     const [activeTab, setActiveTab] = useState("");
 
@@ -27,6 +23,7 @@ const FriendList: React.FC = () => {
     };
 
     return (
+
         <>
             <div
                 className="rounded-md shadow-md"
@@ -38,31 +35,12 @@ const FriendList: React.FC = () => {
                         <h2 className="text-xl text-[#FFFFFF] font-semibold">Friend List</h2>
                     </div>
                     <hr className="border-t-1 border-[#ffffff] mb-7" />
-                    {friendList.map((friend) => (
-                        <div
-                            key={friend.id}
-                            className="flex items-center justify-between mb-4"
-                        >
-                            <div className="flex items-center">
-                                <img
-                                    src={friend.avatar}
-                                    alt="Avatar"
-                                    className="w-12 h-12 rounded-[5px] mr-6"
-                                />
-                                <div>
-                                    <p className="font-medium text-[#FFFFFF]">
-                                        {friend.name}
-                                    </p>
-                                    <p className="text-sm text-gray-400">
-                                        LVL {friend.level}
-                                    </p>
-                                </div>
-                            </div>
-                            <button className="bg-[#57A64E] py-2 px-5 rounded-md text-xs text-white">
-                                INVITE
-                            </button>
-                        </div>
-                    ))}
+                    <div className="flex flex-col items-center justify-center mb-6">
+                        <div className="w-20 h-20 bg-white rounded mt-4 mb-6"></div>
+                        <p className="text-[#6F658D] w-[390px] text-center mt-3 px-7">
+                            Add friends and share the magic!
+                        </p>
+                    </div>
                 </div>
                 <div className="flex justify-around bg-[#120F1C] p-4 border-[1px] border-[#3B354C]">
                     <button
@@ -94,9 +72,8 @@ const FriendList: React.FC = () => {
                 activeTab={activeTab} // Pass the active tab to the modal
                 setActiveTab={setActiveTab} // Pass the setter function to allow tab switching in the modal
             />
-
         </>
     );
 };
 
-export default FriendList;
+export default EmptyFriendList;

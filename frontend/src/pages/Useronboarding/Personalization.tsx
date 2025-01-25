@@ -1,86 +1,10 @@
+// Personalization.tsx
+
 import React, { useState, useEffect } from "react";
 import { Button } from "@mui/material";
-import { School, Science, Code, MusicNote, History, Psychology, LocalLibrary, Group, Language, Gavel } from "@mui/icons-material";
 import PersonalizationBG from "../../assets/UserOnboarding/PersonalizationBG.png";
 import { useNavigate } from "react-router-dom";
-
-// Define the type for subjects which includes both name and icon
-interface Subject {
-    name: string;
-    icon: JSX.Element;
-}
-
-interface Topic {
-    topic: string;
-    subjects: Subject[];
-}
-
-const topics: Topic[] = [
-    {
-        topic: "STEM (Science, Technology, Engineering, Mathematics)",
-        subjects: [
-            { name: "Mathematics", icon: <School /> },
-            { name: "Physics", icon: <Science /> },
-            { name: "Biology", icon: <Science /> },
-            { name: "Computer Science", icon: <Code /> },
-            { name: "Chemistry", icon: <Science /> },
-            { name: "Engineering", icon: <Code /> },
-            { name: "Statistics", icon: <School /> },
-            { name: "Astronomy", icon: <Science /> },
-            { name: "Environmental Science", icon: <Science /> },
-        ],
-    },
-    {
-        topic: "Humanities and Social Sciences",
-        subjects: [
-            { name: "History", icon: <History /> },
-            { name: "Psychology", icon: <Psychology /> },
-            { name: "Philosophy", icon: <LocalLibrary /> },
-            { name: "Sociology", icon: <Group /> },
-            { name: "Political Science", icon: <School /> },
-            { name: "Anthropology", icon: <Group /> },
-            { name: "Geography", icon: <School /> },
-            { name: "Economics", icon: <School /> },
-            { name: "Linguistics", icon: <Language /> },
-        ],
-    },
-    {
-        topic: "Language and Literature",
-        subjects: [
-            { name: "English Literature", icon: <LocalLibrary /> },
-            { name: "Linguistics", icon: <Language /> },
-            { name: "Creative Writing", icon: <LocalLibrary /> },
-            { name: "Poetry", icon: <LocalLibrary /> },
-            { name: "Modern Languages", icon: <Language /> },
-            { name: "Comparative Literature", icon: <LocalLibrary /> },
-            { name: "Rhetoric", icon: <Language /> },
-            { name: "Drama", icon: <LocalLibrary /> },
-            { name: "Translation Studies", icon: <Language /> },
-        ],
-    },
-    {
-        topic: "Other Academic Fields",
-        subjects: [
-            { name: "Economics", icon: <School /> },
-            { name: "Business Studies", icon: <School /> },
-            { name: "Art", icon: <School /> },
-            { name: "Music", icon: <MusicNote /> },
-            { name: "Environmental Science", icon: <Science /> },
-            { name: "Political Science", icon: <School /> },
-            { name: "Astronomy", icon: <Science /> },
-            { name: "Philosophy", icon: <LocalLibrary /> },
-            { name: "Psychology", icon: <Psychology /> },
-            { name: "Geography", icon: <School /> },
-            { name: "Architecture", icon: <School /> },
-            { name: "Law", icon: <Gavel /> },
-            { name: "Sociology", icon: <Group /> },
-            { name: "Linguistics", icon: <Language /> },
-            { name: "Anthropology", icon: <Group /> },
-            { name: "Engineering", icon: <Code /> },
-        ],
-    },
-];
-
+import { topics } from "./data/topics";  // Import the topics from the separate file
 
 const Personalization: React.FC = () => {
     const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
@@ -117,7 +41,7 @@ const Personalization: React.FC = () => {
     const handleClickDone = () => {
         alert(`Selected topics: ${selectedSubjects.join(", ")}`);
         navigate("/dashboard/home");
-      };
+    };
 
     const handleSubjectClick = (subject: string) => {
         if (selectedSubjects.includes(subject)) {
@@ -155,7 +79,7 @@ const Personalization: React.FC = () => {
     }
 
     return (
-        <div className="min-h-screen text-white p-6 flex flex-col items-center relative">
+        <div className="min-h-screen overflow-hidden text-white p-6 flex flex-col items-center relative">
             {/* Independent container for the background image */}
             <img
                 src={imageLoaded ? PersonalizationBG : ''}  // Only set the source once the image is loaded
@@ -177,9 +101,16 @@ const Personalization: React.FC = () => {
                     sx={{
                         textTransform: "capitalize",
                         color: "#7F6F8B",
+                        padding: "10px 20px", // Add padding for better button size
                         "&:hover": {
                             color: "white",
                         },
+                    }}
+                    onClick={() => {
+                        // Clear the selected subjects
+                        setSelectedSubjects([]);
+                        // Navigate to the dashboard or the desired route
+                        navigate("/dashboard/home");
                     }}
                 >
                     Skip
@@ -203,7 +134,6 @@ const Personalization: React.FC = () => {
                         Done
                     </Button>
                 )}
-
             </div>
 
             <div className="w-28 h-28 rounded bg-white mb-6 mt-36"></div>
@@ -236,6 +166,17 @@ const Personalization: React.FC = () => {
                     </div>
                 ))}
             </div>
+            <footer className="mt-10 mb-5 w-full px-2 sm:px-3 md:px-3 lg:px-28 text-gray-500 text-sm md:text-base">
+                <div className="flex justify-between items-center w-full">
+                    {/* Privacy and Terms Links */}
+                    <div className="flex gap-6">
+                        <p className="cursor-pointer hover:text-white transition">Privacy</p>
+                        <p className="cursor-pointer hover:text-white transition">Terms</p>
+                    </div>
+                    {/* Copyright */}
+                    <p>© 2024 Duel-Learn Inc.</p>
+                </div>
+            </footer>
         </div>
     );
 };

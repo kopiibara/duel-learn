@@ -76,7 +76,7 @@ const ExplorePage = () => {
   return (
     <Box>
       <DocumentHead title="Explore" />
-      <Stack>
+      <Stack className="px-5">
         <Stack direction="row" spacing={1}>
           {breadcrumbs}
         </Stack>
