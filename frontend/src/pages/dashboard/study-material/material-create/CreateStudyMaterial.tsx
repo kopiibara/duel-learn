@@ -100,7 +100,9 @@ const CreateStudyMaterial = () => {
         {/* Tags Input */}
         <Box className="flex items-center">
           <Stack spacing={1} className="flex">
-            <Typography variant="subtitle1">Tags</Typography>
+            <Typography variant="subtitle1" className="text-[#3B354D]">
+              Tags
+            </Typography>
             <Box
               sx={{
                 display: "inline-flex", // Make the Box adjust based on content size

@@ -62,7 +62,8 @@ const ExplorePage = () => {
       sx={{
         textTransform: "none",
         fontSize: "1.4rem",
-        color: selected === index ? "#E2DDF3" : "#6F658D",
+        color: selected === index ? "#E2DDF3" : "#3B354D",
+        transition: "color 0.3s",
         "&:hover": {
           color: "inherit",
         },
