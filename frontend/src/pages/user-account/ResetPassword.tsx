@@ -1,6 +1,6 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import ExitIcon from "../../assets/images/Exit.png";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   TextField,
   InputAdornment,
@@ -10,14 +10,40 @@ import {
 import axios from "axios"; // Ensure axios is imported
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
-
+import {
+  verifyPasswordResetCode,
+  confirmPasswordReset,
+  sendPasswordResetEmail,
+} from "firebase/auth";
+import { auth, db } from "../../services/firebase"; // Adjust the path as needed
+import { collection, query, where, getDocs } from "firebase/firestore";
 const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Get location object
   // Retrieve the email passed from the previous page
   const { email } = location.state || {};
 
-  console.log("Email received from location SecurityCode:", email); // Check if email is properly received
+  useEffect(() => {
+    const oobCode = new URLSearchParams(location.search).get("oobCode");
+    if (!oobCode) {
+      setError({ general: "Invalid or missing reset code." });
+      setLoading(false);
+      return;
+    }
+
+    const validateCode = async () => {
+      try {
+        await verifyPasswordResetCode(auth, oobCode);
+      } catch (err) {
+        setError({ general: "Reset code is invalid or expired." });
+      } finally {
+        setLoading(false);
+      }
+    };
+    validateCode();
+  }, [location.search]);
+
+  console.log("Email received from location SecurityCode:", email);
 
   const [formData, setFormData] = useState({
     newpassword: "", // Only password is used here
@@ -89,24 +115,21 @@ const ResetPassword = () => {
 
     setLoading(true); // Start loading spinner
 
-    try {
-      const response = await axios.post(
-        "/reset-password", // Assuming you have an endpoint for this
-        { email, newpassword },
-        { withCredentials: true } // Include credentials in the request
-      );
+    const oobCode = new URLSearchParams(location.search).get("oobCode");
+    if (!oobCode) {
+      setError({ general: "Invalid or missing reset code." });
+      setLoading(false);
+      return;
+    }
 
-      if (response.data.error) {
-        // Set general error if something goes wrong with the request
-        setError({ general: "Invalid input. Please check your information." });
-      } else {
-        setFormData({ newpassword: "", confirmPassword: "" }); // Clear form data on success
-        setError({ general: "" }); // Reset general error on success
-        navigate("/success-reset-password"); // Redirect to a success page or wherever
-      }
-    } catch (error) {
-      setError({ general: "Server error. Please try again later." }); // Handle server error
-      console.error("Server error:", error); // Handle server error
+    try {
+      await confirmPasswordReset(auth, oobCode, newpassword);
+      alert("Password successfully reset!");
+      navigate("/login");
+    } catch (err) {
+      setError({ general: "Failed to reset password." });
+    } finally {
+      setLoading(false);
     }
   };
 

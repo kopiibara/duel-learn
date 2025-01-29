@@ -7,7 +7,6 @@ import { toast } from "react-hot-toast";
 import axios from "axios";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../../services/firebase"; // Ensure you have this import for Firebase auth
-
 // Icons
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
@@ -77,8 +76,10 @@ const Login = () => {
       // Optionally, you can store the token in local storage or context
       localStorage.setItem("userToken", token);
       setData({ username: "", password: "" });
-      navigate("/dashboard/home"); // Redirect on success
+      navigate("/dashboard/home"); // Redirect on successful login
     } catch (error) {
+      console.error("Login error:", error); // Handle login error
+      setError((error as any).message); // Set error message
       console.error("Login error:", error); // Handle login error
       setError((error as any).message); // Set error message
     }
