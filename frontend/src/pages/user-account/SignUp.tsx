@@ -348,6 +348,9 @@ const SignUp = () => {
           {formData.termsError && (
             <p className="text-red-500 mt-1 text-sm">{formData.termsError}</p>
           )}
+          {formData.termsError && (
+            <p className="text-red-500 mt-1 text-sm">{formData.termsError}</p>
+          )}
 
           <button
             type="submit"
