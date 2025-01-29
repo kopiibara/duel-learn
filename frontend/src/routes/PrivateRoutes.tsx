@@ -8,6 +8,8 @@ import YourLibrary from "../pages/dashboard/my-library/MyLibrary";
 import Profile from "../pages/dashboard/profile/ProfilePage";
 import Shop from "../pages/dashboard/shop/ShopPage";
 import BuyPremium from "../pages/dashboard/shop/BuyPremium";
+import CreateStudyMaterial from "../pages/dashboard/study-material/material-create/CreateStudyMaterial";
+import ViewStudyMaterial from "../pages/dashboard/study-material/view-study-material/ViewStudyMaterial";
 
 const PrivateRoutes = () => {
   const { user } = useUser();
@@ -24,6 +26,8 @@ const PrivateRoutes = () => {
         <Route path="my-library" element={<YourLibrary />} />
         <Route path="profile" element={<Profile />} />
         <Route path="shop" element={<Shop />} />
+        <Route path="study-material/create" element={<CreateStudyMaterial />} />
+        <Route path="study-material/view" element={<ViewStudyMaterial />} />
       </Route>
       <Route path="/shop/buy-premium-account" element={<BuyPremium />} />
     </Routes>
