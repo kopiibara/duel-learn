@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { Box } from "@mui/material"; // Import Box component
 // Import left arrow icon
 
 const ForgotPassword = () => {
@@ -13,11 +14,11 @@ const ForgotPassword = () => {
   };
 
   const handleSigninClick = () => {
-    navigate("/"); // Navigate to LoginPage
+    navigate("/login"); // Navigate to LoginPage
   };
 
   return (
-    <div className="d-flex flex-column min-vh-100 justify-content-center align-items-center h-screen w-full">
+    <Box className=" flex flex-col items-center justify-center">
       {/* Main content */}
       <div
         className="d-flex flex-column position-relative justify-content-center align-items-center w-100"
@@ -137,7 +138,7 @@ const ForgotPassword = () => {
           </div>
         </div>
       </div>
-    </div>
+    </Box>
   );
 };
 

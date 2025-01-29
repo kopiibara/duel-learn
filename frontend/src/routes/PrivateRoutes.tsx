@@ -1,4 +1,5 @@
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
+import { useUser } from "../contexts/UserContext";
 
 import DashboardLayout from "../layouts/DashboardLayout";
 import Home from "../pages/dashboard/home/HomePage";
@@ -9,6 +10,12 @@ import Shop from "../pages/dashboard/shop/ShopPage";
 import BuyPremium from "../pages/dashboard/shop/BuyPremium";
 
 const PrivateRoutes = () => {
+  const { user } = useUser();
+
+  if (!user) {
+    return <Navigate to="/landing-page" />;
+  }
+
   return (
     <Routes>
       <Route element={<DashboardLayout />}>
@@ -18,8 +25,6 @@ const PrivateRoutes = () => {
         <Route path="profile" element={<Profile />} />
         <Route path="shop" element={<Shop />} />
       </Route>
-
-
       <Route path="/shop/buy-premium-account" element={<BuyPremium />} />
 
     </Routes>
