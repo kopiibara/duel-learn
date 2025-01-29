@@ -13,6 +13,8 @@ type RoutePath =
   | "/dashboard/explore"
   | "/dashboard/my-library"
   | "/dashboard/profile"
+  | "/dashboard/study-material/create"
+  | "/dashboard/study-material/view"
   | "/dashboard/shop";
 
 const RightSideBar: React.FC = () => {
@@ -29,7 +31,27 @@ const RightSideBar: React.FC = () => {
   const contentMap: Record<RoutePath, JSX.Element> = {
     "/dashboard/home": <>{friendListContent}<div className="my-7"></div>{leaderboardContent}</>,
     "/dashboard/explore": leaderboardContent,
-    "/dashboard/my-library": <>{friendListContent}<div className="my-7"></div>{leaderboardContent}</>,
+    "/dashboard/my-library": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
+    "/dashboard/study-material/create": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
+    "/dashboard/study-material/view": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
     "/dashboard/profile": friendListContent,
     "/dashboard/shop": <>{friendListContent}<div className="my-7"></div>{leaderboardContent}</>
   };

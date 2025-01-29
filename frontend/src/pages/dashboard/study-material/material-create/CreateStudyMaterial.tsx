@@ -11,8 +11,10 @@ import {
 } from "@mui/material";
 import ItemComponent from "./ItemComponent";
 import { motion, AnimatePresence } from "framer-motion"; // Importing from Framer Motion
+import { useNavigate } from "react-router-dom";
 
 const CreateStudyMaterial = () => {
+  const navigate = useNavigate();
   const [tags, setTags] = useState<string[]>([]);
   const [currentTag, setCurrentTag] = useState("");
   const [items, setItems] = useState<
@@ -51,10 +53,28 @@ const CreateStudyMaterial = () => {
     );
   };
 
+  const handleSaveButton = () => {
+    // Save the study material
+    navigate("/dashboard/study-material/view");
+  };
+
+  const handleUploadFile = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".pdf, .docx, .jpg, .jpeg, .png, .gif";
+    input.onchange = (e: Event) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        console.log("Uploaded file:", file);
+      }
+    };
+    input.click();
+  };
+
   return (
-    <Box>
+    <Box className="h-screen w-full px-8">
       <DocumentHead title="Create Study Material" />
-      <Stack spacing={2.5} className="px-8">
+      <Stack spacing={2.5}>
         {/* Title Input */}
         <Box className="sticky top-4 z-10">
           <Stack direction={"row"} spacing={2} className="flex items-center">
@@ -91,6 +111,7 @@ const CreateStudyMaterial = () => {
                 color: "#E2DDF3",
                 backgroundColor: "#4D18E8",
               }}
+              onClick={handleSaveButton}
             >
               Save
             </Button>
@@ -193,6 +214,7 @@ const CreateStudyMaterial = () => {
                 color: "#E2DDF3",
               },
             }}
+            onClick={handleUploadFile}
           >
             Upload File
           </Button>
