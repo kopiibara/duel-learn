@@ -1,23 +1,57 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../index.css";
+import { useUser } from "../../contexts/UserContext";
+import { toast } from "react-hot-toast";
 
 import axios from "axios";
+import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "../../services/firebase"; // Ensure you have this import for Firebase auth
 
 // Icons
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 
 const Login = () => {
+  const { setUser } = useUser();
   const [data, setData] = useState({
     username: "",
     password: "",
   });
   const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
+  const [error, setError] = useState(""); // State for handling errors
   const navigate = useNavigate();
 
   const togglePassword = () => {
     setShowPassword(!showPassword); // Toggle password visibility
+  };
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      console.log(result);
+      const token = await result.user.getIdToken();
+
+      // Handle user data directly on the frontend
+      const userData = {
+        displayName: result.user.displayName,
+        email: result.user.email,
+        photoURL: result.user.photoURL,
+        uid: result.user.uid,
+      };
+      console.log("User Data:", userData);
+
+      // Store user data in context
+      setUser(userData);
+
+      // Optionally, you can store the token in local storage or context
+      localStorage.setItem("userToken", token);
+
+      // Redirect to a protected route or dashboard
+      navigate("/dashboard/home");
+    } catch (error) {
+      console.error("Error during sign-in:", error);
+      toast.error("Google sign-in failed. Please try again.");
+    }
   };
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -25,20 +59,28 @@ const Login = () => {
     const { username, password } = data;
 
     try {
-      const { data: response } = await axios.post(
-        "/login",
-        { username, password },
-        { withCredentials: true } // Include credentials in the request
-      );
+      const result = await signInWithEmailAndPassword(auth, username, password);
+      console.log("User Credential:", result);
+      const token = await result.user.getIdToken();
 
-      if (response.error) {
-        console.error(response.error); // Handle login error
-      } else {
-        setData({ username: "", password: "" });
-        navigate("/dashboard"); // Redirect on success
-      }
+      // Create user data object
+      const userData = {
+        displayName: result.user.displayName,
+        email: result.user.email,
+        photoURL: result.user.photoURL,
+        uid: result.user.uid,
+      };
+      console.log("User Data:", userData);
+      // Store user data in context
+      setUser(userData);
+
+      // Optionally, you can store the token in local storage or context
+      localStorage.setItem("userToken", token);
+      setData({ username: "", password: "" });
+      navigate("/dashboard/home"); // Redirect on success
     } catch (error) {
-      console.error("Server error:", error); // Handle server error
+      console.error("Login error:", error); // Handle login error
+      setError((error as any).message); // Set error message
     }
   };
 
@@ -99,6 +141,9 @@ const Login = () => {
             </span>
           </div>
 
+          {/* Error Message */}
+          {error && <p className="text-red-500 text-center mt-2">{error}</p>}
+
           {/* Forgot Password */}
           <div className="text-right">
             <Link
@@ -126,7 +171,10 @@ const Login = () => {
         </div>
 
         {/* Google Sign-In */}
-        <button className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors">
+        <button
+          className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors"
+          onClick={handleGoogleSignIn}
+        >
           Sign in with Google
         </button>
 
