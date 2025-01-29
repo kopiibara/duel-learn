@@ -1,0 +1,20 @@
+[
+  {
+    "title": "Buhay ni Rizal",
+    "description": "Midterm Reviewer",
+    "tags": ["History", "Midterm"],
+    "creator": "Rizal",
+    "date-created": "December 29, 2024",
+    "no-people": 5,
+    "items": [
+      {
+        "term": "Pepe",
+        "definition": "Nickname ni Rizal"
+      },
+      {
+        "term": "José Protacio Rizal Mercado y Alonso Realonda",
+        "definition": "Full name of Rizal"
+      }
+    ]
+  }
+]

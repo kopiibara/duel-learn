@@ -14,6 +14,7 @@ type RoutePath =
   | "/dashboard/my-library"
   | "/dashboard/profile"
   | "/dashboard/study-material/create"
+  | "/dashboard/study-material/view"
   | "/dashboard/shop";
 
 const RightSideBar: React.FC = () => {
@@ -45,6 +46,13 @@ const RightSideBar: React.FC = () => {
       </>
     ),
     "/dashboard/study-material/create": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
+    "/dashboard/study-material/view": (
       <>
         {friendListContent}
         <div className="my-7"></div>
