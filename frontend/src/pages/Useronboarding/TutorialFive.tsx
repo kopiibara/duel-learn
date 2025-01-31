@@ -1,8 +1,8 @@
 import * as React from "react";
 import Typewriter from "typewriter-effect"; // Import the Typewriter component
-import { useEffect } from "react";
 import useWandCursor from "./data/useWandCursor"; // Import the wand cursor hook
 import { useNavigate } from "react-router-dom";
+import CharacterTalking from "../../assets/UserOnboarding/CharacterTalking.png"
 
 export default function TutorialFive() {
     // Initialize the wand cursor effect
@@ -53,7 +53,12 @@ export default function TutorialFive() {
             <div className="flex flex-col-reverse md:flex-row mt-12 sm:mt-15 md:mt-20 gap-10 w-full items-center justify-between max-w-[1100px] z-10">
                 {/* Avatar Section */}
                 <div className="flex-shrink-0">
-                    <div className="w-[130px] h-[130px] md:w-[210px] md:h-[210px] bg-zinc-300 rounded-md"></div>
+                    {/* Use the CharacterTalking image as an avatar */}
+                    <img
+                        src={CharacterTalking} // Set the character image
+                        alt="Character talking"
+                        className="w-[130px] h-[130px] animate-tutorial1  md:w-[210px] md:h-[210px] rounded-md object-cover"
+                    />
                 </div>
 
                 {/* Speech Bubble with Typewriter Effect */}
