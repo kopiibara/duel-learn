@@ -1,6 +1,5 @@
 import * as React from "react";
 import Typewriter from "typewriter-effect"; // Import the Typewriter component
-import { useEffect } from "react";
 import useWandCursor from "./data/useWandCursor"; // Import the wand cursor hook
 import { useNavigate } from "react-router-dom";
 import CharacterTalking from "../../assets/UserOnboarding/CharacterTalking.png"
