@@ -10,6 +10,15 @@ import Shop from "../pages/dashboard/shop/ShopPage";
 import BuyPremium from "../pages/dashboard/shop/BuyPremium";
 import CreateStudyMaterial from "../pages/dashboard/study-material/material-create/CreateStudyMaterial";
 import ViewStudyMaterial from "../pages/dashboard/study-material/view-study-material/ViewStudyMaterial";
+import WelcomePage from "../pages/Useronboarding/WelcomePage";
+import TutorialOnePage from "../pages/Useronboarding/TutorialOne";
+import TutorialTwo from "../pages/Useronboarding/TutorialTwo";
+import Personalization from "../pages/Useronboarding/Personalization";
+import TutorialThree from "../pages/Useronboarding/TutorialThree";
+import TutorialFour from "../pages/Useronboarding/TutorialFour";
+import TutorialFive from "../pages/Useronboarding/TutorialFive";
+import TutorialSix from "../pages/Useronboarding/TutorialSix";
+import TutorialLast from "../pages/Useronboarding/TutorialLast";
 
 const PrivateRoutes = () => {
   const { user } = useUser();
@@ -20,6 +29,19 @@ const PrivateRoutes = () => {
 
   return (
     <Routes>
+      {/* Onboarding and Tutorial Routes */}
+      <Route path="welcome" element={<WelcomePage />} />
+      <Route path="tutorial/step-one" element={<TutorialOnePage />} />
+      <Route path="tutorial/step-two" element={<TutorialTwo />} />
+      <Route path="tutorial/step-three" element={<TutorialThree />} />
+      <Route path="tutorial/step-four" element={<TutorialFour />} />
+      <Route path="tutorial/step-five" element={<TutorialFive />} />
+      <Route path="tutorial/step-six" element={<TutorialSix />} />
+      <Route path="tutorial/last-step" element={<TutorialLast />} />
+
+      <Route path="my-preferences" element={<Personalization />} />
+
+      {/* Routes for the main dashboard after onboarding */}
       <Route element={<DashboardLayout />}>
         <Route path="home" element={<Home />} />
         <Route path="explore" element={<Explore />} />
@@ -29,6 +51,8 @@ const PrivateRoutes = () => {
         <Route path="study-material/create" element={<CreateStudyMaterial />} />
         <Route path="study-material/view" element={<ViewStudyMaterial />} />
       </Route>
+
+      {/* Route for buying premium account */}
       <Route path="/shop/buy-premium-account" element={<BuyPremium />} />
     </Routes>
   );

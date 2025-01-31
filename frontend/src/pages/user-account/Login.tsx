@@ -4,7 +4,7 @@ import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
 import { toast } from "react-hot-toast";
 
-import axios from "axios";
+//import axios from "axios";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../../services/firebase"; // Ensure you have this import for Firebase auth
 // Icons
@@ -24,29 +24,32 @@ const Login = () => {
   const togglePassword = () => {
     setShowPassword(!showPassword); // Toggle password visibility
   };
+  // Login Component (handleGoogleSignIn)
   const handleGoogleSignIn = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       console.log(result);
+
       const token = await result.user.getIdToken();
 
       // Handle user data directly on the frontend
       const userData = {
         displayName: result.user.displayName,
         email: result.user.email,
-        photoURL: result.user.photoURL,
+        photoURL: result.user.photoURL, // Store the photoURL here
         uid: result.user.uid,
       };
+
       console.log("User Data:", userData);
 
       // Store user data in context
-      setUser(userData);
+      setUser(userData); // This should update the context with the photoURL
 
       // Optionally, you can store the token in local storage or context
       localStorage.setItem("userToken", token);
 
       // Redirect to a protected route or dashboard
-      navigate("/dashboard/home");
+      navigate("/dashboard/welcome");
     } catch (error) {
       console.error("Error during sign-in:", error);
       toast.error("Google sign-in failed. Please try again.");
