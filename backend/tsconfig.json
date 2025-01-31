@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "target": "ES6",
+    "module": "CommonJS"
+  },
+  "include": ["src/**/*"], // This makes sure all TypeScript files are included
+  "exclude": ["node_modules", "dist"]
+}
