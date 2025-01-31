@@ -22,17 +22,19 @@ const DashboardLayout = () => {
   return (
     <Box className="h-screen px-1 flex flex-col lg:flex-row w-screen overflow-x-hidden">
       {/* Sidebar (hidden on small screens) */}
-      <aside className="hidden lg:block pl-4 pr-5 top-0 h-screen">
-        <Box className="sticky top-0">
+      <aside className="hidden lg:block pl-4 pr-5 h-screen sticky top-0">
+        <Box>
           <Sidebar />
         </Box>
       </aside>
 
+
       {/* Main Section */}
       <Box className="flex-1 flex flex-col">
-        <header className="w-full pr-2 top-0 ">
+        <header className="w-full pr-2 top-0 pb-2 sticky z-50 bg-[#080511] shadow-sm">
           <Header />
         </header>
+
 
         {/* Main Content Section */}
         <Box className="flex flex-1">
@@ -51,7 +53,7 @@ const DashboardLayout = () => {
           </main>
 
           {/* Right Sidebar */}
-          <aside className="hidden lg:block pr-2">
+          <aside className="hidden lg:block pr-2 pb-12">
             <Box className="sticky top-0">
               <RightSideBar />
             </Box>
