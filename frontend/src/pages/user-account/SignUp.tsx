@@ -14,6 +14,7 @@ import { setDoc, doc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../services/firebase"; // Ensure you have this import for Firestore
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
+import useValidation from "../../utils/useValidation";
 
 const SignUp = () => {
   const { setUser } = useUser();
@@ -23,13 +24,9 @@ const SignUp = () => {
     confirmPassword: "",
     email: "",
     terms: false, // Add this to track the checkbox status
-    passwordError: "",
-    confirmPasswordError: "",
-    usernameError: "",
-    emailError: "",
-    termsError: "", // Add this to track terms and conditions error
   });
 
+  const { errors, validate, validateForm } = useValidation();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -37,125 +34,14 @@ const SignUp = () => {
     setShowPassword((prev) => !prev);
   };
 
-  const validateForm = async (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault(); // Prevent form submission by default
-    setFormData((prev) => ({
-      ...prev,
-      passwordError: "",
-      confirmPasswordError: "",
-      usernameError: "",
-      emailError: "",
-      termsError: "", // Reset the terms error
-    }));
 
     const { username, password, confirmPassword, email, terms } = formData;
 
-    let hasError = false;
-
-    // Username validation
-    if (!username) {
-      setFormData((prev) => ({
-        ...prev,
-        usernameError: "Username is required.",
-      }));
-      hasError = true;
-    } else if (username.length < 6) {
-      setFormData((prev) => ({
-        ...prev,
-        usernameError: "Username must be at least 6 characters.",
-      }));
-      hasError = true;
-    } else if (username.length > 20) {
-      setFormData((prev) => ({
-        ...prev,
-        usernameError: "Username cannot exceed 20 characters.",
-      }));
-      hasError = true;
-    } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      setFormData((prev) => ({
-        ...prev,
-        usernameError:
-          "Username can only contain alphanumeric characters and underscores.",
-      }));
-      hasError = true;
+    if (!validateForm({ username, password, confirmPassword, email, terms: terms.toString() })) {
+      return;
     }
-
-    // Email validation
-    if (!email) {
-      setFormData((prev) => ({ ...prev, emailError: "Email is required." }));
-      hasError = true;
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      setFormData((prev) => ({
-        ...prev,
-        emailError: "Please enter a valid email address.",
-      }));
-      hasError = true;
-    }
-
-    // Password validation
-    if (!password) {
-      setFormData((prev) => ({
-        ...prev,
-        passwordError: "Password is required.",
-      }));
-      hasError = true;
-    } else if (password.length < 8) {
-      setFormData((prev) => ({
-        ...prev,
-        passwordError: "Password must be at least 8 characters.",
-      }));
-      hasError = true;
-    } else if (!/[A-Z]/.test(password)) {
-      setFormData((prev) => ({
-        ...prev,
-        passwordError: "Password must contain at least one uppercase letter.",
-      }));
-      hasError = true;
-    } else if (!/[a-z]/.test(password)) {
-      setFormData((prev) => ({
-        ...prev,
-        passwordError: "Password must contain at least one lowercase letter.",
-      }));
-      hasError = true;
-    } else if (!/[0-9]/.test(password)) {
-      setFormData((prev) => ({
-        ...prev,
-        passwordError: "Password must contain at least one number.",
-      }));
-      hasError = true;
-    } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      setFormData((prev) => ({
-        ...prev,
-        passwordError: "Password must contain at least one special character.",
-      }));
-      hasError = true;
-    }
-
-    // Confirm Password validation
-    if (!confirmPassword) {
-      setFormData((prev) => ({
-        ...prev,
-        confirmPasswordError: "Please confirm your password.",
-      }));
-      hasError = true;
-    } else if (confirmPassword !== password) {
-      setFormData((prev) => ({
-        ...prev,
-        confirmPasswordError: "Passwords do not match.",
-      }));
-      hasError = true;
-    }
-
-    // Terms and Conditions validation
-    if (!terms) {
-      setFormData((prev) => ({
-        ...prev,
-        termsError: "You must agree to the terms and conditions.",
-      }));
-      hasError = true;
-    }
-
-    if (hasError) return; // Stop if there are errors
 
     try {
       const userCredential = await createUserWithEmailAndPassword(
@@ -179,11 +65,6 @@ const SignUp = () => {
         confirmPassword: "",
         email: "",
         terms: false,
-        passwordError: "",
-        confirmPasswordError: "",
-        usernameError: "",
-        emailError: "",
-        termsError: "",
       });
       setSuccessMessage(
         "Account successfully created! Redirecting to login..."
@@ -227,8 +108,8 @@ const SignUp = () => {
   };
 
   return (
-    <div className=" font-aribau min-h-screen flex items-center justify-center">
-      <div className=" p-8 rounded-lg shadow-md w-full max-w-md">
+    <div className="font-aribau min-h-screen flex items-center justify-center">
+      <div className="p-8 rounded-lg shadow-md w-full max-w-md">
         <h1 className="text-2xl font-bold mb-2 text-center text-[#E2DDF3]">
           Create an Account
         </h1>
@@ -240,7 +121,7 @@ const SignUp = () => {
             {successMessage}
           </div>
         )}
-        <form onSubmit={validateForm}>
+        <form onSubmit={handleSubmit}>
           <input
             type="text"
             id="username"
@@ -248,15 +129,14 @@ const SignUp = () => {
             placeholder="Enter your username"
             required
             value={formData.username}
-            onChange={(e) =>
-              setFormData({ ...formData, username: e.target.value })
-            }
+            onChange={(e) => {
+              setFormData({ ...formData, username: e.target.value });
+              validate("username", e.target.value);
+            }}
             className="block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
           />
-          {formData.usernameError && (
-            <p className="text-red-500 mt-1 text-sm">
-              {formData.usernameError}
-            </p>
+          {errors.username && (
+            <p className="text-red-500 mt-1 text-sm">{errors.username}</p>
           )}
 
           <div className="relative mb-4">
@@ -267,9 +147,10 @@ const SignUp = () => {
               placeholder="Enter your password"
               required
               value={formData.password}
-              onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
-              }
+              onChange={(e) => {
+                setFormData({ ...formData, password: e.target.value });
+                validate("password", e.target.value);
+              }}
               className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
             />
             <span
@@ -282,10 +163,8 @@ const SignUp = () => {
                 <VisibilityOffRoundedIcon />
               )}
             </span>
-            {formData.passwordError && (
-              <p className="text-red-500 mt-1 text-sm">
-                {formData.passwordError}
-              </p>
+            {errors.password && (
+              <p className="text-red-500 mt-1 text-sm">{errors.password}</p>
             )}
           </div>
 
@@ -297,14 +176,15 @@ const SignUp = () => {
               placeholder="Confirm your password"
               required
               value={formData.confirmPassword}
-              onChange={(e) =>
-                setFormData({ ...formData, confirmPassword: e.target.value })
-              }
+              onChange={(e) => {
+                setFormData({ ...formData, confirmPassword: e.target.value });
+                validate("confirmPassword", e.target.value, formData);
+              }}
               className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
             />
-            {formData.confirmPasswordError && (
+            {errors.confirmPassword && (
               <p className="text-red-500 mt-1 text-sm">
-                {formData.confirmPasswordError}
+                {errors.confirmPassword}
               </p>
             )}
           </div>
@@ -316,13 +196,14 @@ const SignUp = () => {
             placeholder="Enter your email"
             required
             value={formData.email}
-            onChange={(e) =>
-              setFormData({ ...formData, email: e.target.value })
-            }
+            onChange={(e) => {
+              setFormData({ ...formData, email: e.target.value });
+              validate("email", e.target.value);
+            }}
             className="block w-full p-3 mb-6 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
           />
-          {formData.emailError && (
-            <p className="text-red-500 mt-1 text-sm">{formData.emailError}</p>
+          {errors.email && (
+            <p className="text-red-500 mt-1 text-sm">{errors.email}</p>
           )}
 
           <div className="flex items-center mb-6">
@@ -331,9 +212,10 @@ const SignUp = () => {
               id="terms"
               className="w-4 h-4 text-[#4D18E8] bg-[#3B354D] border-gray-300 rounded focus:ring-2 focus:ring-[#4D18E8]"
               checked={formData.terms}
-              onChange={(e) =>
-                setFormData({ ...formData, terms: e.target.checked })
-              }
+              onChange={(e) => {
+                setFormData({ ...formData, terms: e.target.checked });
+                validate("terms", e.target.checked.toString());
+              }}
             />
             <label htmlFor="terms" className="ml-2 text-[#9F9BAE] text-sm">
               I agree to{" "}
@@ -345,11 +227,8 @@ const SignUp = () => {
               </a>
             </label>
           </div>
-          {formData.termsError && (
-            <p className="text-red-500 mt-1 text-sm">{formData.termsError}</p>
-          )}
-          {formData.termsError && (
-            <p className="text-red-500 mt-1 text-sm">{formData.termsError}</p>
+          {errors.terms && (
+            <p className="text-red-500 mt-1 text-sm">{errors.terms}</p>
           )}
 
           <button

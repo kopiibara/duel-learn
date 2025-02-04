@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
 import { toast } from "react-hot-toast";
+import useHandleError from '../../utils/useHandleError';
 
 //import axios from "axios";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
@@ -18,7 +19,7 @@ const Login = () => {
     password: "",
   });
   const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
-  const [error, setError] = useState(""); // State for handling errors
+  const { error, handleLoginError } = useHandleError();
   const navigate = useNavigate();
 
   const togglePassword = () => {
@@ -80,11 +81,8 @@ const Login = () => {
       localStorage.setItem("userToken", token);
       setData({ username: "", password: "" });
       navigate("/dashboard/home"); // Redirect on successful login
-    } catch (error) {
-      console.error("Login error:", error); // Handle login error
-      setError((error as any).message); // Set error message
-      console.error("Login error:", error); // Handle login error
-      setError((error as any).message); // Set error message
+    } catch (error: any) {
+      handleLoginError(error);
     }
   };
 
