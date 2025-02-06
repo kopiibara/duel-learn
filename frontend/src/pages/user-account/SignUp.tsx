@@ -122,6 +122,7 @@ const SignUp = () => {
           </div>
         )}
         <form onSubmit={handleSubmit}>
+        <div className="relative mb-4">
           <input
             type="text"
             id="username"
@@ -133,12 +134,12 @@ const SignUp = () => {
               setFormData({ ...formData, username: e.target.value });
               validate("username", e.target.value);
             }}
-            className="block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+            className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
           />
           {errors.username && (
-            <p className="text-red-500 mt-1 text-sm">{errors.username}</p>
-          )}
-
+              <p className="text-red-500 mt-1 text-sm">{errors.username}</p>
+            )}
+          </div>
           <div className="relative mb-4">
             <input
               type={showPassword ? "text" : "password"}
@@ -188,7 +189,7 @@ const SignUp = () => {
               </p>
             )}
           </div>
-
+          <div className="relative mb-4">
           <input
             type="email"
             id="email"
@@ -200,13 +201,14 @@ const SignUp = () => {
               setFormData({ ...formData, email: e.target.value });
               validate("email", e.target.value);
             }}
-            className="block w-full p-3 mb-6 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+            className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
           />
           {errors.email && (
             <p className="text-red-500 mt-1 text-sm">{errors.email}</p>
           )}
-
-          <div className="flex items-center mb-6">
+</div>
+          <div className="flex items-center mb-4">
+            <div>
             <input
               type="checkbox"
               id="terms"
@@ -226,11 +228,11 @@ const SignUp = () => {
                 Terms and Conditions
               </a>
             </label>
-          </div>
           {errors.terms && (
             <p className="text-red-500 mt-1 text-sm">{errors.terms}</p>
           )}
-
+          </div>
+</div>
           <button
             type="submit"
             className="w-full py-3 text-white bg-[#4D18E8] rounded-lg hover:bg-[#3814b6] focus:outline-none focus:ring-4 focus:ring-[#4D18E8]"
