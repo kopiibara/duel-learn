@@ -10,6 +10,7 @@ import Shop from "../pages/dashboard/shop/ShopPage";
 import BuyPremium from "../pages/dashboard/shop/BuyPremium";
 import CreateStudyMaterial from "../pages/dashboard/study-material/material-create/CreateStudyMaterial";
 import ViewStudyMaterial from "../pages/dashboard/study-material/view-study-material/ViewStudyMaterial";
+import SetUpQuestionType from "../pages/dashboard/play-battleground/SetUpQuestionType";
 import WelcomePage from "../pages/Useronboarding/WelcomePage";
 import TutorialOnePage from "../pages/Useronboarding/TutorialOne";
 import TutorialTwo from "../pages/Useronboarding/TutorialTwo";
@@ -54,6 +55,7 @@ const PrivateRoutes = () => {
 
       {/* Route for buying premium account */}
       <Route path="/shop/buy-premium-account" element={<BuyPremium />} />
+      <Route path="/set-up-questions" element={<SetUpQuestionType />} />
     </Routes>
   );
 };

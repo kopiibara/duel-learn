@@ -1,13 +1,14 @@
 {
   "compilerOptions": {
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
     "outDir": "./dist",
-    "rootDir": "./src",
-    "moduleResolution": "node",
-    "esModuleInterop": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2020",
     "strict": true,
-    "target": "ES6",
-    "module": "CommonJS"
+    "esModuleInterop": true
   },
-  "include": ["src/**/*"], // This makes sure all TypeScript files are included
+  "include": ["./"],
   "exclude": ["node_modules", "dist"]
 }
