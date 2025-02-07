@@ -5,6 +5,7 @@ import { useUser } from "../../contexts/UserContext";
 import { toast } from "react-hot-toast";
 import useHandleError from '../../utils/useHandleError';
 
+
 //import axios from "axios";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "../../services/firebase"; // Ensure you have this import for Firebase auth
@@ -29,7 +30,7 @@ const Login = () => {
   const handleGoogleSignIn = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      console.log(result);
+      console.log(result.user.displayName);
 
       const token = await result.user.getIdToken();
 
@@ -40,8 +41,6 @@ const Login = () => {
         photoURL: result.user.photoURL, // Store the photoURL here
         uid: result.user.uid,
       };
-
-      console.log("User Data:", userData);
 
       // Store user data in context
       setUser(userData); // This should update the context with the photoURL

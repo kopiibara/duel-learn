@@ -25,6 +25,16 @@ const PrivateRoutes = () => {
 
   if (!user) {
     return <Navigate to="/landing-page" />;
+    <Route path="/login" element={<Login />} />
+          <Route path="/sign-up" element={<SignUp />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route
+            path="/confirmation-account"
+            element={<ConfirmationAccount />}
+          />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/success-reset" element={<SuccessReset />} />
+          <Route path="/security-code" element={<SecurityCode />} />
   }
 
   return (

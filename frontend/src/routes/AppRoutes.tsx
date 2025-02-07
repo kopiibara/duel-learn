@@ -19,16 +19,7 @@ const AppRoutes: React.FC = () => {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/landing-page" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/sign-up" element={<SignUp />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route
-            path="/confirmation-account"
-            element={<ConfirmationAccount />}
-          />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/success-reset" element={<SuccessReset />} />
-          <Route path="/security-code" element={<SecurityCode />} />
+          
           <Route path="*" element={<NotFoundPage />} />
           //* dito muna route ng useronboarding
           <Route path="/dashboard/*" element={<PrivateRoutes />} />

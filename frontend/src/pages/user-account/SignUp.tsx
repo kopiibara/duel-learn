@@ -4,7 +4,7 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import axios from "axios";
 import { toast } from "react-hot-toast";
-import { auth, googleProvider } from "../../services/firebase";
+import { auth, googleProvider, getAdditionalInfo } from "../../services/firebase";
 import {
   signInWithPopup,
   createUserWithEmailAndPassword,
@@ -15,9 +15,11 @@ import { db } from "../../services/firebase"; // Ensure you have this import for
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
 import useValidation from "../../utils/useValidation";
+import useHandleError from '../../utils/useHandleError';
 
 const SignUp = () => {
   const { setUser } = useUser();
+  const { error, handleLoginError } = useHandleError();
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -80,30 +82,45 @@ const SignUp = () => {
 
   const handleGoogleSignIn = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider); // Sign in with Google
       console.log(result);
-      const token = await result.user.getIdToken();
-
+      const token = await result.user.getIdToken(); // Get ID token from the signed-in user
+      const additionalUserInfo = getAdditionalInfo(result)
       // Handle user data directly on the frontend
       const userData = {
+        firebaseToken: token,
         displayName: result.user.displayName,
         email: result.user.email,
         photoURL: result.user.photoURL,
         uid: result.user.uid,
+        isNew : additionalUserInfo, // Check if the user is new
       };
+  console.log(userData);
+      // Save user data to Firestore
+      await setDoc(doc(db, "users", userData.uid), {
+        username: userData.displayName,
+        email: userData.email,
+        dateCreated: serverTimestamp(),
+      });
+  
       console.log("User Data:", userData);
-
+  
       // Store user data in context
       setUser(userData);
-
+  
       // Optionally, you can store the token in local storage or context
       localStorage.setItem("userToken", token);
-
-      // Redirect to a protected route or dashboard
-      navigate("/dashboard/home");
-    } catch (error) {
-      console.error("Error during sign-in:", error);
-      toast.error("Google sign-in failed. Please try again.");
+  
+      // Redirect based on whether the user is new or not
+      setTimeout(() => {
+        if (userData.isNew) {
+          navigate("/dashboard/welcome"); // Redirect to welcome page if new user
+        } else {
+          navigate("/dashboard/home"); // Redirect to dashboard/home if not new user
+        }
+      }, 2000);
+    } catch (error: any) {
+      handleLoginError(error); // Handle login error
     }
   };
 
