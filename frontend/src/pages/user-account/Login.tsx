@@ -79,7 +79,7 @@ const Login = () => {
       // Optionally, you can store the token in local storage or context
       localStorage.setItem("userToken", token);
       setData({ username: "", password: "" });
-      navigate("/dashboard/home"); // Redirect on successful login
+      navigate("/dashboard/welcome"); // Redirect on successful login
     } catch (error) {
       console.error("Login error:", error); // Handle login error
       setError((error as any).message); // Set error message
