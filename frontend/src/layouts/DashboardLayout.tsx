@@ -20,7 +20,7 @@ const DashboardLayout = () => {
   };
 
   return (
-    <Box className="h-screen px-1 flex flex-col lg:flex-row w-screen overflow-x-hidden">
+    <Box className="h-screen px-8 flex flex-col lg:flex-row w-screen overflow-x-hidden ">
       {/* Sidebar (hidden on small screens) */}
       <aside className="hidden lg:block pl-4 pr-5 h-screen sticky top-0">
         <Box>
@@ -28,17 +28,15 @@ const DashboardLayout = () => {
         </Box>
       </aside>
 
-
       {/* Main Section */}
       <Box className="flex-1 flex flex-col">
         <header className="w-full pr-2 top-0 pb-2 sticky z-50 bg-[#080511] shadow-sm">
           <Header />
         </header>
 
-
         {/* Main Content Section */}
         <Box className="flex flex-1">
-          <main className="flex-1 pt-3 relative">
+          <main className="flex-1 pt-3 relative px-16">
             <Outlet />
 
             {/* Absolute icon button in the top-right corner (only shown on mobile screens) */}
@@ -54,7 +52,7 @@ const DashboardLayout = () => {
 
           {/* Right Sidebar */}
           <aside className="hidden lg:block pr-2 pb-12">
-            <Box className="sticky top-0">
+            <Box className="sticky top-0 ">
               <RightSideBar />
             </Box>
           </aside>
