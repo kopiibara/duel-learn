@@ -90,12 +90,20 @@ const Login = () => {
 
   return (
     <div className="h-screen flex items-center justify-center ">
+      {/* Simple Header */}
+      <header className="absolute top-20 left-20 flex items-center">
+        <Link to="/" className="flex items-center space-x-4">
+          <img src="/duel-learn-logo.svg" className="w-10 h-10" alt="icon" />
+          <p className="text-white text-xl font-semibold">Duel Learn</p>
+        </Link>
+      </header>
+
       <div className="w-full max-w-md  rounded-lg p-8 shadow-md">
         {/* Heading */}
-        <h1 className="text-2xl font-bold text-center text-white mb-2">
+        <h1 className="text-3xl font-bold text-center text-white mb-2">
           Login your Account
         </h1>
-        <p className="text-sm text-center text-[#9F9BAE] mb-8">
+        <p className="text-lg text-center text-[#9F9BAE] mb-8">
           Please enter your details to login.
         </p>
 
@@ -179,6 +187,11 @@ const Login = () => {
           className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors"
           onClick={handleGoogleSignIn}
         >
+          <img
+            src="/google-logo.png"
+            className="w-5 h-5 mr-3"
+            alt="Google Icon"
+          ></img>
           Sign in with Google
         </button>
 

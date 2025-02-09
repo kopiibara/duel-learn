@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import "./styles/EffectUserOnboarding.css";
 import { useNavigate } from "react-router-dom";
 import useWandCursor from "./data/useWandCursor"; // Import the custom hook
-import WelcomePhoto from "../../assets/UserOnboarding/WelcomePhoto.png";
+import WelcomePhoto from "../../assets/UserOnboarding/WelcomePhoto.gif";
 import { useUser } from "../../contexts/UserContext"; // Import the useUser hook
 
 const WelcomePage = () => {
@@ -47,7 +47,7 @@ const WelcomePage = () => {
 
       {/* Welcome Photo as Background */}
       <div
-        className="relative mt-32 z-10 w-80 h-80 rounded bg-center animate-updown"
+        className="relative mt-30 z-10 w-96 h-96 rounded bg-center"
         style={{
           backgroundImage: `url(${WelcomePhoto})`,
           backgroundSize: "contain", // Ensure the image fits without cropping
@@ -58,12 +58,12 @@ const WelcomePage = () => {
 
       {/* Welcome Text */}
       <p
-        className={`text-[24px] mt-20 text-white transition-opacity duration-1000 ${
+        className={`text-[24px] mt-14 text-white transition-opacity duration-1000 ${
           fadeIn ? "opacity-100" : "opacity-0"
         }`}
       >
         You've finally made it here,{" "}
-        <span className="font-bold">{user?.displayName}</span>
+        <span className="font-bold">{user?.displayName}</span>!
       </p>
 
       {/* Click to Continue Text */}

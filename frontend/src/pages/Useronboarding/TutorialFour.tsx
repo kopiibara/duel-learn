@@ -1,27 +1,52 @@
 import * as React from "react";
-import Typewriter from "typewriter-effect"; // Import the Typewriter component
-import useWandCursor from "./data/useWandCursor"; // Import the wand cursor hook
+import Typewriter from "typewriter-effect";
+import useWandCursor from "./data/useWandCursor";
 import { useNavigate } from "react-router-dom";
-import CharacterTalking from "../../assets/UserOnboarding/CharacterTalking.png";
+import CharacterTalking from "../../assets/UserOnboarding/NoddingBunny.gif";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 
 export default function TutorialFour() {
-  // Initialize the wand cursor effect
   useWandCursor();
   const navigate = useNavigate();
 
+  const dialogues = [
+    `<span class="font-bold">Peaceful Mode</span> for relaxed practice and review. The best way to retain those lessons in your head, Magician.`,
+  ];
+
+  const [clickCount, setClickCount] = React.useState(0);
+  const [showFullText, setShowFullText] = React.useState(false);
+  const [typingDone, setTypingDone] = React.useState(false);
+  const [animate, setAnimate] = React.useState(false);
+
+  React.useEffect(() => {
+    setTimeout(() => setAnimate(true), 100);
+  }, []);
+
+  const handleClick = () => {
+    if (!typingDone) {
+      setShowFullText(true);
+      setTypingDone(true);
+    } else if (clickCount < dialogues.length - 1) {
+      setClickCount((prev) => prev + 1);
+      setShowFullText(false);
+      setTypingDone(false);
+      setAnimate(false);
+      setTimeout(() => setAnimate(true), 100);
+    } else {
+      navigate("/dashboard/tutorial/step-five");
+    }
+  };
+
   const handleSkipTutorial = (event: React.MouseEvent) => {
-    event.stopPropagation(); // Stop the event from propagating to the main click handler
-    navigate("/dashboard/my-preferences"); // Navigate directly using React Router
+    event.stopPropagation();
+    navigate("/dashboard/tutorial/last-step");
   };
 
   return (
     <main
       className="relative flex flex-col items-center px-20 py-20 text-white h-screen bg-[#080511] overflow-hidden cursor-none"
       role="main"
-      onClick={() => {
-        console.log("Screen clicked, navigating...");
-        navigate("/dashboard/tutorial/step-five");
-      }}
+      onClick={handleClick}
     >
       {/* Magic Wand Cursor */}
       <div className="wand-cursor"></div>
@@ -32,18 +57,11 @@ export default function TutorialFour() {
       {/* Skip Tutorial Button */}
       <button
         onClick={handleSkipTutorial}
-        className="flex gap-3 items-center hover:opacity-80 transition-opacity self-end mb-2 md:mb-0 z-10"
+        className="flex gap-2 items-center text-[#3B354D] text-[12px] md:text-[14px] font-bold transition-colors hover:text-white self-end mb-2 md:mb-0 z-10"
         aria-label="Skip tutorial"
       >
-        <img
-          loading="lazy"
-          src="https://cdn.builder.io/api/v1/image/assets/TEMP/b20313cd550bb82f6d702b44430af4b69c7971c4c162fa3d8d515d17cb8bbecb?placeholderIfAbsent=true&apiKey=ff410939217f45aaab06e3ea5ab60b09"
-          alt="Skip Tutorial"
-          className="w-5 aspect-square object-contain"
-        />
-        <span className="text-[14px] md:text-lg font-bold text-white">
-          SKIP TUTORIAL
-        </span>
+        <span>SKIP TUTORIAL</span>
+        <ArrowForwardIosIcon className="!w-4 !h-4 md:!w-5 md:!h-5 transition-colors" />
       </button>
 
       {/* Video Section */}
@@ -55,30 +73,36 @@ export default function TutorialFour() {
       <div className="flex flex-col-reverse md:flex-row mt-12 sm:mt-15 md:mt-20 gap-10 w-full items-center justify-between max-w-[1100px] z-10">
         {/* Avatar Section */}
         <div className="flex-shrink-0">
-          {/* Use the CharacterTalking image as an avatar */}
           <img
-            src={CharacterTalking} // Set the character image
+            src={CharacterTalking}
             alt="Character talking"
-            className="w-[130px] h-[130px] animate-tutorial1  md:w-[210px] md:h-[210px] rounded-md object-cover"
+            className="w-[200px] h-[200px] md:w-[250px] md:h-[250px] rounded-md object-cover"
           />
         </div>
 
         {/* Speech Bubble with Typewriter Effect */}
-        <div className="relative bg-[#1D1828] text-sm md:text-xl text-white rounded px-8 md:px-16 py-8 md:py-14 w-[816px] h-[auto] max-w-full">
-          <Typewriter
-            onInit={(typewriter) => {
-              typewriter
-                .typeString(
-                  `<span class="font-bold">Peaceful Mode</span> for relaxed practice and review. The best way to retain those lessons in your head, Magician.`
-                )
-                .start();
-            }}
-            options={{
-              autoStart: true,
-              loop: false,
-              delay: 30, // Adjust delay for typing speed
-            }}
-          />
+        <div
+          className={`relative bg-[#1D1828] text-sm md:text-xl text-white rounded px-8 md:px-16 py-8 md:py-14 w-[816px] h-[auto] max-w-full transition-all duration-700 ${
+            animate ? "opacity-100 translate-y-0" : "opacity-0 translate-y-5"
+          }`}
+        >
+          {showFullText ? (
+            <span dangerouslySetInnerHTML={{ __html: dialogues[clickCount] }} />
+          ) : (
+            <Typewriter
+              onInit={(typewriter) => {
+                typewriter
+                  .typeString(dialogues[clickCount])
+                  .callFunction(() => setTypingDone(true))
+                  .start();
+              }}
+              options={{
+                autoStart: true,
+                loop: false,
+                delay: 30,
+              }}
+            />
+          )}
 
           {/* Left-Pointing Arrow for larger screens */}
           <div className="absolute w-0 h-0 border-t-[15px] border-t-transparent border-b-[15px] border-b-transparent border-r-[15px] border-r-[#1D1828] left-[-15px] top-1/2 transform -translate-y-1/2 md:block hidden"></div>

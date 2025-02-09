@@ -1,19 +1,18 @@
 import React, { useEffect, useState } from "react";
-import Typewriter from "typewriter-effect"; // Import the Typewriter component
+import Typewriter from "typewriter-effect";
 import "./styles/EffectUserOnboarding.css";
 import { useNavigate } from "react-router-dom";
 import useWandCursor from "./data/useWandCursor";
 
 const TutorialLast: React.FC = () => {
   const [animate, setAnimate] = useState<boolean>(false);
-  const [showFullText, setShowFullText] = useState<boolean>(false); // New state for skipping animation
+  const [showFullText, setShowFullText] = useState<boolean>(false);
   const navigate = useNavigate();
 
-  // Use the wand cursor effect
   useWandCursor();
 
   useEffect(() => {
-    const timer = setTimeout(() => setAnimate(true), 500); // Delay for animation
+    const timer = setTimeout(() => setAnimate(true), 500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -22,7 +21,7 @@ const TutorialLast: React.FC = () => {
       className="flex flex-col items-center justify-center h-screen bg-[#080511] relative overflow-hidden cursor-none"
       onClick={() => {
         console.log("Screen clicked, navigating...");
-        navigate("/dashboard/my-preferences");
+        navigate("/dashboard/home");
       }}
     >
       {/* Sparkles Container */}
@@ -34,16 +33,18 @@ const TutorialLast: React.FC = () => {
       {/* Animated Background Glow */}
       <div className="absolute w-[500px] h-[500px] bg-[#6B21A8] blur-[250px] rounded-full opacity-40 animate-pulse"></div>
 
-      {/* Dialogue Box */}
+      {/* Dialogue Box with Entry Animation */}
       <div
-        className={`relative z-10 bg-[#2C2A35] text-white py-9 px-14 rounded-lg shadow-lg max-w-[580px] transition-transform duration-1000 ${
-          animate ? "translate-y-0 opacity-100" : "translate-y-full opacity-0"
+        className={`relative z-10 bg-[#1F1B2E] text-white py-9 px-14 rounded-lg shadow-lg max-w-[580px] transition-all duration-1000 ${
+          animate
+            ? "translate-y-0 opacity-100 scale-100"
+            : "translate-y-5 opacity-0 scale-95"
         }`}
         style={{ position: "relative" }}
-        onClick={() => setShowFullText(true)} // Skip animation on click
+        onClick={() => setShowFullText(true)}
       >
         <div className="text-center text-[18px]">
-          {showFullText ? ( // Show full text if skipped
+          {showFullText ? (
             <span>
               Congratulations on stepping into the magical world of{" "}
               <span className="font-bold">Dark Learn</span>! Let me show you the
@@ -54,7 +55,7 @@ const TutorialLast: React.FC = () => {
               onInit={(typewriter) => {
                 typewriter
                   .typeString(
-                    `Ready to embark on your journey, <span class="font-bold">Magician</span>? Well then, let's get started.`
+                    `Now you're ready to embark on your journey, <span class="font-bold">Magician</span>. Well then, let's get started!`
                   )
                   .start();
               }}
@@ -66,8 +67,8 @@ const TutorialLast: React.FC = () => {
             />
           )}
         </div>
-        {/* Triangle for the speech bubble */}
-        <div className="absolute w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[15px] border-t-[#2C2A35] left-[50%] translate-x-[-50%] top-full"></div>
+        {/* Triangle for the speech bubble (Color Updated) */}
+        <div className="absolute w-0 h-0 border-l-[15px] border-l-transparent border-r-[15px] border-r-transparent border-t-[15px] border-t-[#1F1B2E] left-[50%] translate-x-[-50%] top-full"></div>
       </div>
 
       {/* Image Container */}
