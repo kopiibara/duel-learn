@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import axios from "axios";
@@ -228,11 +228,19 @@ const SignUp = () => {
 
   return (
     <div className=" font-aribau min-h-screen flex items-center justify-center">
+      {/* Simple Header */}
+      <header className="absolute top-20 left-20 flex items-center">
+        <Link to="/" className="flex items-center space-x-4">
+          <img src="/duel-learn-logo.svg" className="w-10 h-10" alt="icon" />
+          <p className="text-white text-xl font-semibold">Duel Learn</p>
+        </Link>
+      </header>
+
       <div className=" p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-2 text-center text-[#E2DDF3]">
+        <h1 className="text-3xl font-bold mb-2 text-center text-white">
           Create an Account
         </h1>
-        <p className="text-sm mb-8 text-center text-[#9F9BAE]">
+        <p className="text-lg mb-8 text-center text-[#9F9BAE]">
           Please enter your details to sign up.
         </p>
         {successMessage && (
@@ -251,7 +259,7 @@ const SignUp = () => {
             onChange={(e) =>
               setFormData({ ...formData, username: e.target.value })
             }
-            className="block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+            className="block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
           />
           {formData.usernameError && (
             <p className="text-red-500 mt-1 text-sm">
@@ -270,7 +278,7 @@ const SignUp = () => {
               onChange={(e) =>
                 setFormData({ ...formData, password: e.target.value })
               }
-              className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+              className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
             />
             <span
               onClick={togglePassword}
@@ -300,7 +308,7 @@ const SignUp = () => {
               onChange={(e) =>
                 setFormData({ ...formData, confirmPassword: e.target.value })
               }
-              className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+              className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
             />
             {formData.confirmPasswordError && (
               <p className="text-red-500 mt-1 text-sm">
@@ -319,7 +327,7 @@ const SignUp = () => {
             onChange={(e) =>
               setFormData({ ...formData, email: e.target.value })
             }
-            className="block w-full p-3 mb-6 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+            className="block w-full p-3 mb-6 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
           />
           {formData.emailError && (
             <p className="text-red-500 mt-1 text-sm">{formData.emailError}</p>
@@ -371,10 +379,15 @@ const SignUp = () => {
           className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors"
           onClick={handleGoogleSignIn}
         >
-          Sign in with Google
+          <img
+            src="/google-logo.png"
+            className="w-5 h-5 mr-3"
+            alt="Google Icon"
+          ></img>
+          Sign up with Google
         </button>
 
-        <p className="mt-4 text-center text-sm text-[#9F9BAE]">
+        <p className="mt-6 text-center text-sm text-[#9F9BAE]">
           Already have an account?{" "}
           <button
             onClick={() => navigate("/login")}
