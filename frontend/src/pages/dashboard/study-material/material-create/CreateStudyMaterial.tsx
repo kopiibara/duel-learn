@@ -250,6 +250,7 @@ const CreateStudyMaterial = () => {
                 padding: "0.6rem 2rem",
                 display: "flex",
                 width: "full",
+                fontSize: "1rem",
                 justifyContent: "center",
                 color: "#3B354D",
                 border: "0.15rem solid #3B354D",

@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import ExitIcon from "../../assets/images/Exit.png";
 import { useState, useEffect } from "react";
 import {
@@ -150,22 +150,29 @@ const ResetPassword = () => {
 
   return (
     <div className="h-screen mt-[-30px] flex flex-col items-center justify-center">
-      <div className="w-[430px] sm:w-[500px] md:w-[700px] lg:w-[800px] pb-6 text-right flex justify-end">
-        <img
+      <header className="absolute top-20 left-20 right-20 flex justify-between items-center">
+        {/* Logo & Title */}
+        <Link to="/" className="flex items-center space-x-4">
+          <img src="/duel-learn-logo.svg" className="w-10 h-10" alt="icon" />
+          <p className="text-white text-xl font-semibold">Duel Learn</p>
+        </Link>
+
+        {/* Exit Button */}
+        {/* <img
           src={ExitIcon}
           alt="Exit Icon"
           style={{ width: "39px" }}
           className="hover:scale-110 cursor-pointer"
           onClick={handleExitClick}
-        />
-      </div>
+        /> */}
+      </header>
 
       <div className="w-full max-w-md rounded-lg p-8 shadow-md">
         {/* Heading */}
-        <h1 className="text-[42px] font-bold text-center text-white mb-2">
+        <h1 className="text-3xl font-bold text-center text-white mb-2">
           Reset Password
         </h1>
-        <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[370px] mx-auto break-words">
+        <p className="text-lg text-center text-[#9F9BAE] mb-8 max-w-[370px] mx-auto break-words">
           Your new password must be different from your previously used
           password.
         </p>
@@ -180,156 +187,72 @@ const ResetPassword = () => {
         {/* Form */}
         <form onSubmit={handleSubmit}>
           {/* New Password Input */}
-          <div className="mb-4">
-            <TextField
-              id="password-field"
-              label="New password"
-              variant="filled"
-              type={showPassword ? "text" : "password"}
-              value={formData.newpassword}
-              onChange={(e) => handleInputChange("newpassword", e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault(); // Prevent form submission when Enter is pressed in password field
+          <div className="mb-4 relative">
+            <div className="relative">
+              <input
+                id="password-field"
+                type={showPassword ? "text" : "password"}
+                value={formData.newpassword}
+                onChange={(e) =>
+                  handleInputChange("newpassword", e.target.value)
                 }
-              }}
-              fullWidth
-              sx={{
-                width: "100%",
-                backgroundColor: "#3B354D", // Maintain background color even when focused
-                color: "#E2DDF3",
-                marginBottom: "-3px",
-                borderRadius: "8px",
-                "& .MuiInputBase-root": {
-                  color: "#E2DDF3", // Text color
-                  backgroundColor: "#3B354D", // Background color
-                  borderRadius: "8px",
-                  "&:hover": {
-                    backgroundColor: "#3B354D", // Keep the same background color on hover
-                  },
-                  "&.Mui-focused": {
-                    backgroundColor: "#3B354D", // Keep the background color when focused
-                  },
-                },
-                "& .MuiInputLabel-root": {
-                  color: "#9F9BAE", // Label color
-                },
-                "& .MuiInput-underline:before": {
-                  borderBottomColor: "#9F9BAE", // Initial border color
-                },
-                "& .MuiInput-underline:after": {
-                  borderBottomColor: "#4D18E8", // Border color when focused
-                },
-                "&:focus-within": {
-                  outline: "none",
-                  boxShadow: "0 0 0 2px #4D18E8", // Focus ring when the input is focused
-                },
-              }}
-              slotProps={{
-                input: {
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={togglePassword}
-                        sx={{
-                          color: "#9F9BAE",
-                          paddingRight: "18px", // Add padding to the right side
-                        }}
-                        edge="end"
-                      >
-                        {showPassword ? (
-                          <VisibilityRoundedIcon />
-                        ) : (
-                          <VisibilityOffRoundedIcon />
-                        )}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                },
-              }}
-              error={!!errors.newpassword} // Show error style when there's an error
-            />
+                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
+                  errors.newpassword ? "border border-red-500" : ""
+                }`}
+                placeholder="Enter new password"
+              />
+              {/* Password Toggle Button */}
+              <button
+                type="button"
+                onClick={togglePassword}
+                className="absolute inset-y-0 right-4 flex items-center text-[#9F9BAE]"
+              >
+                {showPassword ? (
+                  <VisibilityRoundedIcon className="w-5 h-5" />
+                ) : (
+                  <VisibilityOffRoundedIcon className="w-5 h-5" />
+                )}
+              </button>
+            </div>
             {errors.newpassword && (
-              <div className="text-red-500 text-sm mt-[-1px] mb-2">
+              <div className="text-red-500 text-sm mt-1">
                 {errors.newpassword}
               </div>
             )}
           </div>
 
           {/* Confirm Password Input */}
-          <div className="mb-4">
-            <TextField
-              id="confirm-password-field"
-              label="Confirm password"
-              variant="filled"
-              type={showConfirmPassword ? "text" : "password"}
-              value={formData.confirmPassword}
-              onChange={(e) =>
-                handleInputChange("confirmPassword", e.target.value)
-              }
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault(); // Prevent form submission when Enter is pressed in confirm password field
+          <div className="mb-8 relative">
+            <div className="relative">
+              <input
+                id="confirm-password-field"
+                type={showConfirmPassword ? "text" : "password"}
+                value={formData.confirmPassword}
+                onChange={(e) =>
+                  handleInputChange("confirmPassword", e.target.value)
                 }
-              }}
-              fullWidth
-              sx={{
-                width: "100%",
-                backgroundColor: "#3B354D", // Maintain background color even when focused
-                color: "#E2DDF3",
-                marginBottom: "14px",
-                borderRadius: "8px",
-                "& .MuiInputBase-root": {
-                  color: "#E2DDF3", // Text color
-                  backgroundColor: "#3B354D", // Background color
-                  borderRadius: "8px",
-                  "&:hover": {
-                    backgroundColor: "#3B354D", // Keep the same background color on hover
-                  },
-                  "&.Mui-focused": {
-                    backgroundColor: "#3B354D", // Keep the background color when focused
-                  },
-                },
-                "& .MuiInputLabel-root": {
-                  color: "#9F9BAE", // Label color
-                },
-                "& .MuiInput-underline:before": {
-                  borderBottomColor: "#9F9BAE", // Initial border color
-                },
-                "& .MuiInput-underline:after": {
-                  borderBottomColor: "#4D18E8", // Border color when focused
-                },
-                "&:focus-within": {
-                  outline: "none",
-                  boxShadow: "0 0 0 2px #4D18E8", // Focus ring when the input is focused
-                },
-              }}
-              slotProps={{
-                input: {
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <IconButton
-                        onClick={toggleConfirmPassword}
-                        sx={{
-                          color: "#9F9BAE",
-                          paddingRight: "18px", // Add padding to the right side
-                        }}
-                        edge="end"
-                      >
-                        {showConfirmPassword ? (
-                          <VisibilityRoundedIcon />
-                        ) : (
-                          <VisibilityOffRoundedIcon />
-                        )}
-                      </IconButton>
-                    </InputAdornment>
-                  ),
-                },
-              }}
-              error={!!errors.confirmPassword} // Show error style when there's an error
-            />
+                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
+                  errors.confirmPassword ? "border border-red-500" : ""
+                }`}
+                placeholder="Confirm password"
+              />
+              {/* Confirm Password Toggle Button */}
+              <button
+                type="button"
+                onClick={toggleConfirmPassword}
+                className="absolute inset-y-0 right-4 flex items-center text-[#9F9BAE]"
+              >
+                {showConfirmPassword ? (
+                  <VisibilityRoundedIcon className="w-5 h-5" />
+                ) : (
+                  <VisibilityOffRoundedIcon className="w-5 h-5" />
+                )}
+              </button>
+            </div>
             {errors.confirmPassword && (
-              <div className="text-red-500 text-sm mt-[-1px] mb-2">
+              <div className="text-red-500 text-sm mt-1">
                 {errors.confirmPassword}
               </div>
             )}
