@@ -1,7 +1,9 @@
-const express = require("express");
-const dotenv = require("dotenv");
-const { connectDB } = require("./config/db.js");
-// const userRoutes = require("./routes/userRoutes.js");
+
+const express = require('express');
+const dotenv = require('dotenv');
+const { connectDB } = require('./config/db');
+const cors = require('cors');  // Import CORS package
+const studyMaterialRoutes = require('./routes/StudyMaterial');
 
 // Load environment variables
 dotenv.config();
@@ -12,10 +14,19 @@ connectDB();
 // Initialize Express App
 const app = express();
 
-// Middleware
+// Enable CORS for all routes (you can adjust this to be more specific)
+app.use(cors({
+    origin: 'http://localhost:5173',
+}
+));
+
+// Middleware 
 app.use(express.json());
 
 // Routes
-// app.use("/api/users", userRoutes);
+app.use('/api/studyMaterial', studyMaterialRoutes);
+
+
+
 
 module.exports = app;

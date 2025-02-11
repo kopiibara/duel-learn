@@ -1,7 +1,7 @@
 [
   {
     "title": "Buhay ni Rizal",
-    "description": "Midterm Reviewer",
+    "totalItems": 5,
     "tags": ["History", "Midterm"],
     "creator": "Rizal",
     "clicked": 0,
@@ -12,7 +12,7 @@
   },
   {
     "title": "1",
-    "description": "Final Reviewer",
+    "totalItems": 5,
     "tags": ["Math", "Final"],
     "creator": "Einstein",
     "clicked": 10,
@@ -23,7 +23,7 @@
   },
   {
     "title": "2",
-    "description": "Final Reviewer",
+    "totalItems": 5,
     "tags": ["Math", "Final"],
     "creator": "Einstein",
     "clicked": 5,
@@ -34,7 +34,7 @@
   },
   {
     "title": "3",
-    "description": "Final Reviewer",
+    "totalItems": 5,
     "tags": ["Math", "Final"],
     "creator": "Einstein",
     "clicked": 5,
@@ -45,7 +45,7 @@
   },
   {
     "title": "4",
-    "description": "Final Reviewer",
+    "totalItems": 5,
     "tags": ["Math", "Final"],
     "creator": "Einstein",
     "clicked": 25,
@@ -56,7 +56,7 @@
   },
   {
     "title": "5",
-    "description": "Final Reviewer",
+    "totalItems": 5,
     "tags": ["Math", "Final"],
     "creator": "Einstein",
     "clicked": 65,
@@ -67,7 +67,7 @@
   },
   {
     "title": "6",
-    "description": "Final Reviewer",
+    "totalItems": 5,
     "tags": ["Math", "Final"],
     "creator": "Einstein",
     "clicked": 15,
@@ -78,7 +78,7 @@
   },
   {
     "title": "7",
-    "description": "Final Reviewer",
+    "totalItems": 5,
     "tags": ["Math", "Final"],
     "creator": "Einstein",
     "clicked": 9,

@@ -1,11 +1,11 @@
-import { Box, Stack, Button } from "@mui/material";
+import { Box, Stack, Button, Typography } from "@mui/material";
 import { useState, useEffect } from "react";
 import DocumentHead from "../../../components/DocumentHead";
 import ExploreCards from "./ExploreCards";
 
 type CardData = {
   title: string;
-  description: string;
+  totalItems: number;
   tags: string[];
   creator: string;
   clicked: number;
@@ -61,7 +61,6 @@ const ExplorePage = () => {
       key={index}
       sx={{
         textTransform: "none",
-        fontSize: "1.4rem",
         color: selected === index ? "#E2DDF3" : "#3B354D",
         transition: "color 0.3s",
         "&:hover": {
@@ -70,15 +69,15 @@ const ExplorePage = () => {
       }}
       onClick={() => handleClick(index)} // Pass index to handle click
     >
-      {label}
+      <Typography variant="h5">{label}</Typography>
     </Button>
   ));
 
   return (
     <Box>
       <DocumentHead title="Explore" />
-      <Stack className="px-5">
-        <Stack direction="row" spacing={1}>
+      <Stack className="px-5" spacing={2}>
+        <Stack direction="row" spacing={1} paddingX={0.5}>
           {breadcrumbs}
         </Stack>
         <ExploreCards cards={filteredCards} />
