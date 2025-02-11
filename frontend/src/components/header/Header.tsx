@@ -38,7 +38,7 @@ export default function Header() {
         </IconButton>
       )}
       {/* Search Field */}
-      <div className="flex-1 max-w-xl pr-6 pl-16">
+      <div className="flex-1 max-w-xl pl-12">
         <SearchField />
       </div>
       {/* Icon Section */}

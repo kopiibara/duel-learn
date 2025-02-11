@@ -43,7 +43,7 @@ const StatsNProfile = () => {
     <Box className="flex items-center space-x-2 sm:space-x-6">
       {/* Xp */}
       <Tooltip
-        title="Xp"
+        title="Coin"
         arrow
         sx={{
           "& .MuiTooltip-tooltip": {
@@ -56,7 +56,7 @@ const StatsNProfile = () => {
       >
         <div className="flex items-center space-x-2">
           <img src={CoinIcon} alt="Coins" className="w-6 h-6" />
-          <span className="text-yellow-500">{stats.xp}</span>
+          <span className="text-[#3B354D]">{stats.xp}</span>
         </div>
       </Tooltip>
 
@@ -75,7 +75,7 @@ const StatsNProfile = () => {
       >
         <div className="flex items-center space-x-2">
           <img src={ManaIcon} alt="Mana" className="w-6 h-6" />
-          <span className="text-purple-500">{stats.mana}</span>
+          <span className="text-[#3B354D]">{stats.mana}</span>
         </div>
       </Tooltip>
 

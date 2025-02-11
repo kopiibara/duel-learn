@@ -1,3 +1,4 @@
+
 const express = require('express');
 const dotenv = require('dotenv');
 const { connectDB } = require('./config/db');
@@ -19,11 +20,12 @@ app.use(cors({
 }
 ));
 
-// Middleware
+// Middleware 
 app.use(express.json());
 
 // Routes
 app.use('/api/studyMaterial', studyMaterialRoutes);
+
 
 
 

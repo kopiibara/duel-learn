@@ -23,7 +23,7 @@ import { useState } from "react"; // Import useState
 
 const PrivateRoutes = () => {
   const { user } = useUser();
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(0); // Define state
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(1); // Define state
 
   if (!user) {
     return <Navigate to="/landing-page" />;
