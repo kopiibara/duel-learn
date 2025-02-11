@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import ExitIcon from "../../assets/images/Exit.png";
 import React, { useState } from "react";
 import { TextField, CircularProgress } from "@mui/material";
@@ -80,7 +80,14 @@ const ForgotPassword = () => {
 
   return (
     <div className="h-screen mt-[-30px] flex flex-col items-center justify-center">
-      <div className="w-[430px] sm:w-[500px] md:w-[700px] lg:w-[800px] pb-6 text-right flex justify-end">
+      <header className="absolute top-20 left-20 right-20 flex justify-between items-center">
+        {/* Logo & Title */}
+        <Link to="/" className="flex items-center space-x-4">
+          <img src="/duel-learn-logo.svg" className="w-10 h-10" alt="icon" />
+          <p className="text-white text-xl font-semibold">Duel Learn</p>
+        </Link>
+
+        {/* Exit Button */}
         <img
           src={ExitIcon}
           alt="Exit Icon"
@@ -88,13 +95,13 @@ const ForgotPassword = () => {
           className="hover:scale-110 cursor-pointer"
           onClick={handleExitClick}
         />
-      </div>
+      </header>
 
       <div className="w-full max-w-md rounded-lg p-8 shadow-md">
-        <h1 className="text-[42px] font-bold text-center text-white mb-2">
+        <h1 className="text-3xl font-bold text-center text-white mb-2">
           Forgot Password
         </h1>
-        <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
+        <p className="text-lg text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
           Please enter your email or phone to search for your account.
         </p>
 
@@ -106,57 +113,18 @@ const ForgotPassword = () => {
 
         <form onSubmit={handleSubmit}>
           <div className="mt-0 mb-0">
-            <TextField
+            <input
               id="email"
-              label="Enter your email or phone"
-              variant="filled"
               type="text"
+              placeholder="Enter your email or phone"
               value={formData.email}
               autoComplete="off"
               onChange={(e) => handleInputChange("email", e.target.value)}
-              error={!!errors.email}
-              sx={{
-                width: "100%",
-                backgroundColor: "#3B354D",
-                color: "#E2DDF3",
-                marginBottom: "14px",
-                borderRadius: "8px",
-                "& .MuiInputBase-root": {
-                  color: "#E2DDF3",
-                  backgroundColor: "#3B354D",
-                  borderRadius: "8px",
-                  "&:hover": {
-                    backgroundColor: "#3B354D",
-                  },
-                  "&.Mui-focused": {
-                    backgroundColor: "#3B354D",
-                  },
-                },
-                "& .MuiInputLabel-root": {
-                  color: "#9F9BAE",
-                },
-                "& .MuiInput-underline:before": {
-                  borderBottomColor: "#9F9BAE",
-                },
-                "& .MuiInput-underline:after": {
-                  borderBottomColor: "#4D18E8",
-                },
-                "& .MuiFilledInput-root": {
-                  borderColor: errors.email ? "red" : "#9F9BAE",
-                  "&:hover": {
-                    borderColor: errors.email ? "red" : "#9F9BAE",
-                  },
-                },
-              }}
+              className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] ${
+                errors.email ? "border border-red-500" : ""
+              }`}
             />
-
-            {errors.email && (
-              <div className="text-red-500 mb-3 text-sm mt-[-9px]">
-                {errors.email}
-              </div>
-            )}
           </div>
-
           <button
             type="submit"
             className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
