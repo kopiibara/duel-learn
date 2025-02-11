@@ -1,6 +1,6 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import { UserProvider } from "../contexts/UserContext";
+import { Routes, Route, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import PrivateRoutes from "./PrivateRoutes";
 import LandingPage from "../pages/landing-page/LandingPage";
 import Login from "../pages/user-account/Login";
@@ -13,27 +13,24 @@ import SuccessReset from "../pages/user-account/SuccessReset";
 import SecurityCode from "../pages/user-account/SecurityCode";
 
 const AppRoutes: React.FC = () => {
+  const location = useLocation();
+
   return (
-    <UserProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/landing-page" element={<LandingPage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/sign-up" element={<SignUp />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route
-            path="/confirmation-account"
-            element={<ConfirmationAccount />}
-          />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/success-reset" element={<SuccessReset />} />
-          <Route path="/security-code" element={<SecurityCode />} />
-          <Route path="*" element={<NotFoundPage />} />
-          <Route path="/dashboard/*" element={<PrivateRoutes />} />
-        </Routes>
-      </Router>
-    </UserProvider>
+    <AnimatePresence mode="wait">
+      <Routes location={location}>
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/landing-page" element={<LandingPage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/sign-up" element={<SignUp />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/confirmation-account" element={<ConfirmationAccount />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/success-reset" element={<SuccessReset />} />
+        <Route path="/security-code" element={<SecurityCode />} />
+        <Route path="*" element={<NotFoundPage />} />
+        <Route path="/dashboard/*" element={<PrivateRoutes />} />
+      </Routes>
+    </AnimatePresence>
   );
 };
 

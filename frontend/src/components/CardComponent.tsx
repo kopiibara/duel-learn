@@ -1,4 +1,12 @@
-import { Box, Stack, Typography, Chip, Card, CardContent } from "@mui/material";
+import {
+  Box,
+  Stack,
+  Typography,
+  Chip,
+  Card,
+  CardContent,
+  CardMedia,
+} from "@mui/material";
 import { styled } from "@mui/system";
 
 interface CardComponentProps {
@@ -20,10 +28,6 @@ const CardComponent: React.FC<CardComponentProps> = ({
   tags,
   creator,
   clicked,
-  mutual,
-  date,
-  filter,
-  createdBy,
   onClick, // Destructured onClick handler
 }) => {
   const ModeCard = styled(Card)(() => ({
@@ -32,13 +36,13 @@ const CardComponent: React.FC<CardComponentProps> = ({
     justifyContent: "flex-end",
     alignItems: "flex-start",
     borderRadius: "1rem",
-    height: "16rem",
+    height: "14rem",
     cursor: "pointer",
     maxHeight: "100%",
-    background: "linear-gradient(to bottom, #ECE6FF, #DDD3FF)",
+    background: "#E2DDF3",
     position: "relative",
     transform: "scale(1)", // Initial transform state
-    transition: "all 0.3s", // Ensure smooth transition between hover and unhover states
+    transition: "all 0.3s ease", // Ensure smooth transition between hover and unhover states
     "&:hover": {
       transform: "scale(1.03)", // Scales slightly on hover
     },
@@ -58,15 +62,26 @@ const CardComponent: React.FC<CardComponentProps> = ({
         <Box
           sx={{
             position: "absolute",
-            bottom: 28,
-            left: 28,
+            bottom: 26,
+            left: 26,
             textAlign: "left",
           }}
         >
-          <Stack spacing={1}>
-            <Typography variant="body1" className="text-[#322168]">
-              {totalItems} Items
-            </Typography>
+          <Stack spacing={0}>
+            <Stack direction="row" spacing={1} alignItems={"center"}>
+              <Typography variant="body2" className="text-[#3B354D]">
+                {totalItems} Items
+              </Typography>
+              <Typography variant="subtitle2" className="text-[#3B354D]">
+                &#x2022;
+              </Typography>
+              {clicked && (
+                <Typography variant="body2" className="text-[#3B354D]">
+                  {clicked} Views
+                </Typography>
+              )}
+            </Stack>
+
             <Typography
               variant="h6"
               className="text-[#080511]"
@@ -74,7 +89,7 @@ const CardComponent: React.FC<CardComponentProps> = ({
             >
               {title}
             </Typography>
-            <Stack direction="row" spacing={1} className="w-auto">
+            <Stack direction="row" spacing={1} className="w-auto mb-2">
               {tags.map((tag, index) => (
                 <Chip
                   key={index}
@@ -89,16 +104,23 @@ const CardComponent: React.FC<CardComponentProps> = ({
                 />
               ))}
             </Stack>
-            <Typography variant="body2" className="text-[#322168]">
+            <Typography variant="body2" className="text-[#3B354D]">
               Made by <strong>{creator}</strong>
             </Typography>
-            {clicked && (
-              <Typography variant="body2" className="text-[#322168]">
-                {clicked} Views
-              </Typography>
-            )}
           </Stack>
         </Box>
+        <CardMedia
+          component="img"
+          sx={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            zIndex: -1,
+            width: "12rem",
+            height: "100%",
+          }}
+          image="/cardBackground.svg"
+        />
       </CardContent>
     </ModeCard>
   );

@@ -46,8 +46,9 @@ const DiscoverMore = () => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        height: "20rem",
+        height: "auto",
         overflow: "hidden",
+        paddingY: "1rem",
       }}
     >
       <Box

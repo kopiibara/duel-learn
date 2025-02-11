@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Box, Typography, Stack } from "@mui/material";
 import DocumentHead from "../../../components/DocumentHead";
+import PageTransition from "../../../styles/PageTransition";
+
 import MyLibraryCards from "./MyLibraryCards";
 import Filter from "./Filter";
 import { useUser } from "../../../contexts/UserContext";
@@ -98,50 +100,52 @@ const MyLibraryPage = () => {
   }, [filter, sort, cards]);
 
   return (
-    <Box>
-      <DocumentHead title="My Library" />
-      <Stack spacing={2} className="px-8">
-        <Stack
-          direction={"row"}
-          spacing={1}
-          className="flex items-center justify-center"
-        >
-          <Typography variant="h5" color="inherit">
-            My Library
-          </Typography>
-          <Typography variant="h5" color="#6F658D">
-            ({count})
-          </Typography>
-          <Box flexGrow={1} />
-          <Stack direction={"row"} spacing={2}>
-            <Filter
-              menuItems={[
-                { value: "all", label: "All" },
-                { value: "public", label: "Public" },
-                { value: "private", label: "Private" },
-                { value: "bookmark", label: "Bookmark" },
-                { value: "archive", label: "Archive" },
-              ]}
-              value={filter}
-              onChange={handleFilterChange}
-            />
-            <Filter
-              menuItems={[
-                { value: "most recent", label: "Most Recent" },
-                { value: "least recent", label: "Least Recent" },
-                { value: "A-Z", label: "A-Z" },
-                { value: "Z-A", label: "Z-A" },
-              ]}
-              value={sort}
-              onChange={handleSortChange}
-            />
+    <PageTransition>
+      <Box className="h-screen w-full">
+        <DocumentHead title="My Library" />
+        <Stack spacing={2} className="px-8">
+          <Stack
+            direction={"row"}
+            spacing={1}
+            className="flex items-center justify-center"
+          >
+            <Typography variant="h5" color="inherit">
+              My Library
+            </Typography>
+            <Typography variant="h5" color="#6F658D">
+              ({count})
+            </Typography>
+            <Box flexGrow={1} />
+            <Stack direction={"row"} spacing={2}>
+              <Filter
+                menuItems={[
+                  { value: "all", label: "All" },
+                  { value: "public", label: "Public" },
+                  { value: "private", label: "Private" },
+                  { value: "bookmark", label: "Bookmark" },
+                  { value: "archive", label: "Archive" },
+                ]}
+                value={filter}
+                onChange={handleFilterChange}
+              />
+              <Filter
+                menuItems={[
+                  { value: "most recent", label: "Most Recent" },
+                  { value: "least recent", label: "Least Recent" },
+                  { value: "A-Z", label: "A-Z" },
+                  { value: "Z-A", label: "Z-A" },
+                ]}
+                value={sort}
+                onChange={handleSortChange}
+              />
+            </Stack>
           </Stack>
+          {created_by && (
+            <MyLibraryCards cards={filteredCards} createdBy={created_by} />
+          )}
         </Stack>
-        {created_by && (
-          <MyLibraryCards cards={filteredCards} createdBy={created_by} />
-        )}
-      </Stack>
-    </Box>
+      </Box>
+    </PageTransition>
   );
 };
 
