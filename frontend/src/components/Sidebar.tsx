@@ -71,10 +71,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   const handleModalClose = () => setOpenModal(false);
 
   const handleItemClick = (index: number, path: string) => {
-    setSelectedIndex(index);
-    setCollapsed(fromCreate ? false : collapsed);
-    setFromCreate(false);
-    navigate(path);
+    if (selectedIndex !== index) {
+      setSelectedIndex(index);
+      navigate(path);
+    }
   };
 
   const toggleCollapse = () => setCollapsed(!collapsed);
@@ -104,7 +104,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           width: "full",
           justifyContent: "center",
           alignItems: "center",
-          transition: "transform 0.3s ease, background-color 0.3s ease", // Smooth transition for hover effects
+          transition: "all 0.3s ease", // Smooth transition for hover effects
           ...(variant === "contained" && {
             backgroundColor: "#4D18E8",
             borderWidth: "2px",
@@ -135,6 +135,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   );
 
   React.useEffect(() => {
+    console.log("Current Path:", location.pathname);
     const index = menuItems.findIndex(
       (item) => item.path === location.pathname
     );
@@ -147,7 +148,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         className="h-full w-full pl-2 mx-2 py-12 flex flex-col justify-between"
         spacing={2}
         sx={{
-          width: collapsed ? "5.5rem" : "16rem",
+          width: collapsed ? "5.5rem" : "15rem",
           transition: "width 0.35s",
         }}
       >
@@ -185,6 +186,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               size="small"
               sx={{
                 backgroundColor: "transparent",
+                transition: "all 0.3s ease", // Smooth transition for visibility
                 "& .MuiSvgIcon-root": { color: "#3B354D" },
                 "&:hover": {
                   backgroundColor: "#3B354D",
@@ -250,8 +252,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         color: "#4D18E8",
                         transform: "scale(1.05)",
                       },
-                      transition:
-                        "transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease",
+                      transition: "all 0.3s ease",
                       justifyContent: collapsed ? "center" : "center",
                       padding: "0.6rem 1.6rem",
                       color: "#E2DDF3",

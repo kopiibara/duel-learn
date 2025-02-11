@@ -46,8 +46,9 @@ const RecentlyOpened = () => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        height: "20rem",
+        height: "auto",
         overflow: "hidden",
+        paddingY: "1rem",
       }}
     >
       <Box
@@ -84,6 +85,7 @@ const RecentlyOpened = () => {
           opacity: isPrevDisabled ? 0 : 1, // Hide when disabled
           pointerEvents: isPrevDisabled ? "none" : "auto", // Disable interactions when not visible
           backgroundColor: "transparent",
+          transition: "all 0.3s ease", // Smooth transition for visibility
           "& .MuiSvgIcon-root": {
             color: "#3B354D",
           },
