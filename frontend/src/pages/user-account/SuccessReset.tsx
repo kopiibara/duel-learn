@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import React, { useState } from "react";
 import ProfileAvatar from "../../assets/images/profileAvatar.png";
-import sampleAvatar2 from "../../assets/images/sampleAvatar2.jpg";
+import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 
 const SuccessReset = () => {
   const navigate = useNavigate();

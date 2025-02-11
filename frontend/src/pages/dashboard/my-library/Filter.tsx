@@ -30,6 +30,7 @@ const Filter: React.FC<FilterProps> = ({ menuItems, value, onChange }) => {
             backgroundColor: "transparent", // Background color
             color: "#6F658D", // Text color
             borderRadius: "8px", // Rounded corners
+            fontSize: "14px", // Font size
             "& .MuiSelect-icon": {
               color: "#6F658D", // Change the dropdown arrow color
             },
