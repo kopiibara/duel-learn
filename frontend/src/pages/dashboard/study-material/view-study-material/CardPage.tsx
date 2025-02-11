@@ -4,15 +4,16 @@ interface Item {
   term: string;
   definition: string;
 }
+
 interface StudyMaterial {
   title: string;
   tags: string[];
   images: string[];
-  total_items: string;
+  total_items: number;
   created_by: string;
   total_views: number;
   created_at: string;
-  items: Item[];
+  items: Item[]; // Expecting an array of terms and definitions
 }
 
 interface CardPageProps {
@@ -23,11 +24,13 @@ const CardPage = ({ studyMaterial }: CardPageProps) => {
   return (
     <Stack spacing={2}>
       {/* Check if study material is available and contains items */}
-      {studyMaterial && studyMaterial.items.length > 0 ? (
+      {studyMaterial &&
+      studyMaterial.items &&
+      studyMaterial.items.length > 0 ? (
         studyMaterial.items.map((item, index) => (
           <Box
             key={index}
-            className="bg-[#E2DDF3] p-8 rounded-[0.8rem] shadow-lg"
+            className="bg-[#E2DDF3] py-4 px-8 rounded-[0.8rem] shadow-lg"
           >
             <Typography
               variant="h6"
@@ -42,7 +45,7 @@ const CardPage = ({ studyMaterial }: CardPageProps) => {
           </Box>
         ))
       ) : (
-        // Fallback when no items are present
+        // Fallback when no items are present or data is still loading
         <Box
           className="bg-[#E2DDF3] p-8 rounded-[0.8rem] shadow-lg"
           display="flex"
@@ -50,7 +53,10 @@ const CardPage = ({ studyMaterial }: CardPageProps) => {
           alignItems="center"
         >
           <Typography variant="body1" className="text-[#120F1D]">
-            {studyMaterial ? "No items found." : "Loading..."}
+            {studyMaterial === null
+              ? "Loading..." // Show Loading if studyMaterial is not available
+              : "No items found."}{" "}
+            {/* Show No items message if studyMaterial is empty */}
           </Typography>
         </Box>
       )}

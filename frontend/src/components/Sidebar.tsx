@@ -19,8 +19,13 @@ import AddIcon from "@mui/icons-material/Add";
 import PlayIcon from "@mui/icons-material/PlayArrowRounded";
 import ArrowBackIcon from "@mui/icons-material/ArrowBackIosNewRounded";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForwardIosRounded";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import ChooseModeModal from "./modals/ChooseModeModal"; // Import the modal component
+
+interface SidebarProps {
+  selectedIndex: number | null;
+  setSelectedIndex: React.Dispatch<React.SetStateAction<number | null>>;
+}
 
 const menuItems = [
   {
@@ -50,30 +55,34 @@ const menuItems = [
   },
 ];
 
-export default function Sidebar() {
+const Sidebar: React.FC<SidebarProps> = ({
+  selectedIndex,
+  setSelectedIndex,
+}) => {
   const navigate = useNavigate();
-  const [selectedIndex, setSelectedIndex] = React.useState<number | null>(0);
+  const location = useLocation();
+
   const [collapsed, setCollapsed] = React.useState(false);
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
-  const [fromCreate, setFromCreate] = React.useState(false); // Tracks if navigation came from Create button
+  const [fromCreate, setFromCreate] = React.useState(false);
+  const [openModal, setOpenModal] = React.useState(false);
 
-  const [openModal, setOpenModal] = React.useState(false); // Modal state
   const handleModalOpen = () => setOpenModal(true);
   const handleModalClose = () => setOpenModal(false);
 
   const handleItemClick = (index: number, path: string) => {
     setSelectedIndex(index);
-    setCollapsed(fromCreate ? false : collapsed); // Uncollapse if navigation came from Create button
-    setFromCreate(false); // Reset the Create navigation state
+    setCollapsed(fromCreate ? false : collapsed);
+    setFromCreate(false);
     navigate(path);
   };
 
   const toggleCollapse = () => setCollapsed(!collapsed);
 
   const handleCreateStudyMaterial = () => {
-    setSelectedIndex(null); // Deselect the list items
-    setFromCreate(true); // Mark that navigation originated from Create button
-    setCollapsed(true); // Collapse the sidebar
+    setSelectedIndex(null);
+    setFromCreate(true);
+    setCollapsed(true);
     navigate("/dashboard/study-material/create");
   };
 
@@ -95,11 +104,19 @@ export default function Sidebar() {
           width: "full",
           justifyContent: "center",
           alignItems: "center",
-          ...(variant === "contained" && { backgroundColor: "#4D18E8" }),
+          transition: "transform 0.3s ease, background-color 0.3s ease", // Smooth transition for hover effects
+          ...(variant === "contained" && {
+            backgroundColor: "#4D18E8",
+            borderWidth: "2px",
+          }),
           ...(variant === "outlined" && {
             borderColor: "#E2DDF3",
+            borderWidth: "2px",
             color: "#E2DDF3",
           }),
+          "&:hover": {
+            transform: "scale(1.05)",
+          },
         }}
       >
         {icon}
@@ -109,10 +126,7 @@ export default function Sidebar() {
             "opacity-0 w-auto": collapsed,
             "opacity-100 w-auto": !collapsed,
           })}
-          sx={{
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-          }}
+          sx={{ whiteSpace: "nowrap", overflow: "hidden" }}
         >
           {text}
         </Typography>
@@ -120,10 +134,17 @@ export default function Sidebar() {
     </Tooltip>
   );
 
+  React.useEffect(() => {
+    const index = menuItems.findIndex(
+      (item) => item.path === location.pathname
+    );
+    setSelectedIndex(index !== -1 ? index : null);
+  }, [location.pathname]);
+
   return (
     <Box style={{ display: "flex", position: "relative" }}>
       <Stack
-        className="h-full w-full pl-2 mx-2  py-12 flex flex-col justify-between"
+        className="h-full w-full pl-2 mx-2 py-12 flex flex-col justify-between"
         spacing={2}
         sx={{
           width: collapsed ? "5.5rem" : "16rem",
@@ -133,8 +154,13 @@ export default function Sidebar() {
         <Stack spacing={3} className="flex">
           <Stack direction="row" className="flex items-center" spacing={2}>
             <IconButton
-              aria-label="navigate to landing page"
               onClick={() => navigate("/landing-page")}
+              sx={{
+                transition: "transform 0.3s ease",
+                "&:hover": {
+                  transform: "scale(1.1)",
+                },
+              }}
             >
               <img
                 src="/duel-learn-logo.svg"
@@ -149,10 +175,7 @@ export default function Sidebar() {
                 "opacity-0 w-auto": collapsed,
                 "opacity-100 w-auto": !collapsed,
               })}
-              sx={{
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-              }}
+              sx={{ whiteSpace: "nowrap", overflow: "hidden" }}
             >
               Duel Learn
             </Typography>
@@ -162,14 +185,10 @@ export default function Sidebar() {
               size="small"
               sx={{
                 backgroundColor: "transparent",
-                "& .MuiSvgIcon-root": {
-                  color: "#3B354D",
-                },
+                "& .MuiSvgIcon-root": { color: "#3B354D" },
                 "&:hover": {
                   backgroundColor: "#3B354D",
-                  "& .MuiSvgIcon-root": {
-                    color: "#E2DDF3",
-                  },
+                  "& .MuiSvgIcon-root": { color: "#E2DDF3" },
                 },
               }}
               className={clsx(
@@ -200,10 +219,11 @@ export default function Sidebar() {
             />,
             "Play",
             "outlined",
-            handleModalOpen // Opens the modal when "Play" is clicked
+            handleModalOpen
           )}
-          <Divider className="bg-[#3F3565]" />
+          <Divider />
         </Stack>
+
         <nav aria-label="sidebar">
           <List>
             {menuItems.map((item, index) => (
@@ -212,6 +232,12 @@ export default function Sidebar() {
                   title={collapsed ? item.title : ""}
                   placement="right"
                   arrow
+                  sx={{
+                    fontSize: "16px",
+                    backgroundColor: "yellow",
+                    color: "blue",
+                    borderRadius: "8px",
+                  }}
                 >
                   <ListItemButton
                     selected={selectedIndex === index}
@@ -219,13 +245,19 @@ export default function Sidebar() {
                     sx={{
                       "&:hover, &.Mui-selected": {
                         borderColor: "#4D18E8",
-                        borderWidth: "1px",
+                        borderWidth: "2px",
                         borderStyle: "solid",
-                        borderRadius: "0.8rem",
                         color: "#4D18E8",
+                        transform: "scale(1.05)",
                       },
+                      transition:
+                        "transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease",
                       justifyContent: collapsed ? "center" : "center",
-                      padding: "0.5rem 1.4rem",
+                      padding: "0.6rem 1.6rem",
+                      color: "#E2DDF3",
+                      borderColor: "#080511",
+                      borderWidth: "2px",
+                      borderStyle: "solid",
                       borderRadius: "0.8rem",
                     }}
                     onMouseEnter={() => setHoveredIndex(index)}
@@ -238,7 +270,6 @@ export default function Sidebar() {
                         display: "flex",
                         alignItems: "center",
                         marginRight: collapsed ? 0 : "1rem",
-                        width: collapsed ? "100%" : "auto",
                       }}
                     >
                       <img
@@ -251,17 +282,13 @@ export default function Sidebar() {
                         alt={`${item.title} icon`}
                       />
                     </ListItemIcon>
-
                     <ListItemText
                       primary={item.title}
                       className={clsx("transition-all duration-0", {
                         "opacity-0 w-auto": collapsed,
                         "opacity-100 w-auto": !collapsed,
                       })}
-                      sx={{
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                      }}
+                      sx={{ whiteSpace: "nowrap", overflow: "hidden" }}
                     />
                   </ListItemButton>
                 </Tooltip>
@@ -271,8 +298,9 @@ export default function Sidebar() {
         </nav>
       </Stack>
 
-      {/* Modal */}
       <ChooseModeModal open={openModal} handleClose={handleModalClose} />
     </Box>
   );
-}
+};
+
+export default Sidebar;

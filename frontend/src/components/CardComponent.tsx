@@ -1,6 +1,5 @@
 import { Box, Stack, Typography, Chip, Card, CardContent } from "@mui/material";
 import { styled } from "@mui/system";
-import PropTypes from "prop-types";
 
 interface CardComponentProps {
   title: string;
@@ -12,6 +11,7 @@ interface CardComponentProps {
   date?: string;
   filter?: string;
   createdBy?: string;
+  onClick?: () => void; // Optional onClick prop to handle card clicks
 }
 
 const CardComponent: React.FC<CardComponentProps> = ({
@@ -19,6 +19,12 @@ const CardComponent: React.FC<CardComponentProps> = ({
   totalItems,
   tags,
   creator,
+  clicked,
+  mutual,
+  date,
+  filter,
+  createdBy,
+  onClick, // Destructured onClick handler
 }) => {
   const ModeCard = styled(Card)(() => ({
     display: "flex",
@@ -39,7 +45,9 @@ const CardComponent: React.FC<CardComponentProps> = ({
   }));
 
   return (
-    <ModeCard>
+    <ModeCard onClick={onClick}>
+      {" "}
+      {/* Added onClick to the card */}
       <CardContent
         sx={{
           display: "flex",
@@ -84,23 +92,16 @@ const CardComponent: React.FC<CardComponentProps> = ({
             <Typography variant="body2" className="text-[#322168]">
               Made by <strong>{creator}</strong>
             </Typography>
+            {clicked && (
+              <Typography variant="body2" className="text-[#322168]">
+                {clicked} Views
+              </Typography>
+            )}
           </Stack>
         </Box>
       </CardContent>
     </ModeCard>
   );
-};
-
-CardComponent.propTypes = {
-  title: PropTypes.string.isRequired,
-  totalItems: PropTypes.number.isRequired,
-  tags: PropTypes.arrayOf(PropTypes.string.isRequired).isRequired,
-  creator: PropTypes.string.isRequired,
-  clicked: PropTypes.number,
-  mutual: PropTypes.string,
-  date: PropTypes.string,
-  filter: PropTypes.string,
-  createdBy: PropTypes.string,
 };
 
 export default CardComponent;
