@@ -14,6 +14,7 @@ import { useMediaQuery } from "@mui/material"; // Import useMediaQuery from Mate
 const DashboardLayout = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isMobile = useMediaQuery("(max-width:1022px)"); // Check if the screen size is mobile
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(0);
 
   const toggleDrawer = (open: boolean) => {
     setDrawerOpen(open);
@@ -24,7 +25,10 @@ const DashboardLayout = () => {
       {/* Sidebar (hidden on small screens) */}
       <aside className="hidden lg:block pl-4 pr-5 h-screen sticky top-0">
         <Box>
-          <Sidebar />
+          <Sidebar
+            selectedIndex={selectedIndex}
+            setSelectedIndex={setSelectedIndex}
+          />
         </Box>
       </aside>
 

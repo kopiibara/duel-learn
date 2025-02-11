@@ -1,47 +1,83 @@
 import { useState, useEffect } from "react";
-import { Box, Stack, Typography, Button, Divider, Chip } from "@mui/material";
-import DocumentHead from "../../../../components/DocumentHead";
+import { Box, Stack, Typography, Button, Chip, Divider } from "@mui/material";
+import { useParams } from "react-router-dom";
 import SummaryPage from "./SummaryPage";
 import CardPage from "./CardPage";
+import DocumentHead from "../../../../components/DocumentHead";
 
 interface Item {
   term: string;
   definition: string;
 }
+
 interface StudyMaterial {
   title: string;
   tags: string[];
   images: string[];
-  total_items: string;
+  total_items: number;
   created_by: string;
   total_views: number;
   created_at: string;
-  items: Item[];
+  items: Item[]; // Combined terms and definitions into items
 }
+
 const ViewStudyMaterial = () => {
+  const { studyMaterialId } = useParams();
   const [selected, setSelected] = useState("Summary");
   const [studyMaterial, setStudyMaterial] = useState<StudyMaterial | null>(
     null
   );
 
+  const formatDate = (dateString: string) => {
+    const options: Intl.DateTimeFormatOptions = {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", options); // You can replace "en-US" with your preferred locale
+  };
+
   useEffect(() => {
-    fetch("http://localhost:5001/api/get-study-material")
+    if (!studyMaterialId) return;
+
+    fetch(
+      `http://localhost:5000/api/studyMaterial/get-study-material/${studyMaterialId}`
+    )
       .then((response) => response.json())
-      .then((data: StudyMaterial[]) => {
-        if (data.length > 0) {
-          setStudyMaterial(data[0]); // Only set one study material
+      .then((data) => {
+        console.log("API Response:", data); // Debugging the response
+        if (data.data) {
+          const terms = JSON.parse(data.data.terms || "[]"); // Parse the stringified JSON array
+          const definitions = JSON.parse(data.data.definitions || "[]"); // Parse the stringified JSON array
+
+          // Check if both arrays are the same length
+          if (terms.length === definitions.length) {
+            // Combine terms and definitions into items
+            const items = terms.map((term: string, index: number) => ({
+              term,
+              definition: definitions[index] || "",
+            }));
+
+            setStudyMaterial({
+              ...data.data,
+              items, // Set items with term-definition pairs
+              tags: JSON.parse(data.data.tags || "[]"),
+            });
+          } else {
+            console.error("Terms and definitions arrays are mismatched.");
+          }
+        } else {
+          console.error("Invalid response format:", data);
         }
       })
-      .catch((error) =>
-        console.error("Error fetching study material data:", error)
-      );
-  }, []);
+      .catch((error) => console.error("Error fetching study material:", error));
+  }, [studyMaterialId]);
 
   return (
     <Box className="h-screen w-full px-8">
       <DocumentHead title="View Study Material" />
       <Stack spacing={2.5}>
-        {/* Header */}
         <Stack direction="row" spacing={2} alignItems="center">
           <Typography variant="h4" fontWeight="bold">
             {studyMaterial ? studyMaterial.title : "Loading..."}
@@ -83,7 +119,9 @@ const ViewStudyMaterial = () => {
             <Typography variant="subtitle1">
               Created on{" "}
               <strong>
-                {studyMaterial ? studyMaterial["created_at"] : "Loading..."}
+                {studyMaterial
+                  ? formatDate(studyMaterial.created_at)
+                  : "Loading..."}
               </strong>
             </Typography>
           </Stack>
@@ -99,7 +137,7 @@ const ViewStudyMaterial = () => {
             <Typography variant="subtitle1">
               Studied by{" "}
               <strong>
-                {studyMaterial ? studyMaterial["total_views"] : "Loading..."}{" "}
+                {studyMaterial ? studyMaterial.total_views : "Loading..."}{" "}
                 People
               </strong>
             </Typography>
@@ -111,6 +149,7 @@ const ViewStudyMaterial = () => {
           <Typography variant="subtitle1">Tags</Typography>
           <Stack direction="row" spacing={1}>
             {studyMaterial &&
+              Array.isArray(studyMaterial.tags) && // Check if tags is an array
               studyMaterial.tags.map((tag: string, index: number) => (
                 <Chip
                   key={index}
@@ -128,8 +167,8 @@ const ViewStudyMaterial = () => {
         {/* Item Counter */}
         <Stack direction="row" alignItems="center" spacing={1}>
           <Typography variant="subtitle1" className="text-[#3B354D] font-bold">
-            {studyMaterial && studyMaterial.items
-              ? `${studyMaterial.items.length} ITEMS`
+            {studyMaterial && studyMaterial.total_items
+              ? `${studyMaterial.total_items} ITEMS`
               : "0 ITEMS"}
           </Typography>
           <Divider className="bg-[#3B354D] flex-1" />

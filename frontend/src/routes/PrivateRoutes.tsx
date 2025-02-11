@@ -19,9 +19,11 @@ import TutorialFour from "../pages/user-onboarding/TutorialFour";
 import TutorialFive from "../pages/user-onboarding/TutorialFive";
 import TutorialSix from "../pages/user-onboarding/TutorialSix";
 import TutorialLast from "../pages/user-onboarding/TutorialLast";
+import { useState } from "react"; // Import useState
 
 const PrivateRoutes = () => {
   const { user } = useUser();
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(0); // Define state
 
   if (!user) {
     return <Navigate to="/landing-page" />;
@@ -43,13 +45,19 @@ const PrivateRoutes = () => {
 
       {/* Routes for the main dashboard after onboarding */}
       <Route element={<DashboardLayout />}>
-        <Route path="home" element={<Home />} />
+        <Route
+          path="home"
+          element={<Home setSelectedIndex={setSelectedIndex} />}
+        />
         <Route path="explore" element={<Explore />} />
         <Route path="my-library" element={<YourLibrary />} />
         <Route path="profile" element={<Profile />} />
         <Route path="shop" element={<Shop />} />
         <Route path="study-material/create" element={<CreateStudyMaterial />} />
-        <Route path="study-material/view" element={<ViewStudyMaterial />} />
+        <Route
+          path="study-material/preview/:studyMaterialId"
+          element={<ViewStudyMaterial />}
+        />
       </Route>
 
       {/* Route for buying premium account */}
