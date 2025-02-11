@@ -1,22 +1,23 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Box, Stack, Typography, Button, Divider, Chip } from "@mui/material";
 import DocumentHead from "../../../../components/DocumentHead";
 import SummaryPage from "./SummaryPage";
 import CardPage from "./CardPage";
 
+interface Item {
+  term: string;
+  definition: string;
+}
 interface StudyMaterial {
   title: string;
-  description: string;
   tags: string[];
-  creator: string;
-  "date-created": string;
-  "no-people": number;
-  items: {
-    term: string;
-    definition: string;
-  }[];
+  images: string[];
+  total_items: string;
+  created_by: string;
+  total_views: number;
+  created_at: string;
+  items: Item[];
 }
-
 const ViewStudyMaterial = () => {
   const [selected, setSelected] = useState("Summary");
   const [studyMaterial, setStudyMaterial] = useState<StudyMaterial | null>(
@@ -24,7 +25,7 @@ const ViewStudyMaterial = () => {
   );
 
   useEffect(() => {
-    fetch("/mock-data/StudyMaterialData.json")
+    fetch("http://localhost:5001/api/get-study-material")
       .then((response) => response.json())
       .then((data: StudyMaterial[]) => {
         if (data.length > 0) {
@@ -82,7 +83,7 @@ const ViewStudyMaterial = () => {
             <Typography variant="subtitle1">
               Created on{" "}
               <strong>
-                {studyMaterial ? studyMaterial["date-created"] : "Loading..."}
+                {studyMaterial ? studyMaterial["created_at"] : "Loading..."}
               </strong>
             </Typography>
           </Stack>
@@ -98,7 +99,7 @@ const ViewStudyMaterial = () => {
             <Typography variant="subtitle1">
               Studied by{" "}
               <strong>
-                {studyMaterial ? studyMaterial["no-people"] : "Loading..."}{" "}
+                {studyMaterial ? studyMaterial["total_views"] : "Loading..."}{" "}
                 People
               </strong>
             </Typography>
@@ -124,7 +125,6 @@ const ViewStudyMaterial = () => {
           </Stack>
         </Stack>
 
-        {/* Item Counter */}
         {/* Item Counter */}
         <Stack direction="row" alignItems="center" spacing={1}>
           <Typography variant="subtitle1" className="text-[#3B354D] font-bold">
@@ -158,7 +158,7 @@ const ViewStudyMaterial = () => {
               >
                 {label}
               </Button>
-            ))}{" "}
+            ))}
           </Stack>
 
           {/* Content Switching */}

@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 
 interface CardComponentProps {
   title: string;
-  description: string;
+  totalItems: number;
   tags: string[];
   creator: string;
   clicked?: number;
@@ -16,7 +16,7 @@ interface CardComponentProps {
 
 const CardComponent: React.FC<CardComponentProps> = ({
   title,
-  description,
+  totalItems,
   tags,
   creator,
 }) => {
@@ -57,7 +57,7 @@ const CardComponent: React.FC<CardComponentProps> = ({
         >
           <Stack spacing={1}>
             <Typography variant="body1" className="text-[#322168]">
-              {description}
+              {totalItems} Items
             </Typography>
             <Typography
               variant="h6"
@@ -66,7 +66,7 @@ const CardComponent: React.FC<CardComponentProps> = ({
             >
               {title}
             </Typography>
-            <Stack direction="row" spacing={1}>
+            <Stack direction="row" spacing={1} className="w-auto">
               {tags.map((tag, index) => (
                 <Chip
                   key={index}
@@ -93,7 +93,7 @@ const CardComponent: React.FC<CardComponentProps> = ({
 
 CardComponent.propTypes = {
   title: PropTypes.string.isRequired,
-  description: PropTypes.string.isRequired,
+  totalItems: PropTypes.number.isRequired,
   tags: PropTypes.arrayOf(PropTypes.string.isRequired).isRequired,
   creator: PropTypes.string.isRequired,
   clicked: PropTypes.number,

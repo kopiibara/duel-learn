@@ -219,7 +219,7 @@ export default function Sidebar() {
                     sx={{
                       "&:hover, &.Mui-selected": {
                         borderColor: "#4D18E8",
-                        borderWidth: "2px",
+                        borderWidth: "1px",
                         borderStyle: "solid",
                         borderRadius: "0.8rem",
                         color: "#4D18E8",
@@ -227,7 +227,6 @@ export default function Sidebar() {
                       justifyContent: collapsed ? "center" : "center",
                       padding: "0.5rem 1.4rem",
                       borderRadius: "0.8rem",
-                      transition: "all 0.15s",
                     }}
                     onMouseEnter={() => setHoveredIndex(index)}
                     onMouseLeave={() => setHoveredIndex(null)}
@@ -240,8 +239,6 @@ export default function Sidebar() {
                         alignItems: "center",
                         marginRight: collapsed ? 0 : "1rem",
                         width: collapsed ? "100%" : "auto",
-                        transition:
-                          "margin-right 0.35s, width 0.35s, opacity 0.35s",
                       }}
                     >
                       <img
@@ -264,7 +261,6 @@ export default function Sidebar() {
                       sx={{
                         whiteSpace: "nowrap",
                         overflow: "hidden",
-                        transition: "opacity 0.35s",
                       }}
                     />
                   </ListItemButton>

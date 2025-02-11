@@ -3,8 +3,8 @@ import CoinIcon from "../../assets/CoinIcon.png";
 import ManaIcon from "../../assets/ManaIcon.png";
 import Tooltip from "@mui/material/Tooltip"; // Import Tooltip from Material-UI
 import ProfilePopover from "./ProfilePopover"; // Import the ProfilePopover component
-import { useUser } from "../../contexts/UserContext"; // Import the useUser hook
 import { Avatar, Box } from "@mui/material"; // Import Avatar from Material-UI
+import { useUser } from "../../contexts/UserContext"; // Import the useUser hook
 
 const StatsNProfile = () => {
   const { user } = useUser();
