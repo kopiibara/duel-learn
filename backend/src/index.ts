@@ -1,21 +1,28 @@
-import express, { Application } from "express";
+import express from "express";
+import studyMaterialRouter from "./routes/study-materials/route"; // Adjust the path accordingly
 import dotenv from "dotenv";
-import { pool, connectDB } from "./config/databaseConnection"; // Ensure correct path
-// import userRoutes from "./routes/userRoutes"; // If using ES module syntax
+import cors from "cors"; // Import the cors package
 
-// Load environment variables
 dotenv.config();
 
-// Connect to Database
-connectDB();
+const app = express();
 
-// Initialize Express App
-const app: Application = express(); // Explicitly type Express app
+// Enable CORS to allow requests from your frontend (assuming it's running on localhost:3000)
+app.use(
+  cors({
+    origin: "http://localhost:5173", // Specify the frontend URL
+    methods: ["GET", "POST"], // Specify allowed HTTP methods
+  })
+);
 
-// Middleware
-app.use(express.json());
+app.use(express.json()); // Middleware to parse JSON request bodies
 
-// Routes
-// app.use("/api/users", userRoutes); // Uncomment when needed
+// Mount the studyMaterialRouter at /api
+app.use("/api", studyMaterialRouter);
 
-export default app;
+// Test a basic route to verify the server is running
+app.get("/", (req, res) => {
+  res.send("Server is up and running!");
+});
+
+export default app; // This is important for server.ts to import and run

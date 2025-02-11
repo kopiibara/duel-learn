@@ -12,13 +12,20 @@ import {
 import ItemComponent from "./ItemComponent";
 import { motion, AnimatePresence } from "framer-motion"; // Importing from Framer Motion
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
 
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
+  const { user } = useUser(); // Access the user object from the context
   const [tags, setTags] = useState<string[]>([]);
+  const [title, setTitle] = useState("");
   const [currentTag, setCurrentTag] = useState("");
   const [items, setItems] = useState<
-    { id: number; term: string; definition: string }[]
+    {
+      id: number;
+      term: string;
+      definition: string;
+    }[]
   >([]);
 
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -53,9 +60,49 @@ const CreateStudyMaterial = () => {
     );
   };
 
-  const handleSaveButton = () => {
-    // Save the study material
-    navigate("/dashboard/study-material/view");
+  const handleSaveButton = async () => {
+    if (!user?.displayName) {
+      console.error("User is not authenticated");
+      return;
+    }
+
+    const studyMaterial = {
+      title,
+      tags,
+      totalItems: items.length,
+      items,
+      terms: items.map((item) => item.term),
+      definitions: items.map((item) => item.definition),
+      visibility: 0,
+      createdBy: user.displayName,
+    };
+
+    console.log("Attempting to save:", studyMaterial);
+
+    try {
+      const response = await fetch(
+        "http://localhost:5001/api/save-study-material",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(studyMaterial),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Server error: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      console.log("Study material saved:", data);
+      navigate("/dashboard/study-material/view");
+    } catch (error) {
+      console.error("Failed to save study material:", error);
+    }
   };
 
   const handleUploadFile = () => {
@@ -83,6 +130,8 @@ const CreateStudyMaterial = () => {
               label="Title"
               variant="standard"
               size="medium"
+              value={title} // <-- Bind to state
+              onChange={(e) => setTitle(e.target.value)} // <-- Update state on change
               sx={{
                 width: "32rem",
                 "& .MuiInputLabel-root": { color: "#3B354D" },
@@ -97,6 +146,7 @@ const CreateStudyMaterial = () => {
                 "& .MuiInput-underline:after": { borderBottomColor: "#381898" },
               }}
             />
+
             <Box flexGrow={1} />
             <Button
               variant="contained"

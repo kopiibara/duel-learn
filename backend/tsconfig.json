@@ -1,14 +1,12 @@
 {
   "compilerOptions": {
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "outDir": "./dist",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "target": "ES2020",
-    "strict": true,
-    "esModuleInterop": true
+    "outDir": "./dist", // Compiled files should go to dist
+    "rootDir": "./src", // Your source files are in src
+    "esModuleInterop": true,
+    "moduleResolution": "node", // Ensure Node-style resolution
+    "target": "ES2020", // Or whatever version you need
+    "module": "CommonJS" // Ensures compatibility with Node.js
   },
-  "include": ["./"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
 }

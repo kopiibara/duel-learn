@@ -1,6 +1,5 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
-
 import DashboardLayout from "../layouts/DashboardLayout";
 import Home from "../pages/dashboard/home/HomePage";
 import Explore from "../pages/dashboard/explore/ExplorePage";
@@ -11,15 +10,15 @@ import BuyPremium from "../pages/dashboard/shop/BuyPremium";
 import CreateStudyMaterial from "../pages/dashboard/study-material/material-create/CreateStudyMaterial";
 import ViewStudyMaterial from "../pages/dashboard/study-material/view-study-material/ViewStudyMaterial";
 import SetUpQuestionType from "../pages/dashboard/play-battleground/SetUpQuestionType";
-import WelcomePage from "../pages/Useronboarding/WelcomePage";
-import TutorialOnePage from "../pages/Useronboarding/TutorialOne";
-import TutorialTwo from "../pages/Useronboarding/TutorialTwo";
-import Personalization from "../pages/Useronboarding/Personalization";
-import TutorialThree from "../pages/Useronboarding/TutorialThree";
-import TutorialFour from "../pages/Useronboarding/TutorialFour";
-import TutorialFive from "../pages/Useronboarding/TutorialFive";
-import TutorialSix from "../pages/Useronboarding/TutorialSix";
-import TutorialLast from "../pages/Useronboarding/TutorialLast";
+import WelcomePage from "../pages/user-onboarding/WelcomePage";
+import TutorialOnePage from "../pages/user-onboarding/TutorialOne";
+import TutorialTwo from "../pages/user-onboarding/TutorialTwo";
+import Personalization from "../pages/user-onboarding/Personalization";
+import TutorialThree from "../pages/user-onboarding/TutorialThree";
+import TutorialFour from "../pages/user-onboarding/TutorialFour";
+import TutorialFive from "../pages/user-onboarding/TutorialFive";
+import TutorialSix from "../pages/user-onboarding/TutorialSix";
+import TutorialLast from "../pages/user-onboarding/TutorialLast";
 
 const PrivateRoutes = () => {
   const { user } = useUser();

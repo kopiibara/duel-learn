@@ -146,7 +146,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
               <Stack spacing={2}>
                 <textarea
                   id="definition"
-                  className="border-none outline-none bg-[#3B354D] text-[#E2DDF3] resize-none w-[40rem] text-[1rem] py-2 px-4 text-left rounded-[0.6rem] overflow-hidden"
+                  className="border-none outline-none bg-[#3B354D] text-[#E2DDF3] resize-none w-[36rem] text-[1rem] py-2 px-4 text-left rounded-[0.6rem] overflow-hidden"
                   rows={1}
                   placeholder="Enter definition"
                   value={item.definition}

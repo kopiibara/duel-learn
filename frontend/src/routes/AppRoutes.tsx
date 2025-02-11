@@ -30,7 +30,6 @@ const AppRoutes: React.FC = () => {
           <Route path="/success-reset" element={<SuccessReset />} />
           <Route path="/security-code" element={<SecurityCode />} />
           <Route path="*" element={<NotFoundPage />} />
-          //* dito muna route ng useronboarding
           <Route path="/dashboard/*" element={<PrivateRoutes />} />
         </Routes>
       </Router>

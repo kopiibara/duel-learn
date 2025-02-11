@@ -1,18 +1,19 @@
 import { Box, Stack, Typography } from "@mui/material";
 
+interface Item {
+  term: string;
+  definition: string;
+}
 interface StudyMaterial {
   title: string;
-  description: string;
   tags: string[];
-  creator: string;
-  "date-created": string;
-  "no-people": number;
-  items: {
-    term: string;
-    definition: string;
-  }[];
+  images: string[];
+  total_items: string;
+  created_by: string;
+  total_views: number;
+  created_at: string;
+  items: Item[];
 }
-
 interface SummaryPageProps {
   studyMaterial: StudyMaterial | null;
 }
