@@ -12,13 +12,20 @@ import {
 import ItemComponent from "./ItemComponent";
 import { motion, AnimatePresence } from "framer-motion"; // Importing from Framer Motion
 import { useNavigate } from "react-router-dom";
+import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
 
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
+  const { user } = useUser(); // Access the user object from the context
   const [tags, setTags] = useState<string[]>([]);
+  const [title, setTitle] = useState("");
   const [currentTag, setCurrentTag] = useState("");
   const [items, setItems] = useState<
-    { id: number; term: string; definition: string }[]
+    {
+      id: number;
+      term: string;
+      definition: string;
+    }[]
   >([]);
 
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -53,9 +60,56 @@ const CreateStudyMaterial = () => {
     );
   };
 
-  const handleSaveButton = () => {
-    // Save the study material
-    navigate("/dashboard/study-material/view");
+  const handleSaveButton = async () => {
+    if (!user?.displayName) {
+      console.error("User is not authenticated");
+      return;
+    }
+
+    const studyMaterial = {
+      studyMaterialId: crypto.randomUUID(), // ✅ Ensure studyMaterialId is always included
+      title,
+      tags,
+      totalItems: items.length,
+      terms: items.map((item) => item.term),
+      definitions: items.map((item) => item.definition),
+      images: [], // ✅ Ensure `images` is included to match backend schema
+      visibility: 0,
+      createdBy: user.displayName,
+    };
+
+    console.log("Attempting to save:", studyMaterial);
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/studyMaterial/save-study-material",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(studyMaterial),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          `Server error: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const data = await response.json();
+      console.log("Study material saved:", data);
+
+      // ✅ Ensure `studyMaterialId` exists before navigating
+      if (data.studyMaterialId) {
+        navigate(`/dashboard/study-material/preview/${data.studyMaterialId}`);
+      } else {
+        console.error("Missing studyMaterialId in response:", data);
+      }
+    } catch (error) {
+      console.error("Failed to save study material:", error);
+    }
   };
 
   const handleUploadFile = () => {
@@ -82,12 +136,18 @@ const CreateStudyMaterial = () => {
               id="title"
               label="Title"
               variant="standard"
-              size="medium"
+              value={title} // <-- Bind to state
+              onChange={(e) => setTitle(e.target.value)} // <-- Update state on change
               sx={{
                 width: "32rem",
+
                 "& .MuiInputLabel-root": { color: "#3B354D" },
                 "& .MuiInputLabel-root.Mui-focused": { color: "#381898" },
-                "& .MuiInput-root": { color: "#E2DDF3", fontWeight: 500 },
+                "& .MuiInput-root": {
+                  color: "#E2DDF3",
+                  fontWeight: 500,
+                  fontSize: "1.3rem",
+                },
                 "& .MuiInput-underline:before": {
                   borderBottomColor: "#3B354D",
                 },
@@ -97,6 +157,7 @@ const CreateStudyMaterial = () => {
                 "& .MuiInput-underline:after": { borderBottomColor: "#381898" },
               }}
             />
+
             <Box flexGrow={1} />
             <Button
               variant="contained"
@@ -130,7 +191,7 @@ const CreateStudyMaterial = () => {
                 alignItems: "center",
                 flexWrap: "wrap",
                 gap: 0.5,
-                padding: "0.5rem",
+                padding: "0.6rem",
                 border: "1px solid #3B354D",
                 borderRadius: "0.5rem",
                 backgroundColor: "#3B354D",
@@ -175,8 +236,7 @@ const CreateStudyMaterial = () => {
                   outline: "none",
                   background: "transparent",
                   color: "#E2DDF3",
-                  flexGrow: 0, // Ensure the input does not force resizing of the Box
-                  minWidth: "8rem", // Input should not be too small
+                  width: "5.5rem", // Input should not be too small
                   fontSize: "1rem", // Adjust font size as needed
                   paddingLeft: 6, // Remove any default right padding that may create the extra space
                   textAlign: "left", // Ensure text is aligned properly
@@ -191,7 +251,7 @@ const CreateStudyMaterial = () => {
         <Box>
           <Stack direction="row" alignItems="center" spacing={1}>
             <Typography variant="subtitle1">{items.length} Items</Typography>
-            <Divider className="bg-[#3B354D] flex-1" />
+            <Divider className="flex-1" />
           </Stack>
         </Box>
 
@@ -250,6 +310,7 @@ const CreateStudyMaterial = () => {
                 padding: "0.6rem 2rem",
                 display: "flex",
                 width: "full",
+                fontSize: "1rem",
                 justifyContent: "center",
                 color: "#3B354D",
                 border: "0.15rem solid #3B354D",

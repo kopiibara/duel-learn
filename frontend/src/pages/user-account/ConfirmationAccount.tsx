@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import ExitIcon from "../../assets/images/Exit.png";
 import sampleAvatarDeployment from "../../assets/images/sampleAvatar2.png";
 import { getFirestore, doc, getDoc } from "firebase/firestore";
@@ -114,7 +114,14 @@ const ConfirmationAccount = () => {
 
   return (
     <div className="h-screen mt-[-30px] flex flex-col items-center justify-center">
-      <div className="w-[430px] sm:w-[500px] md:w-[700px] lg:w-[800px] pb-6 text-right flex justify-end">
+      <header className="absolute top-20 left-20 right-20 flex justify-between items-center">
+        {/* Logo & Title */}
+        <Link to="/" className="flex items-center space-x-4">
+          <img src="/duel-learn-logo.svg" className="w-10 h-10" alt="icon" />
+          <p className="text-white text-xl font-semibold">Duel Learn</p>
+        </Link>
+
+        {/* Exit Button */}
         <img
           src={ExitIcon}
           alt="Exit Icon"
@@ -122,7 +129,7 @@ const ConfirmationAccount = () => {
           className="hover:scale-110 cursor-pointer"
           onClick={handleExitClick}
         />
-      </div>
+      </header>
 
       <div className="flex flex-col items-center justify-center">
         <img
@@ -146,10 +153,10 @@ const ConfirmationAccount = () => {
       </div>
 
       <div className="w-full max-w-md rounded-lg p-8 shadow-md">
-        <h1 className="text-[42px] font-bold text-center text-white mb-2">
+        <h1 className="text-3xl font-bold text-center text-white mb-2">
           Is this you?
         </h1>
-        <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
+        <p className="text-lg text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
           Confirm this is you and we’ll send a code to your{" "}
           {isPhone ? "phone" : "email"} to recover your account.
         </p>
