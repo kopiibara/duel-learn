@@ -5,18 +5,18 @@ const firebaseEmailHandler = () => {
   const navigate = useNavigate();
   const auth = getAuth();
 
-  const handleEmailAction = async (mode : any, oobCode : any) => {
+  const handleEmailAction = async (mode: any, oobCode: any) => {
     try {
       switch (mode) {
         case "resetPassword":
           // Verify the password reset code is valid
           await checkActionCode(auth, oobCode);
-          navigate(`/resetPassword?oobCode=${oobCode}`);
+          navigate(`/reset-password?oobCode=${oobCode}`);
           break;
         case "verifyEmail":
           // Apply the email verification code
           await applyActionCode(auth, oobCode);
-          navigate("/emailVerified");
+          navigate("/email-verified");
           break;
         default:
           throw new Error("Invalid mode");

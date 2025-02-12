@@ -15,7 +15,8 @@ const useValidation = () => {
         } else if (value.length > 20) {
           error = "Username cannot exceed 20 characters.";
         } else if (!/^[a-zA-Z0-9_]+$/.test(value)) {
-          error = "Username can only contain alphanumeric characters and underscores.";
+          error =
+            "Username can only contain alphanumeric characters and underscores.";
         }
         break;
       case "email":

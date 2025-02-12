@@ -10,7 +10,6 @@ import ConfirmationAccount from "../pages/user-account/ConfirmationAccount";
 import NotFoundPage from "../pages/user-account/NotFoundPage";
 import ResetPassword from "../pages/user-account/ResetPassword";
 import SuccessReset from "../pages/user-account/SuccessReset";
-import SecurityCode from "../pages/user-account/SecurityCode";
 import EmailActionHandler from "../pages/user-account/EmailActionHandler"; // Import EmailActionHandler
 import EmailVerified from "../pages/user-account/EmailVerified"; // Import EmailVerified
 
@@ -28,9 +27,10 @@ const AppRoutes: React.FC = () => {
         <Route path="/confirmation-account" element={<ConfirmationAccount />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/success-reset" element={<SuccessReset />} />
-        <Route path="/security-code" element={<SecurityCode />} />
-        <Route path="/email-action" element={<EmailActionHandler />} /> {/* Add EmailActionHandler route */}
-        <Route path="/emailVerified" element={<EmailVerified />} /> {/* Add EmailVerified route */}
+        <Route path="/email-action" element={<EmailActionHandler />} />{" "}
+        {/* Add EmailActionHandler route */}
+        <Route path="/email-verified" element={<EmailVerified />} />{" "}
+        {/* Add EmailVerified route */}
         <Route path="*" element={<NotFoundPage />} />
         <Route path="/dashboard/*" element={<PrivateRoutes />} />
       </Routes>
