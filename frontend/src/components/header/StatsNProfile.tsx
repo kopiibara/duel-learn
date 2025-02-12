@@ -1,19 +1,19 @@
 import React, { useState } from "react";
-import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
-import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import CoinIcon from "../../assets/CoinIcon.png";
 import ManaIcon from "../../assets/ManaIcon.png";
-import ProfileIcon from "../../assets/profile-picture/bunny-picture.png";
-import Tooltip from '@mui/material/Tooltip'; // Import Tooltip from Material-UI
+import Tooltip from "@mui/material/Tooltip"; // Import Tooltip from Material-UI
 import ProfilePopover from "./ProfilePopover"; // Import the ProfilePopover component
+import { Avatar, Box } from "@mui/material"; // Import Avatar from Material-UI
+import { useUser } from "../../contexts/UserContext"; // Import the useUser hook
 
 const StatsNProfile = () => {
+  const { user } = useUser();
   // State for dynamic data
-  const [stats, setStats] = useState({
+  const [stats] = useState({
     xp: 500,
     mana: 200,
     hasNotifications: true, // Default notification status
-    profileImg: ProfileIcon, // Avatar image
+    profileImg: "", // Avatar image
   });
 
   // State to control the popover visibility
@@ -29,24 +29,34 @@ const StatsNProfile = () => {
     setAnchorEl(null);
   };
 
+  const getInitials = (name: string | null) => {
+    if (!name) return "";
+    const nameParts = name.split(" ");
+    const initials = nameParts
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase();
+    return initials;
+  };
+
   return (
-    <div className="flex items-center space-x-2 sm:space-x-6">
+    <Box className="flex items-center space-x-2 sm:space-x-6">
       {/* Xp */}
       <Tooltip
-        title="Xp"
+        title="Coin"
         arrow
         sx={{
-          '& .MuiTooltip-tooltip': {
-            padding: '8px 12px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            animation: 'fadeInOut 0.3s ease-in-out',
+          "& .MuiTooltip-tooltip": {
+            padding: "8px 12px",
+            fontSize: "16px",
+            fontWeight: "bold",
+            animation: "fadeInOut 0.3s ease-in-out",
           },
         }}
       >
         <div className="flex items-center space-x-2">
           <img src={CoinIcon} alt="Coins" className="w-6 h-6" />
-          <span className="text-yellow-500">{stats.xp}</span>
+          <span className="text-[#3B354D]">{stats.xp}</span>
         </div>
       </Tooltip>
 
@@ -55,17 +65,17 @@ const StatsNProfile = () => {
         title="Mana"
         arrow
         sx={{
-          '& .MuiTooltip-tooltip': {
-            padding: '8px 12px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            animation: 'fadeInOut 0.3s ease-in-out',
+          "& .MuiTooltip-tooltip": {
+            padding: "8px 12px",
+            fontSize: "16px",
+            fontWeight: "bold",
+            animation: "fadeInOut 0.3s ease-in-out",
           },
         }}
       >
         <div className="flex items-center space-x-2">
           <img src={ManaIcon} alt="Mana" className="w-6 h-6" />
-          <span className="text-purple-500">{stats.mana}</span>
+          <span className="text-[#3B354D]">{stats.mana}</span>
         </div>
       </Tooltip>
 
@@ -74,29 +84,40 @@ const StatsNProfile = () => {
         title="Profile"
         arrow
         sx={{
-          '& .MuiTooltip-tooltip': {
-            padding: '8px 12px',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            animation: 'fadeInOut 0.3s ease-in-out',
+          "& .MuiTooltip-tooltip": {
+            padding: "8px 12px",
+            fontSize: "16px",
+            fontWeight: "bold",
+            animation: "fadeInOut 0.3s ease-in-out",
           },
         }}
       >
-        <img
-          src={stats.profileImg}
-          alt="Profile"
-          className="w-9 h-9 rounded-xl cursor-pointer"
+        <Avatar
+          variant="rounded"
           onClick={handleProfileClick} // Open popover on click
-        />
+          src={user?.photoURL || undefined} // Ensure null is converted to undefined
+          alt={user?.displayName || "User"} // Fallback if displayName is not available
+          sx={{
+            cursor: "pointer", // Change cursor to pointer on hover
+            transition: "transform 0.3s ease, background-color 0.3s ease", // Smooth transition for hover effects
+            "&:hover": {
+              transform: "scale(1.1)", // Slightly enlarge the avatar on hover
+              backgroundColor: "rgba(0, 0, 0, 0.08)", // Optional: add a subtle background color change on hover
+            },
+          }}
+        >
+          {!user?.photoURL && getInitials(user?.displayName ?? null)}{" "}
+          {/* Display initials if no photoURL */}
+        </Avatar>
       </Tooltip>
 
       {/* Profile Popover */}
       <ProfilePopover
-        anchorEl={anchorEl}  // Pass the anchor element
-        open={Boolean(anchorEl)}  // Open if anchorEl is not null
-        handleClose={handlePopoverClose}  // Close the popover
+        anchorEl={anchorEl} // Pass the anchor element
+        open={Boolean(anchorEl)} // Open if anchorEl is not null
+        handleClose={handlePopoverClose} // Close the popover
       />
-    </div>
+    </Box>
   );
 };
 

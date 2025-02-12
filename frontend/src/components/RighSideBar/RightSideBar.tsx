@@ -61,10 +61,27 @@ const RightSideBar: React.FC = () => {
     ),
   };
 
-  // Get the content based on the current route
-  const content = contentMap[location.pathname as RoutePath] || (
-    <div>No Content</div>
+  // Handle dynamic route `/dashboard/study-material/preview/:studyMaterialId`
+  const isPreviewRoute = location.pathname.startsWith(
+    "/dashboard/study-material/preview/"
   );
+
+  // Get the content based on the current route
+  let content: JSX.Element;
+
+  if (isPreviewRoute) {
+    content = (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    );
+  } else {
+    content = contentMap[location.pathname as RoutePath] || (
+      <div>No Content</div>
+    );
+  }
 
   return (
     <div className="hidden side-list-navi pr-8 lg:block sm:w-[20rem] md:w-[24rem] mb-10 lg:w-[28rem] p-4 flex-shrink-0">

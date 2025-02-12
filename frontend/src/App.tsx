@@ -1,31 +1,24 @@
 import { HelmetProvider } from "react-helmet-async";
-import { createTheme, ThemeProvider, CssBaseline } from "@mui/material";
+import { ThemeProvider, CssBaseline } from "@mui/material";
+import { BrowserRouter as Router } from "react-router-dom";
 import AppRoutes from "./routes/AppRoutes";
-import "./index.css";
+import { UserProvider } from "./contexts/UserContext";
 
-// Create a theme instance with Nunito font
-const theme = createTheme({
-  typography: {
-    fontFamily: "Nunito, sans-serif",
-  },
-  palette: {
-    background: {
-      default: "#080511",
-    },
-    text: {
-      primary: "#E2DDF3",
-    },
-  },
-});
+import theme from "../../frontend/src/contexts/ThemeContext";
+import "./index.css";
 
 function App() {
   return (
-    <HelmetProvider>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <AppRoutes />
-      </ThemeProvider>
-    </HelmetProvider>
+    <UserProvider>
+      <HelmetProvider>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <Router>
+            <AppRoutes />
+          </Router>
+        </ThemeProvider>
+      </HelmetProvider>
+    </UserProvider>
   );
 }
 

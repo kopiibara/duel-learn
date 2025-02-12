@@ -3,7 +3,7 @@ import CardComponent from "../../../components/CardComponent";
 
 type CardData = {
   title: string;
-  description: string;
+  totalItems: number;
   tags: string[];
   creator: string;
   clicked: number;
@@ -16,14 +16,14 @@ type ExploreCardsProps = {
 
 const ExploreCards = ({ cards }: ExploreCardsProps) => {
   return (
-    <Box sx={{ padding: "1rem" }}>
+    <Box className="px-3">
       <Grid container spacing={2}>
         {cards.map((item, index) => (
           <Grid item xs={12} sm={6} md={4} key={index}>
             <CardComponent
               title={item.title}
-              description={item.description}
               tags={item.tags}
+              totalItems={item.totalItems}
               creator={item.creator}
               clicked={item.clicked}
               mutual={item.mutual}

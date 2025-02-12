@@ -6,7 +6,7 @@ import PreviousIcon from "@mui/icons-material/ArrowBackIosNewRounded";
 
 type CardData = {
   title: string;
-  description: string;
+  totalItems: number;
   tags: string[];
   creator: string;
 };
@@ -46,8 +46,9 @@ const RecentlyOpened = () => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        height: "20rem",
+        height: "auto",
         overflow: "hidden",
+        paddingY: "1rem",
       }}
     >
       <Box
@@ -65,7 +66,7 @@ const RecentlyOpened = () => {
           >
             <CardComponent
               title={item.title}
-              description={item.description}
+              totalItems={item.totalItems}
               tags={item.tags}
               creator={item.creator}
             />
@@ -84,6 +85,7 @@ const RecentlyOpened = () => {
           opacity: isPrevDisabled ? 0 : 1, // Hide when disabled
           pointerEvents: isPrevDisabled ? "none" : "auto", // Disable interactions when not visible
           backgroundColor: "transparent",
+          transition: "all 0.3s ease", // Smooth transition for visibility
           "& .MuiSvgIcon-root": {
             color: "#3B354D",
           },
