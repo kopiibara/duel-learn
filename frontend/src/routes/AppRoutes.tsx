@@ -8,6 +8,7 @@ import SignUp from "../pages/user-account/SignUp";
 import ForgotPassword from "../pages/user-account/ForgotPassword";
 import TermsAndConditions from "../components/TermsAndConditions";
 import CheckYourMail from "../pages/user-account/CheckYourMail";
+import PasswordChangedSuccessfully from "../pages/user-account/PasswordChangedSuccessfully";
 import LoadingScreen from "../components/LoadingScreen";
 import ConfirmationAccount from "../pages/user-account/ConfirmationAccount";
 import NotFoundPage from "../pages/user-account/NotFoundPage";
@@ -38,6 +39,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
         <Route path="/check-your-mail" element={<CheckYourMail />} />
         <Route path="/loading-screen" element={<LoadingScreen />} />
+        <Route path="/password-changed-successfully" element={<PasswordChangedSuccessfully />} />
 
         {/* User onboarding routes */}
         <Route path="/welcome" element={<WelcomePage />} />

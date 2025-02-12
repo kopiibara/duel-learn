@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import EmailSent from '../../assets/General/EmailSent.png'; // Importing the big star image
+import PasswordSecurity from '../../assets/General/PasswordSecurity.png'; // Importing the big star image
 import PageTransition from '../../styles/PageTransition'; // Importing the PageTransition component
 
-export default function CheckYourMail() {
+export default function PasswordChangedSuccessfully() {
   const [countdown, setCountdown] = useState<number | null>(null); // State to manage countdown timer
   const navigate = useNavigate(); // Hook to programmatically navigate to different routes
 
@@ -31,8 +31,8 @@ export default function CheckYourMail() {
             {/* Header section with flexbox layout, gap, and text styling */}
             <img
               loading="lazy"
-              src="/duel-learn-logo.svg"
-              className="object-contain shrink-0 aspect-square w-[37px] h-[37px]"
+              src="/duel-learn-logo.svg" // Use the URL path to reference the asset
+              className="object-contain shrink-0 aspect-square w-[37px] h-[37px]" // Increased size
               alt="Duel Learn Logo"
               // Importing Duel Learn logo in SVG format
             />
@@ -46,9 +46,9 @@ export default function CheckYourMail() {
             {/* Section container with flexbox layout, margin, and text alignment */}
             <img
               loading="lazy"
-              src={EmailSent}
+              src={PasswordSecurity}
               className="object-contain self-center max-w-full aspect-[1.08] w-[78px]"
-              alt="Email sent"
+              alt="Password security"
               // Importing email sent illustration in SVG format
             />
             
@@ -56,12 +56,11 @@ export default function CheckYourMail() {
               {/* Container for the text content with flexbox layout and margin */}
               <h2 className="text-4xl font-bold text-slate-200 max-md:max-w-full max-md:text-3xl mb-2" style={{ fontFamily: "Nunito" }}>
                 {/* Heading with specific font size and color */}
-                Check your mailbox!
+                Password Changed Successfully!
               </h2>
               <p className="mt-2 text-m text-zinc-400 max-md:max-w-full mb-2" style={{ fontFamily: "Nunito" }}>
                 {/* Paragraph with margin, font size, and color */}
-                We sent you a link for your password recovery. Check your spam folder
-                if you do not hear from us after awhile.
+                Way to go, magician! You’ve successfully updated your password.
               </p>
             </div>
 
