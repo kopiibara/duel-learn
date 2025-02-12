@@ -19,6 +19,7 @@ import { auth, googleProvider } from "../../services/firebase"; // Ensure you ha
 // Icons
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import EmailVerified from "./EmailVerified";
 
 const Login = () => {
   const { setUser } = useUser();
@@ -47,6 +48,7 @@ const Login = () => {
         email: result.user.email,
         photoURL: result.user.photoURL, // Store the photoURL here
         uid: result.user.uid,
+        EmailVerified: result.user.emailVerified,
       };
 
       console.log("User Data:", userData);
@@ -97,6 +99,7 @@ const Login = () => {
         photoURL: result.user.photoURL,
         uid: result.user.uid,
         username: username, // Store username separately
+        EmailVerified: result.user.emailVerified,
       };
       console.log("User Data:", userData);
       // Store user data in context

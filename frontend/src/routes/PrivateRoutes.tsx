@@ -20,6 +20,7 @@ import TutorialFive from "../pages/user-onboarding/TutorialFive";
 import TutorialSix from "../pages/user-onboarding/TutorialSix";
 import TutorialLast from "../pages/user-onboarding/TutorialLast";
 import { useState } from "react"; // Import useState
+import VerifyEmail from "../pages/user-account/VerifyEmail";
 
 const PrivateRoutes = () => {
   const { user } = useUser();
@@ -61,6 +62,7 @@ const PrivateRoutes = () => {
           element={<ViewStudyMaterial />}
         />
       </Route>
+      <Route path ="verify-email" element={<VerifyEmail />} />
 
       {/* Route for buying premium account */}
       <Route path="/shop/buy-premium-account" element={<BuyPremium />} />
