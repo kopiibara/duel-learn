@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
@@ -22,7 +22,7 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import EmailVerified from "./EmailVerified";
 
 const Login = () => {
-  const { setUser } = useUser();
+  const { setUser, user } = useUser(); // Get user from context
   const [data, setData] = useState({
     username: "",
     password: "",
@@ -30,6 +30,12 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
   const { error, handleLoginError } = useHandleError();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard/home"); // Redirect if user is authenticated
+    }
+  }, [user, navigate]);
 
   const togglePassword = () => {
     setShowPassword(!showPassword); // Toggle password visibility

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
@@ -23,7 +23,7 @@ import useHandleError from "../../utils/useHandleError";
 import PageTransition from "../../styles/PageTransition";
 
 const SignUp = () => {
-  const { setUser } = useUser();
+  const { setUser, user } = useUser();
   const { error, handleLoginError } = useHandleError();
   const [formData, setFormData] = useState({
     username: "",
@@ -37,6 +37,12 @@ const SignUp = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard/home"); // Redirect if user is authenticated
+    }
+  }, [user, navigate]);
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
