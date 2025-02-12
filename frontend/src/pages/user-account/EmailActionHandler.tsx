@@ -13,7 +13,7 @@ const EmailActionHandler: React.FC = () => {
         case "resetPassword":
           // Verify the password reset code is valid
           await checkActionCode(auth, oobCode);
-          navigate(`/reset-Password?oobCode=${oobCode}`);
+          navigate(`/reset-password?oobCode=${oobCode}`);
           break;
         case "verifyEmail":
           // Apply the email verification code
