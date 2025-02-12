@@ -65,7 +65,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
                 BackdropProps={{
                     timeout: 500,
                     sx: {
-                        backgroundColor: "rgba(0, 0, 0, 0.8)", // Darker background
+                        backgroundColor: "rgba(0, 0, 0, 0.5)", // Darker background
                     },
                 }}
             >

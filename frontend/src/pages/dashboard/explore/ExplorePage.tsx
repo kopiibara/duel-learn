@@ -1,11 +1,13 @@
-import { Box, Stack, Button } from "@mui/material";
+import { Box, Stack, Button, Typography } from "@mui/material";
 import { useState, useEffect } from "react";
 import DocumentHead from "../../../components/DocumentHead";
+import PageTransition from "../../../styles/PageTransition";
+
 import ExploreCards from "./ExploreCards";
 
 type CardData = {
   title: string;
-  description: string;
+  totalItems: number;
   tags: string[];
   creator: string;
   clicked: number;
@@ -61,28 +63,31 @@ const ExplorePage = () => {
       key={index}
       sx={{
         textTransform: "none",
-        fontSize: "1.4rem",
-        color: selected === index ? "#E2DDF3" : "#6F658D",
+        color: selected === index ? "#E2DDF3" : "#3B354D",
+        transition: "all 0.3s ease", // Smooth transition for visibility
+
         "&:hover": {
           color: "inherit",
         },
       }}
       onClick={() => handleClick(index)} // Pass index to handle click
     >
-      {label}
+      <Typography variant="h5">{label}</Typography>
     </Button>
   ));
 
   return (
-    <Box>
-      <DocumentHead title="Explore" />
-      <Stack className="px-5">
-        <Stack direction="row" spacing={1}>
-          {breadcrumbs}
+    <PageTransition>
+      <Box className="h-screen w-full">
+        <DocumentHead title="Explore" />
+        <Stack className="px-5" spacing={2}>
+          <Stack direction="row" spacing={1} paddingX={0.5}>
+            {breadcrumbs}
+          </Stack>
+          <ExploreCards cards={filteredCards} />
         </Stack>
-        <ExploreCards cards={filteredCards} />
-      </Stack>
-    </Box>
+      </Box>
+    </PageTransition>
   );
 };
 

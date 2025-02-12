@@ -6,7 +6,7 @@ import PreviousIcon from "@mui/icons-material/ArrowBackIosNewRounded";
 
 type CardData = {
   title: string;
-  description: string;
+  totalItems: number;
   tags: string[];
   creator: string;
 };
@@ -46,8 +46,9 @@ const DiscoverMore = () => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        height: "20rem",
+        height: "auto",
         overflow: "hidden",
+        paddingY: "1rem",
       }}
     >
       <Box
@@ -65,7 +66,7 @@ const DiscoverMore = () => {
           >
             <CardComponent
               title={item.title}
-              description={item.description}
+              totalItems={item.totalItems}
               tags={item.tags}
               creator={item.creator}
             />
