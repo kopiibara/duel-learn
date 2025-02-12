@@ -20,7 +20,10 @@ import PlayIcon from "@mui/icons-material/PlayArrowRounded";
 import ArrowBackIcon from "@mui/icons-material/ArrowBackIosNewRounded";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import { useNavigate, useLocation } from "react-router-dom";
-import ChooseModeModal from "./modals/ChooseModeModal"; // Import the modal component
+import ChooseModeModal from "./modals/ChooseModeModal";
+import { useUser } from "../contexts/UserContext";
+import { auth } from "../services/firebase";
+import { signOut } from "firebase/auth";
 
 interface SidebarProps {
   selectedIndex: number | null;
@@ -61,11 +64,23 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const navigate = useNavigate();
   const location = useLocation();
-
   const [collapsed, setCollapsed] = React.useState(false);
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
   const [fromCreate, setFromCreate] = React.useState(false);
   const [openModal, setOpenModal] = React.useState(false);
+  const { setUser } = useUser();
+
+  const handleLandingPage = async () => {
+    try {
+      await signOut(auth);
+      localStorage.removeItem("userToken");
+      localStorage.removeItem("userData");
+      setUser(null);
+      navigate("/landing-page");
+    } catch (error) {
+      console.error("Error during logout:", error);
+    }
+  };
 
   const handleModalOpen = () => setOpenModal(true);
   const handleModalClose = () => setOpenModal(false);
@@ -155,7 +170,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         <Stack spacing={3} className="flex">
           <Stack direction="row" className="flex items-center" spacing={2}>
             <Button
-              onClick={() => navigate("/landing-page")}
+              onClick={handleLandingPage}
               sx={{
                 transition: "transform 0.3s ease",
                 textTransform: "none",
