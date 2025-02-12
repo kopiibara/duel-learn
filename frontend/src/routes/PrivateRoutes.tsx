@@ -25,7 +25,9 @@ const PrivateRoutes = () => {
   const { user } = useUser();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(1); // Define state
 
-  if (!user) {
+  const token = localStorage.getItem("userToken");
+
+  if (!user || !token) {
     return <Navigate to="/landing-page" />;
   }
 
