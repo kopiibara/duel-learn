@@ -8,7 +8,7 @@ import {
 import { GoogleAuthProvider } from "firebase/auth";
 import { getFirestore } from "firebase/firestore"; // Add this import
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { signInWithPopup } from "firebase/auth";
+import { signInWithPopup, getAdditionalUserInfo } from "firebase/auth";
 import { doc, setDoc, serverTimestamp } from "firebase/firestore";
 import {
   verifyPasswordResetCode,
@@ -50,3 +50,4 @@ export const authStateChanged = onAuthStateChanged;
 export const database = getDatabase(app);
 export const databaseRef = ref;
 export const onDatabaseValue = onValue;
+export const getAdditionalInfo = getAdditionalUserInfo;
