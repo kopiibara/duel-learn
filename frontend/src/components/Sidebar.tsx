@@ -154,12 +154,13 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         <Stack spacing={3} className="flex">
           <Stack direction="row" className="flex items-center" spacing={2}>
-            <IconButton
+            <Button
               onClick={() => navigate("/landing-page")}
               sx={{
                 transition: "transform 0.3s ease",
+                textTransform: "none",
                 "&:hover": {
-                  transform: "scale(1.1)",
+                  transform: "scale(1.05)",
                 },
               }}
             >
@@ -168,18 +169,24 @@ const Sidebar: React.FC<SidebarProps> = ({
                 className="w-10 h-10"
                 alt="icon"
               />
-            </IconButton>
-            <Typography
-              variant="h6"
-              fontWeight={600}
-              className={clsx("transition-all duration-100", {
-                "opacity-0 w-auto": collapsed,
-                "opacity-100 w-auto": !collapsed,
-              })}
-              sx={{ whiteSpace: "nowrap", overflow: "hidden" }}
-            >
-              Duel Learn
-            </Typography>
+              <Typography
+                variant="h6"
+                fontWeight={600}
+                className={clsx("transition-all duration-100", {
+                  "opacity-0 w-auto": collapsed,
+                  "opacity-100 w-auto": !collapsed,
+                })}
+                sx={{
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  color: "#E2DDF3",
+                  marginLeft: "1rem",
+                }}
+              >
+                Duel Learn
+              </Typography>
+            </Button>
+
             <Fab
               color="primary"
               onClick={toggleCollapse}
