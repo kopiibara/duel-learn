@@ -17,6 +17,8 @@ import {
 } from "firebase/auth";
 import { auth, db } from "../../services/firebase"; // Adjust the path as needed
 import { collection, query, where, getDocs } from "firebase/firestore";
+import useValidation from "../../utils/useValidation";
+
 const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Get location object
@@ -50,10 +52,7 @@ const ResetPassword = () => {
     confirmPassword: "", // New field for confirming password
   });
 
-  const [errors, setErrors] = useState({
-    newpassword: "",
-    confirmPassword: "", // Error for confirm password
-  });
+  const { errors, validate, validateForm } = useValidation();
 
   const [loading, setLoading] = useState(false); // Loading state for the submit button
 
@@ -70,46 +69,15 @@ const ResetPassword = () => {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const { newpassword, confirmPassword } = formData; // Get new password and confirm password
-    let formIsValid = true;
-    let newErrors = { newpassword: "", confirmPassword: "" };
+    const { newpassword, confirmPassword } = formData;
 
-    // Password validation
-    if (!newpassword) {
-      newErrors.newpassword = "Enter your new password."; // Error message for password
-      formIsValid = false;
-    } else if (newpassword.length < 8) {
-      newErrors.newpassword = "Password must be at least 8 characters."; // Password length validation
-      formIsValid = false;
-    } else if (!/[A-Z]/.test(newpassword)) {
-      newErrors.newpassword =
-        "Password must contain at least one uppercase letter."; // Uppercase letter validation
-      formIsValid = false;
-    } else if (!/[a-z]/.test(newpassword)) {
-      newErrors.newpassword =
-        "Password must contain at least one lowercase letter."; // Lowercase letter validation
-      formIsValid = false;
-    } else if (!/[0-9]/.test(newpassword)) {
-      newErrors.newpassword = "Password must contain at least one number."; // Number validation
-      formIsValid = false;
-    } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(newpassword)) {
-      newErrors.newpassword =
-        "Password must contain at least one special character."; // Special character validation
-      formIsValid = false;
-    }
+    const formIsValid = validateForm({
+      newpassword,
+      confirmPassword,
+      password: newpassword, // Pass newpassword as password for validation
+    });
 
-    // Confirm Password validation
-    if (!confirmPassword) {
-      newErrors.confirmPassword = "Please confirm your password."; // Error if confirm password is empty
-      formIsValid = false;
-    } else if (newpassword !== confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match."; // Error if passwords do not match
-      formIsValid = false;
-    }
-
-    // If form is not valid, set errors and stop form submission
     if (!formIsValid) {
-      setErrors(newErrors);
       return;
     }
 
@@ -137,8 +105,8 @@ const ResetPassword = () => {
     // Update the input value
     setFormData((prevData) => ({ ...prevData, [field]: value }));
 
-    // Only reset the specific field's error
-    setErrors((prevErrors) => ({ ...prevErrors, [field]: "" }));
+    // Validate the field on change
+    validate(field, value, { ...formData, [field]: value });
 
     // Clear the general error when typing in either field
     setError({ general: "" });
