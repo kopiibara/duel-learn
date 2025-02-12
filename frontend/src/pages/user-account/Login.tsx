@@ -4,6 +4,7 @@ import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
 import { toast } from "react-hot-toast";
 import useHandleError from "../../utils/useHandleError";
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 
 //import axios from "axios";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
@@ -50,7 +51,7 @@ const Login = () => {
       localStorage.setItem("userToken", token);
 
       // Redirect to a protected route or dashboard
-      navigate("/dashboard/welcome");
+      navigate("/dashboard/home");
     } catch (error) {
       console.error("Error during sign-in:", error);
       toast.error("Google sign-in failed. Please try again.");
@@ -60,9 +61,25 @@ const Login = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const { username, password } = data;
+    let email = username;
 
     try {
-      const result = await signInWithEmailAndPassword(auth, username, password);
+      if (!/\S+@\S+\.\S+/.test(username)) {
+        // If username is not an email, fetch email from user collection
+        const db = getFirestore();
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("username", "==", username));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          const userDoc = querySnapshot.docs[0];
+          email = userDoc.data().email;
+        } else {
+          throw new Error("Username not found");
+        }
+      }
+
+      const result = await signInWithEmailAndPassword(auth, email, password);
       console.log("User Credential:", result);
       const token = await result.user.getIdToken();
 
@@ -80,7 +97,7 @@ const Login = () => {
       // Optionally, you can store the token in local storage or context
       localStorage.setItem("userToken", token); // Store token
       setData({ username: "", password: "" });
-      navigate("/dashboard/welcome"); // Redirect on successful login
+      navigate("/dashboard/home"); // Redirect on successful login
     } catch (error) {
       handleLoginError(error); // Use the hook to handle login error
     }
