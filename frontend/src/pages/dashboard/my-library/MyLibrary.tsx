@@ -1,133 +1,151 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Box, Typography, Stack } from "@mui/material";
 import DocumentHead from "../../../components/DocumentHead";
+import PageTransition from "../../../styles/PageTransition";
+
 import MyLibraryCards from "./MyLibraryCards";
 import Filter from "./Filter";
+import { useUser } from "../../../contexts/UserContext";
 
 // Define your card data types as before
-type CardData = {
+interface StudyMaterial {
   title: string;
-  description: string;
   tags: string[];
-  creator: string;
-  clicked: number;
-  mutual?: string;
-  date?: string;
-  filter?: string;
-  createdBy: "you" | string;
-};
+  total_items: number;
+  created_by: string;
+  visibility: number; // 0 = private, 1 = public
+  created_at: string;
+  total_views: number;
+  study_material_id: string;
+}
 
 const MyLibraryPage = () => {
-  const [cards, setCards] = useState<CardData[]>([]);
-  const [filteredCards, setFilteredCards] = useState<CardData[]>([]);
-  const [count, setCount] = useState<number>(0); // Count of cards created by "you"
-  const [filter, setFilter] = useState<string | number>(""); // Filter state
-  const [sort, setSort] = useState<string | number>(""); // Sort state
+  const { user } = useUser();
+  const created_by = user?.displayName; // Placeholder for the current user
+  const [cards, setCards] = useState<StudyMaterial[]>([]);
+  const [filteredCards, setFilteredCards] = useState<StudyMaterial[]>([]);
+  const [count, setCount] = useState<number>(0);
+  const [filter, setFilter] = useState<string | number>("all");
+  const [sort, setSort] = useState<string | number>("most recent");
 
   useEffect(() => {
-    fetch("/mock-data/StudyMaterialDetails.json")
+    if (!created_by) return;
+
+    fetch(
+      `http://localhost:5000/api/studyMaterial/view-your-study-material/${created_by}`
+    )
       .then((response) => response.json())
-      .then((data: CardData[]) => {
-        setCards(data); // Store the full dataset
-        setFilteredCards(data); // Initially, show all cards
+      .then((data) => {
+        console.log("API Response:", data);
 
-        // Filter out the cards created by "you"
-        const filtered = data.filter((item) => item.createdBy === "you");
-        setFilteredCards(filtered);
-        setCount(filtered.length); // Update count of "you" created cards
+        if (
+          data.message === "Study materials fetched successfully" &&
+          Array.isArray(data.data)
+        ) {
+          const parsedData = data.data.map((item: any) => ({
+            ...item,
+            // Handle the 'tags' field correctly
+            tags:
+              typeof item.tags === "string" ? item.tags.split(",") : item.tags,
+          }));
+
+          setCards(parsedData);
+        } else {
+          console.error("Unexpected API response format:", data);
+        }
       })
-      .catch((error) => console.error("Error fetching cards data:", error));
-  }, []);
 
-  const handleFilterChange = (newFilter: number | string) => {
+      .catch((error) => console.error("Error fetching study material:", error));
+  }, [created_by]);
+
+  const handleFilterChange = (newFilter: string | number) => {
     setFilter(newFilter);
   };
 
-  const handleSortChange = (newSort: number | string) => {
+  const handleSortChange = (newSort: string | number) => {
     setSort(newSort);
   };
 
   useEffect(() => {
-    // Initial filtered data based on "you"
-    let filteredData = cards.filter((card) => card.createdBy === "you");
+    let filteredData = cards.filter((card) => card.created_by === created_by);
 
-    // Apply the filter logic (e.g., "All", "Public", "Private", etc.)
-    if (filter && filter !== "all") {
-      filteredData = filteredData.filter((card) => card.filter === filter);
+    // Apply visibility filter
+    if (filter !== "all") {
+      if (filter === "public") {
+        filteredData = filteredData.filter((card) => card.visibility === 1);
+      } else if (filter === "private") {
+        filteredData = filteredData.filter((card) => card.visibility === 0);
+      }
     }
 
-    // Apply sorting logic
+    // Sorting logic
     if (sort === "most recent") {
-      filteredData = filteredData.sort((a, b) => {
-        // Assuming `date` is in a format that can be directly compared (e.g., ISO 8601 string)
-        return (
-          new Date(b.date || "").getTime() - new Date(a.date || "").getTime()
-        );
-      });
+      filteredData.sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     } else if (sort === "least recent") {
-      filteredData = filteredData.sort((a, b) => {
-        return (
-          new Date(a.date || "").getTime() - new Date(b.date || "").getTime()
-        );
-      });
+      filteredData.sort(
+        (a, b) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
     } else if (sort === "A-Z") {
-      filteredData = filteredData.sort((a, b) =>
-        a.title.localeCompare(b.title)
-      );
+      filteredData.sort((a, b) => a.title.localeCompare(b.title));
     } else if (sort === "Z-A") {
-      filteredData = filteredData.sort((a, b) =>
-        b.title.localeCompare(a.title)
-      );
+      filteredData.sort((a, b) => b.title.localeCompare(a.title));
     }
 
-    // Update the filtered cards and count
     setFilteredCards(filteredData);
     setCount(filteredData.length);
-  }, [filter, sort, cards]); // Re-run whenever filter, sort, or cards change
+  }, [filter, sort, cards]);
 
   return (
-    <Box>
-      <DocumentHead title="My Library" />
-      <Stack spacing={2} className="px-8">
-        <Stack direction={"row"} spacing={1} className="flex items-center">
-          <Typography variant="h5" color="inherit">
-            My Library
-          </Typography>
-          <Typography variant="h5" color="#6F658D">
-            {" "}
-            ({count})
-          </Typography>{" "}
-          {/* Display count of filtered cards */}
-          <Box flexGrow={1} />
-          <Stack direction={"row"} spacing={2}>
-            <Filter
-              menuItems={[
-                { value: "all", label: "All" },
-                { value: "public", label: "Public" },
-                { value: "private", label: "Private" },
-                { value: "bookmark", label: "Bookmark" },
-                { value: "archive", label: "Archive" },
-              ]}
-              value={filter}
-              onChange={handleFilterChange}
-            />
-            <Filter
-              menuItems={[
-                { value: "most recent", label: "Most Recent" },
-                { value: "least recent", label: "Least Recent" },
-                { value: "A-Z", label: "A-Z" },
-                { value: "Z-A", label: "Z-A" },
-              ]}
-              value={sort}
-              onChange={handleSortChange}
-            />
+    <PageTransition>
+      <Box className="h-screen w-full">
+        <DocumentHead title="My Library" />
+        <Stack spacing={2} className="px-8">
+          <Stack
+            direction={"row"}
+            spacing={1}
+            className="flex items-center justify-center"
+          >
+            <Typography variant="h5" color="inherit">
+              My Library
+            </Typography>
+            <Typography variant="h5" color="#6F658D">
+              ({count})
+            </Typography>
+            <Box flexGrow={1} />
+            <Stack direction={"row"} spacing={2}>
+              <Filter
+                menuItems={[
+                  { value: "all", label: "All" },
+                  { value: "public", label: "Public" },
+                  { value: "private", label: "Private" },
+                  { value: "bookmark", label: "Bookmark" },
+                  { value: "archive", label: "Archive" },
+                ]}
+                value={filter}
+                onChange={handleFilterChange}
+              />
+              <Filter
+                menuItems={[
+                  { value: "most recent", label: "Most Recent" },
+                  { value: "least recent", label: "Least Recent" },
+                  { value: "A-Z", label: "A-Z" },
+                  { value: "Z-A", label: "Z-A" },
+                ]}
+                value={sort}
+                onChange={handleSortChange}
+              />
+            </Stack>
           </Stack>
+          {created_by && (
+            <MyLibraryCards cards={filteredCards} createdBy={created_by} />
+          )}
         </Stack>
-
-        {/* Pass filtered cards to MyLibraryCards */}
-        <MyLibraryCards cards={filteredCards} />
-      </Stack>
-    </Box>
+      </Box>
+    </PageTransition>
   );
 };
 

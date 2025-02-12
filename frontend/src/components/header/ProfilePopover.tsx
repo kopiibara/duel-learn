@@ -1,5 +1,9 @@
 import { Popover, Stack, Box, Button, Divider } from "@mui/material";
 import { PopoverProps } from "@mui/material";
+import { auth } from "../../services/firebase";
+import { signOut } from "firebase/auth";
+import { toast } from "react-hot-toast";
+import { useUser } from "../../contexts/UserContext";
 
 interface ProfilePopoverProps {
   anchorEl: PopoverProps["anchorEl"];
@@ -12,6 +16,20 @@ export default function ProfilePopover({
   open,
   handleClose,
 }: ProfilePopoverProps) {
+  const { setUser } = useUser();
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      localStorage.removeItem("userToken");
+      localStorage.removeItem("userData");
+      setUser(null);
+      toast.success("Logged out successfully.");
+    } catch (error) {
+      console.error("Error during logout:", error);
+      toast.error("Logout failed. Please try again.");
+    }
+  };
   return (
     <Popover
       open={open}
@@ -107,6 +125,7 @@ export default function ProfilePopover({
                 fontWeight: 700, // Make text bold on hover
               },
             }}
+            onClick={handleLogout}
           >
             Logout
           </Button>
