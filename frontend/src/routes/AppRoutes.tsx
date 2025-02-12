@@ -16,6 +16,9 @@ import LandingPage from "../pages/landing-page/LandingPage";
 import Login from "../pages/user-account/Login";
 import SignUp from "../pages/user-account/SignUp";
 import ForgotPassword from "../pages/user-account/ForgotPassword";
+import TermsAndConditions from "../components/TermsAndConditions";
+import CheckYourMail from "../pages/user-account/CheckYourMail";
+import LoadingScreen from "../components/LoadingScreen";
 
 const AppRoutes: React.FC = () => {
   return (
@@ -26,8 +29,11 @@ const AppRoutes: React.FC = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/sign-up" element={<SignUp />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
+        <Route path="/check-your-mail" element={<CheckYourMail />} />
+        <Route path="/loading-screen" element={<LoadingScreen />} />
 
-        //* dito muna route ng useronboarding
+        {/* User onboarding routes */}
         <Route path="/welcome" element={<WelcomePage />} />
         <Route path="/tutorial/step-one" element={<TutorialOnePage />} />
         <Route path="/tutorial/step-two" element={<TutorialTwo />} />
