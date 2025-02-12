@@ -25,7 +25,7 @@ function ThemeContext() {
             color: "#E2DDF3", // Tooltip text color
             borderRadius: "0.5rem", // Tooltip border radius
             padding: "0.5rem 1rem", // Tooltip padding
-            transition: "all 0.2s ease", // Tooltip transition
+            transition: "all 0.5s ease", // Tooltip transition
           },
           arrow: {
             color: "#3B354D", // Arrow color

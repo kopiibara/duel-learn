@@ -10,6 +10,7 @@ import {
   verifyResetCode,
   confirmResetPassword,
 } from "../../services/firebase";
+import PageTransition from "../../styles/PageTransition";
 
 const ConfirmationAccount = () => {
   const navigate = useNavigate();
@@ -113,71 +114,73 @@ const ConfirmationAccount = () => {
   };
 
   return (
-    <div className="h-screen mt-[-30px] flex flex-col items-center justify-center">
-      <header className="absolute top-20 left-20 right-20 flex justify-between items-center">
-        {/* Logo & Title */}
-        <Link to="/" className="flex items-center space-x-4">
-          <img src="/duel-learn-logo.svg" className="w-10 h-10" alt="icon" />
-          <p className="text-white text-xl font-semibold">Duel Learn</p>
-        </Link>
+    <PageTransition>
+      <div className="h-screen mt-[-30px] flex flex-col items-center justify-center">
+        <header className="absolute top-20 left-20 right-20 flex justify-between items-center">
+          {/* Logo & Title */}
+          <Link to="/" className="flex items-center space-x-4">
+            <img src="/duel-learn-logo.svg" className="w-10 h-10" alt="icon" />
+            <p className="text-white text-xl font-semibold">Duel Learn</p>
+          </Link>
 
-        {/* Exit Button */}
-        <img
-          src={ExitIcon}
-          alt="Exit Icon"
-          style={{ width: "39px" }}
-          className="hover:scale-110 cursor-pointer"
-          onClick={handleExitClick}
-        />
-      </header>
+          {/* Exit Button */}
+          <img
+            src={ExitIcon}
+            alt="Exit Icon"
+            style={{ width: "39px" }}
+            className="hover:scale-110 cursor-pointer"
+            onClick={handleExitClick}
+          />
+        </header>
 
-      <div className="flex flex-col items-center justify-center">
-        <img
-          src={profilePic || sampleAvatarDeployment}
-          style={{ width: "100px" }}
-          alt="Profile Avatar"
-        />
-        {loading ? (
-          <h2 className="text-white uppercase text-lg text-center mt-5">
-            Loading...
-          </h2>
-        ) : error ? (
-          <h2 className="text-red-500 uppercase text-lg text-center mt-5">
-            {error}
-          </h2>
-        ) : (
-          <h2 className="text-white uppercase text-lg text-center mt-5">
-            {username}
-          </h2>
-        )}
-      </div>
-
-      <div className="w-full max-w-md rounded-lg p-8 shadow-md">
-        <h1 className="text-3xl font-bold text-center text-white mb-2">
-          Is this you?
-        </h1>
-        <p className="text-lg text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
-          Confirm this is you and we’ll send a code to your{" "}
-          {isPhone ? "phone" : "email"} to recover your account.
-        </p>
-
-        <button
-          type="submit"
-          className={`w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors flex justify-center items-center`}
-          onClick={handleContinueClick}
-          disabled={buttonLoading}
-        >
-          {buttonLoading ? (
-            <div className="relative">
-              <div className="loader w-6 h-6 rounded-full border-2 border-t-transparent border-white animate-spin"></div>
-              <div className="absolute inset-0 w-6 h-6 rounded-full border-2 border-transparent border-t-[#D1C4E9] animate-pulse"></div>
-            </div>
+        <div className="flex flex-col items-center justify-center">
+          <img
+            src={profilePic || sampleAvatarDeployment}
+            style={{ width: "100px" }}
+            alt="Profile Avatar"
+          />
+          {loading ? (
+            <h2 className="text-white uppercase text-lg text-center mt-5">
+              Loading...
+            </h2>
+          ) : error ? (
+            <h2 className="text-red-500 uppercase text-lg text-center mt-5">
+              {error}
+            </h2>
           ) : (
-            "Continue"
+            <h2 className="text-white uppercase text-lg text-center mt-5">
+              {username}
+            </h2>
           )}
-        </button>
+        </div>
+
+        <div className="w-full max-w-md rounded-lg p-8 shadow-md">
+          <h1 className="text-3xl font-bold text-center text-white mb-2">
+            Is this you?
+          </h1>
+          <p className="text-lg text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
+            Confirm this is you and we’ll send a code to your{" "}
+            {isPhone ? "phone" : "email"} to recover your account.
+          </p>
+
+          <button
+            type="submit"
+            className={`w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors flex justify-center items-center`}
+            onClick={handleContinueClick}
+            disabled={buttonLoading}
+          >
+            {buttonLoading ? (
+              <div className="relative">
+                <div className="loader w-6 h-6 rounded-full border-2 border-t-transparent border-white animate-spin"></div>
+                <div className="absolute inset-0 w-6 h-6 rounded-full border-2 border-transparent border-t-[#D1C4E9] animate-pulse"></div>
+              </div>
+            ) : (
+              "Continue"
+            )}
+          </button>
+        </div>
       </div>
-    </div>
+    </PageTransition>
   );
 };
 

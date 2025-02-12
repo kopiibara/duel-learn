@@ -1,19 +1,19 @@
 import { useNavigate } from "react-router-dom";
-import React, { useState } from "react";
+import React from "react";
 import ProfileAvatar from "../../assets/images/profileAvatar.png";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
 
-const SuccessReset = () => {
+const EmailVerified = () => {
   const navigate = useNavigate();
 
   const handleBacktoLoginClick = () => {
-    navigate("/"); // Navigate to home when the exit icon is clicked
+    navigate("/login"); // Navigate to login when the button is clicked
   };
 
   return (
     <PageTransition>
-      <div className="h-screen  flex flex-col items-center justify-center">
+      <div className="h-screen flex flex-col items-center justify-center">
         <div className="flex flex-col mb-11 items-center justify-center">
           {/* <img src={ProfileAvatar} alt="" className="w-40 h-40" /> */}
           <img
@@ -25,7 +25,7 @@ const SuccessReset = () => {
 
         <div className="w-full max-w-md rounded-lg p-8 shadow-md">
           <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
-            Way to go, magician! You’ve successfully updated your password.
+            Congratulations! Your email has been successfully verified.
           </p>
           {/* Submit Button */}
           <button
@@ -41,4 +41,4 @@ const SuccessReset = () => {
   );
 };
 
-export default SuccessReset;
+export default EmailVerified;
