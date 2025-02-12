@@ -5,6 +5,7 @@ import { TextField, CircularProgress, Modal } from "@mui/material";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../services/firebase";
 import PageTransition from "../../styles/PageTransition";
+import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -154,12 +155,26 @@ const ForgotPassword = () => {
         aria-labelledby="sso-modal-title"
         aria-describedby="sso-modal-description"
       >
-        <div className="modal-content">
-          <h2 id="sso-modal-title">Account Created with Google</h2>
-          <p id="sso-modal-description">
-            This account was created using Google. You cannot change the password.
-          </p>
-          <button onClick={() => setIsSSOModalOpen(false)}>Close</button>
+        <div className="h-screen flex flex-col items-center justify-center bg-black">
+          <div className="flex flex-col mb-11 items-center justify-center">
+            <img
+              src={sampleAvatar2}
+              style={{ width: "200px" }}
+              alt="Profile Avatar"
+            />
+          </div>
+          <div className="w-full max-w-md rounded-lg p-8 shadow-md bg-black">
+            <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
+              This account was created using Google. You cannot change the password.
+            </p>
+            <button
+              type="button"
+              className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
+              onClick={() => setIsSSOModalOpen(false)}
+            >
+              Close
+            </button>
+          </div>
         </div>
       </Modal>
     </PageTransition>
