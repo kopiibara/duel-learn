@@ -19,7 +19,6 @@ import { auth, googleProvider } from "../../services/firebase"; // Ensure you ha
 // Icons
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import EmailVerified from "./EmailVerified";
 
 const Login = () => {
   const { setUser, user } = useUser(); // Get user from context
