@@ -186,6 +186,7 @@ const SignUp = () => {
                   setFormData({ ...formData, password: e.target.value });
                   validate("password", e.target.value);
                 }}
+                onCopy={(e) => e.preventDefault()} // Disable copy
                 className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
               />
               <span
@@ -214,6 +215,7 @@ const SignUp = () => {
                   setFormData({ ...formData, confirmPassword: e.target.value });
                   validate("confirmPassword", e.target.value, formData);
                 }}
+                onPaste={(e) => e.preventDefault()} // Disable paste
                 className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
               />
               {errors.confirmPassword && (
