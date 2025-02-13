@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import ExitIcon from "../../assets/images/Exit.png";
 import sampleAvatarDeployment from "../../assets/images/sampleAvatar2.png";
-import { getFirestore, doc, setDoc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import {
   auth,
