@@ -284,6 +284,11 @@ const SignUp = () => {
             className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors"
             onClick={handleGoogleSignIn}
           >
+            <img
+              src="/google-logo.png"
+              className="w-5 h-5 mr-3"
+              alt="Google Icon"
+            ></img>
             Sign in with Google
           </button>
 
