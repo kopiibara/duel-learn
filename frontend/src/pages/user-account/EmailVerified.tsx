@@ -1,11 +1,34 @@
-import { useNavigate } from "react-router-dom";
-import React from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { applyActionCode } from "firebase/auth";
+import { auth } from "../../services/firebase";
 import ProfileAvatar from "../../assets/images/profileAvatar.png";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
+import { toast } from "react-hot-toast";
 
 const EmailVerified = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [isVerified, setIsVerified] = useState(false);
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const oobCode = queryParams.get("oobCode");
+    const mode = queryParams.get("mode");
+
+    if (mode === "verifyEmail" && oobCode) {
+      applyActionCode(auth, oobCode)
+        .then(() => {
+          setIsVerified(true);
+          toast.success("Email has been successfully verified.");
+        })
+        .catch((error) => {
+          console.error("Error verifying email:", error);
+          toast.error("Failed to verify email. Please try again.");
+        });
+    }
+  }, [location]);
 
   const handleBacktoLoginClick = () => {
     navigate("/login"); // Navigate to login when the button is clicked
@@ -25,7 +48,9 @@ const EmailVerified = () => {
 
         <div className="w-full max-w-md rounded-lg p-8 shadow-md">
           <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
-            Congratulations! Your email has been successfully verified.
+            {isVerified
+              ? "Congratulations! Your email has been successfully verified."
+              : "Verifying your email..."}
           </p>
           {/* Submit Button */}
           <button

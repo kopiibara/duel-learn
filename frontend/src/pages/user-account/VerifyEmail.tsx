@@ -9,7 +9,18 @@ import PageTransition from "../../styles/PageTransition";
 const VerifyEmail = () => {
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const [timer, setTimer] = useState(0);
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
+  const [isEmailSent, setIsEmailSent] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const user = auth.currentUser;
+    if (user) {
+      setIsEmailVerified(user.emailVerified);
+      console.log("Email Verified:", user.emailVerified);
+    }
+  }, []);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -30,18 +41,23 @@ const VerifyEmail = () => {
         await sendEmailVerification(user);
         toast.success("Verification email sent.");
         setIsButtonDisabled(true);
+        setIsEmailSent(true);
         setTimer(300); // 5 minutes
       } else {
         toast.error("No user is currently signed in.");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error sending verification email:", error);
-      toast.error("Failed to send verification email. Please try again.");
+      if (error.code === "auth/too-many-requests") {
+        setErrorMessage("Too many requests. Please try again later.");
+      } else {
+        toast.error("Failed to send verification email. Please try again.");
+      }
     }
   };
 
   const handleBacktoLoginClick = () => {
-    navigate("/");
+    navigate("/dashboard/home");
   };
 
   return (
@@ -57,22 +73,24 @@ const VerifyEmail = () => {
 
         <div className="w-full max-w-md rounded-lg p-8 shadow-md">
           <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
-            Please verify your email to continue.
+            {errorMessage ? errorMessage : isEmailVerified ? "Email is Already Verified" : isEmailSent ? "Email has been sent. Please check your inbox." : "Please verify your email to continue."}
           </p>
-          <button
-            type="button"
-            className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
-            onClick={handleSendVerificationEmail}
-            disabled={isButtonDisabled}
-          >
-            {isButtonDisabled ? `Wait ${Math.floor(timer / 60)}:${(timer % 60).toString().padStart(2, '0')}` : "Send Verification Email"}
-          </button>
+          {!isEmailVerified && (
+            <button
+              type="button"
+              className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
+              onClick={handleSendVerificationEmail}
+              disabled={isButtonDisabled}
+            >
+              {isButtonDisabled ? `Wait ${Math.floor(timer / 60)}:${(timer % 60).toString().padStart(2, '0')}` : "Send Verification Email"}
+            </button>
+          )}
           <button
             type="button"
             className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
             onClick={handleBacktoLoginClick}
           >
-            Back to sign in
+            Back to Dashboard
           </button>
         </div>
       </div>
