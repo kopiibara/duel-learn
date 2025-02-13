@@ -5,6 +5,7 @@ import { sendEmailVerification } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
+import { getFirestore, collection, query, where, getDocs, setDoc, doc, serverTimestamp } from "firebase/firestore";
 
 const VerifyEmail = () => {
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
@@ -12,6 +13,7 @@ const VerifyEmail = () => {
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -34,6 +36,50 @@ const VerifyEmail = () => {
     return () => clearInterval(interval);
   }, [timer]);
 
+  useEffect(() => {
+    const fetchEmailTimestamp = async () => {
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const db = getFirestore();
+          const usersRef = collection(db, "users");
+          const q = query(usersRef, where("email", "==", user.email));
+          const querySnapshot = await getDocs(q);
+
+          if (!querySnapshot.empty) {
+            const userDoc = querySnapshot.docs[0];
+            const userData = userDoc.data();
+
+            if (userData.emailTimestamp) {
+              const emailTimestamp = userData.emailTimestamp.toDate();
+              const now = new Date();
+              const elapsed = now.getTime() - emailTimestamp.getTime();
+              const remaining = 5 * 60 * 1000 - elapsed;
+
+              if (remaining > 0) {
+                setTimeRemaining(remaining);
+                const interval = setInterval(() => {
+                  setTimeRemaining((prev) => {
+                    if (prev && prev > 1000) {
+                      return prev - 1000;
+                    } else {
+                      clearInterval(interval);
+                      return null;
+                    }
+                  });
+                }, 1000);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching email timestamp:", err);
+      }
+    };
+
+    fetchEmailTimestamp();
+  }, []);
+
   const handleSendVerificationEmail = async () => {
     try {
       const user = auth.currentUser;
@@ -42,7 +88,30 @@ const VerifyEmail = () => {
         toast.success("Verification email sent.");
         setIsButtonDisabled(true);
         setIsEmailSent(true);
-        setTimer(300); // 5 minutes
+
+        const db = getFirestore();
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("email", "==", user.email));
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          const userDoc = querySnapshot.docs[0];
+          await setDoc(doc(db, "users", userDoc.id), {
+            emailTimestamp: serverTimestamp(),
+          }, { merge: true });
+        }
+
+        setTimeRemaining(5 * 60 * 1000); // 5 minutes
+        const interval = setInterval(() => {
+          setTimeRemaining((prev) => {
+            if (prev && prev > 1000) {
+              return prev - 1000;
+            } else {
+              clearInterval(interval);
+              return null;
+            }
+          });
+        }, 1000);
       } else {
         toast.error("No user is currently signed in.");
       }
@@ -80,9 +149,18 @@ const VerifyEmail = () => {
               type="button"
               className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
               onClick={handleSendVerificationEmail}
-              disabled={isButtonDisabled}
+              disabled={isButtonDisabled || (timeRemaining !== null && timeRemaining > 0)}
             >
-              {isButtonDisabled ? `Wait ${Math.floor(timer / 60)}:${(timer % 60).toString().padStart(2, '0')}` : "Send Verification Email"}
+              {isButtonDisabled ? (
+                <div className="relative">
+                  <div className="loader w-6 h-6 rounded-full border-2 border-t-transparent border-white animate-spin"></div>
+                  <div className="absolute inset-0 w-6 h-6 rounded-full border-2 border-transparent border-t-[#D1C4E9] animate-pulse"></div>
+                </div>
+              ) : timeRemaining !== null && timeRemaining > 0 ? (
+                `Wait ${Math.ceil(timeRemaining / 1000)} seconds`
+              ) : (
+                "Send Verification Email"
+              )}
             </button>
           )}
           <button

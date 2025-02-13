@@ -48,9 +48,7 @@ const EmailVerified = () => {
 
         <div className="w-full max-w-md rounded-lg p-8 shadow-md">
           <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
-            {isVerified
-              ? "Congratulations! Your email has been successfully verified."
-              : "Verifying your email..."}
+            Congratulations! Your email has been successfully verified.
           </p>
           {/* Submit Button */}
           <button
