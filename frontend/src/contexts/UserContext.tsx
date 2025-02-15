@@ -25,8 +25,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        const token = await firebaseUser.getIdToken();
         const userData: User = {
           displayName: firebaseUser.displayName,
           email: firebaseUser.email,
@@ -34,9 +35,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
           uid: firebaseUser.uid,
         };
         setUser(userData);
+        localStorage.setItem("userToken", token); // Store token
         localStorage.setItem("userData", JSON.stringify(userData));
       } else {
         setUser(null);
+        localStorage.removeItem("userToken"); // Remove token
         localStorage.removeItem("userData");
       }
     });

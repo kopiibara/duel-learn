@@ -16,7 +16,7 @@ const firebaseEmailHandler = () => {
         case "verifyEmail":
           // Apply the email verification code
           await applyActionCode(auth, oobCode);
-          navigate("/email-verified");
+          navigate(`/email-verified?oobCode=${oobCode}`);
           break;
         default:
           throw new Error("Invalid mode");

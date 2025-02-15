@@ -2,13 +2,11 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import ExitIcon from "../../assets/images/Exit.png";
 import sampleAvatarDeployment from "../../assets/images/sampleAvatar2.png";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
+import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import {
   auth,
   sendResetEmail,
-  verifyResetCode,
-  confirmResetPassword,
 } from "../../services/firebase";
 import PageTransition from "../../styles/PageTransition";
 
@@ -22,6 +20,7 @@ const ConfirmationAccount = () => {
   const [buttonLoading, setButtonLoading] = useState(false);
   const [error, setError] = useState("");
   const [isPhone, setIsPhone] = useState(false); // State to track if input is phone
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
 
   useEffect(() => {
     if (!email) {
@@ -63,8 +62,30 @@ const ConfirmationAccount = () => {
 
         if (!querySnapshot.empty) {
           const userDoc = querySnapshot.docs[0];
-          setUsername(userDoc.data().username);
-          setProfilePic(userDoc.data().profilePic);
+          const userData = userDoc.data();
+          setUsername(userData.username);
+          setProfilePic(userData.profilePic);
+
+          if (userData.emailTimestamp) {
+            const emailTimestamp = userData.emailTimestamp.toDate();
+            const now = new Date();
+            const elapsed = now.getTime() - emailTimestamp.getTime();
+            const remaining = 5 * 60 * 1000 - elapsed;
+
+            if (remaining > 0) {
+              setTimeRemaining(remaining);
+              const interval = setInterval(() => {
+                setTimeRemaining((prev) => {
+                  if (prev && prev > 1000) {
+                    return prev - 1000;
+                  } else {
+                    clearInterval(interval);
+                    return null;
+                  }
+                });
+              }, 1000);
+            }
+          }
         } else {
           setError("User not found");
         }
@@ -97,6 +118,19 @@ const ConfirmationAccount = () => {
     try {
       await handleSendPasswordResetEmail();
       alert("Password reset email has been sent! Check your inbox.");
+      
+      const db = getFirestore();
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where(isPhone ? "phone" : "email", "==", email));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        await setDoc(doc(db, "users", userDoc.id), {
+          emailTimestamp: serverTimestamp(),
+        }, { merge: true });
+      }
+
       setLoading(true); // Show loading screen during timeout
       setTimeout(() => {
         navigate("/login"); // Or a confirmation page
@@ -167,13 +201,15 @@ const ConfirmationAccount = () => {
             type="submit"
             className={`w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors flex justify-center items-center`}
             onClick={handleContinueClick}
-            disabled={buttonLoading}
+            disabled={buttonLoading || (timeRemaining !== null && timeRemaining > 0)}
           >
             {buttonLoading ? (
               <div className="relative">
                 <div className="loader w-6 h-6 rounded-full border-2 border-t-transparent border-white animate-spin"></div>
                 <div className="absolute inset-0 w-6 h-6 rounded-full border-2 border-transparent border-t-[#D1C4E9] animate-pulse"></div>
               </div>
+            ) : timeRemaining !== null && timeRemaining > 0 ? (
+              `Wait ${Math.ceil(timeRemaining / 1000)} seconds`
             ) : (
               "Continue"
             )}
