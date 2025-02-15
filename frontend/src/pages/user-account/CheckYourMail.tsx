@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+<<<<<<< HEAD
 import EmailSent from "../../assets/General/EmailSent.png"; // Importing the big star image
 import PageTransition from "../../styles/PageTransition"; // Importing the PageTransition component
+=======
+import EmailSent from '../../assets/General/EmailSent.png'; // Importing the big star image
+import PageTransition from '../../styles/PageTransition'; // Importing the PageTransition component
+>>>>>>> 466c6606452daa1f68cdb98db6df1dcd247986f6
 
 export default function CheckYourMail() {
   const [countdown, setCountdown] = useState<number | null>(null); // State to manage countdown timer
@@ -51,6 +56,7 @@ export default function CheckYourMail() {
               alt="Email sent"
               // Importing email sent illustration in SVG format
             />
+<<<<<<< HEAD
 
             <div className="flex flex-col items-center mt-3 max-md:mt-4 max-md:max-w-full w-[400px]">
               {/* Container for the text content with flexbox layout and margin */}
@@ -68,6 +74,19 @@ export default function CheckYourMail() {
                 {/* Paragraph with margin, font size, and color */}
                 We sent you a link for your password recovery. Check your spam
                 folder if you do not hear from us after awhile.
+=======
+            
+            <div className="flex flex-col items-center mt-3 max-md:mt-4 max-md:max-w-full w-[400px]">
+              {/* Container for the text content with flexbox layout and margin */}
+              <h2 className="text-4xl font-bold text-slate-200 max-md:max-w-full max-md:text-3xl mb-2" style={{ fontFamily: "Nunito" }}>
+                {/* Heading with specific font size and color */}
+                Check your mailbox!
+              </h2>
+              <p className="mt-2 text-m text-zinc-400 max-md:max-w-full mb-2" style={{ fontFamily: "Nunito" }}>
+                {/* Paragraph with margin, font size, and color */}
+                We sent you a link for your password recovery. Check your spam folder
+                if you do not hear from us after awhile.
+>>>>>>> 466c6606452daa1f68cdb98db6df1dcd247986f6
               </p>
             </div>
 
@@ -77,7 +96,11 @@ export default function CheckYourMail() {
                 {/* Container for the button with flexbox layout */}
                 <button
                   className="w-[400px] px-5 py-2 bg-violet-700 rounded-xl max-md:px-2 max-md:max-w-full hover:bg-violet-600 transition-colors text-base"
+<<<<<<< HEAD
                   onClick={() => navigate("/sign-up")}
+=======
+                  onClick={() => navigate('/sign-up')}
+>>>>>>> 466c6606452daa1f68cdb98db6df1dcd247986f6
                   style={{ fontFamily: "Nunito" }}
                   // Button with specific styling and click event to navigate to sign-up page
                 >
@@ -91,4 +114,8 @@ export default function CheckYourMail() {
       </main>
     </PageTransition>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 466c6606452daa1f68cdb98db6df1dcd247986f6
