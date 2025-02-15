@@ -49,7 +49,7 @@ const useValidation = () => {
         }
         break;
       case "terms":
-        if (!formData.terms) {
+        if (value !== "true") {
           error = "You must agree to the terms and conditions.";
         }
         break;

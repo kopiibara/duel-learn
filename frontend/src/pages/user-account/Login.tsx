@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
@@ -21,7 +21,7 @@ import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 
 const Login = () => {
-  const { setUser } = useUser();
+  const { setUser, user } = useUser(); // Get user from context
   const [data, setData] = useState({
     username: "",
     password: "",
@@ -29,6 +29,12 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
   const { error, handleLoginError } = useHandleError();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard/home"); // Redirect if user is authenticated
+    }
+  }, [user, navigate]);
 
   const togglePassword = () => {
     setShowPassword(!showPassword); // Toggle password visibility
@@ -47,6 +53,7 @@ const Login = () => {
         email: result.user.email,
         photoURL: result.user.photoURL, // Store the photoURL here
         uid: result.user.uid,
+        EmailVerified: result.user.emailVerified,
       };
 
       console.log("User Data:", userData);
@@ -58,7 +65,7 @@ const Login = () => {
       localStorage.setItem("userToken", token);
 
       // Redirect to a protected route or dashboard
-      navigate("/dashboard/welcome");
+      navigate("/dashboard/home");
     } catch (error) {
       console.error("Error during sign-in:", error);
       toast.error("Google sign-in failed. Please try again.");
@@ -97,6 +104,7 @@ const Login = () => {
         photoURL: result.user.photoURL,
         uid: result.user.uid,
         username: username, // Store username separately
+        EmailVerified: result.user.emailVerified,
       };
       console.log("User Data:", userData);
       // Store user data in context
@@ -105,7 +113,7 @@ const Login = () => {
       // Optionally, you can store the token in local storage or context
       localStorage.setItem("userToken", token); // Store token
       setData({ username: "", password: "" });
-      navigate("/dashboard/welcome"); // Redirect on successful login
+      navigate("/dashboard/home"); // Redirect on successful login
     } catch (error) {
       handleLoginError(error); // Use the hook to handle login error
     }

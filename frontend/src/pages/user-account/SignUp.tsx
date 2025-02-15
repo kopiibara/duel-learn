@@ -1,9 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
-import axios from "axios";
-import { toast } from "react-hot-toast";
 import {
   auth,
   googleProvider,
@@ -23,8 +21,8 @@ import useHandleError from "../../utils/useHandleError";
 import PageTransition from "../../styles/PageTransition";
 
 const SignUp = () => {
-  const { setUser } = useUser();
-  const { error, handleLoginError } = useHandleError();
+  const { setUser, user } = useUser();
+  const {handleLoginError } = useHandleError();
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -37,6 +35,12 @@ const SignUp = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard/home"); // Redirect if user is authenticated
+    }
+  }, [user, navigate]);
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
@@ -71,6 +75,7 @@ const SignUp = () => {
         username: username,
         email: email,
         dateCreated: serverTimestamp(),
+        isSSO: false,
       });
       await sendEmailVerification(userCredential.user);
       localStorage.setItem("userToken", token); // Store token
@@ -111,6 +116,7 @@ const SignUp = () => {
         username: userData.displayName,
         email: userData.email,
         dateCreated: serverTimestamp(),
+        isSSO: true,
       });
 
       setUser(userData);
@@ -180,6 +186,7 @@ const SignUp = () => {
                   setFormData({ ...formData, password: e.target.value });
                   validate("password", e.target.value);
                 }}
+                onCopy={(e) => e.preventDefault()} // Disable copy
                 className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
               />
               <span
@@ -208,6 +215,7 @@ const SignUp = () => {
                   setFormData({ ...formData, confirmPassword: e.target.value });
                   validate("confirmPassword", e.target.value, formData);
                 }}
+                onPaste={(e) => e.preventDefault()} // Disable paste
                 className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
               />
               {errors.confirmPassword && (
