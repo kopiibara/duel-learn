@@ -142,10 +142,10 @@ const Personalization: React.FC = () => {
         </div>
 
         <div className="w-28 h-28 rounded bg-white mb-6 mt-36"></div>
-        <h1 className="text-2xl font-bold mb-2">
+        <h1 className="text-3xl font-bold mb-5">
           Your Magical Journey Starts Here!
         </h1>
-        <p className="text-md mb-20 text-center text-[#786d99]">
+        <p className="text-lg mb-20 text-center text-[#786d99]">
           Select topics to open the gates to a world of personalized discovery.
         </p>
 

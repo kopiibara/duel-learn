@@ -95,7 +95,7 @@ const TutorialOnePage: React.FC = () => {
 
         {/* Image Container */}
         <div
-          className="relative mt-14 z-10 w-96 h-96 rounded bg-center"
+          className="relative mt-8 z-10 w-96 h-96 rounded bg-center"
           style={{
             backgroundImage: `url(${Tutorial1Magician})`,
             backgroundSize: "contain",
