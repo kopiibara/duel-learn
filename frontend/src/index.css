@@ -13,3 +13,12 @@ body {
   font-family: "Nunito", sans-serif;
   line-height: 1.5;
 }
+
+
+html, body {
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+}
