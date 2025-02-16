@@ -25,6 +25,7 @@ import SetUpTimeQuestion from "../pages/dashboard/play-battleground/time-pressur
 import PVPLobby from "../pages/dashboard/play-battleground/multiplayer-mode/PVPLobby";
 import { useState } from "react"; // Import useState
 import VerifyEmail from "../pages/user-account/VerifyEmail";
+import CheckYourMail from "../pages/user-account/CheckYourMail";
 
 const PrivateRoutes = () => {
   const { user } = useUser();
@@ -67,6 +68,7 @@ const PrivateRoutes = () => {
         />
       </Route>
       <Route path ="verify-email" element={<VerifyEmail />} />
+      <Route path="/check-your-mail" element={<CheckYourMail />} />
 
       {/* Route for buying premium account */}
       <Route path="/shop/buy-premium-account" element={<BuyPremium />} />

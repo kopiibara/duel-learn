@@ -19,26 +19,6 @@ import { useUser } from "../../contexts/UserContext";
 import useValidation from "../../utils/useValidation";
 import useHandleError from "../../utils/useHandleError";
 import PageTransition from "../../styles/PageTransition";
-import TermsAndConditions from "../../components/TermsAndConditions";
-
-interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  children: React.ReactNode;
-}
-
-const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div className="absolute inset-0 bg-black opacity-50" onClick={onClose}></div>
-      <div className="bg-white p-8 rounded-lg z-10">
-        {children}
-      </div>
-    </div>
-  );
-};
 
 const SignUp = () => {
   const { setUser, user } = useUser();
@@ -55,7 +35,6 @@ const SignUp = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -275,14 +254,12 @@ const SignUp = () => {
                 }}
               />
               <label htmlFor="terms" className="ml-2 text-[#9F9BAE] text-sm">
-                I agree to{" "}
-                <button
-                  type="button"
-                  className="text-[#4D18E8] underline hover:text-[#4D18E8]"
-                  onClick={() => setIsModalOpen(true)}
+                I agree to {""}
+                <Link to="/terms-and-conditions" target="_blank"
+                className="text-[#4D18E8] underline hover:text-[#4D18E8]"
                 >
-                  Terms and Conditions
-                </button>
+                Terms and Conditions
+                </Link>
               </label>
             </div>
             {errors.terms && (
@@ -325,9 +302,6 @@ const SignUp = () => {
           </p>
         </div>
       </div>
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)}>
-        <TermsAndConditions />
-      </Modal>
     </PageTransition>
   );
 };

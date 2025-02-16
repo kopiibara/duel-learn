@@ -114,7 +114,7 @@ const TermsAndConditions = () => {
             <p style={{ fontSize: "20px", fontFamily: "Nunito" }}>
               By registering, accessing, or using Duel Learn, you confirm that
               you have read, understood, and agree to these Terms. If you are
-              under the age of <em>[Insert Minimum Age]</em>, you must have
+              under the age of <em>13</em>, you must have
               parental or guardian consent to use the platform.
             </p>
           </article>
