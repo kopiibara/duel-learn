@@ -11,13 +11,14 @@ const TutorialOnePage: React.FC = () => {
   const [showFullText, setShowFullText] = useState<boolean>(false);
   const [clickCount, setClickCount] = useState<number>(0);
   const [typingDone, setTypingDone] = useState<boolean>(false);
+  const [key, setKey] = useState(0); // Key to force Typewriter re-render
   const navigate = useNavigate();
 
   useWandCursor();
 
   useEffect(() => {
-    const timer = setTimeout(() => setAnimate(true), 500);
-    return () => clearTimeout(timer);
+    setAnimate(true);
+    setKey(prevKey => prevKey + 1); // Force Typewriter to restart
   }, []);
 
   const dialogues = [
@@ -27,17 +28,19 @@ const TutorialOnePage: React.FC = () => {
 
   const handleClick = () => {
     if (!typingDone) {
-      setShowFullText(true); // If animation is in progress, show full text
+      setShowFullText(true);
       setTypingDone(true);
     } else if (clickCount < dialogues.length - 1) {
-      // Move to the next dialogue
       setClickCount((prev) => prev + 1);
-      setShowFullText(false); // Reset for next dialogue
-      setTypingDone(false); // Reset typing animation
-      setAnimate(false); // Reset animation effect
-      setTimeout(() => setAnimate(true), 100); // Re-trigger entry animation
+      setShowFullText(false);
+      setTypingDone(false);
+      setAnimate(false);
+      setTimeout(() => {
+        setAnimate(true);
+        setKey(prevKey => prevKey + 1); // Restart Typewriter
+      }, 100);
     } else {
-      navigate("/dashboard/my-preferences"); // Navigate after the last dialogue
+      navigate("/dashboard/my-preferences");
     }
   };
 
@@ -49,10 +52,21 @@ const TutorialOnePage: React.FC = () => {
       >
         {/* Sparkles Container */}
         <div id="sparkles-container"></div>
+    <PageTransition>
+      <div
+        className="flex flex-col items-center justify-center h-screen bg-[#080511] relative overflow-hidden cursor-none"
+        onClick={handleClick}
+      >
+        {/* Sparkles Container */}
+        <div id="sparkles-container"></div>
 
         {/* Magic Wand Cursor */}
         <div className="wand-cursor"></div>
+        {/* Magic Wand Cursor */}
+        <div className="wand-cursor"></div>
 
+        {/* Animated Background Glow */}
+        <div className="absolute w-[500px] h-[500px] bg-[#6B21A8] blur-[250px] rounded-full opacity-40 animate-pulse"></div>
         {/* Animated Background Glow */}
         <div className="absolute w-[500px] h-[500px] bg-[#6B21A8] blur-[250px] rounded-full opacity-40 animate-pulse"></div>
 
@@ -74,18 +88,19 @@ const TutorialOnePage: React.FC = () => {
                 />
               ) : (
                 <Typewriter
-                  onInit={(typewriter) => {
-                    typewriter
-                      .typeString(dialogues[clickCount])
-                      .callFunction(() => setTypingDone(true)) // Mark typing as completed
-                      .start();
-                  }}
-                  options={{
-                    autoStart: true,
-                    loop: false,
-                    delay: 50,
-                  }}
-                />
+                key={key} // Force re-render
+                onInit={(typewriter) => {
+                  typewriter
+                    .typeString(dialogues[clickCount])
+                    .callFunction(() => setTypingDone(true))
+                    .start();
+                }}
+                options={{
+                  autoStart: true,
+                  loop: false,
+                  delay: 50,
+                }}
+              />
               )}
             </div>
             {/* Triangle for the speech bubble */}
@@ -103,7 +118,28 @@ const TutorialOnePage: React.FC = () => {
             backgroundPosition: "center",
           }}
         ></div>
+        {/* Image Container */}
+        <div
+          className="relative mt-8 z-10 w-96 h-96 rounded bg-center"
+          style={{
+            backgroundImage: `url(${Tutorial1Magician})`,
+            backgroundSize: "contain",
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "center",
+          }}
+        ></div>
 
+        {/* Click to Continue Text */}
+        <p
+          className={`absolute bottom-[10%] text-[18px] text-[#3B354D] transition-opacity duration-1000 ${
+            animate ? "opacity-100" : "opacity-0"
+          }`}
+          style={{ animation: "fadeInOut 3s infinite" }}
+        >
+          Tap anywhere on the screen to continue
+        </p>
+      </div>
+    </PageTransition>
         {/* Click to Continue Text */}
         <p
           className={`absolute bottom-[10%] text-[18px] text-[#3B354D] transition-opacity duration-1000 ${
