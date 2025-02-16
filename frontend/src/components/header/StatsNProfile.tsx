@@ -5,6 +5,7 @@ import Tooltip from "@mui/material/Tooltip"; // Import Tooltip from Material-UI
 import ProfilePopover from "./ProfilePopover"; // Import the ProfilePopover component
 import { Avatar, Box } from "@mui/material"; // Import Avatar from Material-UI
 import { useUser } from "../../contexts/UserContext"; // Import the useUser hook
+import sampleAvatarDeployment from "../../assets/profile-picture/bunny-picture.png"; // Import the sample avatar image
 
 const StatsNProfile = () => {
   const { user } = useUser();
@@ -95,8 +96,8 @@ const StatsNProfile = () => {
         <Avatar
           variant="rounded"
           onClick={handleProfileClick} // Open popover on click
-          src={user?.photoURL || undefined} // Ensure null is converted to undefined
-          alt={user?.displayName || "User"} // Fallback if displayName is not available
+          src={user?.photoURL || sampleAvatarDeployment} // Ensure null is converted to undefined
+          alt={user?.email || "User"} // Fallback if displayName is not available
           sx={{
             cursor: "pointer", // Change cursor to pointer on hover
             transition: "transform 0.3s ease, background-color 0.3s ease", // Smooth transition for hover effects
