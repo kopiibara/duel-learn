@@ -14,7 +14,6 @@ body {
   line-height: 1.5;
 }
 
-
 /* //start of loading screen animation for dots */
 .dot-1, .dot-2, .dot-3 {
   display: inline-block;
@@ -40,5 +39,3 @@ body {
     transform: translateY(-5px);
   }
 }
-
-/* end of the dot animation */

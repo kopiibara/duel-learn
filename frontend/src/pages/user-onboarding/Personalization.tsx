@@ -108,7 +108,6 @@ const Personalization: React.FC = () => {
           >
             Skip
           </Button>
-
           {selectedSubjects.length > 0 && (
             <Button
               sx={{

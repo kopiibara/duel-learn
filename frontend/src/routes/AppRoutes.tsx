@@ -24,6 +24,8 @@ import TutorialFour from "../pages/user-onboarding/TutorialFour";
 import TutorialTwo from "../pages/user-onboarding/TutorialTwo";
 import TutorialOnePage from "../pages/user-onboarding/TutorialOne";
 import WelcomePage from "../pages/user-onboarding/WelcomePage";
+import EmailActionHandler from "../pages/user-account/EmailActionHandler"; // Import EmailActionHandler
+import EmailVerified from "../pages/user-account/EmailVerified"; // Import EmailVerified
 
 const AppRoutes: React.FC = () => {
   const location = useLocation();
@@ -55,7 +57,10 @@ const AppRoutes: React.FC = () => {
         <Route path="/confirmation-account" element={<ConfirmationAccount />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/success-reset" element={<SuccessReset />} />
-        <Route path="/security-code" element={<SecurityCode />} />
+        <Route path="/email-action" element={<EmailActionHandler />} />{" "}
+        {/* Add EmailActionHandler route */}
+        <Route path="/email-verified" element={<EmailVerified />} />{" "}
+        {/* Add EmailVerified route */}
         <Route path="*" element={<NotFoundPage />} />
         <Route path="/dashboard/*" element={<PrivateRoutes />} />
       </Routes>

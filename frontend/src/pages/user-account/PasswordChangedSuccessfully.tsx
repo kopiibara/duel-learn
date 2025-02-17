@@ -51,7 +51,6 @@ export default function PasswordChangedSuccessfully() {
               alt="Password security"
               // Importing email sent illustration in SVG format
             />
-            
             <div className="flex flex-col items-center mt-3 max-md:mt-4 max-md:max-w-full w-[400px]">
               {/* Container for the text content with flexbox layout and margin */}
               <h2 className="text-4xl font-bold text-slate-200 max-md:max-w-full max-md:text-3xl mb-2" style={{ fontFamily: "Nunito" }}>

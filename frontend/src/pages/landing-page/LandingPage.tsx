@@ -1,6 +1,7 @@
 import { Box, Button, Stack, Typography } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import DocumentHead from "../../components/DocumentHead";
+import PageTransition from "../../styles/PageTransition";
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -14,18 +15,20 @@ const LandingPage = () => {
   };
 
   return (
-    <Box>
-      <DocumentHead title="Duel Learn" />
-      <Typography variant="h3">Landing Page</Typography>
-      <Stack spacing={3}>
-        <Button variant="contained" color="primary" onClick={handleLogin}>
-          Login
-        </Button>
-        <Button variant="contained" color="primary" onClick={handleDashboard}>
-          Dashboard
-        </Button>
-      </Stack>
-    </Box>
+    <PageTransition>
+      <Box>
+        <DocumentHead title="Duel Learn" />
+        <Typography variant="h3">Landing Page</Typography>
+        <Stack spacing={3}>
+          <Button variant="contained" color="primary" onClick={handleLogin}>
+            Login
+          </Button>
+          <Button variant="contained" color="primary" onClick={handleDashboard}>
+            Dashboard
+          </Button>
+        </Stack>
+      </Box>
+    </PageTransition>
   );
 };
 

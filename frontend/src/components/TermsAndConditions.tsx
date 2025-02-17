@@ -106,6 +106,7 @@ const TermsAndConditions = () => {
             </ul>
           </article>
 
+
           <article className="mt-10 text-2xl text-white max-md:mt-8 max-md:max-w-full" style={{ fontSize: "20px", fontFamily: "Nunito" }}>
             {/* Article with margin, font size, and color */}
             <h3>3. Use of the Platform</h3>
@@ -153,5 +154,6 @@ const TermsAndConditions = () => {
     </PageTransition>
   );
 };
+
 
 export default TermsAndConditions;
