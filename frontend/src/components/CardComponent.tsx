@@ -69,10 +69,14 @@ const CardComponent: React.FC<CardComponentProps> = ({
         >
           <Stack spacing={0}>
             <Stack direction="row" spacing={1} alignItems={"center"}>
-              <Typography variant="body2" className="text-[#3B354D]">
+              <Typography
+                sx={{ color: "#000000", fontSize: "0.7rem", fontWeight: "600" }}
+              >
                 {totalItems} Items
               </Typography>
-              <Typography variant="subtitle2" className="text-[#3B354D]">
+              <Typography
+                sx={{ color: "#000000", fontSize: "0.7rem", fontWeight: "600" }}
+              >
                 &#x2022;
               </Typography>
               {clicked && (
@@ -89,22 +93,30 @@ const CardComponent: React.FC<CardComponentProps> = ({
             >
               {title}
             </Typography>
-            <Stack direction="row" spacing={1} className="w-auto mb-2">
+            <Stack direction="row" spacing={1} className="w-auto mb-3">
               {tags.map((tag, index) => (
                 <Chip
                   key={index}
                   label={tag}
                   sx={{
-                    backgroundColor: "#3B354D",
-                    color: "#E2DDF3",
+                    backgroundColor: "#4F4A64",
+                    color: "#FFFFFF",
                     borderRadius: "0.5rem",
-                    padding: "1rem",
                     width: "fit-content",
+                    fontSize: "0.7rem",
+                    fontWeight: "600",
                   }}
                 />
               ))}
             </Stack>
-            <Typography variant="body2" className="text-[#3B354D]">
+            <Typography
+              sx={{
+                color: "#000000",
+                fontSize: "0.7rem",
+                fontWeight: "600",
+                paddingLeft: "1px",
+              }}
+            >
               Made by <strong>{creator}</strong>
             </Typography>
           </Stack>
