@@ -22,7 +22,7 @@ const HomePage = ({
   return (
     <PageTransition>
       <Box className="h-screen w-full">
-        <DocumentHead title="Home" />
+        <DocumentHead title="Home | Duel Learn" />
         <Stack spacing={2} className="px-6">
           <Stack spacing={2} className="pb-6">
             <Stack

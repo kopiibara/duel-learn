@@ -10,7 +10,7 @@ import PageTransition from "../../../styles/PageTransition";
 const Profile = () => {
   return (
     <PageTransition>
-      <DocumentHead title="Profile" />
+      <DocumentHead title="Profile | Duel Learn" />
       <div className="min-h-screen text-white px-7">
         {/* Profile Header */}
         <ProfileHeader />
