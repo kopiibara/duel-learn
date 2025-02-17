@@ -19,6 +19,10 @@ import TutorialFour from "../pages/user-onboarding/TutorialFour";
 import TutorialFive from "../pages/user-onboarding/TutorialFive";
 import TutorialSix from "../pages/user-onboarding/TutorialSix";
 import TutorialLast from "../pages/user-onboarding/TutorialLast";
+import WelcomeGameMode from "../pages/dashboard/play-battleground/WelcomeGameMode";
+import SetUpTimeQuestion from "../pages/dashboard/play-battleground/time-pressured/SetUptTimeQuestion";
+
+import PVPLobby from "../pages/dashboard/play-battleground/multiplayer-mode/PVPLobby";
 import { useState } from "react"; // Import useState
 
 const PrivateRoutes = () => {
@@ -63,6 +67,10 @@ const PrivateRoutes = () => {
       {/* Route for buying premium account */}
       <Route path="/shop/buy-premium-account" element={<BuyPremium />} />
       <Route path="/set-up-questions" element={<SetUpQuestionType />} />
+      <Route path="/welcome-game-mode" element={<WelcomeGameMode />} />
+      <Route path="/setup/questions" element={<SetUpQuestionType />} />
+      <Route path="/setup/timer" element={<SetUpTimeQuestion />} />
+      <Route path="/pvp-lobby" element={<PVPLobby />} />
     </Routes>
   );
 };
