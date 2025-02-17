@@ -1,27 +1,18 @@
 import * as React from "react";
-import BunnyWithStar from "../assets/General/bunny-with-star.png"; // Importing the bunny with star image
-import BigStar from "../assets/General/BigStar.png"; // Importing the big star image
-import PageTransition from "../styles/PageTransition"; // Importing the PageTransition component
+import BunnyWithStar from '../assets/General/bunny-with-star.png'; // Importing the bunny with star image
+import BigStar from '../assets/General/BigStar.png'; // Importing the big star image
+import PageTransition from '../styles/PageTransition'; // Importing the PageTransition component
 
 const TermsAndConditions = () => {
   return (
     <PageTransition>
-      <main
-        className="flex overflow-hidden flex-col items-center"
-        style={{ backgroundColor: "#080511" }}
-      >
+      <main className="flex overflow-hidden flex-col items-center" style={{ backgroundColor: "#080511" }}>
         {/* Main container with flexbox layout, padding, and background color */}
-        <header
-          className="flex flex-col items-start self-stretch px-16 pt-8 w-full max-md:px-5 max-md:max-w-full"
-          style={{ backgroundColor: "rgba(59, 53, 77, 0.5)" }}
-        >
+        <header className="flex flex-col items-start self-stretch px-16 pt-8 w-full max-md:px-5 max-md:max-w-full" style={{ backgroundColor: "rgba(59, 53, 77, 0.5)" }}>
           {/* Header section with flexbox layout, padding, and background color */}
           <div className="flex flex-wrap gap-10 w-full max-w-[1544px] max-md:max-w-full">
             {/* Container for header content with flexbox layout and gap */}
-            <div
-              className="flex gap-6 self-start text-2xl font-bold text-white mt-2"
-              style={{ fontFamily: "Nunito" }}
-            >
+            <div className="flex gap-6 self-start text-2xl font-bold text-white mt-2" style={{ fontFamily: "Nunito" }}>
               {/* Container for logo and title with flexbox layout and gap */}
               <img
                 loading="lazy"
@@ -30,15 +21,7 @@ const TermsAndConditions = () => {
                 style={{ width: "32px", height: "32px" }}
                 alt="Duel Learn Logo" // Alt text for the image
               />
-              <h1
-                className="my-auto basis-auto"
-                style={{
-                  width: "123px",
-                  height: "33px",
-                  fontSize: "17px",
-                  fontFamily: "Nunito",
-                }}
-              >
+              <h1 className="my-auto basis-auto" style={{ width: "123px", height: "33px", fontSize: "17px", fontFamily: "Nunito" }}>
                 {/* Title with specific width, height, and font size */}
                 Duel Learn
               </h1>
@@ -63,11 +46,7 @@ const TermsAndConditions = () => {
                     loading="lazy"
                     src={BunnyWithStar} // Using the imported bunny with star image
                     className="object-contain max-md:mt-10 max-md:max-w-full"
-                    style={{
-                      width: "345px",
-                      height: "250px",
-                      marginTop: "30px",
-                    }} // Adjusted size proportionally and moved lower
+                    style={{ width: "345px", height: "250px", marginTop: "30px" }} // Adjusted size proportionally and moved lower
                     alt="Bunny with star" // Alt text for the image
                   />
                 </div>
@@ -78,57 +57,39 @@ const TermsAndConditions = () => {
 
         <section className="flex flex-col items-start max-w-[936px] w-full px-4">
           {/* Section container with flexbox layout, padding, and specific width */}
-          <h2
-            className="mt-28 text-5xl font-bold text-white max-md:mt-10 max-md:max-w-full"
-            style={{ fontSize: "48px", fontFamily: "Nunito" }}
-          >
+          <h2 className="mt-28 text-5xl font-bold text-white max-md:mt-10 max-md:max-w-full" style={{ fontSize: "48px", fontFamily: "Nunito" }}>
             {/* Heading with margin, font size, and color */}
             Terms and Conditions
           </h2>
-
-          <p
-            className="mt-4 text-2xl text-white"
-            style={{ fontSize: "20px", fontFamily: "Nunito" }}
-          >
+          
+          <p className="mt-4 text-2xl text-white" style={{ fontSize: "20px", fontFamily: "Nunito" }}>
             {/* Paragraph with margin, font size, and color */}
             Last Updated: 09 February 2025
           </p>
 
-          <p
-            className="mt-10 text-2xl text-white max-md:mt-8 max-md:max-w-full"
-            style={{ fontSize: "20px", fontFamily: "Nunito" }}
-          >
+          <p className="mt-10 text-2xl text-white max-md:mt-8 max-md:max-w-full" style={{ fontSize: "20px", fontFamily: "Nunito" }}>
             {/* Paragraph with margin, font size, and color */}
-            Welcome to the Duel Learn Platform. By accessing or using our
-            platform, you agree to be bound by these Terms and Conditions
-            ("Terms"). If you do not agree with any part of these Terms, you
-            should not use the platform.
+            Welcome to the Duel Learn Platform. By accessing or using our platform,
+            you agree to be bound by these Terms and Conditions ("Terms").
+            If you do not agree with any part of these Terms, you should not use the
+            platform.
           </p>
 
-          <article
-            className="mt-10 text-2xl text-white max-md:mt-8 max-md:max-w-full"
-            style={{ fontSize: "20px", fontFamily: "Nunito" }}
-          >
+          <article className="mt-10 text-2xl text-white max-md:mt-8 max-md:max-w-full" style={{ fontSize: "20px", fontFamily: "Nunito" }}>
             {/* Article with margin, font size, and color */}
             <h3>1. Acceptance of Terms</h3>
             <p style={{ fontSize: "20px", fontFamily: "Nunito" }}>
-              By registering, accessing, or using Duel Learn, you confirm that
-              you have read, understood, and agree to these Terms. If you are
-              under the age of <em>[Insert Minimum Age]</em>, you must have
-              parental or guardian consent to use the platform.
+              By registering, accessing, or using Duel Learn, you confirm that you
+              have read, understood, and agree to these Terms. If you are under the
+              age of <em>[Insert Minimum Age]</em>, you must have parental or guardian 
+              consent to use the platform.
             </p>
           </article>
 
-          <article
-            className="mt-10 text-2xl text-white max-md:mt-8 max-md:max-w-full"
-            style={{ fontSize: "20px", fontFamily: "Nunito" }}
-          >
+          <article className="mt-10 text-2xl text-white max-md:mt-8 max-md:max-w-full" style={{ fontSize: "20px", fontFamily: "Nunito" }}>
             {/* Article with margin, font size, and color */}
             <h3>2. Account Registration</h3>
-            <ul
-              className="list-disc pl-6"
-              style={{ fontSize: "18px", fontFamily: "Nunito" }}
-            >
+            <ul className="list-disc pl-6" style={{ fontSize: "18px", fontFamily: "Nunito" }}>
               {/* Unordered list with disc style and padding */}
               <li>
                 You must provide accurate and complete information when creating
@@ -139,22 +100,17 @@ const TermsAndConditions = () => {
                 and any activity under it.
               </li>
               <li>
-                We reserve the right to suspend or terminate accounts that
-                violate these Terms.
+                We reserve the right to suspend or terminate accounts that violate
+                these Terms.
               </li>
             </ul>
           </article>
 
-          <article
-            className="mt-10 text-2xl text-white max-md:mt-8 max-md:max-w-full"
-            style={{ fontSize: "20px", fontFamily: "Nunito" }}
-          >
+
+          <article className="mt-10 text-2xl text-white max-md:mt-8 max-md:max-w-full" style={{ fontSize: "20px", fontFamily: "Nunito" }}>
             {/* Article with margin, font size, and color */}
             <h3>3. Use of the Platform</h3>
-            <ul
-              className="list-disc pl-6"
-              style={{ fontSize: "18px", fontFamily: "Nunito" }}
-            >
+            <ul className="list-disc pl-6" style={{ fontSize: "18px", fontFamily: "Nunito" }}>
               {/* Unordered list with disc style and padding */}
               <li>
                 Users can create and share study materials, participate in PvP
@@ -171,20 +127,13 @@ const TermsAndConditions = () => {
             </ul>
           </article>
 
-          <article
-            className="mt-10 text-2xl text-white max-md:mt-8 max-md:max-w-full"
-            style={{ fontSize: "20px", fontFamily: "Nunito" }}
-          >
+          <article className="mt-10 text-2xl text-white max-md:mt-8 max-md:max-w-full" style={{ fontSize: "20px", fontFamily: "Nunito" }}>
             {/* Article with margin, font size, and color */}
             <h3>4. User-Generated Content</h3>
-            <ul
-              className="list-disc pl-6"
-              style={{ fontSize: "18px", fontFamily: "Nunito" }}
-            >
+            <ul className="list-disc pl-6" style={{ fontSize: "18px", fontFamily: "Nunito" }}>
               {/* Unordered list with disc style and padding */}
               <li>
-                You retain ownership of the study materials and content you
-                create.
+                You retain ownership of the study materials and content you create.
               </li>
               <li>
                 By posting content, you grant us a non-exclusive, royalty-free
@@ -192,8 +141,8 @@ const TermsAndConditions = () => {
                 platform.
               </li>
               <li>
-                We are not responsible for the accuracy or quality of
-                user-generated content.
+                We are not responsible for the accuracy or quality of user-generated
+                content.
               </li>
             </ul>
           </article>
@@ -205,5 +154,6 @@ const TermsAndConditions = () => {
     </PageTransition>
   );
 };
+
 
 export default TermsAndConditions;

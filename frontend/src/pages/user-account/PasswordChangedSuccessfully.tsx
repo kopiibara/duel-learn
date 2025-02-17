@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import PasswordSecurity from "../../assets/General/PasswordSecurity.png"; // Importing the big star image
-import PageTransition from "../../styles/PageTransition"; // Importing the PageTransition component
+import PasswordSecurity from '../../assets/General/PasswordSecurity.png'; // Importing the big star image
+import PageTransition from '../../styles/PageTransition'; // Importing the PageTransition component
 
 export default function PasswordChangedSuccessfully() {
   const [countdown, setCountdown] = useState<number | null>(null); // State to manage countdown timer
@@ -51,20 +51,13 @@ export default function PasswordChangedSuccessfully() {
               alt="Password security"
               // Importing email sent illustration in SVG format
             />
-
             <div className="flex flex-col items-center mt-3 max-md:mt-4 max-md:max-w-full w-[400px]">
               {/* Container for the text content with flexbox layout and margin */}
-              <h2
-                className="text-4xl font-bold text-slate-200 max-md:max-w-full max-md:text-3xl mb-2"
-                style={{ fontFamily: "Nunito" }}
-              >
+              <h2 className="text-4xl font-bold text-slate-200 max-md:max-w-full max-md:text-3xl mb-2" style={{ fontFamily: "Nunito" }}>
                 {/* Heading with specific font size and color */}
                 Password Changed Successfully!
               </h2>
-              <p
-                className="mt-2 text-m text-zinc-400 max-md:max-w-full mb-2"
-                style={{ fontFamily: "Nunito" }}
-              >
+              <p className="mt-2 text-m text-zinc-400 max-md:max-w-full mb-2" style={{ fontFamily: "Nunito" }}>
                 {/* Paragraph with margin, font size, and color */}
                 Way to go, magician! You’ve successfully updated your password.
               </p>
@@ -76,7 +69,7 @@ export default function PasswordChangedSuccessfully() {
                 {/* Container for the button with flexbox layout */}
                 <button
                   className="w-[400px] px-5 py-2 bg-violet-700 rounded-xl max-md:px-2 max-md:max-w-full hover:bg-violet-600 transition-colors text-base"
-                  onClick={() => navigate("/sign-up")}
+                  onClick={() => navigate('/sign-up')}
                   style={{ fontFamily: "Nunito" }}
                   // Button with specific styling and click event to navigate to sign-up page
                 >

@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import cauldronGif from "../assets/General/Cauldron.gif"; // Importing the gif animation for cauldron asset
-import PageTransition from "../styles/PageTransition"; // Importing the PageTransition component
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import cauldronGif from '../assets/General/Cauldron.gif'; // Importing the gif animation for cauldron asset
+import PageTransition from '../styles/PageTransition'; // Importing the PageTransition component
 
 export const LoadingScreen: React.FC = () => {
   const navigate = useNavigate(); // Hook to programmatically navigate to different routes
@@ -28,7 +28,7 @@ export const LoadingScreen: React.FC = () => {
   useEffect(() => {
     // Set a timer to navigate to the dashboard home page after 5 seconds
     const timer = setTimeout(() => {
-      navigate("/dashboard/home");
+      navigate('/dashboard/home');
     }, 5000);
 
     // Clear the timer when the component unmounts
@@ -37,9 +37,7 @@ export const LoadingScreen: React.FC = () => {
 
   // Function to update the loading line on user interaction
   const changeLine = () => {
-    setCurrentLine(
-      loadingLines[Math.floor(Math.random() * loadingLines.length)]
-    );
+    setCurrentLine(loadingLines[Math.floor(Math.random() * loadingLines.length)]);
   };
 
   return (
@@ -55,18 +53,10 @@ export const LoadingScreen: React.FC = () => {
             className="object-contain max-w-full aspect-square w-[225px]"
             alt="Loading animation" // Alt text for the image
           />
-          <h1
-            className="mt-8 text-2xl font-extrabold text-white max-md:mt-5"
-            style={{ fontFamily: "Nunito" }}
-          >
-            LOADING <span className="dot-1">.</span>
-            <span className="dot-2">.</span>
-            <span className="dot-3">.</span>
+          <h1 className="mt-8 text-2xl font-extrabold text-white max-md:mt-5" style={{ fontFamily: "Nunito" }}>
+            LOADING <span className="dot-1">.</span><span className="dot-2">.</span><span className="dot-3">.</span>
           </h1>
-          <p
-            className="self-stretch mt-7 text-xl font-medium text-center text-zinc-400 max-md:mt-5 max-md:max-w-full"
-            style={{ fontFamily: "Nunito" }}
-          >
+          <p className="self-stretch mt-7 text-xl font-medium text-center text-zinc-400 max-md:mt-5 max-md:max-w-full" style={{ fontFamily: "Nunito" }}>
             <span className="font-normal text-[#9F9BAE]">{currentLine}</span>
           </p>
         </section>
