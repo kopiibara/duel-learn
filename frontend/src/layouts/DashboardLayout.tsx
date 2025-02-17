@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/header/Header";
+import Footer from "../components/Footer";
 import RightSideBar from "../components/RighSideBar/RightSideBar";
 import DrawerRightSideBar from "../components/DrawerRightSideBar"; // Import the new Drawer component
 import { Box } from "@mui/system";
@@ -42,6 +43,7 @@ const DashboardLayout = () => {
         <Box className="flex flex-1">
           <main className="flex-1 pt-3 relative px-16">
             <Outlet />
+            <Footer />
 
             {/* Absolute icon button in the top-right corner (only shown on mobile screens) */}
             {isMobile && (

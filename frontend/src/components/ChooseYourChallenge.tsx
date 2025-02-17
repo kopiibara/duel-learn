@@ -11,7 +11,7 @@ const ModeCard = styled(Card)({
   borderRadius: "1rem",
   height: "200px",
   cursor: "pointer",
-  background: "linear-gradient(to bottom, #ECE6FF, #DDD3FF)",
+  background: "#E2DDF3",
   position: "relative",
   transform: "scale(1)", // Initial transform state
   transition: "all 0.3s", // Ensure smooth transition between hover and unhover states
@@ -124,7 +124,7 @@ const ChooseYourChallenge = () => {
               PvP Mode
             </Typography>
             <Typography variant="body2" className="text-[#322168]">
-              Face off, outsmart your opponent, and win!
+              Outsmart your opponent and win!
             </Typography>
           </Box>
         </CardContent>
