@@ -14,7 +14,6 @@ import ConfirmationAccount from "../pages/user-account/ConfirmationAccount";
 import NotFoundPage from "../pages/user-account/NotFoundPage";
 import ResetPassword from "../pages/user-account/ResetPassword";
 import SuccessReset from "../pages/user-account/SuccessReset";
-import SecurityCode from "../pages/user-account/SecurityCode";
 import Personalization from "../pages/user-onboarding/Personalization";
 import TutorialLast from "../pages/user-onboarding/TutorialLast";
 import TutorialSix from "../pages/user-onboarding/TutorialSix";
@@ -41,8 +40,10 @@ const AppRoutes: React.FC = () => {
         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
         <Route path="/check-your-mail" element={<CheckYourMail />} />
         <Route path="/loading-screen" element={<LoadingScreen />} />
-        <Route path="/password-changed-successfully" element={<PasswordChangedSuccessfully />} />
-
+        <Route
+          path="/password-changed-successfully"
+          element={<PasswordChangedSuccessfully />}
+        />
         {/* User onboarding routes */}
         <Route path="/welcome" element={<WelcomePage />} />
         <Route path="/tutorial/step-one" element={<TutorialOnePage />} />
@@ -53,7 +54,6 @@ const AppRoutes: React.FC = () => {
         <Route path="/tutorial/step-six" element={<TutorialSix />} />
         <Route path="/tutorial/step-seven" element={<TutorialLast />} />
         <Route path="/my-preferences" element={<Personalization />} />
-
         <Route path="/confirmation-account" element={<ConfirmationAccount />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/success-reset" element={<SuccessReset />} />

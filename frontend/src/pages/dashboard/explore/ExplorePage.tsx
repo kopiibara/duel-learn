@@ -79,7 +79,7 @@ const ExplorePage = () => {
   return (
     <PageTransition>
       <Box className="h-screen w-full">
-        <DocumentHead title="Explore" />
+        <DocumentHead title="Explore | Duel Learn" />
         <Stack className="px-5" spacing={2}>
           <Stack direction="row" spacing={1} paddingX={0.5}>
             {breadcrumbs}
