@@ -27,23 +27,27 @@ const HomePage = ({
           <Stack spacing={2} className="pb-6">
             <Stack
               direction={"row"}
-              spacing={2}
-              className="flex items-center justify-start"
+              spacing={1.5}
+              className="flex items-center justify-start pl-2"
             >
-              <img src="/book.svg" className="w-10 h-10" alt="icon" />
+              <img src="/book.png" className="w-9 h-7" alt="icon" />
               <Typography variant="h5">Choose your Challenge</Typography>
             </Stack>
             <ChooseYourChallenge />
           </Stack>
 
           <Stack spacing={0}>
-            <Typography variant="h5">Recently Opened</Typography>
+            <Typography variant="h5" className="pl-2">
+              Recently Opened
+            </Typography>
             <RecentlyOpened />
           </Stack>
 
           <Stack spacing={0}>
             <Stack direction={"row"} spacing={2} className="flex items-center">
-              <Typography variant="h5">Discover more materials</Typography>
+              <Typography variant="h5" className="pl-2">
+                Discover more materials
+              </Typography>
               <Box flexGrow={1} />
               <Button
                 variant="text"

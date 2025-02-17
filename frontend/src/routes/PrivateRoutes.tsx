@@ -6,7 +6,7 @@ import Explore from "../pages/dashboard/explore/ExplorePage";
 import YourLibrary from "../pages/dashboard/my-library/MyLibrary";
 import Profile from "../pages/dashboard/profile/ProfilePage";
 import Shop from "../pages/dashboard/shop/ShopPage";
-import BuyPremium from "../pages/dashboard/shop/BuyPremium";
+import BuyPremium from "../components/BuyPremium";
 import CreateStudyMaterial from "../pages/dashboard/study-material/material-create/CreateStudyMaterial";
 import ViewStudyMaterial from "../pages/dashboard/study-material/view-study-material/ViewStudyMaterial";
 import SetUpQuestionType from "../pages/dashboard/play-battleground/SetUpQuestionType";
@@ -71,7 +71,7 @@ const PrivateRoutes = () => {
       <Route path="/check-your-mail" element={<CheckYourMail />} />
 
       {/* Route for buying premium account */}
-      <Route path="/shop/buy-premium-account" element={<BuyPremium />} />
+      <Route path="/buy-premium-account" element={<BuyPremium />} />
       <Route path="/set-up-questions" element={<SetUpQuestionType />} />
       <Route path="/welcome-game-mode" element={<WelcomeGameMode />} />
       <Route path="/setup/questions" element={<SetUpQuestionType />} />
