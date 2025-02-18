@@ -17,19 +17,20 @@ const passwordValidation = (value: string) => {
   return "";
 };
 
-const confirmPasswordValidation = (value: string, formData: any) => {
+const confirmPasswordValidation = (value: string, formData: any, passwordField: string) => {
   if (!value) {
     return "Please confirm your password.";
-  } else if (value !== formData.newpassword) {
+  } else if (value !== formData[passwordField]) {
     return "Passwords do not match.";
   }
+  
   return "";
 };
 
 const usePasswordValidation = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  const validatePassword = (field: string, value: string, formData: any = {}) => {
+  const validatePassword = (field: string, value: string, formData: any = {}, passwordField: string = "password") => {
     let error = "";
 
     switch (field) {
@@ -37,7 +38,7 @@ const usePasswordValidation = () => {
         error = passwordValidation(value);
         break;
       case "confirmPassword":
-        error = confirmPasswordValidation(value, formData);
+        error = confirmPasswordValidation(value, formData, passwordField);
         break;
       default:
         break;
@@ -47,10 +48,10 @@ const usePasswordValidation = () => {
     return error;
   };
 
-  const validatePasswordForm = (fields: { [key: string]: string }) => {
+  const validatePasswordForm = (fields: { [key: string]: string }, passwordField: string = "password") => {
     let valid = true;
     for (const field in fields) {
-      const error = validatePassword(field, fields[field], fields);
+      const error = validatePassword(field, fields[field], fields, passwordField);
       if (error) valid = false;
     }
     return valid;

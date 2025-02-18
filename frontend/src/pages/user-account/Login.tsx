@@ -58,14 +58,12 @@ const Login = () => {
           username: userDoc.data().username,
           email: userDoc.data().email,
           display_picture: userDoc.data().display_picture,
+          isNew: additionalUserInfo?.isNewUser,
           full_name: userDoc.data().full_name,
           email_verified: userDoc.data().email_verified,
           isSSO: userDoc.data().isSSO,
           account_type: userDoc.data().account_type as 'free' | 'premium', // Ensure the value is either 'free' or 'premium'
         };
-
-        const isNew = additionalUserInfo?.isNewUser || false;
-
         console.log("User Data:", userData);
 
         // Store user data in context
@@ -74,12 +72,13 @@ const Login = () => {
         // Optionally, you can store the token in local storage or context
         localStorage.setItem("userToken", token);
 
-        // Redirect to a protected route or dashboard
-        if (isNew) {
-          navigate("/dashboard/welcome");
-        } else {
-          navigate("/dashboard/home");
-        }
+        setTimeout(() => {
+          if (userData.isNew) {
+            navigate("/dashboard/welcome");
+          } else {
+            navigate("/dashboard/home");
+          }
+        }, 2000);
       }
     } catch (error) {
       console.error("Error during sign-in:", error);
@@ -120,14 +119,12 @@ const Login = () => {
           username: userDoc.data().username,
           email: userDoc.data().email,
           display_picture: userDoc.data().display_picture,
+          isNew: additionalUserInfo?.isNewUser,
           full_name: userDoc.data().full_name,
           email_verified: userDoc.data().email_verified,
           isSSO: userDoc.data().isSSO,
           account_type: userDoc.data().account_type as 'free' | 'premium', // Ensure the value is either 'free' or 'premium'
         };
-
-        const isNew = additionalUserInfo?.isNewUser || false;
-
         console.log("User Data:", userData);
 
         // Store user data in context
@@ -136,12 +133,13 @@ const Login = () => {
         // Optionally, you can store the token in local storage or context
         localStorage.setItem("userToken", token);
 
-        // Redirect to a protected route or dashboard
-        if (isNew) {
-          navigate("/dashboard/welcome");
-        } else {
-          navigate("/dashboard/home");
-        }
+        setTimeout(() => {
+          if (userData.isNew) {
+            navigate("/dashboard/welcome");
+          } else {
+            navigate("/dashboard/home");
+          }
+        }, 2000);
       }
     } catch (error) {
       handleLoginError(error); // Use the hook to handle login error

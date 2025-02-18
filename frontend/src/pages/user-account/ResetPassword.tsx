@@ -86,7 +86,7 @@ const ResetPassword = () => {
       newpassword,
       confirmPassword,
       password: newpassword, // Pass newpassword as password for validation
-    });
+    }, "newpassword");
 
     if (!formIsValid) {
       return;
@@ -133,7 +133,7 @@ const ResetPassword = () => {
     setFormData((prevData) => {
       const updatedData = { ...prevData, [field]: value };
       // Validate the field on change
-      validatePassword(field, value, updatedData);
+      validatePassword(field, value, updatedData, "newpassword");
       return updatedData;
     });
 
