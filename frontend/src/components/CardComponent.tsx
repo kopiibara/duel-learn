@@ -9,27 +9,39 @@ import {
 } from "@mui/material";
 import { styled } from "@mui/system";
 
+interface Item {
+  term: string;
+  definition: string;
+  image?: string | null; // Update to string for Base64 images
+}
+
 interface CardComponentProps {
   title: string;
-  totalItems: number;
   tags: string[];
-  creator: string;
-  clicked?: number;
-  mutual?: string;
-  date?: string;
-  filter?: string;
-  createdBy?: string;
+  images: string[];
+  totalItems: number;
+  createdBy: string;
+  totalViews: number;
+  createdAt: string;
+  visibility: number;
+  items: Item[];
   onClick?: () => void; // Optional onClick prop to handle card clicks
 }
 
 const CardComponent: React.FC<CardComponentProps> = ({
   title,
-  totalItems,
   tags,
-  creator,
-  clicked,
+  images,
+  totalItems,
+  createdBy,
+  totalViews,
+  createdAt,
+  visibility,
+  items,
   onClick, // Destructured onClick handler
 }) => {
+  const safeTags = Array.isArray(tags) ? tags : []; // Ensure it's always an array
+
   const ModeCard = styled(Card)(() => ({
     display: "flex",
     flexDirection: "column",
@@ -62,50 +74,75 @@ const CardComponent: React.FC<CardComponentProps> = ({
         <Box
           sx={{
             position: "absolute",
-            bottom: 26,
+            bottom: 30,
             left: 26,
             textAlign: "left",
           }}
         >
-          <Stack spacing={0}>
+          <Stack spacing={0} className="flex items-baseline justify-end">
             <Stack direction="row" spacing={1} alignItems={"center"}>
-              <Typography variant="body2" className="text-[#3B354D]">
+              <Typography
+                sx={{
+                  color: "#000000",
+                  fontSize: "0.7rem",
+                  fontWeight: "600",
+                }}
+              >
                 {totalItems} Items
               </Typography>
-              <Typography variant="subtitle2" className="text-[#3B354D]">
+              <Typography
+                sx={{
+                  color: "#000000",
+                  fontSize: "0.7rem",
+                  fontWeight: "600",
+                }}
+              >
                 &#x2022;
               </Typography>
-              {clicked && (
-                <Typography variant="body2" className="text-[#3B354D]">
-                  {clicked} Views
-                </Typography>
-              )}
-            </Stack>
-
+              <Typography
+                sx={{
+                  color: "#000000",
+                  fontSize: "0.7rem",
+                  fontWeight: "600",
+                }}
+              >
+                {totalViews} Views
+              </Typography>
+            </Stack>{" "}
             <Typography
               variant="h6"
-              className="text-[#080511]"
+              className="text-[#080511] pb-[0.2rem]"
               fontWeight="bold"
             >
               {title}
             </Typography>
-            <Stack direction="row" spacing={1} className="w-auto mb-2">
-              {tags.map((tag, index) => (
+            <Stack direction="row" spacing={1} className="w-auto mb-3">
+              {safeTags.map((tag, index) => (
                 <Chip
                   key={index}
                   label={tag}
                   sx={{
-                    backgroundColor: "#3B354D",
-                    color: "#E2DDF3",
-                    borderRadius: "0.5rem",
-                    padding: "1rem",
+                    backgroundColor: "#4F4A64",
+                    color: "#FFFFFF",
+                    borderRadius: "0.3rem",
                     width: "fit-content",
+                    height: "fit-content",
+                    py: "0.3rem",
+                    fontSize: "0.7rem",
+                    fontWeight: "600",
                   }}
                 />
               ))}
             </Stack>
-            <Typography variant="body2" className="text-[#3B354D]">
-              Made by <strong>{creator}</strong>
+            <Typography
+              sx={{
+                color: "#000000",
+                fontSize: "0.7rem",
+                fontWeight: "600",
+                paddingLeft: "1px",
+              }}
+            >
+              Made by <strong>{createdBy}</strong>
             </Typography>
           </Stack>
         </Box>

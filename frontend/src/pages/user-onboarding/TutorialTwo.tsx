@@ -18,9 +18,11 @@ export default function TutorialTwo() {
   const [showFullText, setShowFullText] = React.useState(false);
   const [typingDone, setTypingDone] = React.useState(false);
   const [animate, setAnimate] = React.useState(false);
+  const [key, setKey] = React.useState(0); // Force Typewriter re-render
 
   React.useEffect(() => {
-    setTimeout(() => setAnimate(true), 100);
+    setAnimate(true);
+    setKey(prevKey => prevKey + 1); // Restart Typewriter
   }, []);
 
   const handleClick = () => {
@@ -32,7 +34,10 @@ export default function TutorialTwo() {
       setShowFullText(false);
       setTypingDone(false);
       setAnimate(false);
-      setTimeout(() => setAnimate(true), 100);
+      setTimeout(() => {
+        setAnimate(true);
+        setKey(prevKey => prevKey + 1); // Restart Typewriter
+      }, 100);
     } else {
       navigate("/dashboard/tutorial/step-three");
     }
@@ -94,6 +99,7 @@ export default function TutorialTwo() {
               />
             ) : (
               <Typewriter
+                key={key} // Force re-render
                 onInit={(typewriter) => {
                   typewriter
                     .typeString(dialogues[clickCount])
