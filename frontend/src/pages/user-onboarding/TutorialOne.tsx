@@ -52,22 +52,11 @@ const TutorialOnePage: React.FC = () => {
       >
         {/* Sparkles Container */}
         <div id="sparkles-container"></div>
-    <PageTransition>
-      <div
-        className="flex flex-col items-center justify-center h-screen bg-[#080511] relative overflow-hidden cursor-none"
-        onClick={handleClick}
-      >
-        {/* Sparkles Container */}
-        <div id="sparkles-container"></div>
-
-        {/* Magic Wand Cursor */}
-        <div className="wand-cursor"></div>
+        
         {/* Magic Wand Cursor */}
         <div className="wand-cursor"></div>
 
-        {/* Animated Background Glow */}
-        <div className="absolute w-[500px] h-[500px] bg-[#6B21A8] blur-[250px] rounded-full opacity-40 animate-pulse"></div>
-        {/* Animated Background Glow */}
+       {/* Animated Background Glow */}
         <div className="absolute w-[500px] h-[500px] bg-[#6B21A8] blur-[250px] rounded-full opacity-40 animate-pulse"></div>
 
         {/* Dialogue Box Container */}
@@ -118,28 +107,7 @@ const TutorialOnePage: React.FC = () => {
             backgroundPosition: "center",
           }}
         ></div>
-        {/* Image Container */}
-        <div
-          className="relative mt-8 z-10 w-96 h-96 rounded bg-center"
-          style={{
-            backgroundImage: `url(${Tutorial1Magician})`,
-            backgroundSize: "contain",
-            backgroundRepeat: "no-repeat",
-            backgroundPosition: "center",
-          }}
-        ></div>
 
-        {/* Click to Continue Text */}
-        <p
-          className={`absolute bottom-[10%] text-[18px] text-[#3B354D] transition-opacity duration-1000 ${
-            animate ? "opacity-100" : "opacity-0"
-          }`}
-          style={{ animation: "fadeInOut 3s infinite" }}
-        >
-          Tap anywhere on the screen to continue
-        </p>
-      </div>
-    </PageTransition>
         {/* Click to Continue Text */}
         <p
           className={`absolute bottom-[10%] text-[18px] text-[#3B354D] transition-opacity duration-1000 ${
