@@ -10,16 +10,17 @@ import {
   query,
   where,
   getDocs,
+  getDoc,
+  doc,
 } from "firebase/firestore";
 import PageTransition from "../../styles/PageTransition";
 
 //import axios from "axios";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
-import { auth, googleProvider,getAdditionalInfo } from "../../services/firebase"; // Ensure you have this import for Firebase auth
+import { auth, googleProvider, getAdditionalInfo, db } from "../../services/firebase"; // Ensure you have this import for Firebase auth
 // Icons
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
-import { get } from "firebase/database";
 
 const Login = () => {
   const { setUser, user } = useUser(); // Get user from context
@@ -40,6 +41,7 @@ const Login = () => {
   const togglePassword = () => {
     setShowPassword(!showPassword); // Toggle password visibility
   };
+
   // Login Component (handleGoogleSignIn)
   const handleGoogleSignIn = async () => {
     try {
@@ -48,30 +50,36 @@ const Login = () => {
 
       const token = await result.user.getIdToken();
       const additionalUserInfo = getAdditionalInfo(result);
+      const userDoc = await getDoc(doc(db, "users", result.user.uid));
 
-      // Handle user data directly on the frontend
-      const userData = {
-        displayName: result.user.displayName,
-        email: result.user.email,
-        photoURL: result.user.photoURL, // Store the photoURL here
-        uid: result.user.uid,
-        isNew: additionalUserInfo?.isNewUser || false,
-        EmailVerified: result.user.emailVerified,
-      };
+      if (userDoc.exists()) {
+        const userData = {
+          firebase_uid: result.user.uid,
+          username: userDoc.data().username,
+          email: userDoc.data().email,
+          display_picture: userDoc.data().display_picture,
+          full_name: userDoc.data().full_name,
+          email_verified: userDoc.data().email_verified,
+          isSSO: userDoc.data().isSSO,
+          account_type: userDoc.data().account_type as 'free' | 'premium', // Ensure the value is either 'free' or 'premium'
+        };
 
-      console.log("User Data:", userData);
+        const isNew = additionalUserInfo?.isNewUser || false;
 
-      // Store user data in context
-      setUser(userData); // This should update the context with the photoURL
+        console.log("User Data:", userData);
 
-      // Optionally, you can store the token in local storage or context
-      localStorage.setItem("userToken", token);
+        // Store user data in context
+        setUser(userData);
 
-      // Redirect to a protected route or dashboard
-      if (userData.isNew == true) {
-        navigate("/dashboard/welcome");
-      } else {
-        navigate("/dashboard/home");
+        // Optionally, you can store the token in local storage or context
+        localStorage.setItem("userToken", token);
+
+        // Redirect to a protected route or dashboard
+        if (isNew) {
+          navigate("/dashboard/welcome");
+        } else {
+          navigate("/dashboard/home");
+        }
       }
     } catch (error) {
       console.error("Error during sign-in:", error);
@@ -104,28 +112,36 @@ const Login = () => {
       console.log("User Credential:", result);
       const token = await result.user.getIdToken();
       const additionalUserInfo = getAdditionalInfo(result);
+      const userDoc = await getDoc(doc(db, "users", result.user.uid));
 
-      // Create user data object
-      const userData = {
-        displayName: result.user.displayName || username, // Use displayName if available, otherwise fallback to username
-        email: result.user.email,
-        photoURL: result.user.photoURL,
-        uid: result.user.uid,
-        username: username, // Store username separately
-        EmailVerified: result.user.emailVerified,
-        isNew: additionalUserInfo?.isNewUser || false,
-      };
-      console.log("User Data:", userData);
-      // Store user data in context
-      setUser(userData);
+      if (userDoc.exists()) {
+        const userData = {
+          firebase_uid: result.user.uid,
+          username: userDoc.data().username,
+          email: userDoc.data().email,
+          display_picture: userDoc.data().display_picture,
+          full_name: userDoc.data().full_name,
+          email_verified: userDoc.data().email_verified,
+          isSSO: userDoc.data().isSSO,
+          account_type: userDoc.data().account_type as 'free' | 'premium', // Ensure the value is either 'free' or 'premium'
+        };
 
-      // Optionally, you can store the token in local storage or context
-      localStorage.setItem("userToken", token); // Store token
-      setData({ username: "", password: "" });
-      if (userData.isNew == true) {
-        navigate("/dashboard/welcome");
-      } else {
-        navigate("/dashboard/home");
+        const isNew = additionalUserInfo?.isNewUser || false;
+
+        console.log("User Data:", userData);
+
+        // Store user data in context
+        setUser(userData);
+
+        // Optionally, you can store the token in local storage or context
+        localStorage.setItem("userToken", token);
+
+        // Redirect to a protected route or dashboard
+        if (isNew) {
+          navigate("/dashboard/welcome");
+        } else {
+          navigate("/dashboard/home");
+        }
       }
     } catch (error) {
       handleLoginError(error); // Use the hook to handle login error
@@ -236,7 +252,7 @@ const Login = () => {
               src="/google-logo.png"
               className="w-5 h-5 mr-3"
               alt="Google Icon"
-            ></img>
+            />
             Sign in with Google
           </button>
 

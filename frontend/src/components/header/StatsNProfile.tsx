@@ -96,7 +96,7 @@ const StatsNProfile = () => {
         <Avatar
           variant="rounded"
           onClick={handleProfileClick} // Open popover on click
-          src={user?.photoURL || sampleAvatarDeployment} // Ensure null is converted to undefined
+          src={user?.display_picture || sampleAvatarDeployment} // Ensure null is converted to undefined
           alt={user?.email || "User"} // Fallback if displayName is not available
           sx={{
             cursor: "pointer", // Change cursor to pointer on hover
@@ -107,7 +107,7 @@ const StatsNProfile = () => {
             },
           }}
         >
-          {!user?.photoURL && getInitials(user?.displayName ?? null)}{" "}
+          {!user?.display_picture && getInitials(user?.username ?? null)}{" "}
           {/* Display initials if no photoURL */}
         </Avatar>
       </Tooltip>

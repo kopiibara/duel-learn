@@ -65,7 +65,7 @@ const WelcomePage = () => {
           }`}
         >
           You've finally made it here,{" "}
-          <span className="font-bold">{user?.displayName}</span>!
+          <span className="font-bold">{user?.username}</span>!
         </p>
 
         {/* Click to Continue Text */}
