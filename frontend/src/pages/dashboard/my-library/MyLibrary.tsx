@@ -86,7 +86,7 @@ const MyLibraryPage = () => {
   return (
     <PageTransition>
       <Box className="h-screen w-full">
-        <DocumentHead title="My Library" />
+        <DocumentHead title="My Library | Duel Learn" />
         <Stack spacing={2} className="px-8">
           <Stack
             direction={"row"}
