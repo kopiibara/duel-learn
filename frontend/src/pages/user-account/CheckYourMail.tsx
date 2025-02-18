@@ -15,8 +15,10 @@ export default function CheckYourMail() {
     if (countdown !== null && countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000); // Decrease countdown every second
       return () => clearTimeout(timer); // Clear timer when component unmounts
+    } else if (countdown === 0) {
+      navigate("/login"); // Navigate to sign-up page when countdown reaches zero
     }
-  }, [countdown]);
+  }, [countdown, navigate]);
 
   return (
     <PageTransition>
