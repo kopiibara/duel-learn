@@ -62,49 +62,76 @@ const CardComponent: React.FC<CardComponentProps> = ({
         <Box
           sx={{
             position: "absolute",
-            bottom: 26,
+            bottom: 30,
             left: 26,
             textAlign: "left",
           }}
         >
-          <Stack spacing={0}>
+          <Stack spacing={0} className="flex items-baseline justify-end">
             <Stack direction="row" spacing={1} alignItems={"center"}>
-              <Typography variant="body2" className="text-[#3B354D]">
+              <Typography
+                sx={{
+                  color: "#000000",
+                  fontSize: "0.7rem",
+                  fontWeight: "600",
+                }}
+              >
                 {totalItems} Items
               </Typography>
-              <Typography variant="subtitle2" className="text-[#3B354D]">
+              <Typography
+                sx={{
+                  color: "#000000",
+                  fontSize: "0.7rem",
+                  fontWeight: "600",
+                }}
+              >
                 &#x2022;
               </Typography>
               {clicked && (
-                <Typography variant="body2" className="text-[#3B354D]">
+                <Typography
+                  sx={{
+                    color: "#000000",
+                    fontSize: "0.7rem",
+                    fontWeight: "600",
+                  }}
+                >
                   {clicked} Views
                 </Typography>
               )}
-            </Stack>
-
+            </Stack>{" "}
             <Typography
               variant="h6"
-              className="text-[#080511]"
+              className="text-[#080511] pb-[0.2rem]"
               fontWeight="bold"
             >
               {title}
             </Typography>
-            <Stack direction="row" spacing={1} className="w-auto mb-2">
+            <Stack direction="row" spacing={1} className="w-auto mb-3">
               {tags.map((tag, index) => (
                 <Chip
                   key={index}
                   label={tag}
                   sx={{
-                    backgroundColor: "#3B354D",
-                    color: "#E2DDF3",
-                    borderRadius: "0.5rem",
-                    padding: "1rem",
+                    backgroundColor: "#4F4A64",
+                    color: "#FFFFFF",
+                    borderRadius: "0.3rem",
                     width: "fit-content",
+                    height: "fit-content",
+                    py: "0.3rem",
+                    fontSize: "0.7rem",
+                    fontWeight: "600",
                   }}
                 />
               ))}
             </Stack>
-            <Typography variant="body2" className="text-[#3B354D]">
+            <Typography
+              sx={{
+                color: "#000000",
+                fontSize: "0.7rem",
+                fontWeight: "600",
+                paddingLeft: "1px",
+              }}
+            >
               Made by <strong>{creator}</strong>
             </Typography>
           </Stack>

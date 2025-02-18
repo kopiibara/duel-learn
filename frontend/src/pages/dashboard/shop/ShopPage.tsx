@@ -45,7 +45,7 @@ const Shop = () => {
 
   return (
     <PageTransition>
-      <DocumentHead title="Shop" />
+      <DocumentHead title="Shop | Duel Learn" />
       <div className="min-h-screen text-white px-6 pb-6">
         {/* Your premium section and items display logic */}
         {/* Show this section only if the user is not premium */}
@@ -65,7 +65,7 @@ const Shop = () => {
             </p>
             <button
               className="mt-4 px-10 py-2 text-[19px] bg-white text-[#9F87E5] rounded-full font-bold"
-              onClick={() => navigate("/dashboard/shop/buy-premium-account")}
+              onClick={() => navigate("/dashboard/buy-premium-account")}
             >
               TRY IT NOW
             </button>
