@@ -161,7 +161,7 @@ const CreateStudyMaterial = () => {
     <>
       <PageTransition>
         <Box className="h-screen w-full px-8">
-          <DocumentHead title="Create Study Material" />
+          <DocumentHead title={title || "Create Study Material"} />
           <Stack spacing={2.5}>
             {/* Title Input */}
             <Box className="sticky top-4 z-10">
@@ -269,7 +269,7 @@ const CreateStudyMaterial = () => {
                     value={currentTag}
                     onChange={(e) => setCurrentTag(e.target.value)}
                     onKeyDown={handleAddTag}
-                    placeholder="Add a tag"
+                    placeholder="Press enter"
                     style={{
                       border: "none",
                       outline: "none",

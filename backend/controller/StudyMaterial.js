@@ -167,7 +167,228 @@ const studyMaterialController = {
         } finally {
             connection.release();
         }
-    }
+    },
+
+    getRecommendedForYouCards: async (req, res) => {
+        const connection = await pool.getConnection();
+        try {
+            let { user } = req.params;
+            if (user.includes("%")) user = decodeURIComponent(user);
+            console.log("Fetching recommended cards for user:", user);
+
+            // Fetch tags of study materials created by the user
+            const [tagRows] = await connection.execute(
+                `SELECT tags FROM study_material_info WHERE created_by = ?;`,
+                [user]
+            );
+
+            if (tagRows.length === 0) {
+                return res.status(404).json({ message: "No tags found for this user" });
+            }
+
+            // Extract and flatten all tags
+            const userTags = tagRows.flatMap(row => JSON.parse(row.tags));
+            if (userTags.length === 0) {
+                return res.status(404).json({ message: "User has not used any tags" });
+            }
+
+            // Fetch study materials that contain at least one matching tag
+            const [infoRows] = await connection.execute(
+                `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
+                 FROM study_material_info;`
+            );
+
+            // Filter study materials by checking if they share any tags with the user
+            const filteredMaterials = infoRows.filter(info => {
+                const materialTags = JSON.parse(info.tags);
+                return materialTags.some(tag => userTags.includes(tag));
+            });
+
+            if (filteredMaterials.length === 0) {
+                return res.status(404).json({ message: "No recommended study materials found" });
+            }
+
+            const studyMaterials = await Promise.all(
+                filteredMaterials.map(async (info) => {
+                    const [contentRows] = await connection.execute(
+                        `SELECT term, definition, image 
+                         FROM study_material_content 
+                         WHERE study_material_id = ?;`,
+                        [info.study_material_id]
+                    );
+
+                    return {
+                        study_material_id: info.study_material_id,
+                        title: info.title,
+                        tags: JSON.parse(info.tags),
+                        total_items: info.total_items,
+                        created_by: info.created_by,
+                        total_views: info.total_views,
+                        created_at: info.created_at,
+                        items: contentRows.map(item => ({
+                            term: item.term,
+                            definition: item.definition,
+                            image: item.image ? item.image.toString("base64") : null,
+                        }))
+                    };
+                })
+            );
+
+            res.status(200).json(studyMaterials);
+        } catch (error) {
+            console.error("Error fetching recommended cards:", error);
+            res.status(500).json({ error: "Internal server error", details: error });
+        } finally {
+            connection.release();
+        }
+    },
+
+    incrementViews: async (req, res) => {
+        const connection = await pool.getConnection();
+        try {
+            const { studyMaterialId } = req.params;
+
+            // Increment total_views by 1
+            await connection.execute(
+                `UPDATE study_material_info 
+                 SET total_views = total_views + 1 
+                 WHERE study_material_id = ?`,
+                [studyMaterialId]
+            );
+
+            res.status(200).json({ message: "View count updated successfully" });
+        } catch (error) {
+            console.error("Error updating total views:", error);
+            res.status(500).json({ error: "Internal server error", details: error });
+        } finally {
+            connection.release();
+        }
+    },
+
+    getTopPicks: async (req, res) => {
+        const connection = await pool.getConnection();
+        try {
+            const [infoRows] = await connection.execute(
+                `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
+                 FROM study_material_info 
+                 ORDER BY total_views DESC;`
+            );
+
+            console.log(`Fetched ${infoRows.length} study materials from the database.`);
+
+            if (infoRows.length === 0) {
+                return res.status(404).json({ message: "No study materials found" });
+            }
+
+            const studyMaterials = await Promise.all(infoRows.map(async (info) => {
+                const [contentRows] = await connection.execute(
+                    `SELECT term, definition, image 
+                     FROM study_material_content 
+                     WHERE study_material_id = ?;`,
+                    [info.study_material_id]
+                );
+
+                return {
+                    study_material_id: info.study_material_id,
+                    title: info.title,
+                    tags: JSON.parse(info.tags),
+                    total_items: info.total_items,
+                    created_by: info.created_by,
+                    total_views: info.total_views,
+                    created_at: info.created_at,
+                    items: contentRows.map(item => ({
+                        term: item.term,
+                        definition: item.definition,
+                        image: item.image ? item.image.toString("base64") : null
+                    }))
+                };
+            }));
+
+            console.log(`Returning ${studyMaterials.length} study materials as top picks.`);
+
+            res.status(200).json(studyMaterials);
+        } catch (error) {
+            console.error("Error fetching top picks:", error);
+            res.status(500).json({ error: "Internal server error", details: error });
+        } finally {
+            connection.release();
+        }
+    },
+
+    getNonMatchingTags: async (req, res) => {
+        const connection = await pool.getConnection();
+        try {
+            let { user } = req.params;
+            if (user.includes("%")) user = decodeURIComponent(user);
+            console.log("Fetching non-matching tags for user:", user);
+
+            // Fetch tags of study materials created by the user
+            const [tagRows] = await connection.execute(
+                `SELECT tags FROM study_material_info WHERE created_by = ?;`,
+                [user]
+            );
+
+            if (tagRows.length === 0) {
+                return res.status(404).json({ message: "No tags found for this user" });
+            }
+
+            // Extract and flatten all tags
+            const userTags = tagRows.flatMap(row => JSON.parse(row.tags));
+            if (userTags.length === 0) {
+                return res.status(404).json({ message: "User has not used any tags" });
+            }
+
+            // Fetch study materials that do not contain any matching tags
+            const [infoRows] = await connection.execute(
+                `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
+             FROM study_material_info;`
+            );
+
+            // Filter study materials by checking if they do not share any tags with the user
+            const filteredMaterials = infoRows.filter(info => {
+                const materialTags = JSON.parse(info.tags);
+                return !materialTags.some(tag => userTags.includes(tag));
+            });
+
+            if (filteredMaterials.length === 0) {
+                return res.status(404).json({ message: "No non-matching study materials found" });
+            }
+
+            const studyMaterials = await Promise.all(
+                filteredMaterials.map(async (info) => {
+                    const [contentRows] = await connection.execute(
+                        `SELECT term, definition, image 
+                 FROM study_material_content 
+                 WHERE study_material_id = ?;`,
+                        [info.study_material_id]
+                    );
+
+                    return {
+                        study_material_id: info.study_material_id,
+                        title: info.title,
+                        tags: JSON.parse(info.tags),
+                        total_items: info.total_items,
+                        created_by: info.created_by,
+                        total_views: info.total_views,
+                        created_at: info.created_at,
+                        items: contentRows.map(item => ({
+                            term: item.term,
+                            definition: item.definition,
+                            image: item.image ? item.image.toString("base64") : null,
+                        }))
+                    };
+                })
+            );
+
+            res.status(200).json(studyMaterials);
+        } catch (error) {
+            console.error("Error fetching non-matching tags:", error);
+            res.status(500).json({ error: "Internal server error", details: error });
+        } finally {
+            connection.release();
+        }
+    },
+
 };
 
 export default studyMaterialController;

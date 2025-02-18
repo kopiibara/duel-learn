@@ -9,7 +9,7 @@ const ModeCard = styled(Card)({
   alignItems: "flex-start",
   padding: "2rem",
   borderRadius: "1rem",
-  height: "200px",
+  height: "14rem",
   cursor: "pointer",
   background: "#E2DDF3",
   position: "relative",
