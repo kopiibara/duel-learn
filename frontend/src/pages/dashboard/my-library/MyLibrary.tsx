@@ -5,18 +5,25 @@ import PageTransition from "../../../styles/PageTransition";
 import MyLibraryCards from "./MyLibraryCards";
 import Filter from "./Filter";
 import { useUser } from "../../../contexts/UserContext";
-import { create } from "@mui/material/styles/createTransitions";
 
 // Define StudyMaterial interface
+interface Item {
+  term: string;
+  definition: string;
+  image?: string | null; // Update to string for Base64 images
+}
+
 interface StudyMaterial {
   title: string;
   tags: string[];
+  images: string[];
   total_items: number;
   created_by: string;
   visibility: number;
   created_at: string;
   total_views: number;
   study_material_id: string;
+  items: Item[]; // Expecting an array of terms and definitions
 }
 
 const MyLibraryPage = () => {

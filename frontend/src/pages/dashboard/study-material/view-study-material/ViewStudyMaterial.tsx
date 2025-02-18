@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Box, Stack, Typography, Button, Chip, Divider } from "@mui/material";
-import { useParams } from "react-router-dom";
+import { useParams, useLocation } from "react-router-dom";
 import SummaryPage from "./SummaryPage";
 import CardPage from "./CardPage";
 import DocumentHead from "../../../../components/DocumentHead";
@@ -25,7 +25,9 @@ interface StudyMaterial {
 
 const ViewStudyMaterial = () => {
   const { studyMaterialId } = useParams();
+  const location = useLocation();
   const [selected, setSelected] = useState("Summary");
+  const [title, setTitle] = useState(location.state?.title || "");
   const [studyMaterial, setStudyMaterial] = useState<StudyMaterial | null>(
     null
   );
@@ -89,7 +91,7 @@ const ViewStudyMaterial = () => {
   return (
     <PageTransition>
       <Box className="h-screen w-full px-8">
-        <DocumentHead title="View Study Material" />
+        <DocumentHead title={title + " | Duel Learn"} />
         <Stack spacing={2.5}>
           <Stack direction="row" spacing={2} alignItems="center">
             <Typography variant="h3" fontWeight="bold">
