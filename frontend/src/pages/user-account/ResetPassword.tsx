@@ -1,32 +1,28 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import ExitIcon from "../../assets/images/Exit.png";
 import { useState, useEffect } from "react";
 import {
-  TextField,
-  InputAdornment,
-  IconButton,
   CircularProgress,
   Modal,
 } from "@mui/material";
-import axios from "axios"; // Ensure axios is imported
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import {
   verifyPasswordResetCode,
   confirmPasswordReset,
-  sendPasswordResetEmail,
 } from "firebase/auth";
 import { auth, db } from "../../services/firebase"; // Adjust the path as needed
-import { collection, query, where, getDocs } from "firebase/firestore";
-import useValidation from "../../utils/useValidation";
+import usePasswordValidation from "../../hooks/validation.hooks/usePasswordValidation";
 import PageTransition from "../../styles/PageTransition";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
+import useResetPasswordApi from "../../hooks/api.hooks/useResetPasswordApi";
+import { Password } from "@mui/icons-material";
+
 const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Get location object
-  // Retrieve the email passed from the previous page
-  const { email } = location.state || {};
-
+  // Retrieve the email and firebaseUid passed from the previous page
+  const { email, firebase_uid } = location.state || {};
+  console.log("firebase_uid received from location SecurityCode:", firebase_uid);
   const [isInvalidModalOpen, setIsInvalidModalOpen] = useState(false);
 
   useEffect(() => {
@@ -58,7 +54,7 @@ const ResetPassword = () => {
     confirmPassword: "", // New field for confirming password
   });
 
-  const { errors, validate, validateForm } = useValidation();
+  const { errors, validatePassword, validatePasswordForm } = usePasswordValidation();
 
   const [loading, setLoading] = useState(false); // Loading state for the submit button
 
@@ -73,11 +69,13 @@ const ResetPassword = () => {
 
   const [error, setError] = useState({ general: "" }); // For general errors
 
+  const { resetPasswordApi } = useResetPasswordApi();
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const { newpassword, confirmPassword } = formData;
 
-    const formIsValid = validateForm({
+    const formIsValid = validatePasswordForm({
       newpassword,
       confirmPassword,
       password: newpassword, // Pass newpassword as password for validation
@@ -99,10 +97,12 @@ const ResetPassword = () => {
 
     try {
       await confirmPasswordReset(auth, oobCode, newpassword);
+      await resetPasswordApi(firebase_uid, newpassword);
+      console.log(firebase_uid, newpassword) // Call the backend API to update the password hash
       alert("Password successfully reset!");
       navigate("/login");
     } catch (err) {
-      setError({ general: "Failed to reset password." });
+      setError({ general: "Failed to Reset Password." });
     } finally {
       setLoading(false);
     }
@@ -110,10 +110,12 @@ const ResetPassword = () => {
 
   const handleInputChange = (field: string, value: string) => {
     // Update the input value
-    setFormData((prevData) => ({ ...prevData, [field]: value }));
-
-    // Validate the field on change
-    validate(field, value, { ...formData, [field]: value });
+    setFormData((prevData) => {
+      const updatedData = { ...prevData, [field]: value };
+      // Validate the field on change
+      validatePassword(field, value, updatedData);
+      return updatedData;
+    });
 
     // Clear the general error when typing in either field
     setError({ general: "" });
@@ -167,74 +169,75 @@ const ResetPassword = () => {
           {/* Form */}
           <form onSubmit={handleSubmit}>
             {/* New Password Input */}
-            <div className="mb-4 relative">
-              <div className="relative">
-                <input
-                  id="password-field"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.newpassword}
-                  onChange={(e) =>
-                    handleInputChange("newpassword", e.target.value)
-                  }
-                  onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-                  className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
-                    errors.newpassword ? "border border-red-500" : ""
-                  }`}
-                  placeholder="Enter new password"
-                />
-                {/* Password Toggle Button */}
-                <button
-                  type="button"
-                  onClick={togglePassword}
-                  className="absolute inset-y-0 right-4 flex items-center text-[#9F9BAE]"
-                >
-                  {showPassword ? (
-                    <VisibilityRoundedIcon className="w-5 h-5" />
-                  ) : (
-                    <VisibilityOffRoundedIcon className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
-              {errors.newpassword && (
-                <div className="text-red-500 text-sm mt-1">
-                  {errors.newpassword}
-                </div>
+            <div className="relative mb-4">
+              <input
+                id="password-field"
+                type={showPassword ? "text" : "password"}
+                name="password"
+                placeholder="Enter your password"
+                required
+                value={formData.newpassword}
+                onChange={(e) => {
+                  setFormData({ ...formData, newpassword: e.target.value });
+                  validatePassword("password", e.target.value);
+                }}
+                onCopy={(e) => e.preventDefault()} // Disable copy
+                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
+                  errors.newpassword ? "border border-red-500" : ""
+                }`}
+                
+              />
+              {/* Password Toggle Button */}
+              <span
+                onClick={togglePassword}
+                className="absolute top-3 right-3 text-[#9F9BAE] cursor-pointer"
+              >
+                {showPassword ? (
+                  <VisibilityRoundedIcon />
+                ) : (
+                  <VisibilityOffRoundedIcon />
+                )}
+              </span>
+              {errors.password && (
+                <p className="text-red-500 mt-1 text-sm">{errors.password}</p>
               )}
             </div>
 
             {/* Confirm Password Input */}
-            <div className="mb-8 relative">
-              <div className="relative">
-                <input
-                  id="confirm-password-field"
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={formData.confirmPassword}
-                  onChange={(e) =>
-                    handleInputChange("confirmPassword", e.target.value)
-                  }
-                  onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-                  className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
-                    errors.confirmPassword ? "border border-red-500" : ""
-                  }`}
-                  placeholder="Confirm password"
-                />
-                {/* Confirm Password Toggle Button */}
-                <button
-                  type="button"
-                  onClick={toggleConfirmPassword}
-                  className="absolute inset-y-0 right-4 flex items-center text-[#9F9BAE]"
-                >
-                  {showConfirmPassword ? (
-                    <VisibilityRoundedIcon className="w-5 h-5" />
-                  ) : (
-                    <VisibilityOffRoundedIcon className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
+            <div className="relative mb-4">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                id="confirm-password-field"
+                name="confirmPassword"
+                placeholder="Confirm your password"
+                required
+                value={formData.confirmPassword}
+                onChange={(e) => {
+                  setFormData({ ...formData, confirmPassword: e.target.value });
+                  validatePassword("confirmPassword", e.target.value, formData);
+                }}
+                onPaste={(e) => e.preventDefault()}
+                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
+                  errors.confirmPassword ? "border border-red-500" : ""
+                }`}
+              />
+              {/* Confirm Password Toggle Button */}
+              <span
+                onClick={toggleConfirmPassword}
+                className="absolute top-3 right-3 text-[#9F9BAE] cursor-pointer"
+              >
+                {showConfirmPassword ? (
+                  <VisibilityRoundedIcon />
+                ) : (
+                  <VisibilityOffRoundedIcon />
+                )}
+              </span>
               {errors.confirmPassword && (
-                <div className="text-red-500 text-sm mt-1">
+                <p className="text-red-500 mt-1 text-sm">
                   {errors.confirmPassword}
-                </div>
+                </p>
               )}
             </div>
 

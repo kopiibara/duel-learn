@@ -1,7 +1,7 @@
+
 const { pool, connectDB } = require("../config/db.js");
 const { v4: uuidv4 } = require("uuid");
-const moment = require("moment-timezone");
-
+const manilacurrentTimestamp = require("../utils/CurrentTimestamp.js");
 module.exports = {
 
     //to save study material
@@ -23,9 +23,8 @@ module.exports = {
 
             console.log("Generated Study Material ID:", studyMaterialId);
 
-            const currentTimestamp = moment()
-                .tz("Asia/Manila")
-                .format("YYYY-MM-DD HH:mm:ss");
+            const currentTimestamp = manilacurrentTimestamp;
+              
 
             const connection = await pool.getConnection();
 

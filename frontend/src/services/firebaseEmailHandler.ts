@@ -5,13 +5,13 @@ const firebaseEmailHandler = () => {
   const navigate = useNavigate();
   const auth = getAuth();
 
-  const handleEmailAction = async (mode: any, oobCode: any) => {
+  const handleEmailAction = async (mode: any, oobCode: any,firebase_uid: any) => {
     try {
       switch (mode) {
         case "resetPassword":
           // Verify the password reset code is valid
           await checkActionCode(auth, oobCode);
-          navigate(`/reset-password?oobCode=${oobCode}`);
+          navigate(`/reset-password?oobCode=${oobCode}&firebase_uid=${firebase_uid}`);
           break;
         case "verifyEmail":
           // Apply the email verification code

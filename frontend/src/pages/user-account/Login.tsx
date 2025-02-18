@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
 import { toast } from "react-hot-toast";
-import useHandleError from "../../utils/useHandleError";
+import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import {
   getFirestore,
   collection,

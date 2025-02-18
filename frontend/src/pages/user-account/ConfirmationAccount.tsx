@@ -4,10 +4,7 @@ import ExitIcon from "../../assets/images/Exit.png";
 import sampleAvatarDeployment from "../../assets/images/sampleAvatar2.png";
 import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import {
-  auth,
-  sendResetEmail,
-} from "../../services/firebase";
+import { auth, sendResetEmail } from "../../services/firebase";
 import PageTransition from "../../styles/PageTransition";
 
 const ConfirmationAccount = () => {
@@ -102,10 +99,10 @@ const ConfirmationAccount = () => {
     }
   }, [email, isPhone]);
 
-  const handleSendPasswordResetEmail = async () => {
+  const handleSendPasswordResetEmail = async (firebase_uid: string) => {
     try {
       await sendResetEmail(auth, email, {
-        url: "http://localhost:5173/Reset-Password?mode=resetPassword",
+        url: `http://localhost:5173/Reset-Password?mode=resetPassword&firebase_uid=${firebase_uid}`,
         handleCodeInApp: true,
       });
     } catch (err) {
@@ -116,9 +113,6 @@ const ConfirmationAccount = () => {
   const handleContinueClick = async () => {
     setButtonLoading(true);
     try {
-      await handleSendPasswordResetEmail();
-      alert("Password reset email has been sent! Check your inbox.");
-      
       const db = getFirestore();
       const usersRef = collection(db, "users");
       const q = query(usersRef, where(isPhone ? "phone" : "email", "==", email));
@@ -126,15 +120,22 @@ const ConfirmationAccount = () => {
 
       if (!querySnapshot.empty) {
         const userDoc = querySnapshot.docs[0];
+        const firebase_uid = userDoc.id;
+
+        await handleSendPasswordResetEmail(firebase_uid);
+        alert("Password reset email has been sent! Check your inbox.");
+
         await setDoc(doc(db, "users", userDoc.id), {
           emailTimestamp: serverTimestamp(),
         }, { merge: true });
-      }
 
-      setLoading(true); // Show loading screen during timeout
-      setTimeout(() => {
-        navigate("/login"); // Or a confirmation page
-      }, 2000); // 2-second delay before navigating
+        setLoading(true); // Show loading screen during timeout
+        setTimeout(() => {
+          navigate("/login"); // Or a confirmation page
+        }, 2000); // 2-second delay before navigating
+      } else {
+        setError("User not found");
+      }
     } catch (err) {
       console.error("Error sending password reset email:", err);
     } finally {

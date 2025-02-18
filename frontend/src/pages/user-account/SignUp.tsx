@@ -16,11 +16,11 @@ import {
 import { setDoc, doc, serverTimestamp } from "firebase/firestore";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
-import useValidation from "../../utils/useValidation";
-import useHandleError from "../../utils/useHandleError";
+import useValidation from "../../hooks/validation.hooks/useValidation";
+import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import PageTransition from "../../styles/PageTransition";
-import useSignUpApi from "../../hooks/useSignUpApi";
-import useApiError from "../../hooks/useApiError";
+import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
+import useApiError from "../../hooks/api.hooks/useApiError";
 
 const SignUp = () => {
   const { setUser, user } = useUser();
