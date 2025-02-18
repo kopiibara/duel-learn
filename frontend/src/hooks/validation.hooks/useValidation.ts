@@ -32,7 +32,7 @@ const termsValidation = (value: string) => {
 
 const useValidation = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const { validatePassword } = usePasswordValidation();
+  const { validatePassword, } = usePasswordValidation();
 
   const validate = (field: string, value: string, formData: any = {}) => {
     let error = "";
@@ -45,6 +45,8 @@ const useValidation = () => {
         error = emailValidation(value);
         break;
       case "password":
+        error = validatePassword(field, value, formData);
+        break;
       case "confirmPassword":
         error = validatePassword(field, value, formData);
         break;

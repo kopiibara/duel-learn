@@ -17,7 +17,6 @@ import { setDoc, doc, serverTimestamp } from "firebase/firestore";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
 import useValidation from "../../hooks/validation.hooks/useValidation";
-import usePasswordValidation from "../../hooks/validation.hooks/usePasswordValidation";
 import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import PageTransition from "../../styles/PageTransition";
 import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
@@ -35,7 +34,6 @@ const SignUp = () => {
   });
 
   const { errors, validate, validateForm } = useValidation();
-  const { validatePassword } = usePasswordValidation();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -59,9 +57,11 @@ const SignUp = () => {
     if (
       !validateForm({
         username,
+        password,
+        confirmPassword,
         email,
         terms: terms.toString(),
-      }) || !validatePassword("password", password) || !validatePassword("confirmPassword", confirmPassword, formData)
+      })
     ) {
       return;
     }
@@ -207,7 +207,7 @@ const SignUp = () => {
                 value={formData.password}
                 onChange={(e) => {
                   setFormData({ ...formData, password: e.target.value });
-                  validatePassword("password", e.target.value);
+                  validate("password", e.target.value);
                 }}
                 onCopy={(e) => e.preventDefault()} // Disable copy
                 className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
@@ -236,7 +236,7 @@ const SignUp = () => {
                 value={formData.confirmPassword}
                 onChange={(e) => {
                   setFormData({ ...formData, confirmPassword: e.target.value });
-                  validatePassword("confirmPassword", e.target.value, formData);
+                  validate("confirmPassword", e.target.value, formData);
                 }}
                 onPaste={(e) => e.preventDefault()} // Disable paste
                 className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
