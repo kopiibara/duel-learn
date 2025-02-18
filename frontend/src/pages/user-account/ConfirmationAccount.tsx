@@ -101,10 +101,12 @@ const ConfirmationAccount = () => {
 
   const handleSendPasswordResetEmail = async (firebase_uid: string) => {
     try {
-      await sendResetEmail(auth, email, {
+      const actionCodeSettings = {
         url: `http://localhost:5173/Reset-Password?mode=resetPassword&firebase_uid=${firebase_uid}`,
         handleCodeInApp: true,
-      });
+      };
+  
+      await sendResetEmail(auth, email, actionCodeSettings);
     } catch (err) {
       setError("Failed to send password reset email");
     }
@@ -123,7 +125,7 @@ const ConfirmationAccount = () => {
         const firebase_uid = userDoc.id;
 
         await handleSendPasswordResetEmail(firebase_uid);
-        alert("Password reset email has been sent! Check your inbox.");
+        navigate("/check-your-mail"); 
 
         await setDoc(doc(db, "users", userDoc.id), {
           emailTimestamp: serverTimestamp(),

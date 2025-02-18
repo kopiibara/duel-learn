@@ -12,11 +12,11 @@ const EmailActionHandler: React.FC = () => {
     const oobCode = queryParams.get("oobCode");
     const firebase_uid = queryParams.get("firebase_uid");
 
-    if (mode && oobCode) {
+    if (mode && oobCode && firebase_uid) {
       handleEmailAction(mode, oobCode, firebase_uid);
     } else {
       // Handle invalid or missing parameters
-      console.error("Invalid or missing mode/oobCode");
+      console.error("Invalid or missing mode/oobCode/firebase_uid");
     }
   }, [location.search]);
 
