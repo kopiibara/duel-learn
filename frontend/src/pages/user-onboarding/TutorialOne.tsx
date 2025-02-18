@@ -40,7 +40,7 @@ const TutorialOnePage: React.FC = () => {
         setKey(prevKey => prevKey + 1); // Restart Typewriter
       }, 100);
     } else {
-      navigate("/dashboard/my-preferences");
+      navigate("/dashboard/tutorial/step-two");
     }
   };
 
