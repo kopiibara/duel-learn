@@ -19,10 +19,12 @@ import { useUser } from "../../contexts/UserContext";
 import useValidation from "../../utils/useValidation";
 import useHandleError from "../../utils/useHandleError";
 import PageTransition from "../../styles/PageTransition";
+import useSignUpApi from "../../hooks/useSignUpApi";
+import useApiError from "../../hooks/useApiError";
 
 const SignUp = () => {
   const { setUser, user } = useUser();
-  const {handleLoginError } = useHandleError();
+  const { handleLoginError } = useHandleError();
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -35,7 +37,8 @@ const SignUp = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-
+  const { signUpApi } = useSignUpApi();
+  const { apiError, handleApiError } = useApiError();
   useEffect(() => {
     if (user) {
       navigate("/dashboard/home"); // Redirect if user is authenticated
@@ -79,6 +82,10 @@ const SignUp = () => {
       });
       await sendEmailVerification(userCredential.user);
       localStorage.setItem("userToken", token); // Store token
+
+      // Call the API
+      await signUpApi(user.uid, username, email, password, false, false);
+      console.log("signUpApi", signUpApi);
       setFormData({
         username: "",
         password: "",
@@ -94,6 +101,7 @@ const SignUp = () => {
       }, 2000);
     } catch (error) {
       console.error("Registration error:", error);
+      handleApiError(error);
       setFormData((prev) => ({ ...prev, emailError: (error as any).message }));
     }
   };
@@ -122,6 +130,16 @@ const SignUp = () => {
       setUser(userData);
       localStorage.setItem("userToken", token);
 
+      // Call the API
+      await signUpApi(
+        userData.uid,
+        userData.displayName ?? "Anonymous",
+        userData.email||
+        "",
+        "",
+        true,
+        result.user.emailVerified
+      );
       setTimeout(() => {
         if (userData.isNew) {
           navigate("/dashboard/welcome");
@@ -153,6 +171,11 @@ const SignUp = () => {
           {successMessage && (
             <div className="bg-green-700 text-white text-center py-2 mb-4 rounded">
               {successMessage}
+            </div>
+          )}
+          {apiError && (
+            <div className="bg-red-700 text-white text-center py-2 mb-4 rounded">
+              {apiError}
             </div>
           )}
           <form onSubmit={handleSubmit}>
