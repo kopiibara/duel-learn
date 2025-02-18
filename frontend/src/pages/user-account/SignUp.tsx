@@ -122,7 +122,11 @@ const SignUp = () => {
         "Account successfully created! Redirecting to login..."
       );
       setTimeout(() => {
-        navigate("/login");
+        if (userData.isNew) {
+          navigate("/dashboard/welcome");
+        } else {
+          navigate("/dashboard/home");
+        }
       }, 2000);
     } catch (error) {
       console.error("Registration error:", error);
@@ -142,7 +146,7 @@ const SignUp = () => {
         username: result.user.displayName,
         email: result.user.email,
         display_picture: result.user.photoURL,
-        isNew: additionalUserInfo,
+        isNew: additionalUserInfo?.isNewUser,
         full_name: "",
         email_verified: result.user.emailVerified,
         isSSO: true,

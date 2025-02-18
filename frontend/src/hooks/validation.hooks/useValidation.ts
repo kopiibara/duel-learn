@@ -32,9 +32,9 @@ const termsValidation = (value: string) => {
 
 const useValidation = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-  const { validatePassword, } = usePasswordValidation();
+  const { validatePassword } = usePasswordValidation();
 
-  const validate = (field: string, value: string, formData: any = {}) => {
+  const validate = (field: string, value: string, formData: any = {}, passwordField: string = "password") => {
     let error = "";
 
     switch (field) {
@@ -45,10 +45,8 @@ const useValidation = () => {
         error = emailValidation(value);
         break;
       case "password":
-        error = validatePassword(field, value, formData);
-        break;
       case "confirmPassword":
-        error = validatePassword(field, value, formData);
+        error = validatePassword(field, value, formData, passwordField);
         break;
       case "terms":
         error = termsValidation(value);
@@ -61,10 +59,10 @@ const useValidation = () => {
     return error;
   };
 
-  const validateForm = (fields: { [key: string]: string }) => {
+  const validateForm = (fields: { [key: string]: string }, passwordField: string = "password") => {
     let valid = true;
     for (const field in fields) {
-      const error = validate(field, fields[field], fields);
+      const error = validate(field, fields[field], fields, passwordField);
       if (error) valid = false;
     }
     return valid;
