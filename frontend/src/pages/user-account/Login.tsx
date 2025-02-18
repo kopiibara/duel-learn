@@ -15,10 +15,11 @@ import PageTransition from "../../styles/PageTransition";
 
 //import axios from "axios";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "../../services/firebase"; // Ensure you have this import for Firebase auth
+import { auth, googleProvider,getAdditionalInfo } from "../../services/firebase"; // Ensure you have this import for Firebase auth
 // Icons
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import { get } from "firebase/database";
 
 const Login = () => {
   const { setUser, user } = useUser(); // Get user from context
@@ -46,6 +47,7 @@ const Login = () => {
       console.log(result);
 
       const token = await result.user.getIdToken();
+      const additionalUserInfo = getAdditionalInfo(result);
 
       // Handle user data directly on the frontend
       const userData = {
@@ -53,6 +55,7 @@ const Login = () => {
         email: result.user.email,
         photoURL: result.user.photoURL, // Store the photoURL here
         uid: result.user.uid,
+        isNew: additionalUserInfo?.isNewUser || false,
         EmailVerified: result.user.emailVerified,
       };
 
@@ -65,7 +68,11 @@ const Login = () => {
       localStorage.setItem("userToken", token);
 
       // Redirect to a protected route or dashboard
-      navigate("/dashboard/home");
+      if (userData.isNew == true) {
+        navigate("/dashboard/welcome");
+      } else {
+        navigate("/dashboard/home");
+      }
     } catch (error) {
       console.error("Error during sign-in:", error);
       toast.error("Google sign-in failed. Please try again.");
@@ -96,6 +103,7 @@ const Login = () => {
       const result = await signInWithEmailAndPassword(auth, email, password);
       console.log("User Credential:", result);
       const token = await result.user.getIdToken();
+      const additionalUserInfo = getAdditionalInfo(result);
 
       // Create user data object
       const userData = {
@@ -105,6 +113,7 @@ const Login = () => {
         uid: result.user.uid,
         username: username, // Store username separately
         EmailVerified: result.user.emailVerified,
+        isNew: additionalUserInfo?.isNewUser || false,
       };
       console.log("User Data:", userData);
       // Store user data in context
@@ -113,7 +122,11 @@ const Login = () => {
       // Optionally, you can store the token in local storage or context
       localStorage.setItem("userToken", token); // Store token
       setData({ username: "", password: "" });
-      navigate("/dashboard/home"); // Redirect on successful login
+      if (userData.isNew == true) {
+        navigate("/dashboard/welcome");
+      } else {
+        navigate("/dashboard/home");
+      }
     } catch (error) {
       handleLoginError(error); // Use the hook to handle login error
     }

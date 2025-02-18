@@ -10,29 +10,38 @@ import {
   verifyPasswordResetCode,
   confirmPasswordReset,
 } from "firebase/auth";
-import { auth, db } from "../../services/firebase"; // Adjust the path as needed
+import { auth } from "../../services/firebase"; // Adjust the path as needed
 import usePasswordValidation from "../../hooks/validation.hooks/usePasswordValidation";
 import PageTransition from "../../styles/PageTransition";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
 import useResetPasswordApi from "../../hooks/api.hooks/useResetPasswordApi";
-import { Password } from "@mui/icons-material";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Get location object
-  // Retrieve the email and firebaseUid passed from the previous page
-  const { email, firebase_uid } = location.state || {};
-  console.log("firebase_uid received from location SecurityCode:", firebase_uid);
   const [isInvalidModalOpen, setIsInvalidModalOpen] = useState(false);
 
   useEffect(() => {
-    const oobCode = new URLSearchParams(location.search).get("oobCode");
+    const queryParams = new URLSearchParams(location.search);
+    const oobCode = queryParams.get("oobCode");
+    const continueUrl = queryParams.get("continueUrl");
+    let firebase_uid = "";
+
+    if (continueUrl) {
+      // Decode the continueUrl parameter to get the nested URL parameters
+      const decodedContinueUrl = decodeURIComponent(continueUrl);
+      const nestedParams = new URLSearchParams(decodedContinueUrl.split('?')[1]);
+      firebase_uid = nestedParams.get("firebase_uid") || "";
+    }
+
     if (!oobCode) {
       setError({ general: "Invalid or missing reset code." });
       setIsInvalidModalOpen(true);
       setLoading(false);
       return;
     }
+
+    console.log("firebase_uid received from location SecurityCode:", firebase_uid);
 
     const validateCode = async () => {
       try {
@@ -46,8 +55,6 @@ const ResetPassword = () => {
     };
     validateCode();
   }, [location.search]);
-
-  console.log("Email received from location SecurityCode:", email);
 
   const [formData, setFormData] = useState({
     newpassword: "", // Only password is used here
@@ -87,13 +94,26 @@ const ResetPassword = () => {
 
     setLoading(true); // Start loading spinner
 
-    const oobCode = new URLSearchParams(location.search).get("oobCode");
+    const queryParams = new URLSearchParams(location.search);
+    const oobCode = queryParams.get("oobCode");
+    const continueUrl = queryParams.get("continueUrl");
+    let firebase_uid = "";
+
+    if (continueUrl) {
+      // Decode the continueUrl parameter to get the nested URL parameters
+      const decodedContinueUrl = decodeURIComponent(continueUrl);
+      const nestedParams = new URLSearchParams(decodedContinueUrl.split('?')[1]);
+      firebase_uid = nestedParams.get("firebase_uid") || "";
+    }
+
     if (!oobCode) {
       setError({ general: "Invalid or missing reset code." });
       setIsInvalidModalOpen(true);
       setLoading(false);
       return;
     }
+
+    console.log("firebase_uid received from location SecurityCode:", firebase_uid);
 
     try {
       await confirmPasswordReset(auth, oobCode, newpassword);
@@ -184,7 +204,7 @@ const ResetPassword = () => {
                 onCopy={(e) => e.preventDefault()} // Disable copy
                 onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
-                  errors.newpassword ? "border border-red-500" : ""
+                  errors.password ? "border border-red-500" : ""
                 }`}
                 
               />

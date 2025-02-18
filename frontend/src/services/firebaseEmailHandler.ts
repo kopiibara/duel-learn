@@ -5,7 +5,7 @@ const firebaseEmailHandler = () => {
   const navigate = useNavigate();
   const auth = getAuth();
 
-  const handleEmailAction = async (mode: any, oobCode: any,firebase_uid: any) => {
+  const handleEmailAction = async (mode: any, oobCode: any, firebase_uid: any) => {
     try {
       switch (mode) {
         case "resetPassword":
