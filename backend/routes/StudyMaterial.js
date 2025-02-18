@@ -1,13 +1,11 @@
-const express = require("express");
+import express from "express";
+import studyMaterialController from "../controller/StudyMaterial.js";
+
 const router = express.Router();
-const studyMaterialController = require("../controller/StudyMaterial");
 
-// Route to save study material
-router.post("/save-study-material", studyMaterialController.saveStudyMaterial);
+// Use studyMaterialController.saveStudyMaterial instead of saveStudyMaterial directly
+router.post("/save", studyMaterialController.saveStudyMaterial);
+router.get("/get-by-study-material-id/:studyMaterialId", studyMaterialController.getStudyMaterialById);
+router.get("/get-by-user/:created_by", studyMaterialController.getStudyMaterialByUser);
 
-// Route to get study material
-router.get("/get-study-material/:studyMaterialId", studyMaterialController.previewStudyMaterial);
-router.get("/view-your-study-material/:created_by", studyMaterialController.viewYourStudyMaterial);
-
-// Export the router
-module.exports = router;
+export default router;
