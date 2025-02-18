@@ -41,7 +41,7 @@ const MyLibraryCards = ({ cards, createdBy }: MyLibraryCardsProps) => {
               creator={item.created_by}
               clicked={item.total_views}
               date={item.created_at}
-              filter={item.visibility.toString()}
+              filter={item.visibility?.toString() || "0"} // Ensure visibility is defined
               createdBy={createdBy}
               onClick={() => handleCardClick(item.study_material_id)} // Add onClick handler
             />

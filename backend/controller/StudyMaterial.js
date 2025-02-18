@@ -1,45 +1,38 @@
-const { pool, connectDB } = require("../config/db.js");
-const { v4: uuidv4 } = require("uuid");
-const moment = require("moment-timezone");
+import { pool } from "../config/db.js";
+import { nanoid } from "nanoid";
+import moment from "moment-timezone";
 
-module.exports = {
-
-    //to save study material
+const studyMaterialController = {
     saveStudyMaterial: async (req, res) => {
-        try {
-            let studyMaterialId = req.body.studyMaterialId || uuidv4();
+        const connection = await pool.getConnection();
 
+        try {
+            let studyMaterialId = req.body.studyMaterialId || nanoid();
             const {
                 title,
                 tags,
                 totalItems,
-                terms,
-                images = [],
-                definitions,
                 visibility = 0,
                 createdBy,
                 totalView = 1,
+                items, // Receiving items with Base64 images
             } = req.body;
 
             console.log("Generated Study Material ID:", studyMaterialId);
+            const currentTimestamp = moment().tz("Asia/Manila").format("YYYY-MM-DD HH:mm:ss");
 
-            const currentTimestamp = moment()
-                .tz("Asia/Manila")
-                .format("YYYY-MM-DD HH:mm:ss");
+            await connection.beginTransaction();
 
-            const connection = await pool.getConnection();
-
+            // Insert into study_material_info
             await connection.execute(
-                `INSERT INTO study_material (study_material_id, title, tags, images, total_items, terms, definitions, visibility, created_by, total_views, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+                `INSERT INTO study_material_info 
+                (study_material_id, title, tags, total_items, visibility, created_by, total_views, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
                 [
                     studyMaterialId,
                     title,
-                    JSON.stringify(tags),
-                    JSON.stringify(images),
+                    JSON.stringify(tags), // Store tags as a JSON string
                     totalItems,
-                    JSON.stringify(terms),
-                    JSON.stringify(definitions),
                     visibility,
                     createdBy,
                     totalView,
@@ -47,90 +40,134 @@ module.exports = {
                 ]
             );
 
-            connection.release();
+            // Insert items into study_material_content
+            const insertItemPromises = items.map(async (item, index) => {
+                const itemId = nanoid();
+                let imageBuffer = null;
 
-            res.status(201).json({
-                message: "Study material saved successfully",
-                studyMaterialId,
+                if (item.image) {
+                    // Decode Base64 to binary (Buffer)
+                    const base64Data = item.image.replace(/^data:image\/\w+;base64,/, ""); // Remove Base64 header
+                    imageBuffer = Buffer.from(base64Data, "base64");
+                }
+
+                return connection.execute(
+                    `INSERT INTO study_material_content 
+                    (study_material_id, item_id, item_number, term, definition, image) 
+                    VALUES (?, ?, ?, ?, ?, ?);`,
+                    [studyMaterialId, itemId, index + 1, item.term, item.definition, imageBuffer]
+                );
             });
+
+            await Promise.all(insertItemPromises);
+            await connection.commit();
+            res.status(201).json({ message: "Study material saved successfully", studyMaterialId });
         } catch (error) {
+            await connection.rollback();
             console.error("Error saving study material:", error);
             res.status(500).json({ error: "Internal server error", details: error });
+        } finally {
+            connection.release();
         }
     },
 
-    //to preview the saved material
-    previewStudyMaterial: async (req, res) => {
+    getStudyMaterialById: async (req, res) => {
+        const connection = await pool.getConnection();
         try {
             const { studyMaterialId } = req.params;
+            console.log("Requested studyMaterialId:", studyMaterialId);
 
-            if (!studyMaterialId) {  // Change from `id` to `studyMaterialId`
-                return res.status(400).json({ error: "Missing studyMaterialId" });
-            }
-
-            const connection = await pool.getConnection();
-
-            const [rows] = await connection.execute(
-                `SELECT study_material_id, title, tags, images, total_items, terms, definitions, visibility, created_by, total_views, created_at
-             FROM study_material WHERE study_material_id = ?;`,
+            const [infoRows] = await connection.execute(
+                `SELECT title, tags, total_items, created_by, total_views, created_at 
+                FROM study_material_info 
+                WHERE study_material_id = ?;`,
                 [studyMaterialId]
             );
 
-            connection.release();
-
-            if (rows.length === 0) {
+            if (infoRows.length === 0) {
                 return res.status(404).json({ message: "Study material not found" });
             }
 
-            return res.status(200).json({
-                message: "Study material fetched successfully",
-                data: rows[0],
-            });
-        } catch (error) {
-            console.error("Error fetching study material:", error);
-            return res
-                .status(500)
-                .json({ error: "Internal server error", details: error });
-        }
-    },
-
-
-    //to view the saved material by user
-    viewYourStudyMaterial: async (req, res) => {
-        try {
-            const { created_by } = req.params;
-
-            if (!created_by) {
-                return res.status(400).json({ error: "Missing created_by" });
-            }
-
-            const connection = await pool.getConnection();
-            const [rows] = await connection.execute(
-                `SELECT study_material_id, title, tags, total_items, visibility, total_views, created_by, created_at
-                     FROM study_material WHERE created_by = ?;`,
-                [created_by]
+            const [contentRows] = await connection.execute(
+                `SELECT term, definition, image 
+                FROM study_material_content 
+                WHERE study_material_id = ?;`,
+                [studyMaterialId]
             );
-            connection.release();
 
-            if (rows.length === 0) {
-                return res.status(404).json({ message: "No study materials found" });
-            }
-
-            const parsedRows = rows.map((item) => ({
-                ...item,
-                tags: JSON.parse(item.tags || "[]"),
-                images: Buffer.isBuffer(item.images) ? [] : JSON.parse(item.images || "[]"),
+            // Ensure JSON-safe data
+            const formattedContent = contentRows.map(item => ({
+                term: item.term,
+                definition: item.definition,
+                image: item.image ? item.image.toString("base64") : null
             }));
 
-            return res.status(200).json({
-                message: "Study materials fetched successfully",
-                data: parsedRows,
+            res.status(200).json({
+                title: infoRows[0].title,
+                tags: JSON.parse(infoRows[0].tags), // Parse stored JSON tags
+                total_items: infoRows[0].total_items,
+                created_by: infoRows[0].created_by,
+                total_views: infoRows[0].total_views,
+                created_at: infoRows[0].created_at,
+                items: formattedContent // Updated to match frontend structure
             });
         } catch (error) {
             console.error("Error fetching study material:", error);
-            return res.status(500).json({ error: "Internal server error", details: error });
+            res.status(500).json({ error: "Internal server error", details: error });
+        } finally {
+            connection.release();
         }
     },
 
+    getStudyMaterialByUser: async (req, res) => {
+        const connection = await pool.getConnection();
+        try {
+            const { created_by } = req.params;
+            console.log("Fetching study materials for created_by:", created_by);
 
+            const [infoRows] = await connection.execute(
+                `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
+                FROM study_material_info 
+                WHERE created_by = ?;`,
+                [created_by]
+            );
+
+            if (infoRows.length === 0) {
+                return res.status(404).json({ message: "No study materials found for this creator" });
+            }
+
+            const studyMaterials = await Promise.all(infoRows.map(async (info) => {
+                const [contentRows] = await connection.execute(
+                    `SELECT term, definition, image 
+                    FROM study_material_content 
+                    WHERE study_material_id = ?;`,
+                    [info.study_material_id]
+                );
+
+                return {
+                    study_material_id: info.study_material_id,
+                    title: info.title,
+                    tags: JSON.parse(info.tags),
+                    total_items: info.total_items,
+                    created_by: info.created_by,
+                    total_views: info.total_views,
+                    created_at: info.created_at,
+                    items: contentRows.map(item => ({
+                        term: item.term,
+                        definition: item.definition,
+                        image: item.image ? item.image.toString("base64") : null
+                    }))
+                };
+            }));
+
+            res.status(200).json(studyMaterials);
+        } catch (error) {
+            console.error("Error fetching study materials by creator:", error);
+            res.status(500).json({ error: "Internal server error", details: error });
+        } finally {
+            connection.release();
+        }
+    }
 };
+
+export default studyMaterialController;
