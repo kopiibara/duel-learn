@@ -11,7 +11,6 @@ import {
 import {
   signInWithPopup,
   createUserWithEmailAndPassword,
-  sendEmailVerification,
 } from "firebase/auth";
 import { setDoc, doc, serverTimestamp } from "firebase/firestore";
 import "../../index.css";
@@ -21,7 +20,6 @@ import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import PageTransition from "../../styles/PageTransition";
 import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
 import useApiError from "../../hooks/api.hooks/useApiError";
-
 const SignUp = () => {
   const { setUser, user } = useUser();
   const { handleLoginError } = useHandleError();
@@ -67,24 +65,51 @@ const SignUp = () => {
     }
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(
+      const result = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
-      const user = userCredential.user;
-      const token = await user.getIdToken(); // Get token
-      await setDoc(doc(db, "users", user.uid), {
+      const token = await result.user.getIdToken();
+      const additionalUserInfo = getAdditionalInfo(result);
+      const userData = {
+        firebaseToken: token,
+        firebase_uid : result.user.uid,
         username: username,
         email: email,
-        dateCreated: serverTimestamp(),
+        display_picture: null,
+        isNew: additionalUserInfo,
+        full_name: "",
+        email_verified: result.user.emailVerified,
         isSSO: false,
+        account_type: "free" as 'free' | 'premium',
+      };
+ 
+      await setDoc(doc(db, "users", userData.firebase_uid), {
+        firebase_uid: userData.firebase_uid || "",
+        username: userData.username,
+        email: userData.email,
+        password_hash: "N/A", // Store the hashed password if needed
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        display_picture: userData.display_picture || "",
+        full_name: "",
+        email_verified: userData.email_verified,
+        isSSO: userData.isSSO,
+        account_type: userData.account_type,
       });
-      await sendEmailVerification(userCredential.user);
+      localStorage.setItem("userData", JSON.stringify(userData));
       localStorage.setItem("userToken", token); // Store token
 
       // Call the API
-      await signUpApi(user.uid, username, email, password, false, false);
+      await signUpApi(
+        userData.firebase_uid, 
+        username, 
+        email, 
+        password, 
+        false, 
+        false);
+
       console.log("signUpApi", signUpApi);
       setFormData({
         username: "",
@@ -113,18 +138,29 @@ const SignUp = () => {
       const additionalUserInfo = getAdditionalInfo(result);
       const userData = {
         firebaseToken: token,
-        displayName: result.user.displayName,
+        firebase_uid : result.user.uid,
+        username: result.user.displayName,
         email: result.user.email,
-        photoURL: result.user.photoURL,
-        uid: result.user.uid,
+        display_picture: result.user.photoURL,
         isNew: additionalUserInfo,
+        full_name: "",
+        email_verified: result.user.emailVerified,
+        isSSO: true,
+        account_type: "free" as 'free' | 'premium',
       };
 
-      await setDoc(doc(db, "users", userData.uid), {
-        username: userData.displayName,
+      await setDoc(doc(db, "users", userData.firebase_uid), {
+        firebase_uid: userData.firebase_uid || "",
+        username: userData.username,
         email: userData.email,
-        dateCreated: serverTimestamp(),
-        isSSO: true,
+        password_hash: "N/A", // Store the hashed password if needed
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        display_picture: userData.display_picture || "",
+        full_name: "",
+        email_verified: userData.email_verified,
+        isSSO: userData.isSSO,
+        account_type: userData.account_type,
       });
 
       setUser(userData);
@@ -132,8 +168,8 @@ const SignUp = () => {
 
       // Call the API
       await signUpApi(
-        userData.uid,
-        userData.displayName ?? "Anonymous",
+        userData.firebase_uid,
+        userData.username ?? "Anonymous",
         userData.email||
         "",
         "",
