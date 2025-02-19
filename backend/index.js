@@ -1,9 +1,9 @@
 
-const express = require('express');
-const dotenv = require('dotenv');
-const { connectDB } = require('./config/db');
-const cors = require('cors');  // Import CORS package
-const studyMaterialRoutes = require('./routes/StudyMaterial');
+import express from 'express';
+import dotenv from 'dotenv';
+import { connectDB } from './config/db.js';
+import cors from 'cors';  // Import CORS package
+import studyMaterialRoutes from './routes/StudyMaterial.js';
 
 // Load environment variables
 dotenv.config();
@@ -24,9 +24,9 @@ app.use(cors({
 app.use(express.json());
 
 // Routes
-app.use('/api/studyMaterial', studyMaterialRoutes);
+app.use('/api/study-material', studyMaterialRoutes);
 
 
 
 
-module.exports = app;
+export default app;
