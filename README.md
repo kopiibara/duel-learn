@@ -62,7 +62,7 @@ The following developers contributed to the creation and development of **Duel-L
 - **Bea Lugtu** - [lugtu.beaalyssabscs2022@gmail.com](mailto:lugtu.beaalyssabscs2022@gmail.com)
 - **Justine Peralta** - [peralta.justinebryanbscs2022@gmail.com](mailto:peralta.justinebryanbscs2022@gmail.com)
 - **Laira Samis** - [samis.lairacoleenbscs2022@gmail.com](mailto:samis.lairacoleenbscs2022@gmail.com)
-- **Gwyneth Uy** - [lugtu.beaalyssabscs2022@gmail.com](mailto:lugtu.beaalyssabscs2022@gmail.com)
+- **Gwyneth Uy** - [uy.gwyneth2022@gmail.com](mailto:uy.gwynethbscs2022@gmail.com)
 
 ## About the Project
 
