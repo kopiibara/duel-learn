@@ -46,6 +46,7 @@ const useValidation = () => {
         break;
       case "password":
       case "confirmPassword":
+      case "newpassword":
         error = validatePassword(field, value, formData, passwordField);
         break;
       case "terms":

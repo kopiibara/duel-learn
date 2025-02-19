@@ -23,7 +23,6 @@ const confirmPasswordValidation = (value: string, formData: any, passwordField: 
   } else if (value !== formData[passwordField]) {
     return "Passwords do not match.";
   }
-  
   return "";
 };
 
@@ -31,10 +30,11 @@ const usePasswordValidation = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const validatePassword = (field: string, value: string, formData: any = {}, passwordField: string = "password") => {
-    let error = "";
+    let error = "";   
 
     switch (field) {
       case "password":
+      case "newpassword":
         error = passwordValidation(value);
         break;
       case "confirmPassword":
