@@ -24,15 +24,7 @@ const ResetPassword = () => {
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const oobCode = queryParams.get("oobCode");
-    const continueUrl = queryParams.get("continueUrl");
-    let firebase_uid = "";
-
-    if (continueUrl) {
-      // Decode the continueUrl parameter to get the nested URL parameters
-      const decodedContinueUrl = decodeURIComponent(continueUrl);
-      const nestedParams = new URLSearchParams(decodedContinueUrl.split('?')[1]);
-      firebase_uid = nestedParams.get("firebase_uid") || "";
-    }
+    const firebase_uid = queryParams.get("firebase_uid") || "";
 
     if (!oobCode) {
       setError({ general: "Invalid or missing reset code." });
@@ -85,7 +77,6 @@ const ResetPassword = () => {
     const formIsValid = validatePasswordForm({
       newpassword,
       confirmPassword,
-      password: newpassword, // Pass newpassword as password for validation
     }, "newpassword");
 
     if (!formIsValid) {
@@ -96,15 +87,7 @@ const ResetPassword = () => {
 
     const queryParams = new URLSearchParams(location.search);
     const oobCode = queryParams.get("oobCode");
-    const continueUrl = queryParams.get("continueUrl");
-    let firebase_uid = "";
-
-    if (continueUrl) {
-      // Decode the continueUrl parameter to get the nested URL parameters
-      const decodedContinueUrl = decodeURIComponent(continueUrl);
-      const nestedParams = new URLSearchParams(decodedContinueUrl.split('?')[1]);
-      firebase_uid = nestedParams.get("firebase_uid") || "";
-    }
+    const firebase_uid = queryParams.get("firebase_uid") || "";
 
     if (!oobCode) {
       setError({ general: "Invalid or missing reset code." });
@@ -197,14 +180,11 @@ const ResetPassword = () => {
                 placeholder="Enter your password"
                 required
                 value={formData.newpassword}
-                onChange={(e) => {
-                  setFormData({ ...formData, newpassword: e.target.value });
-                  validatePassword("password", e.target.value);
-                }}
+                onChange={(e) => handleInputChange("newpassword", e.target.value)}
                 onCopy={(e) => e.preventDefault()} // Disable copy
                 onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
-                  errors.password ? "border border-red-500" : ""
+                  errors.newpassword ? "border border-red-500" : ""
                 }`}
                 
               />
@@ -219,8 +199,8 @@ const ResetPassword = () => {
                   <VisibilityOffRoundedIcon />
                 )}
               </span>
-              {errors.password && (
-                <p className="text-red-500 mt-1 text-sm">{errors.password}</p>
+              {errors.newpassword && (
+                <p className="text-red-500 mt-1 text-sm">{errors.newpassword}</p>
               )}
             </div>
 
@@ -233,10 +213,7 @@ const ResetPassword = () => {
                 placeholder="Confirm your password"
                 required
                 value={formData.confirmPassword}
-                onChange={(e) => {
-                  setFormData({ ...formData, confirmPassword: e.target.value });
-                  validatePassword("confirmPassword", e.target.value, formData);
-                }}
+                onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                 onPaste={(e) => e.preventDefault()}
                 onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${

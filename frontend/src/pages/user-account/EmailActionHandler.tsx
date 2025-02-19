@@ -11,20 +11,11 @@ const EmailActionHandler: React.FC = () => {
     const mode = queryParams.get("mode");
     const oobCode = queryParams.get("oobCode");
     const continueUrl = queryParams.get("continueUrl");
-    let firebase_uid = "";
 
-    if (continueUrl) {
-      // Decode the continueUrl parameter to get the nested URL parameters
-      const decodedContinueUrl = decodeURIComponent(continueUrl);
-      const nestedParams = new URLSearchParams(decodedContinueUrl.split('?')[1]);
-      firebase_uid = nestedParams.get("firebase_uid") || "";
-    }
-
-    if (mode && oobCode && firebase_uid) {
-      handleEmailAction(mode, oobCode, firebase_uid);
+    if (mode && oobCode && continueUrl) {
+      handleEmailAction(mode, oobCode, continueUrl);
     } else {
-      // Handle invalid or missing parameters
-      console.error("Invalid or missing mode/oobCode/firebase_uid");
+      console.error("Invalid or missing mode/oobCode/continueUrl");
     }
   }, [location.search]);
 
