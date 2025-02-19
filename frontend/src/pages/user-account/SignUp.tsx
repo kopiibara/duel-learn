@@ -98,8 +98,7 @@ const SignUp = () => {
         isSSO: userData.isSSO,
         account_type: userData.account_type,
       });
-      localStorage.setItem("userData", JSON.stringify(userData));
-      localStorage.setItem("userToken", token); // Store token
+      
 
       // Call the API
       await signUpApi(
