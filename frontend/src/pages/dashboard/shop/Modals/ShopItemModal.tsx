@@ -7,6 +7,7 @@ interface ShopItem {
   id: number;
   name: string;
   buyLabel: string;
+  owned: number;
 }
 
 interface ShopItemModalProps {
@@ -26,26 +27,33 @@ const ShopItemModal: React.FC<ShopItemModalProps> = ({
   handleIncrement,
   handleDecrement,
 }) => {
-
   const [isConfirmModalOpen, setConfirmModalOpen] = useState(false);
   const [confirmItem, setConfirmItem] = useState<ShopItem | null>(null); // Store selected item
   const [confirmQuantity, setConfirmQuantity] = useState(1); // Store selected quantity
-
+  const [errorMessage, setErrorMessage] = useState<string | null>(null); // Store error message
 
   const handleOpenConfirmModal = () => {
     if (selectedItem) {
-      setConfirmItem(selectedItem); // Store selected item
-      setConfirmQuantity(quantity); // Store selected quantity
-      closeModal(); // Close ShopItemModal first
-      setConfirmModalOpen(true); // Open ConfirmPurchaseModal
+      if (selectedItem.owned + quantity > 5) {
+        setErrorMessage("You cannot own more than 5 of this item.");
+      } else {
+        setConfirmItem(selectedItem); // Store selected item
+        setConfirmQuantity(quantity); // Store selected quantity
+        closeModal(); // Close ShopItemModal first
+        setConfirmModalOpen(true); // Open ConfirmPurchaseModal
+      }
     }
   };
 
+  const handleCloseModal = () => {
+    setErrorMessage(null); // Clear error message
+    closeModal();
+  };
 
   return (
     <>
       {/* First Modal: Select Quantity */}
-      <Modal open={isModalOpen} onClose={closeModal}>
+      <Modal open={isModalOpen} onClose={handleCloseModal}>
         <Box
           sx={{
             position: "absolute",
@@ -101,9 +109,13 @@ const ShopItemModal: React.FC<ShopItemModalProps> = ({
                 </span>
               </button>
 
+              {errorMessage && (
+                <p className="mt-2 text-red-500">{errorMessage}</p>
+              )}
+
               <button
                 className="mt-4 text-gray-400 hover:text-gray-600 transition-all duration-200"
-                onClick={closeModal}
+                onClick={handleCloseModal}
               >
                 Cancel
               </button>
@@ -119,8 +131,6 @@ const ShopItemModal: React.FC<ShopItemModalProps> = ({
         selectedItem={confirmItem} // Pass selected item
         quantity={confirmQuantity} // Pass selected quantity
       />
-
-
     </>
   );
 };
