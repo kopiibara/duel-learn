@@ -8,7 +8,7 @@ const Footer = () => {
     navigate("/terms-condition");
   };
   return (
-    <footer className="mt-12 mb-5 flex justify-between text-gray-500 px-8">
+    <footer className="mt-12 mb-12 flex justify-between text-gray-500 px-8">
       <Stack spacing={1} direction="row" className="flex items-center w-full">
         <Button
           variant="text"

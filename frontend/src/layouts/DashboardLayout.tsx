@@ -20,6 +20,7 @@ const DashboardLayout = () => {
   const toggleDrawer = (open: boolean) => {
     setDrawerOpen(open);
   };
+  
 
   return (
     <Box className="h-screen px-8 flex flex-col lg:flex-row w-screen overflow-x-hidden ">
@@ -41,7 +42,7 @@ const DashboardLayout = () => {
 
         {/* Main Content Section */}
         <Box className="flex flex-1">
-          <main className="flex-1 pt-3 relative">
+            <main className={`flex-1 pt-3 relative ${useMediaQuery("(min-width:1400px)") ? "px-11" : ""}`}>
             <Outlet />
             <Footer />
 
