@@ -9,7 +9,6 @@ import ForgotPassword from "../pages/user-account/ForgotPassword";
 import TermsAndConditions from "../components/TermsAndConditions";
 import CheckYourMail from "../pages/user-account/CheckYourMail";
 import PasswordChangedSuccessfully from "../pages/user-account/PasswordChangedSuccessfully";
-import LoadingScreen from "../components/LoadingScreen";
 import ConfirmationAccount from "../pages/user-account/ConfirmationAccount";
 import NotFoundPage from "../pages/user-account/NotFoundPage";
 import ResetPassword from "../pages/user-account/ResetPassword";
@@ -25,6 +24,7 @@ import TutorialOnePage from "../pages/user-onboarding/TutorialOne";
 import WelcomePage from "../pages/user-onboarding/WelcomePage";
 import EmailActionHandler from "../pages/user-account/EmailActionHandler"; // Import EmailActionHandler
 import EmailVerified from "../pages/user-account/EmailVerified"; // Import EmailVerified
+import LoadingScreen from "../components/LoadingScreen";
 
 const AppRoutes: React.FC = () => {
   const location = useLocation();
@@ -40,10 +40,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
         <Route path="/check-your-mail" element={<CheckYourMail />} />
         <Route path="/loading-screen" element={<LoadingScreen />} />
-        <Route
-          path="/password-changed-successfully"
-          element={<PasswordChangedSuccessfully />}
-        />
+        <Route path="/password-changed-successfully" element={<PasswordChangedSuccessfully />} />
+        
         {/* User onboarding routes */}
         <Route path="/welcome" element={<WelcomePage />} />
         <Route path="/tutorial/step-one" element={<TutorialOnePage />} />
@@ -54,14 +52,14 @@ const AppRoutes: React.FC = () => {
         <Route path="/tutorial/step-six" element={<TutorialSix />} />
         <Route path="/tutorial/step-seven" element={<TutorialLast />} />
         <Route path="/my-preferences" element={<Personalization />} />
+        
         <Route path="/confirmation-account" element={<ConfirmationAccount />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/success-reset" element={<SuccessReset />} />
         <Route path="/email-action" element={<EmailActionHandler />} />{" "}
-        {/* Add EmailActionHandler route */}
         <Route path="/email-verified" element={<EmailVerified />} />{" "}
-        {/* Add EmailVerified route */}
         <Route path="*" element={<NotFoundPage />} />
+        <Route path="/loading" element={<LoadingScreen />} />
         <Route path="/dashboard/*" element={<PrivateRoutes />} />
       </Routes>
     </AnimatePresence>

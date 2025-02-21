@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
@@ -13,18 +13,18 @@ import {
 import {
   signInWithPopup,
   createUserWithEmailAndPassword,
-  sendEmailVerification,
 } from "firebase/auth";
 import { setDoc, doc, serverTimestamp } from "firebase/firestore";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
-import useValidation from "../../utils/useValidation";
-import useHandleError from "../../utils/useHandleError";
+import useValidation from "../../hooks/validation.hooks/useValidation";
+import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import PageTransition from "../../styles/PageTransition";
-
+import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
+import useApiError from "../../hooks/api.hooks/useApiError";
 const SignUp = () => {
-  const { setUser } = useUser();
-  const { error, handleLoginError } = useHandleError();
+  const { setUser, user } = useUser();
+  const { handleLoginError } = useHandleError();
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -37,6 +37,14 @@ const SignUp = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
+  const { signUpApi } = useSignUpApi();
+  const { apiError, handleApiError } = useApiError();
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard/home"); // Redirect if user is authenticated
+    }
+  }, [user, navigate]);
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
@@ -60,20 +68,53 @@ const SignUp = () => {
     }
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(
+      const result = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
-      const user = userCredential.user;
-      const token = await user.getIdToken(); // Get token
-      await setDoc(doc(db, "users", user.uid), {
+
+      const token = await result.user.getIdToken();
+      const additionalUserInfo = getAdditionalInfo(result);
+      const userData = {
+        firebaseToken: token,
+        firebase_uid : result.user.uid,
+
         username: username,
         email: email,
-        dateCreated: serverTimestamp(),
+        display_picture: null,
+        isNew: additionalUserInfo,
+        full_name: "",
+        email_verified: result.user.emailVerified,
+        isSSO: false,
+        account_type: "free" as 'free' | 'premium',
+      };
+ 
+      await setDoc(doc(db, "users", userData.firebase_uid), {
+        firebase_uid: userData.firebase_uid || "",
+        username: userData.username,
+        email: userData.email,
+        password_hash: "N/A", // Store the hashed password if needed
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        display_picture: userData.display_picture || "",
+        full_name: "",
+        email_verified: userData.email_verified,
+        isSSO: userData.isSSO,
+        account_type: userData.account_type,
       });
-      await sendEmailVerification(userCredential.user);
-      localStorage.setItem("userToken", token); // Store token
+      
+      // Call the API
+      await signUpApi(
+        userData.firebase_uid, 
+        username, 
+        email, 
+        password, 
+        false, 
+        false);
+
+      console.log("signUpApi", signUpApi);
+
       setFormData({
         username: "",
         password: "",
@@ -85,10 +126,15 @@ const SignUp = () => {
         "Account successfully created! Redirecting to login..."
       );
       setTimeout(() => {
-        navigate("/login");
+        if (userData.isNew) {
+          navigate("/dashboard/welcome");
+        } else {
+          navigate("/dashboard/home");
+        }
       }, 2000);
     } catch (error) {
       console.error("Registration error:", error);
+      handleApiError(error);
       setFormData((prev) => ({ ...prev, emailError: (error as any).message }));
     }
   };
@@ -100,21 +146,44 @@ const SignUp = () => {
       const additionalUserInfo = getAdditionalInfo(result);
       const userData = {
         firebaseToken: token,
-        displayName: result.user.displayName,
+        firebase_uid : result.user.uid,
+        username: result.user.displayName,
         email: result.user.email,
-        photoURL: result.user.photoURL,
-        uid: result.user.uid,
-        isNew: additionalUserInfo,
+        display_picture: result.user.photoURL,
+        isNew: additionalUserInfo?.isNewUser,
+        full_name: "",
+        email_verified: result.user.emailVerified,
+        isSSO: true,
+        account_type: "free" as 'free' | 'premium',
       };
 
-      await setDoc(doc(db, "users", userData.uid), {
-        username: userData.displayName,
+      await setDoc(doc(db, "users", userData.firebase_uid), {
+        firebase_uid: userData.firebase_uid || "",
+        username: userData.username,
         email: userData.email,
-        dateCreated: serverTimestamp(),
+        password_hash: "N/A", // Store the hashed password if needed
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        display_picture: userData.display_picture || "",
+        full_name: "",
+        email_verified: userData.email_verified,
+        isSSO: userData.isSSO,
+        account_type: userData.account_type,
       });
 
       setUser(userData);
       localStorage.setItem("userToken", token);
+
+      // Call the API
+      await signUpApi(
+        userData.firebase_uid,
+        userData.username ?? "Anonymous",
+        userData.email||
+        "",
+        "",
+        true,
+        result.user.emailVerified
+      );
 
       setTimeout(() => {
         if (userData.isNew) {
@@ -149,6 +218,13 @@ const SignUp = () => {
               {successMessage}
             </div>
           )}
+
+          {apiError && (
+            <div className="bg-red-700 text-white text-center py-2 mb-4 rounded">
+              {apiError}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             <div className="relative mb-4">
               <input
@@ -180,6 +256,8 @@ const SignUp = () => {
                   setFormData({ ...formData, password: e.target.value });
                   validate("password", e.target.value);
                 }}
+
+                onCopy={(e) => e.preventDefault()} // Disable copy
                 className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
               />
               <span
@@ -208,6 +286,8 @@ const SignUp = () => {
                   setFormData({ ...formData, confirmPassword: e.target.value });
                   validate("confirmPassword", e.target.value, formData);
                 }}
+
+                onPaste={(e) => e.preventDefault()} // Disable paste
                 className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
               />
               {errors.confirmPassword && (
@@ -246,13 +326,14 @@ const SignUp = () => {
                 }}
               />
               <label htmlFor="terms" className="ml-2 text-[#9F9BAE] text-sm">
-                I agree to{" "}
-                <a
-                  href="#"
-                  className="text-[#4D18E8] underline hover:text-[#4D18E8]"
+
+                I agree to {""}
+                <Link to="/terms-and-conditions" target="_blank"
+                className="text-[#4D18E8] underline hover:text-[#4D18E8]"
                 >
-                  Terms and Conditions
-                </a>
+                Terms and Conditions
+                </Link>
+
               </label>
             </div>
             {errors.terms && (

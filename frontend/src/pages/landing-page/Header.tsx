@@ -18,8 +18,8 @@ import {
 import { setDoc, doc, serverTimestamp } from "firebase/firestore";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
-import useValidation from "../../utils/useValidation";
-import useHandleError from "../../utils/useHandleError";
+import useValidation from "../../hooks/validation.hooks/useValidation";
+import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import PageTransition from "../../styles/PageTransition";
 
 const SignUp = () => {
