@@ -10,10 +10,7 @@ import {
   getAdditionalInfo,
   db,
 } from "../../services/firebase";
-import {
-  signInWithPopup,
-  createUserWithEmailAndPassword,
-} from "firebase/auth";
+import { signInWithPopup, createUserWithEmailAndPassword } from "firebase/auth";
 import { setDoc, doc, serverTimestamp } from "firebase/firestore";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
@@ -37,14 +34,8 @@ const SignUp = () => {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-
   const { signUpApi } = useSignUpApi();
   const { apiError, handleApiError } = useApiError();
-  useEffect(() => {
-    if (user) {
-      navigate("/dashboard/home"); // Redirect if user is authenticated
-    }
-  }, [user, navigate]);
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
@@ -78,7 +69,7 @@ const SignUp = () => {
       const additionalUserInfo = getAdditionalInfo(result);
       const userData = {
         firebaseToken: token,
-        firebase_uid : result.user.uid,
+        firebase_uid: result.user.uid,
 
         username: username,
         email: email,
@@ -87,9 +78,9 @@ const SignUp = () => {
         full_name: "",
         email_verified: result.user.emailVerified,
         isSSO: false,
-        account_type: "free" as 'free' | 'premium',
+        account_type: "free" as "free" | "premium",
       };
- 
+
       await setDoc(doc(db, "users", userData.firebase_uid), {
         firebase_uid: userData.firebase_uid || "",
         username: userData.username,
@@ -103,15 +94,16 @@ const SignUp = () => {
         isSSO: userData.isSSO,
         account_type: userData.account_type,
       });
-      
+
       // Call the API
       await signUpApi(
-        userData.firebase_uid, 
-        username, 
-        email, 
-        password, 
-        false, 
-        false);
+        userData.firebase_uid,
+        username,
+        email,
+        password,
+        false,
+        false
+      );
 
       console.log("signUpApi", signUpApi);
 
@@ -146,7 +138,7 @@ const SignUp = () => {
       const additionalUserInfo = getAdditionalInfo(result);
       const userData = {
         firebaseToken: token,
-        firebase_uid : result.user.uid,
+        firebase_uid: result.user.uid,
         username: result.user.displayName,
         email: result.user.email,
         display_picture: result.user.photoURL,
@@ -154,7 +146,7 @@ const SignUp = () => {
         full_name: "",
         email_verified: result.user.emailVerified,
         isSSO: true,
-        account_type: "free" as 'free' | 'premium',
+        account_type: "free" as "free" | "premium",
       };
 
       await setDoc(doc(db, "users", userData.firebase_uid), {
@@ -178,8 +170,7 @@ const SignUp = () => {
       await signUpApi(
         userData.firebase_uid,
         userData.username ?? "Anonymous",
-        userData.email||
-        "",
+        userData.email || "",
         "",
         true,
         result.user.emailVerified
@@ -256,7 +247,6 @@ const SignUp = () => {
                   setFormData({ ...formData, password: e.target.value });
                   validate("password", e.target.value);
                 }}
-
                 onCopy={(e) => e.preventDefault()} // Disable copy
                 className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
               />
@@ -286,7 +276,6 @@ const SignUp = () => {
                   setFormData({ ...formData, confirmPassword: e.target.value });
                   validate("confirmPassword", e.target.value, formData);
                 }}
-
                 onPaste={(e) => e.preventDefault()} // Disable paste
                 className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
               />
@@ -326,14 +315,14 @@ const SignUp = () => {
                 }}
               />
               <label htmlFor="terms" className="ml-2 text-[#9F9BAE] text-sm">
-
                 I agree to {""}
-                <Link to="/terms-and-conditions" target="_blank"
-                className="text-[#4D18E8] underline hover:text-[#4D18E8]"
+                <Link
+                  to="/terms-and-conditions"
+                  target="_blank"
+                  className="text-[#4D18E8] underline hover:text-[#4D18E8]"
                 >
-                Terms and Conditions
+                  Terms and Conditions
                 </Link>
-
               </label>
             </div>
             {errors.terms && (

@@ -1,6 +1,7 @@
-const express = require("express");
+import express from "express";
+import userController from "../controller/User.js"; // Add .js extension
+
 const router = express.Router();
-const userController = require("../controller/User");
 
 // Route to save user details
 router.post("/sign-up", userController.signUpUser);
@@ -8,5 +9,5 @@ router.post("/sign-up", userController.signUpUser);
 // Route to reset password
 router.post("/reset-password", userController.resetPassword);
 
-// Export the router
-module.exports = router;
+// Export the router as default
+export default router;
