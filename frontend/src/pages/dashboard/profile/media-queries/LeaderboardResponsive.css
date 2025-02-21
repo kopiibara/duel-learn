@@ -5,11 +5,11 @@
   .responsive-gap {
     gap: 12px !important;
     padding-left: 10px;
-    padding-right: 10px;
-  }  
+    padding-right: 10px;      
+    }  
   .responsive-gapINSIDE {
     width: 75px;
-    font-size: 16px;
+    font-size: 12px;
   }
 }
 
@@ -103,11 +103,22 @@
 /* Responsive Styles */
 
 @media (min-width: 440px) { /* sm */
+  .rank-entry{
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
   .rank-info,
   .xp-info {
     gap: 30px;
     padding-left: 15px;
     padding-right: 15px;
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+  .rank-icon img {
+    width: 30px;
+    height: 30px;
+    margin-right: 10px;
   }
   .profile-icon {
     width: 36px;
