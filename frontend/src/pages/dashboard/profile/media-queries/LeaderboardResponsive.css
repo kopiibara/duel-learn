@@ -116,6 +116,7 @@
   .rank-number, .player-name, .xp-text {
     font-size: 14px;
   }
+
 }
 
 @media (min-width: 540px) { /* sm */
