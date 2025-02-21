@@ -1,9 +1,9 @@
-
 import express from 'express';
 import dotenv from 'dotenv';
 import { connectDB } from './config/db.js';
 import cors from 'cors';  // Import CORS package
 import studyMaterialRoutes from './routes/StudyMaterial.js';
+const userRoutes = require('./routes/UserAccount'); // Import user routes
 
 // Load environment variables
 dotenv.config();
@@ -25,8 +25,6 @@ app.use(express.json());
 
 // Routes
 app.use('/api/study-material', studyMaterialRoutes);
-
-
-
+app.use('/api/user', userRoutes); // Use user routes
 
 export default app;

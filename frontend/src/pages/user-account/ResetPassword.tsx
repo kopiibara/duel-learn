@@ -1,44 +1,46 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import ExitIcon from "../../assets/images/Exit.png";
 import { useState, useEffect } from "react";
 import {
-  TextField,
-  InputAdornment,
-  IconButton,
   CircularProgress,
+  Modal,
 } from "@mui/material";
-import axios from "axios"; // Ensure axios is imported
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import {
   verifyPasswordResetCode,
   confirmPasswordReset,
-  sendPasswordResetEmail,
 } from "firebase/auth";
-import { auth, db } from "../../services/firebase"; // Adjust the path as needed
-import { collection, query, where, getDocs } from "firebase/firestore";
-import useValidation from "../../utils/useValidation";
+import { auth } from "../../services/firebase"; // Adjust the path as needed
+import usePasswordValidation from "../../hooks/validation.hooks/usePasswordValidation";
 import PageTransition from "../../styles/PageTransition";
+import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
+import useResetPasswordApi from "../../hooks/api.hooks/useResetPasswordApi";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Get location object
-  // Retrieve the email passed from the previous page
-  const { email } = location.state || {};
+  const [isInvalidModalOpen, setIsInvalidModalOpen] = useState(false);
 
   useEffect(() => {
-    const oobCode = new URLSearchParams(location.search).get("oobCode");
+    const queryParams = new URLSearchParams(location.search);
+    const oobCode = queryParams.get("oobCode");
+    const firebase_uid = queryParams.get("firebase_uid") || "";
+
     if (!oobCode) {
       setError({ general: "Invalid or missing reset code." });
+      setIsInvalidModalOpen(true);
       setLoading(false);
       return;
     }
+
+    console.log("firebase_uid received from location SecurityCode:", firebase_uid);
 
     const validateCode = async () => {
       try {
         await verifyPasswordResetCode(auth, oobCode);
       } catch (err) {
         setError({ general: "Reset code is invalid or expired." });
+        setIsInvalidModalOpen(true);
       } finally {
         setLoading(false);
       }
@@ -46,14 +48,13 @@ const ResetPassword = () => {
     validateCode();
   }, [location.search]);
 
-  console.log("Email received from location SecurityCode:", email);
-
   const [formData, setFormData] = useState({
     newpassword: "", // Only password is used here
     confirmPassword: "", // New field for confirming password
   });
 
-  const { errors, validate, validateForm } = useValidation();
+
+  const { errors, validatePassword, validatePasswordForm } = usePasswordValidation();
 
   const [loading, setLoading] = useState(false); // Loading state for the submit button
 
@@ -68,15 +69,16 @@ const ResetPassword = () => {
 
   const [error, setError] = useState({ general: "" }); // For general errors
 
+  const { resetPasswordApi } = useResetPasswordApi();
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const { newpassword, confirmPassword } = formData;
 
-    const formIsValid = validateForm({
+    const formIsValid = validatePasswordForm({
       newpassword,
       confirmPassword,
-      password: newpassword, // Pass newpassword as password for validation
-    });
+    }, "newpassword");
 
     if (!formIsValid) {
       return;
@@ -84,19 +86,27 @@ const ResetPassword = () => {
 
     setLoading(true); // Start loading spinner
 
-    const oobCode = new URLSearchParams(location.search).get("oobCode");
+    const queryParams = new URLSearchParams(location.search);
+    const oobCode = queryParams.get("oobCode");
+    const firebase_uid = queryParams.get("firebase_uid") || "";
+
     if (!oobCode) {
       setError({ general: "Invalid or missing reset code." });
+      setIsInvalidModalOpen(true);
       setLoading(false);
       return;
     }
 
+    console.log("firebase_uid received from location SecurityCode:", firebase_uid);
+
     try {
       await confirmPasswordReset(auth, oobCode, newpassword);
+      await resetPasswordApi(firebase_uid, newpassword);
+      console.log(firebase_uid, newpassword) // Call the backend API to update the password hash
       alert("Password successfully reset!");
       navigate("/login");
     } catch (err) {
-      setError({ general: "Failed to reset password." });
+      setError({ general: "Failed to Reset Password." });
     } finally {
       setLoading(false);
     }
@@ -104,10 +114,13 @@ const ResetPassword = () => {
 
   const handleInputChange = (field: string, value: string) => {
     // Update the input value
-    setFormData((prevData) => ({ ...prevData, [field]: value }));
 
-    // Validate the field on change
-    validate(field, value, { ...formData, [field]: value });
+    setFormData((prevData) => {
+      const updatedData = { ...prevData, [field]: value };
+      // Validate the field on change
+      validatePassword(field, value, updatedData, "newpassword");
+      return updatedData;
+    });
 
     // Clear the general error when typing in either field
     setError({ general: "" });
@@ -115,6 +128,10 @@ const ResetPassword = () => {
 
   const handleExitClick = () => {
     navigate("/"); // Navigate to home when the exit icon is clicked
+  };
+
+  const handleBacktoLoginClick = () => {
+    navigate("/login"); // Navigate to login when the button is clicked
   };
 
   return (
@@ -157,76 +174,72 @@ const ResetPassword = () => {
           {/* Form */}
           <form onSubmit={handleSubmit}>
             {/* New Password Input */}
-            <div className="mb-4 relative">
-              <div className="relative">
-                <input
-                  id="password-field"
-                  type={showPassword ? "text" : "password"}
-                  value={formData.newpassword}
-                  onChange={(e) =>
-                    handleInputChange("newpassword", e.target.value)
-                  }
-                  onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-                  className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
-                    errors.newpassword ? "border border-red-500" : ""
-                  }`}
-                  placeholder="Enter new password"
-                />
-                {/* Password Toggle Button */}
-                <button
-                  type="button"
-                  onClick={togglePassword}
-                  className="absolute inset-y-0 right-4 flex items-center text-[#9F9BAE]"
-                >
-                  {showPassword ? (
-                    <VisibilityRoundedIcon className="w-5 h-5" />
-                  ) : (
-                    <VisibilityOffRoundedIcon className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
+            <div className="relative mb-4">
+              <input
+                id="password-field"
+                type={showPassword ? "text" : "password"}
+                name="password"
+                placeholder="Enter your password"
+                required
+                value={formData.newpassword}
+                onChange={(e) => handleInputChange("newpassword", e.target.value)}
+                onCopy={(e) => e.preventDefault()} // Disable copy
+                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
+                  errors.newpassword ? "border border-red-500" : ""
+                }`}
+                
+              />
+              {/* Password Toggle Button */}
+              <span
+                onClick={togglePassword}
+                className="absolute top-3 right-3 text-[#9F9BAE] cursor-pointer"
+              >
+                {showPassword ? (
+                  <VisibilityRoundedIcon />
+                ) : (
+                  <VisibilityOffRoundedIcon />
+                )}
+              </span>
               {errors.newpassword && (
-                <div className="text-red-500 text-sm mt-1">
-                  {errors.newpassword}
-                </div>
+                <p className="text-red-500 mt-1 text-sm">{errors.newpassword}</p>
               )}
             </div>
 
             {/* Confirm Password Input */}
-            <div className="mb-8 relative">
-              <div className="relative">
-                <input
-                  id="confirm-password-field"
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={formData.confirmPassword}
-                  onChange={(e) =>
-                    handleInputChange("confirmPassword", e.target.value)
-                  }
-                  onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-                  className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
-                    errors.confirmPassword ? "border border-red-500" : ""
-                  }`}
-                  placeholder="Confirm password"
-                />
-                {/* Confirm Password Toggle Button */}
-                <button
-                  type="button"
-                  onClick={toggleConfirmPassword}
-                  className="absolute inset-y-0 right-4 flex items-center text-[#9F9BAE]"
-                >
-                  {showConfirmPassword ? (
-                    <VisibilityRoundedIcon className="w-5 h-5" />
-                  ) : (
-                    <VisibilityOffRoundedIcon className="w-5 h-5" />
-                  )}
-                </button>
-              </div>
+            <div className="relative mb-4">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                id="confirm-password-field"
+                name="confirmPassword"
+                placeholder="Confirm your password"
+                required
+                value={formData.confirmPassword}
+                onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                onPaste={(e) => e.preventDefault()}
+                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
+                  errors.confirmPassword ? "border border-red-500" : ""
+                }`}
+              />
+              {/* Confirm Password Toggle Button */}
+              <span
+                onClick={toggleConfirmPassword}
+                className="absolute top-3 right-3 text-[#9F9BAE] cursor-pointer"
+              >
+                {showConfirmPassword ? (
+                  <VisibilityRoundedIcon />
+                ) : (
+                  <VisibilityOffRoundedIcon />
+                )}
+              </span>
               {errors.confirmPassword && (
-                <div className="text-red-500 text-sm mt-1">
+                <p className="text-red-500 mt-1 text-sm">
                   {errors.confirmPassword}
-                </div>
+                </p>
               )}
             </div>
+
 
             {/* Submit Button */}
             <button
@@ -243,6 +256,35 @@ const ResetPassword = () => {
           </form>
         </div>
       </div>
+
+      <Modal
+        open={isInvalidModalOpen}
+        onClose={() => setIsInvalidModalOpen(false)}
+        aria-labelledby="invalid-modal-title"
+        aria-describedby="invalid-modal-description"
+      >
+        <div className="h-screen flex flex-col items-center justify-center bg-black">
+          <div className="flex flex-col mb-11 items-center justify-center">
+            <img
+              src={sampleAvatar2}
+              style={{ width: "200px" }}
+              alt="Profile Avatar"
+            />
+          </div>
+          <div className="w-full max-w-md rounded-lg p-8 shadow-md bg-black">
+            <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
+              Invalid or missing reset code.
+            </p>
+            <button
+              type="button"
+              className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
+              onClick={handleBacktoLoginClick}
+            >
+              Back to sign in
+            </button>
+          </div>
+        </div>
+      </Modal>
     </PageTransition>
   );
 };
