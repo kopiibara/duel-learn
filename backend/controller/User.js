@@ -1,14 +1,14 @@
-const manilacurrentTimestamp = require("../utils/CurrentTimestamp.js");
+import manilacurrentTimestamp from "../utils/CurrentTimestamp.js";
+import { pool } from "../config/db.js";
+import { v4 as uuidv4 } from "uuid";
+import bcrypt from "bcrypt";
 
-const { pool } = require("../config/db.js");
-const { v4: uuidv4 } = require("uuid");
-const bcrypt = require("bcrypt");
-
-module.exports = {
+export default {
   signUpUser: async (req, res) => {
     let connection;
     try {
-      const { firebase_uid, username, email, password, isSSO, emailVerified } = req.body;
+      const { firebase_uid, username, email, password, isSSO, emailVerified } =
+        req.body;
 
       // Hash the password if not SSO
       const hashedPassword = isSSO ? null : await bcrypt.hash(password, 10);
@@ -23,7 +23,18 @@ module.exports = {
       await connection.execute(
         `INSERT INTO users (firebase_uid, username, email, password_hash, created_at, updated_at, display_picture, full_name, email_verified, isSSO)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
-        [firebase_uid, username, email, hashedPassword, currentTimestamp, currentTimestamp, null, null, emailVerified, isSSO]
+        [
+          firebase_uid,
+          username,
+          email,
+          hashedPassword,
+          currentTimestamp,
+          currentTimestamp,
+          null,
+          null,
+          emailVerified,
+          isSSO,
+        ]
       );
 
       // Send a success response
@@ -42,8 +53,8 @@ module.exports = {
   resetPassword: async (req, res) => {
     let connection;
     try {
-    const updated_at = manilacurrentTimestamp;
-      const { firebase_uid, newPassword} = req.body;
+      const updated_at = manilacurrentTimestamp;
+      const { firebase_uid, newPassword } = req.body;
 
       // Hash the new password
       const hashedPassword = await bcrypt.hash(newPassword, 10);
