@@ -2,8 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
-import axios from "axios";
-import { toast } from "react-hot-toast";
+
 import {
   auth,
   googleProvider,
@@ -24,7 +23,7 @@ import PageTransition from "../../styles/PageTransition";
 
 const SignUp = () => {
   const { setUser } = useUser();
-  const { error, handleLoginError } = useHandleError();
+  const { handleLoginError } = useHandleError();
   const [formData, setFormData] = useState({
     username: "",
     password: "",

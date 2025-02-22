@@ -5,6 +5,7 @@ import SummaryPage from "./SummaryPage";
 import CardPage from "./CardPage";
 import DocumentHead from "../../../../components/DocumentHead";
 import PageTransition from "../../../../styles/PageTransition";
+import { useSocket } from "../../../../contexts/SocketContext"; // Use socket context
 
 interface Item {
   term: string;
@@ -21,9 +22,11 @@ interface StudyMaterial {
   total_views: number;
   created_at: string;
   items: Item[];
+  study_material_id?: string;
 }
 
 const ViewStudyMaterial = () => {
+  const { socket, subscribeToEvent } = useSocket(); // Get socket instance and subscribe function from context
   const { studyMaterialId } = useParams();
   const location = useLocation();
   const [selected, setSelected] = useState("Summary");
@@ -31,17 +34,22 @@ const ViewStudyMaterial = () => {
   const [studyMaterial, setStudyMaterial] = useState<StudyMaterial | null>(
     null
   );
-  const [loading, setLoading] = useState(true); // Ensure loading starts as true
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!studyMaterialId) return;
+    if (!studyMaterialId || !socket) return;
 
-    fetch(
-      `http://localhost:5000/api/study-material/get-by-study-material-id/${studyMaterialId}`
-    )
-      .then((response) => response.json())
-      .then((data) => {
-        console.log("API Response:", data); // Debugging the response
+    socket.emit("joinStudyMaterialRoom", studyMaterialId); // Join a socket room
+
+    const fetchStudyMaterial = async () => {
+      try {
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/study-material/get-by-study-material-id/${studyMaterialId}`
+        );
+        const data = await response.json();
+        console.log("API Response:", data);
 
         if (data && typeof data === "object" && "title" in data) {
           let items: Item[] = data.items || [];
@@ -66,63 +74,51 @@ const ViewStudyMaterial = () => {
             created_at: data.created_at || new Date().toISOString(),
             items,
           });
-
-          setLoading(false); // Update loading state
         } else {
           console.error("Invalid response format:", data);
-          setLoading(false);
         }
-      })
-      .catch((error) => {
+      } catch (error) {
         console.error("Error fetching study material:", error);
+      } finally {
         setLoading(false);
-      });
-  }, [studyMaterialId]);
+      }
+    };
+
+    fetchStudyMaterial();
+
+    const handleStudyMaterialUpdated = (
+      updatedStudyMaterial: StudyMaterial
+    ) => {
+      if (updatedStudyMaterial.study_material_id === studyMaterialId) {
+        setStudyMaterial(updatedStudyMaterial);
+      }
+    };
+
+    subscribeToEvent("studyMaterialUpdated", handleStudyMaterialUpdated);
+
+    return () => {
+      socket.emit("leaveStudyMaterialRoom", studyMaterialId);
+    };
+  }, [studyMaterialId, socket, subscribeToEvent]);
 
   const formatDate = (dateString: string) => {
-    const options: Intl.DateTimeFormatOptions = {
+    return new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "long",
       day: "numeric",
-    };
-    return new Date(dateString).toLocaleDateString("en-US", options);
+    });
   };
 
   return (
     <PageTransition>
       <Box className="h-screen w-full px-8">
-        <DocumentHead title={title + " | Duel Learn"} />
+        <DocumentHead title={studyMaterial?.title + " | Duel Learn"} />
         <Stack spacing={2.5}>
           <Stack direction="row" spacing={2} alignItems="center">
             <Typography variant="h3" fontWeight="bold">
               {loading ? "Loading..." : studyMaterial?.title}
             </Typography>
-            <Box flexGrow={1} />
-            <Button
-              variant="outlined"
-              sx={{
-                borderRadius: "0.8rem",
-                padding: "0.4rem 2rem",
-                borderColor: "#E2DDF3",
-                color: "#E2DDF3",
-              }}
-            >
-              Play
-            </Button>
-            <Button
-              variant="contained"
-              sx={{
-                borderRadius: "0.8rem",
-                padding: "0.4rem 2rem",
-                backgroundColor: "#4D18E8",
-                color: "#E2DDF3",
-              }}
-            >
-              Edit
-            </Button>
           </Stack>
-
-          {/* Date and Views */}
           <Stack direction="row" spacing={2} alignItems="center">
             <Typography variant="subtitle2">
               Created on{" "}
@@ -140,8 +136,6 @@ const ViewStudyMaterial = () => {
               </strong>
             </Typography>
           </Stack>
-
-          {/* Tags */}
           <Stack spacing={2}>
             <Typography variant="subtitle1">Tags</Typography>
             <Stack direction="row" spacing={1}>
@@ -149,17 +143,11 @@ const ViewStudyMaterial = () => {
                 <Chip
                   key={index}
                   label={tag}
-                  sx={{
-                    backgroundColor: "#4D18E8",
-                    color: "#E2DDF3",
-                    padding: "0.4rem",
-                  }}
+                  sx={{ backgroundColor: "#4D18E8", color: "#E2DDF3" }}
                 />
               ))}
             </Stack>
           </Stack>
-
-          {/* Item Counter */}
           <Stack direction="row" alignItems="center" spacing={1}>
             <Typography
               variant="subtitle1"
@@ -171,9 +159,7 @@ const ViewStudyMaterial = () => {
             </Typography>
             <Divider className="bg-[#3B354D] flex-1" />
           </Stack>
-
           <Stack spacing={4}>
-            {/* Navigation */}
             <Stack direction="row" spacing={1} className="flex items-center">
               {["Summary", "Cards"].map((label) => (
                 <Button
@@ -182,11 +168,8 @@ const ViewStudyMaterial = () => {
                   onClick={() => setSelected(label)}
                   sx={{
                     color: selected === label ? "#E2DDF3" : "#3B354D",
-                    padding: "0.6rem 2rem",
-                    borderRadius: "0.8rem",
                     backgroundColor:
                       selected === label ? "#3B354D" : "transparent",
-                    transition: "all 0.3s ease",
                     "&:hover": { backgroundColor: "#3B354D", color: "#E2DDF3" },
                   }}
                 >
@@ -194,8 +177,6 @@ const ViewStudyMaterial = () => {
                 </Button>
               ))}
             </Stack>
-
-            {/* Content Switching */}
             <Box mt={2}>
               {selected === "Summary" ? (
                 <SummaryPage studyMaterial={studyMaterial} />

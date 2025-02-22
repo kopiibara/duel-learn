@@ -360,74 +360,93 @@ const studyMaterialController = {
   getNonMatchingTags: async (req, res) => {
     const connection = await pool.getConnection();
     try {
-      let { user } = req.params;
-      if (user.includes("%")) user = decodeURIComponent(user);
-      console.log("Fetching non-matching tags for user:", user);
+      let { username } = req.params;
+      if (username.includes('%')) {
+        username = decodeURIComponent(username);
+      }
+      console.log("Fetching discover content for user:", username);
 
-      // Fetch tags of study materials created by the user
-      const [tagRows] = await connection.execute(
-        `SELECT tags FROM study_material_info WHERE created_by = ?;`,
-        [user]
+      // First, get the user's tags
+      const [userTagRows] = await connection.execute(
+        `SELECT DISTINCT tags 
+             FROM study_material_info 
+             WHERE created_by = ?`,
+        [username]
       );
 
-      if (tagRows.length === 0) {
-        return res.status(404).json({ message: "No tags found for this user" });
-      }
+      // Parse and flatten user's tags
+      const userTags = userTagRows
+        .flatMap(row => JSON.parse(row.tags))
+        .map(tag => tag.toLowerCase());
 
-      // Extract and flatten all tags
-      const userTags = tagRows.flatMap((row) => JSON.parse(row.tags));
-      if (userTags.length === 0) {
-        return res.status(404).json({ message: "User has not used any tags" });
-      }
+      console.log("User's tags:", userTags);
 
-      // Fetch study materials that do not contain any matching tags
-      const [infoRows] = await connection.execute(
-        `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
-             FROM study_material_info;`
+      // Get study materials not created by the user
+      const [materials] = await connection.execute(
+        `SELECT study_material_id, title, tags, total_items, created_by, 
+                    total_views, created_at, visibility
+             FROM study_material_info 
+             WHERE created_by != ? 
+             AND visibility = 0
+             ORDER BY created_at DESC
+             LIMIT 10`,
+        [username]
       );
 
-      // Filter study materials by checking if they do not share any tags with the user
-      const filteredMaterials = infoRows.filter((info) => {
-        const materialTags = JSON.parse(info.tags);
-        return !materialTags.some((tag) => userTags.includes(tag));
-      });
+      // Process each study material
+      const discoveryMaterials = await Promise.all(
+        materials.map(async (material) => {
+          // Parse material tags
+          const materialTags = JSON.parse(material.tags);
 
-      if (filteredMaterials.length === 0) {
-        return res
-          .status(404)
-          .json({ message: "No non-matching study materials found" });
-      }
+          // Calculate tag difference score
+          const uniqueTags = materialTags.filter(
+            tag => !userTags.includes(tag.toLowerCase())
+          ).length;
 
-      const studyMaterials = await Promise.all(
-        filteredMaterials.map(async (info) => {
+          // Get content for this material
           const [contentRows] = await connection.execute(
             `SELECT term, definition, image 
-                 FROM study_material_content 
-                 WHERE study_material_id = ?;`,
-            [info.study_material_id]
+                     FROM study_material_content 
+                     WHERE study_material_id = ?`,
+            [material.study_material_id]
           );
 
           return {
-            study_material_id: info.study_material_id,
-            title: info.title,
-            tags: JSON.parse(info.tags),
-            total_items: info.total_items,
-            created_by: info.created_by,
-            total_views: info.total_views,
-            created_at: info.created_at,
-            items: contentRows.map((item) => ({
+            study_material_id: material.study_material_id,
+            title: material.title,
+            tags: materialTags,
+            total_items: material.total_items,
+            created_by: material.created_by,
+            total_views: material.total_views,
+            created_at: material.created_at,
+            uniqueness_score: uniqueTags,
+            items: contentRows.map(item => ({
               term: item.term,
               definition: item.definition,
-              image: item.image ? item.image.toString("base64") : null,
-            })),
+              image: item.image ? item.image.toString('base64') : null
+            }))
           };
         })
       );
 
-      res.status(200).json(studyMaterials);
+      // Sort by uniqueness score and limit results
+      const sortedMaterials = discoveryMaterials
+        .sort((a, b) => b.uniqueness_score - a.uniqueness_score)
+        .slice(0, 10);
+
+      if (sortedMaterials.length === 0) {
+        return res.status(200).json([]); // Return empty array instead of 404
+      }
+
+      res.status(200).json(sortedMaterials);
+
     } catch (error) {
-      console.error("Error fetching non-matching tags:", error);
-      res.status(500).json({ error: "Internal server error", details: error });
+      console.error("Error in discover endpoint:", error);
+      res.status(500).json({
+        error: "Internal server error",
+        details: error.message
+      });
     } finally {
       connection.release();
     }
