@@ -19,6 +19,7 @@ import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import PageTransition from "../../styles/PageTransition";
 import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
 import useApiError from "../../hooks/api.hooks/useApiError";
+
 const SignUp = () => {
   const { setUser, user } = useUser();
   const { handleLoginError } = useHandleError();
@@ -30,7 +31,7 @@ const SignUp = () => {
     terms: false,
   });
 
-  const { errors, validate, validateForm } = useValidation();
+  const { errors, validate, validateForm } = useValidation(formData); // Pass formData here
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");

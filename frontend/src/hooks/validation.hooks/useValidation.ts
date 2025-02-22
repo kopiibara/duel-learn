@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import usePasswordValidation from "./usePasswordValidation";
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore"; // Import Firestore methods
 
 const usernameValidation = (value: string) => {
   if (!value) {
@@ -30,16 +31,30 @@ const termsValidation = (value: string) => {
   return "";
 };
 
-const useValidation = () => {
+const checkUsernameUnique = async (username: string) => {
+  const db = getFirestore();
+  const usersRef = collection(db, "users");
+  const q = query(usersRef, where("username", "==", username));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.empty;
+};
+
+const useValidation = (formData: any) => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const { validatePassword } = usePasswordValidation();
 
-  const validate = (field: string, value: string, formData: any = {}, passwordField: string = "password") => {
+  const validate = async (field: string, value: string, formData: any = {}, passwordField: string = "password") => {
     let error = "";
 
     switch (field) {
       case "username":
         error = usernameValidation(value);
+        if (!error) {
+          const isUnique = await checkUsernameUnique(value);
+          if (!isUnique) {
+            error = "Username is taken.";
+          }
+        }
         break;
       case "email":
         error = emailValidation(value);
@@ -60,14 +75,23 @@ const useValidation = () => {
     return error;
   };
 
-  const validateForm = (fields: { [key: string]: string }, passwordField: string = "password") => {
+  const validateForm = async (fields: { [key: string]: string }, passwordField: string = "password") => {
     let valid = true;
     for (const field in fields) {
-      const error = validate(field, fields[field], fields, passwordField);
+      const error = await validate(field, fields[field], fields, passwordField);
       if (error) valid = false;
     }
     return valid;
   };
+
+  useEffect(() => {
+    const validateUsername = async () => {
+      if (formData.username) {
+        await validate("username", formData.username, formData);
+      }
+    };
+    validateUsername();
+  }, [formData.username]);
 
   return { errors, validate, validateForm };
 };
