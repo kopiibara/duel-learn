@@ -41,7 +41,7 @@ const DashboardLayout = () => {
 
         {/* Main Content Section */}
         <Box className="flex flex-1">
-          <main className="flex-1 pt-3 relative px-16">
+          <main className="flex-1 pt-3 relative px-16 h-full">
             <Outlet />
             <Footer />
 

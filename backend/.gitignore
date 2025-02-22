@@ -25,3 +25,6 @@ bower_components/
 Thumbs.db
 
 /config/firebase-admin.json
+
+.package-lock.json
+.packge.json

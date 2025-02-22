@@ -5,7 +5,6 @@ import PageTransition from "../../../styles/PageTransition";
 import MyLibraryCards from "./MyLibraryCards";
 import Filter from "./Filter";
 import { useUser } from "../../../contexts/UserContext";
-
 // Define StudyMaterial interface
 interface Item {
   term: string;
@@ -42,7 +41,9 @@ const MyLibraryPage = () => {
 
       try {
         const response = await fetch(
-          `http://localhost:5000/api/study-material/get-by-user/${created_by}`
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/study-material/get-by-user/${created_by}`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch study materials");
@@ -92,7 +93,7 @@ const MyLibraryPage = () => {
 
   return (
     <PageTransition>
-      <Box className="h-screen w-full">
+      <Box className="h-full w-full">
         <DocumentHead title="My Library | Duel Learn" />
         <Stack spacing={2} className="px-8">
           <Stack

@@ -44,7 +44,6 @@ const PrivateRoutes = () => {
       <Route path="tutorial/step-five" element={<TutorialFive />} />
       <Route path="tutorial/step-six" element={<TutorialSix />} />
       <Route path="tutorial/last-step" element={<TutorialLast />} />
-
       <Route path="my-preferences" element={<Personalization />} />
 
       {/* Routes for the main dashboard after onboarding */}

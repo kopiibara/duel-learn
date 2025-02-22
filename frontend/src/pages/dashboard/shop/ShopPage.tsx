@@ -46,7 +46,7 @@ const Shop = () => {
   return (
     <PageTransition>
       <DocumentHead title="Shop | Duel Learn" />
-      <div className="min-h-screen text-white px-6 pb-6">
+      <div className="h-full w-full text-white px-6 pb-6">
         {/* Your premium section and items display logic */}
         {/* Show this section only if the user is not premium */}
         {!isPremium && (

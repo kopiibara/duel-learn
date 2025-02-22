@@ -1,5 +1,5 @@
 import express from "express";
-import studyMaterialController from "../controller/StudyMaterial.js";
+import studyMaterialController from "../controller/StudyMaterialController.js";
 
 const router = express.Router();
 
@@ -11,6 +11,6 @@ router.get("/get-by-study-material-id/:studyMaterialId", studyMaterialController
 router.get("/get-by-user/:created_by", studyMaterialController.getStudyMaterialByUser);
 router.get("/get-recommended-for-you/:user", studyMaterialController.getRecommendedForYouCards);
 router.get('/get-top-picks', studyMaterialController.getTopPicks);
-router.get("/non-matching-tags/:user", studyMaterialController.getNonMatchingTags);
+router.get("/discover/:username", studyMaterialController.getNonMatchingTags);
 
 export default router;

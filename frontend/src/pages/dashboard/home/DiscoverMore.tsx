@@ -35,25 +35,27 @@ const DiscoverMore = () => {
 
   useEffect(() => {
     if (user?.displayName) {
-      fetch(
-        `http://localhost:5000/api/study-material/non-matching-tags/${user.displayName}`
-      )
-        .then((response) => {
+      const fetchData = async () => {
+        try {
+          const encodedUsername = encodeURIComponent(user.displayName || "");
+          const response = await fetch(
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/study-material/discover/${encodedUsername}`
+          );
+
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
-          return response.json();
-        })
-        .then((data: StudyMaterial[]) => setCards(data))
-        .catch((error) => {
+
+          const data: StudyMaterial[] = await response.json();
+          setCards(data);
+        } catch (error) {
           console.error("Error fetching cards data:", error);
-          // Log the response text for debugging
-          fetch(
-            `http://localhost:5000/api/study-material/non-matching-tags/${user.displayName}`
-          )
-            .then((response) => response.text())
-            .then((text) => console.log("Response text:", text));
-        });
+        }
+      };
+
+      fetchData();
     }
   }, [user]);
 

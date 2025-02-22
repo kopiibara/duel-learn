@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DocumentHead from "../../../../components/DocumentHead";
 import PageTransition from "../../../../styles/PageTransition";
 import {
@@ -16,11 +16,12 @@ import { motion, AnimatePresence } from "framer-motion"; // Importing from Frame
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
 import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust the
-// path if needed
+import { useSocket } from "../../../../contexts/SocketContext"; // Use socket context
 
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
-  const { user } = useUser(); // Access the user object from the context
+  const { user } = useUser();
+  const { socket } = useSocket();
   const [tags, setTags] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [currentTag, setCurrentTag] = useState("");
@@ -34,6 +35,17 @@ const CreateStudyMaterial = () => {
       image?: File | null;
     }[]
   >([]);
+
+  useEffect(() => {
+    if (socket) {
+      socket.connect();
+    }
+    return () => {
+      if (socket) {
+        socket.disconnect();
+      }
+    };
+  }, [socket]);
 
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && currentTag.trim()) {
@@ -90,30 +102,25 @@ const CreateStudyMaterial = () => {
       return;
     }
 
-    // Convert images to Base64
-    const itemsWithBase64 = await Promise.all(
-      items.map(async (item) => {
-        if (item.image) {
-          const base64Image = await convertFileToBase64(item.image);
-          return { ...item, image: base64Image };
-        }
-        return item;
-      })
-    );
-
-    const studyMaterial = {
-      studyMaterialId: nanoid(),
-      title,
-      tags,
-      totalItems: items.length,
-      visibility: 0,
-      createdBy: user.displayName,
-      items: itemsWithBase64, // Send modified items
-    };
-
     try {
+      const studyMaterial = {
+        studyMaterialId: nanoid(),
+        title,
+        tags,
+        totalItems: items.length,
+        visibility: 0,
+        createdBy: user.displayName,
+        items: await Promise.all(
+          items.map(async (item) => ({
+            ...item,
+            image: item.image ? await convertFileToBase64(item.image) : null,
+          }))
+        ),
+      };
+
+      // Save to database
       const response = await fetch(
-        "http://localhost:5000/api/study-material/save",
+        `${import.meta.env.VITE_BACKEND_URL}/api/study-material/save`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -122,15 +129,29 @@ const CreateStudyMaterial = () => {
       );
 
       if (!response.ok) {
-        throw new Error(
-          `Server error: ${response.status} ${response.statusText}`
-        );
+        throw new Error(`Server error: ${response.status}`);
       }
 
-      const data = await response.json();
-      navigate(`/dashboard/study-material/preview/${data.studyMaterialId}`);
+      const savedData = await response.json();
+
+      // Emit socket event with full study material data
+      if (socket?.connected) {
+        console.log("📤 Emitting newStudyMaterial event:", savedData);
+        socket.emit("newStudyMaterial", {
+          ...savedData,
+          created_by: user.displayName,
+        });
+      } else {
+        console.warn("⚠️ Socket not connected, real-time updates disabled");
+      }
+
+      // Navigate to preview
+      navigate(
+        `/dashboard/study-material/preview/${savedData.studyMaterialId}`
+      );
     } catch (error) {
       console.error("Failed to save study material:", error);
+      handleShowSnackbar("Failed to save study material. Please try again.");
     }
   };
 
