@@ -39,6 +39,14 @@ const checkUsernameUnique = async (username: string) => {
   return querySnapshot.empty;
 };
 
+const checkEmailUnique = async (email: string) => {
+  const db = getFirestore();
+  const usersRef = collection(db, "users");
+  const q = query(usersRef, where("email", "==", email));
+  const querySnapshot = await getDocs(q);
+  return querySnapshot.empty;
+};
+
 const useValidation = (formData: any) => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const { validatePassword } = usePasswordValidation();
@@ -58,6 +66,12 @@ const useValidation = (formData: any) => {
         break;
       case "email":
         error = emailValidation(value);
+        if (!error) {
+          const isUnique = await checkEmailUnique(value);
+          if (!isUnique) {
+            error = "Email is already in use.";
+          }
+        }
         break;
       case "password":
       case "confirmPassword":
@@ -92,6 +106,15 @@ const useValidation = (formData: any) => {
     };
     validateUsername();
   }, [formData.username]);
+
+  useEffect(() => {
+    const validateEmail = async () => {
+      if (formData.email) {
+        await validate("email", formData.email, formData);
+      }
+    };
+    validateEmail();
+  }, [formData.email]);
 
   return { errors, validate, validateForm };
 };
