@@ -228,7 +228,9 @@ const SignUp = () => {
                 value={formData.username}
                 onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                 onBlur={(e) => validate("username", e.target.value)} // Validate on blur
-                className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                  errors.username ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                }`}
               />
               {errors.username && (
                 <p className="text-red-500 mt-1 text-sm">{errors.username}</p>
@@ -247,7 +249,9 @@ const SignUp = () => {
                   validate("password", e.target.value);
                 }}
                 onCopy={(e) => e.preventDefault()} // Disable copy
-                className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                  errors.password ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                }`}
               />
               <span
                 onClick={togglePassword}
@@ -276,7 +280,9 @@ const SignUp = () => {
                   validate("confirmPassword", e.target.value, formData);
                 }}
                 onPaste={(e) => e.preventDefault()} // Disable paste
-                className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                  errors.confirmPassword ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                }`}
               />
               {errors.confirmPassword && (
                 <p className="text-red-500 mt-1 text-sm">
@@ -294,7 +300,9 @@ const SignUp = () => {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 onBlur={(e) => validate("email", e.target.value)} // Validate on blur
-                className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                  errors.email ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                }`}
               />
               {errors.email && (
                 <p className="text-red-500 mt-1 text-sm">{errors.email}</p>

@@ -185,8 +185,8 @@ const ResetPassword = () => {
                 onChange={(e) => handleInputChange("newpassword", e.target.value)}
                 onCopy={(e) => e.preventDefault()} // Disable copy
                 onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
-                  errors.newpassword ? "border border-red-500" : ""
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
+                  errors.newpassword ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
                 }`}
                 
               />
@@ -218,8 +218,8 @@ const ResetPassword = () => {
                 onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                 onPaste={(e) => e.preventDefault()}
                 onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
-                  errors.confirmPassword ? "border border-red-500" : ""
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
+                  errors.confirmPassword ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
                 }`}
               />
               {/* Confirm Password Toggle Button */}
