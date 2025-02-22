@@ -2,9 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import ExitIcon from "../../assets/images/Exit.png";
 import sampleAvatarDeployment from "../../assets/images/sampleAvatar2.png";
-import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { auth, sendResetEmail } from "../../services/firebase";
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 import PageTransition from "../../styles/PageTransition";
 
 const ConfirmationAccount = () => {
@@ -16,7 +14,7 @@ const ConfirmationAccount = () => {
   const [loading, setLoading] = useState(true);
   const [buttonLoading, setButtonLoading] = useState(false);
   const [error, setError] = useState("");
-  const [isPhone, setIsPhone] = useState(false); // State to track if input is phone
+  const [isPhone, setIsPhone] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
 
   useEffect(() => {
@@ -26,7 +24,6 @@ const ConfirmationAccount = () => {
       return;
     }
 
-    // Check if the input is an email or phone number
     const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phonePattern = /^\d{10,15}$/;
 
@@ -55,7 +52,7 @@ const ConfirmationAccount = () => {
         }
 
         const querySnapshot = await getDocs(q);
-        console.log("Query Snapshot:", querySnapshot); // Log the query result
+        console.log("Query Snapshot:", querySnapshot);
 
         if (!querySnapshot.empty) {
           const userDoc = querySnapshot.docs[0];
@@ -63,32 +60,13 @@ const ConfirmationAccount = () => {
           setUsername(userData.username);
           setProfilePic(userData.profilePic);
 
-          if (userData.emailTimestamp) {
-            const emailTimestamp = userData.emailTimestamp.toDate();
-            const now = new Date();
-            const elapsed = now.getTime() - emailTimestamp.getTime();
-            const remaining = 5 * 60 * 1000 - elapsed;
-
-            if (remaining > 0) {
-              setTimeRemaining(remaining);
-              const interval = setInterval(() => {
-                setTimeRemaining((prev) => {
-                  if (prev && prev > 1000) {
-                    return prev - 1000;
-                  } else {
-                    clearInterval(interval);
-                    return null;
-                  }
-                });
-              }, 1000);
-            }
-          }
+          
         } else {
           setError("User not found");
         }
       } catch (err) {
         setError("Failed to fetch user data");
-        console.error("Error fetching user data:", err); // Log the error for more details
+        console.error("Error fetching user data:", err);
       } finally {
         setLoading(false);
       }
@@ -98,19 +76,6 @@ const ConfirmationAccount = () => {
       fetchUsername();
     }
   }, [email, isPhone]);
-
-  const handleSendPasswordResetEmail = async (firebase_uid: string) => {
-    try {
-      const actionCodeSettings = {
-        url: `http://localhost:5173/Reset-Password?mode=resetPassword&firebase_uid=${firebase_uid}`,
-        handleCodeInApp: true,
-      };
-  
-      await sendResetEmail(auth, email, actionCodeSettings);
-    } catch (err) {
-      setError("Failed to send password reset email");
-    }
-  };
 
   const handleContinueClick = async () => {
     setButtonLoading(true);
@@ -124,25 +89,14 @@ const ConfirmationAccount = () => {
         const userDoc = querySnapshot.docs[0];
         const firebase_uid = userDoc.id;
 
-        await handleSendPasswordResetEmail(firebase_uid);
-        navigate("/check-your-mail"); 
-
-        await setDoc(doc(db, "users", userDoc.id), {
-          emailTimestamp: serverTimestamp(),
-        }, { merge: true });
-
-        setLoading(true); // Show loading screen during timeout
-        setTimeout(() => {
-          navigate("/login"); // Or a confirmation page
-        }, 2000); // 2-second delay before navigating
+        navigate("/check-your-mail", { state: { email, firebase_uid } });
       } else {
         setError("User not found");
       }
     } catch (err) {
-      console.error("Error sending password reset email:", err);
+      console.error("Error navigating to check your mail:", err);
     } finally {
       setButtonLoading(false);
-      setLoading(false); // Hide loading screen after timeout
     }
   };
 
@@ -154,13 +108,11 @@ const ConfirmationAccount = () => {
     <PageTransition>
       <div className="h-screen mt-[-30px] flex flex-col items-center justify-center">
         <header className="absolute top-20 left-20 right-20 flex justify-between items-center">
-          {/* Logo & Title */}
           <Link to="/" className="flex items-center space-x-4">
             <img src="/duel-learn-logo.svg" className="w-10 h-10" alt="icon" />
             <p className="text-white text-xl font-semibold">Duel Learn</p>
           </Link>
 
-          {/* Exit Button */}
           <img
             src={ExitIcon}
             alt="Exit Icon"
