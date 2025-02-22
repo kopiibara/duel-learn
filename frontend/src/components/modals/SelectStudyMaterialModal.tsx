@@ -101,8 +101,10 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   }, [searchQuery, filter]);
 
   const handleMaterialSelect = (material: any) => {
-    navigate("/dashboard/welcome-game-mode", { state: { mode, material } });
+    const formattedMode = mode === "Peaceful Mode" ? "Peaceful" : mode;
+    navigate("/dashboard/welcome-game-mode", { state: { mode: formattedMode, material } });
   };
+  
 
   return (
     <Modal

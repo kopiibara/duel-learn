@@ -72,6 +72,8 @@ const PrivateRoutes = () => {
 
       {/* Route for buying premium account */}
       <Route path="/buy-premium-account" element={<BuyPremium />} />
+
+      {/* Route for playing mode*/}
       <Route path="/set-up-questions" element={<SetUpQuestionType />} />
       <Route path="/welcome-game-mode" element={<WelcomeGameMode />} />
       <Route path="/setup/questions" element={<SetUpQuestionType />} />

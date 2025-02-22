@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   Box,
   Button,
@@ -149,12 +149,13 @@ const Sidebar: React.FC<SidebarProps> = ({
     </Tooltip>
   );
 
-  React.useEffect(() => {
+  useEffect(() => {
     console.log("Current Path:", location.pathname);
     const index = menuItems.findIndex(
       (item) => item.path === location.pathname
     );
     setSelectedIndex(index !== -1 ? index : null);
+    window.scrollTo(0, 0); // Scroll to the top when the path changes
   }, [location.pathname]);
 
   return (
@@ -227,6 +228,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               )}
             </Fab>
           </Stack>
+          <div style={{ marginTop: '10px' }} /> {/* This adds padding below Create */}
           {renderButton(
             <AddIcon
               fontSize="small"
