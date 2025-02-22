@@ -226,10 +226,8 @@ const SignUp = () => {
                 placeholder="Enter your username"
                 required
                 value={formData.username}
-                onChange={(e) => {
-                  setFormData({ ...formData, username: e.target.value });
-                  validate("username", e.target.value);
-                }}
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                onBlur={(e) => validate("username", e.target.value)} // Validate on blur
                 className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
               />
               {errors.username && (
@@ -294,10 +292,8 @@ const SignUp = () => {
                 placeholder="Enter your email"
                 required
                 value={formData.email}
-                onChange={(e) => {
-                  setFormData({ ...formData, email: e.target.value });
-                  validate("email", e.target.value);
-                }}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onBlur={(e) => validate("email", e.target.value)} // Validate on blur
                 className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
               />
               {errors.email && (
