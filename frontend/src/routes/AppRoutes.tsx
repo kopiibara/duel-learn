@@ -9,13 +9,13 @@ import ForgotPassword from "../pages/user-account/ForgotPassword";
 import TermsAndConditions from "../components/TermsAndConditions";
 import CheckYourMail from "../pages/user-account/CheckYourMail";
 import PasswordChangedSuccessfully from "../pages/user-account/PasswordChangedSuccessfully";
-import LoadingScreen from "../components/LoadingScreen";
 import ConfirmationAccount from "../pages/user-account/ConfirmationAccount";
 import NotFoundPage from "../pages/user-account/NotFoundPage";
 import ResetPassword from "../pages/user-account/ResetPassword";
 import SuccessReset from "../pages/user-account/SuccessReset";
 import EmailActionHandler from "../pages/user-account/EmailActionHandler"; // Import EmailActionHandler
 import EmailVerified from "../pages/user-account/EmailVerified"; // Import EmailVerified
+import LoadingScreen from "../components/LoadingScreen";
 
 const AppRoutes: React.FC = () => {
   const location = useLocation();
@@ -40,10 +40,9 @@ const AppRoutes: React.FC = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/success-reset" element={<SuccessReset />} />
         <Route path="/email-action" element={<EmailActionHandler />} />{" "}
-        {/* Add EmailActionHandler route */}
         <Route path="/email-verified" element={<EmailVerified />} />{" "}
-        {/* Add EmailVerified route */}
         <Route path="*" element={<NotFoundPage />} />
+        <Route path="/loading" element={<LoadingScreen />} />
         <Route path="/dashboard/*" element={<PrivateRoutes />} />
       </Routes>
     </AnimatePresence>

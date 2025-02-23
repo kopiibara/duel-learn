@@ -1,9 +1,10 @@
-//index.js on backend
-import express from 'express';
-import dotenv from 'dotenv';
-import { connectDB } from './config/db.js';
-import cors from 'cors';  // Import CORS package
-import studyMaterialRoutes from './routes/StudyMaterial.js';
+
+import express from "express";
+import dotenv from "dotenv";
+import { connectDB } from "./config/db.js";
+import cors from "cors"; // Import CORS package
+import studyMaterialRoutes from "./routes/StudyMaterial.js";
+import userRoutes from "./routes/UserAccount.js";
 
 // Load environment variables
 dotenv.config();
@@ -14,7 +15,6 @@ connectDB();
 // Initialize Express App
 const app = express();
 
-// Enable CORS for all routes (you can adjust this to be more specific)
 const allowedOrigins = [process.env.FRONTEND_URL];
 
 app.use(cors({
@@ -29,13 +29,11 @@ app.use(cors({
 }));
 
 
-// Middleware 
+// Middleware
 app.use(express.json());
 
 // Routes
-app.use('/api/study-material', studyMaterialRoutes);
-
-
-
+app.use("/api/study-material", studyMaterialRoutes);
+app.use("/api/user", userRoutes); // Use user routes
 
 export default app;

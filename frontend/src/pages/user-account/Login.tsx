@@ -1,27 +1,34 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
 import { toast } from "react-hot-toast";
-import useHandleError from "../../utils/useHandleError";
+import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import {
   getFirestore,
   collection,
   query,
   where,
   getDocs,
+  getDoc,
+  doc,
 } from "firebase/firestore";
 import PageTransition from "../../styles/PageTransition";
 
 //import axios from "axios";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
-import { auth, googleProvider } from "../../services/firebase"; // Ensure you have this import for Firebase auth
+import {
+  auth,
+  googleProvider,
+  getAdditionalInfo,
+  db,
+} from "../../services/firebase"; // Ensure you have this import for Firebase auth
 // Icons
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 
 const Login = () => {
-  const { setUser } = useUser();
+  const { setUser, user } = useUser(); // Get user from context
   const [data, setData] = useState({
     username: "",
     password: "",
@@ -30,9 +37,16 @@ const Login = () => {
   const { error, handleLoginError } = useHandleError();
   const navigate = useNavigate();
 
+  useEffect(() => {
+    if (user) {
+      navigate("/dashboard/home"); // Redirect if user is authenticated
+    }
+  }, [user, navigate]);
+
   const togglePassword = () => {
     setShowPassword(!showPassword); // Toggle password visibility
   };
+
   // Login Component (handleGoogleSignIn)
   const handleGoogleSignIn = async () => {
     try {
@@ -40,25 +54,37 @@ const Login = () => {
       console.log(result);
 
       const token = await result.user.getIdToken();
+      const additionalUserInfo = getAdditionalInfo(result);
+      const userDoc = await getDoc(doc(db, "users", result.user.uid));
 
-      // Handle user data directly on the frontend
-      const userData = {
-        displayName: result.user.displayName,
-        email: result.user.email,
-        photoURL: result.user.photoURL, // Store the photoURL here
-        uid: result.user.uid,
-      };
+      if (userDoc.exists()) {
+        const userData = {
+          firebase_uid: result.user.uid,
+          username: userDoc.data().username,
+          email: userDoc.data().email,
+          display_picture: userDoc.data().display_picture,
+          isNew: additionalUserInfo?.isNewUser,
+          full_name: userDoc.data().full_name,
+          email_verified: userDoc.data().email_verified,
+          isSSO: userDoc.data().isSSO,
+          account_type: userDoc.data().account_type as "free" | "premium", // Ensure the value is either 'free' or 'premium'
+        };
+        console.log("User Data:", userData);
 
-      console.log("User Data:", userData);
+        // Store user data in context
+        setUser(userData);
 
-      // Store user data in context
-      setUser(userData); // This should update the context with the photoURL
+        // Optionally, you can store the token in local storage or context
+        localStorage.setItem("userToken", token);
 
-      // Optionally, you can store the token in local storage or context
-      localStorage.setItem("userToken", token);
-
-      // Redirect to a protected route or dashboard
-      navigate("/dashboard/welcome");
+        setTimeout(() => {
+          if (userData.isNew) {
+            navigate("/dashboard/welcome");
+          } else {
+            navigate("/dashboard/home");
+          }
+        }, 2000);
+      }
     } catch (error) {
       console.error("Error during sign-in:", error);
       toast.error("Google sign-in failed. Please try again.");
@@ -89,23 +115,37 @@ const Login = () => {
       const result = await signInWithEmailAndPassword(auth, email, password);
       console.log("User Credential:", result);
       const token = await result.user.getIdToken();
+      const additionalUserInfo = getAdditionalInfo(result);
+      const userDoc = await getDoc(doc(db, "users", result.user.uid));
 
-      // Create user data object
-      const userData = {
-        displayName: result.user.displayName || username, // Use displayName if available, otherwise fallback to username
-        email: result.user.email,
-        photoURL: result.user.photoURL,
-        uid: result.user.uid,
-        username: username, // Store username separately
-      };
-      console.log("User Data:", userData);
-      // Store user data in context
-      setUser(userData);
+      if (userDoc.exists()) {
+        const userData = {
+          firebase_uid: result.user.uid,
+          username: userDoc.data().username,
+          email: userDoc.data().email,
+          display_picture: userDoc.data().display_picture,
+          isNew: additionalUserInfo?.isNewUser,
+          full_name: userDoc.data().full_name,
+          email_verified: userDoc.data().email_verified,
+          isSSO: userDoc.data().isSSO,
+          account_type: userDoc.data().account_type as "free" | "premium", // Ensure the value is either 'free' or 'premium'
+        };
+        console.log("User Data:", userData);
 
-      // Optionally, you can store the token in local storage or context
-      localStorage.setItem("userToken", token); // Store token
-      setData({ username: "", password: "" });
-      navigate("/dashboard/welcome"); // Redirect on successful login
+        // Store user data in context
+        setUser(userData);
+
+        // Optionally, you can store the token in local storage or context
+        localStorage.setItem("userToken", token);
+
+        setTimeout(() => {
+          if (userData.isNew) {
+            navigate("/dashboard/welcome");
+          } else {
+            navigate("/dashboard/home");
+          }
+        }, 2000);
+      }
     } catch (error) {
       handleLoginError(error); // Use the hook to handle login error
     }
@@ -215,7 +255,7 @@ const Login = () => {
               src="/google-logo.png"
               className="w-5 h-5 mr-3"
               alt="Google Icon"
-            ></img>
+            />
             Sign in with Google
           </button>
 

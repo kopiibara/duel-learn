@@ -1,6 +1,7 @@
 import { pool } from "../config/db.js";
 import { nanoid } from "nanoid";
-import moment from "moment-timezone";
+import manilacurrentTimestamp from "../utils/CurrentTimestamp.js";
+
 
 const studyMaterialController = {
   saveStudyMaterial: async (req, res) => {
@@ -19,9 +20,7 @@ const studyMaterialController = {
       } = req.body;
 
       console.log("Generated Study Material ID:", studyMaterialId);
-      const currentTimestamp = moment()
-        .tz("Asia/Manila")
-        .format("YYYY-MM-DD HH:mm:ss");
+      const currentTimestamp = manilacurrentTimestamp;
 
       await connection.beginTransaction();
 

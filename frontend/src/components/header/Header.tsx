@@ -9,7 +9,7 @@ import { Box } from "@mui/system";
 
 export default function Header() {
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
