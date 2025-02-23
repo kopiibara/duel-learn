@@ -19,6 +19,7 @@ import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import PageTransition from "../../styles/PageTransition";
 import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
 import useApiError from "../../hooks/api.hooks/useApiError";
+import bcrypt from 'bcryptjs';
 
 const SignUp = () => {
   const { setUser, user } = useUser();
@@ -48,23 +49,20 @@ const SignUp = () => {
     const { username, password, confirmPassword, email, terms } = formData;
 
     if (
-      !validateForm({
+      !(await validateForm({
         username,
         password,
         confirmPassword,
         email,
         terms: terms.toString(),
-      })
+      }))
     ) {
       return;
     }
 
     try {
-      const result = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const result = await createUserWithEmailAndPassword(auth, email, password);
 
       const token = await result.user.getIdToken();
       const additionalUserInfo = getAdditionalInfo(result);
@@ -86,7 +84,7 @@ const SignUp = () => {
         firebase_uid: userData.firebase_uid || "",
         username: userData.username,
         email: userData.email,
-        password_hash: "N/A", // Store the hashed password if needed
+        password_hash: hashedPassword, // Store the hashed password
         created_at: serverTimestamp(),
         updated_at: serverTimestamp(),
         display_picture: userData.display_picture || "",
