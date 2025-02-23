@@ -24,12 +24,16 @@ import SetUpTimeQuestion from "../pages/dashboard/play-battleground/time-pressur
 
 import PVPLobby from "../pages/dashboard/play-battleground/multiplayer-mode/PVPLobby";
 import { useState } from "react"; // Import useState
+import VerifyEmail from "../pages/user-account/VerifyEmail";
+import CheckYourMail from "../pages/user-account/CheckYourMail";
 
 const PrivateRoutes = () => {
   const { user } = useUser();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(1); // Define state
 
-  if (!user) {
+  const token = localStorage.getItem("userToken");
+
+  if (!user || !token) {
     return <Navigate to="/landing-page" />;
   }
 
@@ -62,9 +66,13 @@ const PrivateRoutes = () => {
           element={<ViewStudyMaterial />}
         />
       </Route>
+      <Route path ="verify-email" element={<VerifyEmail />} />
+      <Route path="/check-your-mail" element={<CheckYourMail />} />
 
       {/* Route for buying premium account */}
       <Route path="/buy-premium-account" element={<BuyPremium />} />
+
+      {/* Route for playing mode*/}
       <Route path="/set-up-questions" element={<SetUpQuestionType />} />
       <Route path="/welcome-game-mode" element={<WelcomeGameMode />} />
       <Route path="/setup/questions" element={<SetUpQuestionType />} />

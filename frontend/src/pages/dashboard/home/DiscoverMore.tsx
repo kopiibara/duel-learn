@@ -34,10 +34,10 @@ const DiscoverMore = () => {
   const cardWidth = 100 / cardsToShow; // Each card takes a fraction of the total width
 
   useEffect(() => {
-    if (user?.displayName) {
+    if (user?.username) {
       const fetchData = async () => {
         try {
-          const encodedUsername = encodeURIComponent(user.displayName || "");
+          const encodedUsername = encodeURIComponent(user.username || "");
           const response = await fetch(
             `${
               import.meta.env.VITE_BACKEND_URL
@@ -74,7 +74,9 @@ const DiscoverMore = () => {
   const handleCardClick = async (studyMaterialId: string, title: string) => {
     try {
       await fetch(
-        `http://localhost:5000/api/study-material/increment-views/${studyMaterialId}`,
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/study-material/increment-views/${studyMaterialId}`,
         {
           method: "POST",
         }

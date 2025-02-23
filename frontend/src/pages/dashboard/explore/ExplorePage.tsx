@@ -4,7 +4,6 @@ import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
 import ExploreCards from "./ExploreCards";
 import { useUser } from "../../../contexts/UserContext";
-import { useSocket } from "../../../contexts/SocketContext";
 import AutoHideSnackbar from "../../../components/ErrorsSnackbar";
 
 interface Item {
@@ -28,7 +27,6 @@ interface StudyMaterial {
 
 const ExplorePage = () => {
   const { user } = useUser();
-  const { socket } = useSocket();
   const [selected, setSelected] = useState<number>(0);
   const [cards, setCards] = useState<StudyMaterial[]>([]);
   const [filteredCards, setFilteredCards] = useState<StudyMaterial[]>([]);
@@ -37,9 +35,9 @@ const ExplorePage = () => {
 
   // Separate function to fetch recommended cards
   const fetchRecommendedCards = async () => {
-    if (user?.displayName) {
+    if (user?.username) {
       try {
-        const encodedUser = encodeURIComponent(user.displayName);
+        const encodedUser = encodeURIComponent(user.username);
         const response = await fetch(
           `${
             import.meta.env.VITE_BACKEND_URL
@@ -59,49 +57,6 @@ const ExplorePage = () => {
       }
     }
   };
-
-  // Socket connection and event handling
-  useEffect(() => {
-    if (socket && user?.displayName) {
-      // Join user's room on connection
-      socket.emit("joinRoom", user.displayName);
-
-      const handleNewStudyMaterial = (data: {
-        type: string;
-        data: StudyMaterial;
-        timestamp: string;
-        creator: string;
-      }) => {
-        console.log("📩 Received new study material notification:", data);
-
-        // Only show notification if:
-        // 1. Material wasn't created by current user
-        // 2. User is logged in
-        if (user?.displayName && data.creator !== user.displayName) {
-          // Show notification
-          setSnackbarMessage(
-            `New study material "${data.data.title}" by ${data.creator} is available!`
-          );
-          setSnackbarOpen(true);
-
-          // Auto-refresh after snackbar duration (6 seconds)
-          setTimeout(() => {
-            fetchRecommendedCards();
-            setSnackbarOpen(false);
-          }, 6000);
-        }
-      };
-
-      // Connect to socket and listen for events
-      socket.connect();
-      socket.on("studyMaterialCreated", handleNewStudyMaterial);
-
-      return () => {
-        socket.off("studyMaterialCreated", handleNewStudyMaterial);
-        socket.disconnect();
-      };
-    }
-  }, [socket, user]);
 
   // Initial data fetch
   useEffect(() => {
@@ -129,14 +84,14 @@ const ExplorePage = () => {
     setSelected(index);
     switch (index) {
       case 0:
-        await fetchRecommendedCards();
+        await fetchTopPicks();
         break;
       case 1:
-        await fetchTopPicks();
+        await fetchRecommendedCards();
         break;
       case 2:
         setFilteredCards(
-          cards.filter((card) => card.created_by === user?.displayName)
+          cards.filter((card) => card.created_by === user?.username)
         );
         break;
       default:

@@ -21,9 +21,13 @@ const Shop = () => {
   const [isPremium, setIsPremium] = useState(false);
 
   const openModal = (item: ShopItem) => {
-    setSelectedItem(item);
-    setQuantity(1);
-    setIsModalOpen(true);
+    if (item.owned < 5) {
+      setSelectedItem(item);
+      setQuantity(1);
+      setIsModalOpen(true);
+    } else {
+      alert("You cannot own more than 5 of this item.");
+    }
   };
 
   const closeModal = () => {

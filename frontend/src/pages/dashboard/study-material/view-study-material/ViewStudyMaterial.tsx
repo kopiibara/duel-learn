@@ -5,7 +5,6 @@ import SummaryPage from "./SummaryPage";
 import CardPage from "./CardPage";
 import DocumentHead from "../../../../components/DocumentHead";
 import PageTransition from "../../../../styles/PageTransition";
-import { useSocket } from "../../../../contexts/SocketContext"; // Use socket context
 
 interface Item {
   term: string;
@@ -26,7 +25,6 @@ interface StudyMaterial {
 }
 
 const ViewStudyMaterial = () => {
-  const { socket, subscribeToEvent } = useSocket(); // Get socket instance and subscribe function from context
   const { studyMaterialId } = useParams();
   const location = useLocation();
   const [selected, setSelected] = useState("Summary");
@@ -37,9 +35,7 @@ const ViewStudyMaterial = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!studyMaterialId || !socket) return;
-
-    socket.emit("joinStudyMaterialRoom", studyMaterialId); // Join a socket room
+    if (!studyMaterialId) return;
 
     const fetchStudyMaterial = async () => {
       try {
@@ -85,21 +81,7 @@ const ViewStudyMaterial = () => {
     };
 
     fetchStudyMaterial();
-
-    const handleStudyMaterialUpdated = (
-      updatedStudyMaterial: StudyMaterial
-    ) => {
-      if (updatedStudyMaterial.study_material_id === studyMaterialId) {
-        setStudyMaterial(updatedStudyMaterial);
-      }
-    };
-
-    subscribeToEvent("studyMaterialUpdated", handleStudyMaterialUpdated);
-
-    return () => {
-      socket.emit("leaveStudyMaterialRoom", studyMaterialId);
-    };
-  }, [studyMaterialId, socket, subscribeToEvent]);
+  }, [studyMaterialId]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {

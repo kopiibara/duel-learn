@@ -1,44 +1,21 @@
 import React, { useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { getAuth, applyActionCode, checkActionCode } from "firebase/auth";
+import { useLocation } from "react-router-dom";
+import firebaseEmailHandler from "../../services/firebaseEmailHandler";
 
 const EmailActionHandler: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate();
-  const auth = getAuth();
-
-  const handleEmailAction = async (mode: string, oobCode: string) => {
-    try {
-      switch (mode) {
-        case "resetPassword":
-          // Verify the password reset code is valid
-          await checkActionCode(auth, oobCode);
-          navigate(`/reset-password?oobCode=${oobCode}`);
-          break;
-        case "verifyEmail":
-          // Apply the email verification code
-          await applyActionCode(auth, oobCode);
-          navigate("/email-verified");
-          break;
-        default:
-          throw new Error("Invalid mode");
-      }
-    } catch (error) {
-      console.error("Error handling email action:", error);
-      // Handle error (e.g., show an error message to the user)
-    }
-  };
+  const { handleEmailAction } = firebaseEmailHandler();
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
     const mode = queryParams.get("mode");
     const oobCode = queryParams.get("oobCode");
+    const continueUrl = queryParams.get("continueUrl");
 
-    if (mode && oobCode) {
-      handleEmailAction(mode, oobCode);
+    if (mode && oobCode && continueUrl) {
+      handleEmailAction(mode, oobCode, continueUrl);
     } else {
-      // Handle invalid or missing parameters
-      console.error("Invalid or missing mode/oobCode");
+      console.error("Invalid or missing mode/oobCode/continueUrl");
     }
   }, [location.search]);
 

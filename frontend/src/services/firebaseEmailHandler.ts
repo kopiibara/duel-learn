@@ -5,25 +5,30 @@ const firebaseEmailHandler = () => {
   const navigate = useNavigate();
   const auth = getAuth();
 
-  const handleEmailAction = async (mode: any, oobCode: any) => {
+  const handleEmailAction = async (mode: any, oobCode: any, continueUrl: any) => {
     try {
+      let firebase_uid = "";
+      if (continueUrl) {
+        const decodedContinueUrl = decodeURIComponent(continueUrl);
+        const nestedParams = new URLSearchParams(decodedContinueUrl.split('?')[1]);
+        firebase_uid = nestedParams.get("firebase_uid") || "";
+      }
+      console.log("firebase_uid:", firebase_uid);
+
       switch (mode) {
         case "resetPassword":
-          // Verify the password reset code is valid
           await checkActionCode(auth, oobCode);
-          navigate(`/reset-password?oobCode=${oobCode}`);
+          navigate(`/reset-password?oobCode=${oobCode}&firebase_uid=${firebase_uid}`);
           break;
         case "verifyEmail":
-          // Apply the email verification code
           await applyActionCode(auth, oobCode);
-          navigate("/email-verified");
+          navigate(`/email-verified?oobCode=${oobCode}`);
           break;
         default:
           throw new Error("Invalid mode");
       }
     } catch (error) {
       console.error("Error handling email action:", error);
-      // Handle error (e.g., show an error message to the user)
     }
   };
 

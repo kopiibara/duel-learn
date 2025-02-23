@@ -6,51 +6,45 @@ const setupSocket = (server) => {
             origin: process.env.FRONTEND_URL,
             methods: ["GET", "POST"],
             credentials: true
+        },
+        pingTimeout: 60000, // 60 second timeout
+        connectTimeout: 5000, // 5 second connection timeout
+        transports: ['websocket', 'polling'] // Prefer WebSocket, fallback to polling
+    });
+
+    // Middleware for authentication if needed
+    io.use((socket, next) => {
+        try {
+            // Add any authentication logic here if needed
+            next();
+        } catch (error) {
+            next(new Error('Authentication error'));
         }
     });
 
-    // Store user socket mappings
-    const userSockets = new Map();
-
     io.on("connection", (socket) => {
-        console.log("🔌 User connected:", socket.id);
+        try {
+            console.log("🔌 New client connected:", socket.id);
 
-        // Join a room with the user's display name when they connect
-        socket.on("joinRoom", (username) => {
-            console.log(`👤 ${username} joined their room`);
-            userSockets.set(username, socket.id);
-            socket.join(username);
-        });
+            // Handle client disconnection
+            socket.on("disconnect", (reason) => {
+                console.log(`🔌 Client disconnected (${reason}):`, socket.id);
+            });
 
-        socket.on("newStudyMaterial", async (studyMaterial) => {
-            try {
-                console.log("📝 New study material received from:", studyMaterial.created_by);
+            // Handle errors
+            socket.on("error", (error) => {
+                console.error("Socket error:", error);
+            });
 
-                // Broadcast to all connected clients except the creator
-                socket.broadcast.emit("studyMaterialCreated", {
-                    type: "new_material",
-                    data: studyMaterial,
-                    timestamp: new Date().toISOString(),
-                    creator: studyMaterial.created_by
-                });
+        } catch (error) {
+            console.error("Error in socket connection handler:", error);
+            socket.disconnect();
+        }
+    });
 
-                console.log("🔔 Notification broadcasted to all users");
-            } catch (error) {
-                console.error("❌ Error handling newStudyMaterial:", error);
-            }
-        });
-
-
-        socket.on("disconnect", () => {
-            // Remove user from mapping when they disconnect
-            for (const [username, socketId] of userSockets.entries()) {
-                if (socketId === socket.id) {
-                    userSockets.delete(username);
-                    console.log(`🔌 User disconnected: ${username}`);
-                    break;
-                }
-            }
-        });
+    // Handle server-side errors
+    io.engine.on("connection_error", (error) => {
+        console.error("Connection error:", error);
     });
 
     return io;

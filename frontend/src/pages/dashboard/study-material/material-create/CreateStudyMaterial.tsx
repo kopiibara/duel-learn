@@ -16,12 +16,10 @@ import { motion, AnimatePresence } from "framer-motion"; // Importing from Frame
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
 import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust the
-import { useSocket } from "../../../../contexts/SocketContext"; // Use socket context
 
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
   const { user } = useUser();
-  const { socket } = useSocket();
   const [tags, setTags] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [currentTag, setCurrentTag] = useState("");
@@ -35,17 +33,6 @@ const CreateStudyMaterial = () => {
       image?: File | null;
     }[]
   >([]);
-
-  useEffect(() => {
-    if (socket) {
-      socket.connect();
-    }
-    return () => {
-      if (socket) {
-        socket.disconnect();
-      }
-    };
-  }, [socket]);
 
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && currentTag.trim()) {
@@ -92,7 +79,7 @@ const CreateStudyMaterial = () => {
   };
 
   const handleSaveButton = async () => {
-    if (!user?.displayName) {
+    if (!user?.username) {
       handleShowSnackbar("User is not authenticated.");
       return;
     }
@@ -109,7 +96,7 @@ const CreateStudyMaterial = () => {
         tags,
         totalItems: items.length,
         visibility: 0,
-        createdBy: user.displayName,
+        createdBy: user.username,
         items: await Promise.all(
           items.map(async (item) => ({
             ...item,
@@ -118,7 +105,6 @@ const CreateStudyMaterial = () => {
         ),
       };
 
-      // Save to database
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/study-material/save`,
         {
@@ -133,17 +119,6 @@ const CreateStudyMaterial = () => {
       }
 
       const savedData = await response.json();
-
-      // Emit socket event with full study material data
-      if (socket?.connected) {
-        console.log("📤 Emitting newStudyMaterial event:", savedData);
-        socket.emit("newStudyMaterial", {
-          ...savedData,
-          created_by: user.displayName,
-        });
-      } else {
-        console.warn("⚠️ Socket not connected, real-time updates disabled");
-      }
 
       // Navigate to preview
       navigate(
