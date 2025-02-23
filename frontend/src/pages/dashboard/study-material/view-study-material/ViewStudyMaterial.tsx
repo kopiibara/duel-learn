@@ -9,7 +9,7 @@ import PageTransition from "../../../../styles/PageTransition";
 interface Item {
   term: string;
   definition: string;
-  image?: File | null;
+  image?: string | null;
 }
 
 interface StudyMaterial {
@@ -121,7 +121,7 @@ const ViewStudyMaterial = () => {
           <Stack spacing={2}>
             <Typography variant="subtitle1">Tags</Typography>
             <Stack direction="row" spacing={1}>
-              {studyMaterial?.tags?.map((tag, index) => (
+              {studyMaterial?.tags?.map((tag: string, index: number) => (
                 <Chip
                   key={index}
                   label={tag}

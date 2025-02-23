@@ -4,16 +4,18 @@ import {
   signInWithEmailAndPassword,
   sendEmailVerification,
   signOut,
-  createUserWithEmailAndPassword,
-  signInWithPopup,
-  getAdditionalUserInfo,
+} from "firebase/auth";
+import { GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore"; // Add this import
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { signInWithPopup, getAdditionalUserInfo } from "firebase/auth";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import {
   verifyPasswordResetCode,
   confirmPasswordReset,
   sendPasswordResetEmail,
-  onAuthStateChanged,
 } from "firebase/auth";
-import { GoogleAuthProvider } from "firebase/auth";
-import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { onAuthStateChanged } from "firebase/auth";
 import { getDatabase, ref, onValue } from "firebase/database";
 
 const firebaseConfig = {

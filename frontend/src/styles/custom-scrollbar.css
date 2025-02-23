@@ -9,7 +9,6 @@
   border-radius: 10px; /* Optional: round the thumb edges */
 }
 
-
 ::-webkit-scrollbar-thumb:hover {
   background-color: #261d3f; /* Optional: change thumb color on hover */
 }
