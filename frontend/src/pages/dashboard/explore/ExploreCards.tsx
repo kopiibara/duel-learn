@@ -30,7 +30,9 @@ const ExploreCards = ({ cards }: ExploreCardsProps) => {
   const handleCardClick = async (studyMaterialId: string, title: string) => {
     try {
       await fetch(
-        `http://localhost:5000/api/study-material/increment-views/${studyMaterialId}`,
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/study-material/increment-views/${studyMaterialId}`,
         {
           method: "POST",
         }

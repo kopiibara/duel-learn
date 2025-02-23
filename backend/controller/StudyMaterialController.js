@@ -5,9 +5,9 @@ import manilacurrentTimestamp from "../utils/CurrentTimestamp.js";
 
 const studyMaterialController = {
   saveStudyMaterial: async (req, res) => {
-    const connection = await pool.getConnection();
-
+    let connection;
     try {
+      connection = await pool.getConnection();
       let studyMaterialId = req.body.studyMaterialId || nanoid();
       const {
         title,
@@ -74,11 +74,23 @@ const studyMaterialController = {
         studyMaterialId,
       });
     } catch (error) {
-      await connection.rollback();
       console.error("Error saving study material:", error);
-      res.status(500).json({ error: "Internal server error", details: error });
+      if (connection) {
+        try {
+          await connection.rollback();
+        } catch (rollbackError) {
+          console.error("Error rolling back transaction:", rollbackError);
+        }
+      }
+      res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
-      connection.release();
+      if (connection) {
+        try {
+          connection.release();
+        } catch (releaseError) {
+          console.error("Error releasing connection:", releaseError);
+        }
+      }
     }
   },
 

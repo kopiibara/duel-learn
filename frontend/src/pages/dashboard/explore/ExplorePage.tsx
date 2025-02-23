@@ -1,29 +1,13 @@
 import { Box, Stack, Button, Typography } from "@mui/material";
 import { useState, useEffect } from "react";
+import { io } from "socket.io-client";
 import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
 import ExploreCards from "./ExploreCards";
 import { useUser } from "../../../contexts/UserContext";
 import AutoHideSnackbar from "../../../components/ErrorsSnackbar";
-
-interface Item {
-  term: string;
-  definition: string;
-  image?: string | null;
-}
-
-interface StudyMaterial {
-  title: string;
-  tags: string[];
-  images: string[];
-  total_items: number;
-  created_by: string;
-  total_views: number;
-  visibility: number;
-  created_at: string;
-  study_material_id: string;
-  items: Item[];
-}
+import { Item, StudyMaterial } from "../../../types/studyMaterial";
+import cauldronGif from "../../../assets/General/Cauldron.gif"; // Importing the gif animation for cauldron asset
 
 const ExplorePage = () => {
   const { user } = useUser();
@@ -32,57 +16,18 @@ const ExplorePage = () => {
   const [filteredCards, setFilteredCards] = useState<StudyMaterial[]>([]);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(true); // Add loading state
 
-  // Separate function to fetch recommended cards
-  const fetchRecommendedCards = async () => {
-    if (user?.username) {
-      try {
-        const encodedUser = encodeURIComponent(user.username);
-        const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/study-material/get-recommended-for-you/${encodedUser}`
-        );
-        const data: StudyMaterial[] = await response.json();
+  // Move socket initialization outside of the component or useEffect
+  const [socket] = useState(() =>
+    io(import.meta.env.VITE_BACKEND_URL, {
+      transports: ["websocket", "polling"],
+    })
+  );
 
-        if (Array.isArray(data)) {
-          setCards(data);
-          // Only update filtered cards if we're on the recommended view
-          if (selected === 0) {
-            setFilteredCards(data);
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching recommended cards:", error);
-      }
-    }
-  };
-
-  // Initial data fetch
-  useEffect(() => {
-    fetchRecommendedCards();
-  }, [user]);
-
-  const fetchTopPicks = async () => {
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/study-material/get-top-picks`
-      );
-      const data: StudyMaterial[] = await response.json();
-
-      if (Array.isArray(data)) {
-        setFilteredCards(data);
-      } else {
-        console.error("Unexpected response format:", data);
-      }
-    } catch (error) {
-      console.error("Error fetching top picks:", error);
-    }
-  };
-
-  const handleClick = async (index: number) => {
-    setSelected(index);
-    switch (index) {
+  // Fetch data based on current selection
+  const refreshData = async () => {
+    switch (selected) {
       case 0:
         await fetchTopPicks();
         break;
@@ -97,6 +42,89 @@ const ExplorePage = () => {
       default:
         setFilteredCards([...cards]);
     }
+  };
+
+  // Fetch recommended cards
+  const fetchRecommendedCards = async () => {
+    if (!user?.username) return;
+    setIsLoading(true); // Set loading to true before fetch
+
+    try {
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/study-material/get-recommended-for-you/${encodeURIComponent(
+          user.username
+        )}`
+      );
+
+      if (!response.ok) throw new Error("Failed to fetch recommended cards");
+
+      const data: StudyMaterial[] = await response.json();
+
+      if (Array.isArray(data)) {
+        setCards(data);
+        setFilteredCards(data);
+      }
+    } catch (error) {
+      console.error("Error fetching recommended cards:", error);
+    } finally {
+      setIsLoading(false); // Set loading to false after fetch
+    }
+  };
+
+  // Fetch top picks
+  const fetchTopPicks = async () => {
+    setIsLoading(true); // Set loading to true before fetch
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/study-material/get-top-picks`
+      );
+      const data: StudyMaterial[] = await response.json();
+
+      if (Array.isArray(data)) {
+        setFilteredCards(data);
+      } else {
+        console.error("Unexpected response format:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching top picks:", error);
+    } finally {
+      setIsLoading(false); // Set loading to false after fetch
+    }
+  };
+
+  useEffect(() => {
+    if (!user?.username) return;
+
+    // Initial data fetch
+    fetchRecommendedCards();
+
+    // Listen for real-time study material updates
+    const handleNewMaterial = async (newMaterial: StudyMaterial) => {
+      console.log("📡 Real-time update received:", newMaterial);
+      setSnackbarMessage("📚 New study material added!");
+      setSnackbarOpen(true);
+
+      // Update the cards state and then refresh filtered cards
+      setCards((prevCards) => {
+        const updatedCards = [newMaterial, ...prevCards];
+        setFilteredCards(updatedCards);
+        return updatedCards;
+      });
+    };
+
+    socket.on("broadcastStudyMaterial", handleNewMaterial);
+
+    return () => {
+      socket.off("broadcastStudyMaterial", handleNewMaterial);
+    };
+  }, [user?.username]); // Remove selected from dependencies
+
+  // Handle category selection
+  const handleClick = async (index: number) => {
+    setSelected(index);
+    await refreshData();
   };
 
   const breadcrumbLabels = [
@@ -121,13 +149,28 @@ const ExplorePage = () => {
 
   return (
     <PageTransition>
-      <Box className="h-full w-full">
+      <Box className="h-full w-auto">
         <DocumentHead title="Explore | Duel Learn" />
         <Stack className="px-5" spacing={2}>
           <Stack direction="row" spacing={1} paddingX={0.5}>
             {breadcrumbs}
           </Stack>
-          <ExploreCards cards={filteredCards} />
+          {isLoading ? (
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              minHeight="60vh"
+            >
+              <img
+                src={cauldronGif}
+                alt="Loading..."
+                style={{ width: "200px", height: "200px" }}
+              />
+            </Box>
+          ) : (
+            <ExploreCards cards={filteredCards} />
+          )}
         </Stack>
         <AutoHideSnackbar
           message={snackbarMessage}

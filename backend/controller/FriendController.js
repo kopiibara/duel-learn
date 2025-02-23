@@ -3,28 +3,29 @@ import { pool } from "../config/db.js";
 const FriendRequestController = {
 
     getUserFriend: async (req, res) => {
-        const connection = await pool.getConnection();
-        const { username } = req.params;
+        const { user } = req.params;
 
         try {
-            const [friendList] = await connection.execute(
-                `SELECT username, display_picture FROM users where username = ?`,
-                [username]
+            const [friends] = await pool.execute(
+                `SELECT 
+          u.id AS friend_id, 
+          u.username AS friend_name, 
+          f.updated_at AS friendship_date
+       FROM friend_requests f
+       JOIN users u ON 
+          (f.sender_id = u.id OR f.receiver_id = u.id)
+       WHERE 
+          (f.sender_id = ? OR f.receiver_id = ?) 
+          AND f.status = 'accepted'
+          AND u.id != ?;`,
+                [user, user, user]
             );
-            console.log(
-                `Fetched ${friendList} of ${username} from the database.`
 
-            );
-
-            if (friendList.length === 0) {
-                return res.status(404).json({ message: "No friends found" });
-            }
-            res.status(200).json(friendList);
+            res.json(friends);
         } catch (error) {
-            console.error("Error fetching friend requests:", error);
-            res.status(500).json({ error: "Internal server error" });
+            console.error(error);
+            res.status(500).json({ message: "Error retrieving friends list" });
         }
-
 
     },
 

@@ -7,42 +7,44 @@ const setupSocket = (server) => {
             methods: ["GET", "POST"],
             credentials: true
         },
-        pingTimeout: 60000, // 60 second timeout
-        connectTimeout: 5000, // 5 second connection timeout
-        transports: ['websocket', 'polling'] // Prefer WebSocket, fallback to polling
+        pingTimeout: 60000,
+        connectTimeout: 5000,
+        transports: ['websocket', 'polling'],
+        // Add error handling and reconnection logic
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000
     });
 
-    // Middleware for authentication if needed
-    io.use((socket, next) => {
-        try {
-            // Add any authentication logic here if needed
-            next();
-        } catch (error) {
-            next(new Error('Authentication error'));
-        }
+    // Handle server-side socket errors
+    io.on("connect_error", (err) => {
+        console.log(`Connection error due to ${err.message}`);
     });
 
     io.on("connection", (socket) => {
-        try {
-            console.log("🔌 New client connected:", socket.id);
+        console.log("🔌 New client connected:", socket.id);
 
-            // Handle client disconnection
-            socket.on("disconnect", (reason) => {
-                console.log(`🔌 Client disconnected (${reason}):`, socket.id);
-            });
+        // Listen for new study material creation
+        socket.on("newStudyMaterial", (data) => {
+            try {
+                console.log("📚 New study material received:", data);
+                io.emit("broadcastStudyMaterial", data);
+            } catch (error) {
+                console.error("Error broadcasting study material:", error);
+                socket.emit("error", "Failed to broadcast study material");
+            }
+        });
 
-            // Handle errors
-            socket.on("error", (error) => {
-                console.error("Socket error:", error);
-            });
+        socket.on("disconnect", (reason) => {
+            console.log(`🔌 Client disconnected (${reason}):`, socket.id);
+        });
 
-        } catch (error) {
-            console.error("Error in socket connection handler:", error);
-            socket.disconnect();
-        }
+        socket.on("error", (error) => {
+            console.error("Socket error:", error);
+        });
     });
 
-    // Handle server-side errors
+    // Global error handler for the io server
     io.engine.on("connection_error", (error) => {
         console.error("Connection error:", error);
     });

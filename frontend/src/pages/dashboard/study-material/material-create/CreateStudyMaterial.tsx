@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { io } from "socket.io-client"; // Import socket.io-client
 import DocumentHead from "../../../../components/DocumentHead";
 import PageTransition from "../../../../styles/PageTransition";
 import {
@@ -20,6 +21,7 @@ import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust 
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
   const { user } = useUser();
+  const socket = io(import.meta.env.VITE_BACKEND_URL); // Connect to backend socket
   const [tags, setTags] = useState<string[]>([]);
   const [title, setTitle] = useState("");
   const [currentTag, setCurrentTag] = useState("");
@@ -90,6 +92,13 @@ const CreateStudyMaterial = () => {
     }
 
     try {
+      // Transform items to include base64 images
+      const transformedItems = items.map((item) => ({
+        term: item.term,
+        definition: item.definition,
+        image: item.image || null, // image is already base64 from ItemComponent
+      }));
+
       const studyMaterial = {
         studyMaterialId: nanoid(),
         title,
@@ -97,12 +106,7 @@ const CreateStudyMaterial = () => {
         totalItems: items.length,
         visibility: 0,
         createdBy: user.username,
-        items: await Promise.all(
-          items.map(async (item) => ({
-            ...item,
-            image: item.image ? await convertFileToBase64(item.image) : null,
-          }))
-        ),
+        items: transformedItems,
       };
 
       const response = await fetch(
@@ -115,29 +119,48 @@ const CreateStudyMaterial = () => {
       );
 
       if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
+        const errorData = await response.json().catch(() => null);
+        throw new Error(
+          errorData?.message || `Server error: ${response.status}`
+        );
       }
 
       const savedData = await response.json();
 
-      // Navigate to preview
+      if (!savedData) {
+        throw new Error("No data received from server");
+      }
+
+      // Create broadcast data with fallback values
+      const broadcastData = {
+        study_material_id:
+          savedData.studyMaterialId || studyMaterial.studyMaterialId,
+        title: savedData.title || title,
+        tags: savedData.tags || tags,
+        images: [], // Add if you have images
+        total_items: savedData.totalItems || items.length,
+        created_by: savedData.createdBy || user.username,
+        total_views: 1,
+        visibility: savedData.visibility || 0,
+        created_at: savedData.created_at || new Date().toISOString(),
+        items: savedData.items || transformedItems,
+      };
+
+      // Emit the transformed data
+      socket.emit("newStudyMaterial", broadcastData);
+
+      // Navigate to preview page
       navigate(
-        `/dashboard/study-material/preview/${savedData.studyMaterialId}`
+        `/dashboard/study-material/preview/${broadcastData.study_material_id}`
       );
     } catch (error) {
       console.error("Failed to save study material:", error);
-      handleShowSnackbar("Failed to save study material. Please try again.");
+      handleShowSnackbar(
+        error instanceof Error
+          ? error.message
+          : "Failed to save study material. Please try again."
+      );
     }
-  };
-
-  // Function to convert a File to Base64
-  const convertFileToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-    });
   };
 
   const handleUploadFile = () => {
@@ -156,7 +179,7 @@ const CreateStudyMaterial = () => {
   return (
     <>
       <PageTransition>
-        <Box className="h-screen w-full px-8">
+        <Box className="h-full w-full px-8">
           <DocumentHead title={title || "Create Study Material"} />
           <Stack spacing={2.5}>
             {/* Title Input */}

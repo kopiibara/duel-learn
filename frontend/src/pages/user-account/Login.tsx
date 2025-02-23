@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
-import { toast } from "react-hot-toast";
+import ErrorsSnackbar from "../../components/ErrorsSnackbar";
 import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import {
   getFirestore,
@@ -34,8 +34,10 @@ const Login = () => {
     password: "",
   });
   const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
-  const { error, handleLoginError } = useHandleError();
+  const { handleLoginError } = useHandleError();
   const navigate = useNavigate();
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -45,6 +47,10 @@ const Login = () => {
 
   const togglePassword = () => {
     setShowPassword(!showPassword); // Toggle password visibility
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
   };
 
   // Login Component (handleGoogleSignIn)
@@ -85,9 +91,10 @@ const Login = () => {
           }
         }, 2000);
       }
-    } catch (error) {
-      console.error("Error during sign-in:", error);
-      toast.error("Google sign-in failed. Please try again.");
+    } catch (error: any) {
+      handleLoginError(error);
+      setErrorMessage(error.message);
+      setSnackbarOpen(true);
     }
   };
 
@@ -98,17 +105,24 @@ const Login = () => {
 
     try {
       if (!/\S+@\S+\.\S+/.test(username)) {
-        // If username is not an email, fetch email from user collection
-        const db = getFirestore();
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("username", "==", username));
-        const querySnapshot = await getDocs(q);
+        try {
+          const usersRef = collection(db, "users");
+          const q = query(usersRef, where("username", "==", username));
+          const querySnapshot = await getDocs(q);
 
-        if (!querySnapshot.empty) {
-          const userDoc = querySnapshot.docs[0];
-          email = userDoc.data().email;
-        } else {
-          throw new Error("Username not found");
+          if (!querySnapshot.empty) {
+            email = querySnapshot.docs[0].data().email;
+          } else {
+            handleLoginError({ code: "auth/user-not-found" });
+            setErrorMessage("No account found with this email. Sign up first.");
+            setSnackbarOpen(true);
+            return;
+          }
+        } catch (firestoreError) {
+          handleLoginError({ code: "auth/network-request-failed" });
+          setErrorMessage("Network error. Please check your connection.");
+          setSnackbarOpen(true);
+          return;
         }
       }
 
@@ -146,8 +160,10 @@ const Login = () => {
           }
         }, 2000);
       }
-    } catch (error) {
-      handleLoginError(error); // Use the hook to handle login error
+    } catch (error: any) {
+      handleLoginError(error);
+      setErrorMessage(error.message);
+      setSnackbarOpen(true);
     }
   };
 
@@ -217,9 +233,6 @@ const Login = () => {
               </span>
             </div>
 
-            {/* Error Message */}
-            {error && <p className="text-red-500 text-center mt-2">{error}</p>}
-
             {/* Forgot Password */}
             <div className="text-right">
               <Link
@@ -261,13 +274,18 @@ const Login = () => {
 
           {/* Footer */}
           <p className="text-center text-sm text-[#9F9BAE] mt-6">
-            Don’t have an account?{" "}
+            Don't have an account?{" "}
             <Link to="/sign-up" className="text-[#4D18E8] hover:underline">
               Sign up
             </Link>
           </p>
         </div>
       </div>
+      <ErrorsSnackbar
+        open={snackbarOpen}
+        message={errorMessage}
+        onClose={handleSnackbarClose}
+      />
     </PageTransition>
   );
 };
