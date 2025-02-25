@@ -29,7 +29,7 @@ const Login = () => {
     password: "",
   });
   const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
-  const { error, handleLoginError } = useHandleError();
+  const { error, handleLoginError, setError } = useHandleError();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -103,7 +103,7 @@ const Login = () => {
           const userDoc = querySnapshot.docs[0];
           email = userDoc.data().email;
         } else {
-          throw new Error("Username not found");
+          throw setError("Username not found");
         }
       }
 
@@ -181,8 +181,12 @@ const Login = () => {
                 onChange={(e) => setData({ ...data, username: e.target.value })}
                 placeholder="Enter your username or email"
                 required
-                className="w-full bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
+                  error ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                }`}
+                
               />
+              
             </div>
 
             {/* Password Input */}
@@ -198,7 +202,10 @@ const Login = () => {
                 onChange={(e) => setData({ ...data, password: e.target.value })}
                 placeholder="Enter your password"
                 required
-                className="w-full bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
+                  error ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                }`}
+                
               />
               <span
                 onClick={togglePassword}
