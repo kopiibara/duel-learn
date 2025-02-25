@@ -10,14 +10,13 @@ import {
   verifyPasswordResetCode,
   confirmPasswordReset,
 } from "firebase/auth";
-import { auth } from "../../services/firebase"; // Adjust the path as needed
+import { auth, db } from "../../services/firebase"; // Adjust the path as needed
 import usePasswordValidation from "../../hooks/validation.hooks/usePasswordValidation";
 import PageTransition from "../../styles/PageTransition";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
 import useResetPasswordApi from "../../hooks/api.hooks/useResetPasswordApi";
 import moment from "moment"; // Add this import
-import { setDoc, doc} from "firebase/firestore";
-import { db } from "../../services/firebase"; // Adjust the path as needed
+import { setDoc, doc, getDoc } from "firebase/firestore";
 import bcrypt from "bcryptjs"; // Add this import
 
 const ResetPassword = () => {
@@ -106,6 +105,17 @@ const ResetPassword = () => {
     console.log("firebase_uid received from location SecurityCode:", firebase_uid);
 
     try {
+      const userDoc = await getDoc(doc(db, "users", firebase_uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const isMatch = await bcrypt.compare(newpassword, userData.password_hash);
+        if (isMatch) {
+          setError({ general: "Cannot use old password. Please try again" });
+          setLoading(false);
+          return;
+        }
+      }
+
       await confirmPasswordReset(auth, oobCode, newpassword);
       await resetPasswordApi(firebase_uid, password_hash, updated_at);
       await setDoc(doc(db, "users", firebase_uid), { updated_at, password_hash }, { merge: true });
