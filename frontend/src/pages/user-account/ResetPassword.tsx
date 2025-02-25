@@ -121,7 +121,12 @@ const ResetPassword = () => {
       await setDoc(doc(db, "users", firebase_uid), { updated_at, password_hash }, { merge: true });
       console.log(firebase_uid, newpassword) // Call the backend API to update the password hash
       alert("Password successfully reset!");
-      navigate("/login");
+
+      // Send message to other tabs using BroadcastChannel
+      const bc = new BroadcastChannel('password-reset');
+      bc.postMessage('reset_password_success');
+
+      navigate("/password-changed-successfully");
     } catch (err) {
       setError({ general: "Failed to Reset Password." });
     } finally {
