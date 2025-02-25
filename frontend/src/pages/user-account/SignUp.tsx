@@ -19,6 +19,8 @@ import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import PageTransition from "../../styles/PageTransition";
 import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
 import useApiError from "../../hooks/api.hooks/useApiError";
+import bcrypt from 'bcryptjs';
+
 const SignUp = () => {
   const { setUser, user } = useUser();
   const { handleLoginError } = useHandleError();
@@ -30,7 +32,7 @@ const SignUp = () => {
     terms: false,
   });
 
-  const { errors, validate, validateForm } = useValidation();
+  const { errors, validate, validateForm } = useValidation(formData); // Pass formData here
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -47,23 +49,20 @@ const SignUp = () => {
     const { username, password, confirmPassword, email, terms } = formData;
 
     if (
-      !validateForm({
+      !(await validateForm({
         username,
         password,
         confirmPassword,
         email,
         terms: terms.toString(),
-      })
+      }))
     ) {
       return;
     }
 
     try {
-      const result = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
+      const hashedPassword = await bcrypt.hash(password, 10);
+      const result = await createUserWithEmailAndPassword(auth, email, password);
 
       const token = await result.user.getIdToken();
       const additionalUserInfo = getAdditionalInfo(result);
@@ -85,7 +84,7 @@ const SignUp = () => {
         firebase_uid: userData.firebase_uid || "",
         username: userData.username,
         email: userData.email,
-        password_hash: "N/A", // Store the hashed password if needed
+        password_hash: hashedPassword, // Store the hashed password
         created_at: serverTimestamp(),
         updated_at: serverTimestamp(),
         display_picture: userData.display_picture || "",
@@ -225,11 +224,11 @@ const SignUp = () => {
                 placeholder="Enter your username"
                 required
                 value={formData.username}
-                onChange={(e) => {
-                  setFormData({ ...formData, username: e.target.value });
-                  validate("username", e.target.value);
-                }}
-                className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                onBlur={(e) => validate("username", e.target.value)} // Validate on blur
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                  errors.username ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                }`}
               />
               {errors.username && (
                 <p className="text-red-500 mt-1 text-sm">{errors.username}</p>
@@ -248,7 +247,9 @@ const SignUp = () => {
                   validate("password", e.target.value);
                 }}
                 onCopy={(e) => e.preventDefault()} // Disable copy
-                className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                  errors.password ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                }`}
               />
               <span
                 onClick={togglePassword}
@@ -277,7 +278,9 @@ const SignUp = () => {
                   validate("confirmPassword", e.target.value, formData);
                 }}
                 onPaste={(e) => e.preventDefault()} // Disable paste
-                className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                  errors.confirmPassword ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                }`}
               />
               {errors.confirmPassword && (
                 <p className="text-red-500 mt-1 text-sm">
@@ -293,11 +296,11 @@ const SignUp = () => {
                 placeholder="Enter your email"
                 required
                 value={formData.email}
-                onChange={(e) => {
-                  setFormData({ ...formData, email: e.target.value });
-                  validate("email", e.target.value);
-                }}
-                className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onBlur={(e) => validate("email", e.target.value)} // Validate on blur
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                  errors.email ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                }`}
               />
               {errors.email && (
                 <p className="text-red-500 mt-1 text-sm">{errors.email}</p>

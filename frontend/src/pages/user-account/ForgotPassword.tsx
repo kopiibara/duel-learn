@@ -1,11 +1,13 @@
 import { Link, useNavigate } from "react-router-dom";
 import ExitIcon from "../../assets/images/Exit.png";
 import React, { useState } from "react";
-import { TextField, CircularProgress, Modal } from "@mui/material";
+import { CircularProgress, Modal } from "@mui/material";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../services/firebase";
 import PageTransition from "../../styles/PageTransition";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
+import useHandleError from "../../hooks/validation.hooks/useHandleError"; // Add this import
+import useValidation from "../../hooks/validation.hooks/useValidation"; // Add this import
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -14,13 +16,10 @@ const ForgotPassword = () => {
     email: "",
   });
 
-  const [errors, setErrors] = useState({
-    email: "",
-  });
-
-  const [error, setError] = useState({ general: "" });
+  const { errors, validate } = useValidation(formData);
   const [loading, setLoading] = useState(false);
   const [isSSOModalOpen, setIsSSOModalOpen] = useState(false);
+  const { error, handleLoginError, setError } = useHandleError();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -29,38 +28,30 @@ const ForgotPassword = () => {
     let newErrors = { email: "" };
 
     if (!email) {
-      newErrors.email = "Email or phone is required.";
+      newErrors.email = "Email is required.";
       formIsValid = false;
+    } else {
+      const emailError = await validate("email", email);
+      if (emailError) {
+        newErrors.email = emailError;
+        formIsValid = false;
+      }
     }
 
     if (!formIsValid) {
-      setErrors(newErrors);
+      setError("Please fill in all required fields.");
       return;
     }
 
     try {
       setLoading(true);
       const usersRef = collection(db, "users");
-      let q;
-
-      // Check if the input is an email or phone number
-      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      const phonePattern = /^\d{10,15}$/;
-
-      if (emailPattern.test(email)) {
-        q = query(usersRef, where("email", "==", email));
-      } else if (phonePattern.test(email)) {
-        q = query(usersRef, where("phone", "==", email));
-      } else {
-        setError({ general: "Invalid email or phone format." });
-        setLoading(false);
-        return;
-      }
+      const q = query(usersRef, where("email", "==", email));
 
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-        setError({ general: "Account doesn't exist." });
+        setError("Account doesn't exist.");
       } else {
         const userDoc = querySnapshot.docs[0];
         const userData = userDoc.data();
@@ -71,7 +62,7 @@ const ForgotPassword = () => {
         }
       }
     } catch (error) {
-      setError({ general: (error as any).message });
+      handleLoginError(error);
     } finally {
       setLoading(false);
     }
@@ -79,8 +70,7 @@ const ForgotPassword = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prevData) => ({ ...prevData, [field]: value }));
-    setErrors((prevErrors) => ({ ...prevErrors, [field]: "" }));
-    setError({ general: "" });
+    setError("");
   };
 
   const handleExitClick = () => {
@@ -112,12 +102,12 @@ const ForgotPassword = () => {
             Forgot Password
           </h1>
           <p className="text-lg text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
-            Please enter your email or phone to search for your account.
+            Please enter your email to search for your account.
           </p>
 
-          {error.general && (
+          {error && (
             <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-md border border-red-300">
-              {error.general}
+              {error}
             </div>
           )}
 
@@ -126,14 +116,18 @@ const ForgotPassword = () => {
               <input
                 id="email"
                 type="text"
-                placeholder="Enter your email or phone"
+                placeholder="Enter your email"
                 value={formData.email}
                 autoComplete="off"
                 onChange={(e) => handleInputChange("email", e.target.value)}
-                className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] ${
-                  errors.email ? "border border-red-500" : ""
+                className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
+                  errors.email ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
                 }`}
               />
+              {errors.email && (
+                <p className="text-red-500 mt-1 text-sm">{errors.email}</p>
+              )}
+              
             </div>
             <button
               type="submit"

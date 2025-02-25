@@ -2,6 +2,7 @@ import manilacurrentTimestamp from "../utils/CurrentTimestamp.js";
 import { pool } from "../config/db.js";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcrypt";
+import moment from "moment";
 
 export default {
   signUpUser: async (req, res) => {
@@ -53,11 +54,10 @@ export default {
   resetPassword: async (req, res) => {
     let connection;
     try {
-      const updated_at = manilacurrentTimestamp;
-      const { firebase_uid, newPassword } = req.body;
+      const { firebase_uid, password_hash, updated_at } = req.body;
 
-      // Hash the new password
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
+      // Convert the updated_at to the desired format
+      const sqlTimestamp = moment(updated_at).format("YYYY-MM-DD HH:mm:ss");
 
       // Get a connection from the pool
       connection = await pool.getConnection();
@@ -65,7 +65,7 @@ export default {
       // Update the user's password hash and updated_at in the database
       await connection.execute(
         `UPDATE users SET password_hash = ?, updated_at = ? WHERE firebase_uid = ?;`,
-        [hashedPassword, updated_at, firebase_uid]
+        [password_hash, sqlTimestamp, firebase_uid]
       );
 
       // Send a success response

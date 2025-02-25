@@ -44,3 +44,16 @@ html, body {
     transform: translateY(-5px);
   }
 }
+/* Autofill styles */
+input:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 30px #4D3A6A inset !important; /* Autofill background color */
+  -webkit-text-fill-color: #D1C4E9 !important; /* Autofill text color */
+  transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
+}
+
+/* Revert styles when autofill is removed */
+input:not(:-webkit-autofill) {
+  -webkit-box-shadow: none !important;
+  -webkit-text-fill-color: initial !important;
+  transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
+}
