@@ -15,6 +15,10 @@ import usePasswordValidation from "../../hooks/validation.hooks/usePasswordValid
 import PageTransition from "../../styles/PageTransition";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
 import useResetPasswordApi from "../../hooks/api.hooks/useResetPasswordApi";
+import moment from "moment"; // Add this import
+import { setDoc, doc} from "firebase/firestore";
+import { db } from "../../services/firebase"; // Adjust the path as needed
+import bcrypt from "bcryptjs"; // Add this import
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -74,7 +78,7 @@ const ResetPassword = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const { newpassword, confirmPassword } = formData;
-
+    const updated_at = moment().format("YYYY-MM-DD HH:mm:ss"); // Use moment to format the timestamp
     const formIsValid = validatePasswordForm({
       newpassword,
       confirmPassword,
@@ -89,6 +93,8 @@ const ResetPassword = () => {
     const queryParams = new URLSearchParams(location.search);
     const oobCode = queryParams.get("oobCode");
     const firebase_uid = queryParams.get("firebase_uid") || "";
+    // Hash the new password using bcrypt
+    const password_hash = await bcrypt.hash(newpassword, 10);
 
     if (!oobCode) {
       setError({ general: "Invalid or missing reset code." });
@@ -101,7 +107,8 @@ const ResetPassword = () => {
 
     try {
       await confirmPasswordReset(auth, oobCode, newpassword);
-      await resetPasswordApi(firebase_uid, newpassword);
+      await resetPasswordApi(firebase_uid, password_hash, updated_at);
+      await setDoc(doc(db, "users", firebase_uid), { updated_at, password_hash }, { merge: true });
       console.log(firebase_uid, newpassword) // Call the backend API to update the password hash
       alert("Password successfully reset!");
       navigate("/login");
