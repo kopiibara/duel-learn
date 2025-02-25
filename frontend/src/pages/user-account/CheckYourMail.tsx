@@ -69,7 +69,23 @@ export default function CheckYourMail() {
       setButtonText("Send Email");
     }
   }, [timeRemaining]);
-
+  
+  useEffect(() => {
+    const bc = new BroadcastChannel('password-reset');
+  
+    const handleResetPasswordSuccess = (message: MessageEvent) => {
+      if (message.data === 'reset_password_success') {
+        navigate("/password-changed-successfully");
+      }
+    };
+  
+    bc.addEventListener('message', handleResetPasswordSuccess);
+  
+    return () => {
+      bc.removeEventListener('message', handleResetPasswordSuccess);
+      bc.close();
+    };
+  }, [navigate]);
   return (
     <PageTransition>
       <main
