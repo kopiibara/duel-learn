@@ -4,6 +4,7 @@ import SessionReportBanner from "../../../assets/General/SessionReportBanner.png
 import ClockIcon from "../../../assets/clock.png";
 import ManaIcon from "../../../assets/ManaIcon.png";
 import { useNavigate, useLocation } from 'react-router-dom';
+import banner from "./banner.jpg"
 
 interface SessionReportProps {
     timeSpent: string;
@@ -21,7 +22,7 @@ interface StatisticProps {
 const StatisticBox = ({ label, value, icon }: StatisticProps & { icon: string }) => (
     <div className="backdrop-blur-sm px-6 py-7 rounded-md border border-white">
         <div className="flex items-center gap-2 justify-center">
-            <img src={icon} alt="" className="w-4 h-4" />
+            <img src={icon} alt="" className="w-4 h-4 mb-1" />
             <div className="text-sm mb-1 text-gray-400 uppercase tracking-wider">{label}</div>
         </div>
         <div className="text-xl font-bold text-white mt-1">{value}</div>
@@ -61,7 +62,7 @@ const SessionReport = () => {
                 <div>
                     <div className="flex justify-center">
                         <img
-                            src={SessionReportBanner}
+                            src={banner}
                             alt="Session Report Banner"
                             className="w-72"
                         />

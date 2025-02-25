@@ -7,7 +7,7 @@ import ellipseShadow from "../../../assets/General/Ellipse.png";
 export default function LoadingScreen() {
     const location = useLocation();
     const navigate = useNavigate();
-    const { mode, material, selectedQuestionTypes } = location.state || {};
+    const { mode, material, selectedTypes, timeLimit } = location.state || {};
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -16,7 +16,17 @@ export default function LoadingScreen() {
                     state: {
                         mode,
                         material,
-                        selectedQuestionTypes
+                        selectedTypes,
+                        timeLimit
+                    }
+                });
+            } else if (mode === "Time Pressured") {
+                navigate("/dashboard/study/peaceful-mode/flashcards", {
+                    state: {
+                        mode,
+                        material,
+                        selectedTypes,
+                        timeLimit
                     }
                 });
             }
@@ -26,13 +36,14 @@ export default function LoadingScreen() {
         console.log("LoadingScreen state:", {
             mode,
             material,
-            selectedQuestionTypes
+            selectedTypes,
+            timeLimit
         });
 
         return () => clearTimeout(timer);
-    }, [mode, material, selectedQuestionTypes, navigate]);
+    }, [mode, material, selectedTypes, timeLimit, navigate]);
 
-    console.log("Mode:", mode, "Material:", material, "Selected Types:", selectedQuestionTypes);
+    console.log("Mode:", mode, "Material:", material, "Selected Types:", selectedTypes);
 
     return (
         <PageTransition>
@@ -63,10 +74,16 @@ export default function LoadingScreen() {
                         className="mt-12 text-xl font-medium text-center text-zinc-400 max-md:mt-5 max-w-[700px]"
                         style={{ fontFamily: "Nunito" }}
                     >
-                        <span className="text-[#9F9BAE]">
-                            Peaceful Mode for relaxed practice and review. The best way to
-                            retain those lessons in your head, Magician.
-                        </span>
+                        {mode === "Time Pressured" ? (
+                            <span className="text-[#9F9BAE]">
+                                Time Pressured Mode for quick thinking and rapid responses. Get ready to showcase your skills, Magician!
+                            </span>
+                        ) : (
+                            <span className="text-[#9F9BAE]">
+                                Peaceful Mode for relaxed practice and review. The best way to
+                                retain those lessons in your head, Magician.
+                            </span>
+                        )}
                     </p>
                 </section>
             </main>

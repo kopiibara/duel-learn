@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import Header from "./Header"
 import VisibilityIcon from '@mui/icons-material/Visibility'
@@ -564,13 +564,15 @@ export default function MainFlashCardLayout() {
     const {
         mode = 'Peaceful',
         material = 'default',
-        selectedQuestionTypes = ['multiple-choice'],  // Default question type
-        difficulty
+        selectedTypes = ['multiple-choice'],  // Updated from selectedQuestionTypes
+        timeLimit = null, // Add timeLimit with null default
+        difficulty = null, // Add difficulty with null default
     } = location.state || {}
     const navigate = useNavigate()
     const [startTime] = useState(new Date())
     const [correctCount, setCorrectCount] = useState(0)
     const [incorrectCount, setIncorrectCount] = useState(0)
+    const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
 
     // Add safety check for required props
     if (!location.state) {
@@ -584,10 +586,10 @@ export default function MainFlashCardLayout() {
         if (mode === 'pvp') {
             return question.mode === mode &&
                 question.difficulty === difficulty &&
-                selectedQuestionTypes.includes(question.questionType)
+                selectedTypes.includes(question.questionType)
         }
         return question.mode === mode &&
-            selectedQuestionTypes.includes(question.questionType)
+            selectedTypes.includes(question.questionType)
     })
 
     // Add safety check for empty filtered questions
@@ -743,8 +745,35 @@ export default function MainFlashCardLayout() {
         }
     };
 
+    // Initialize timer when component mounts
+    useEffect(() => {
+        if (timeLimit) {
+            setTimeRemaining(timeLimit * 60) // Convert minutes to seconds
+            const timer = setInterval(() => {
+                setTimeRemaining(prev => {
+                    if (prev === null || prev <= 0) {
+                        clearInterval(timer)
+                        handleGameComplete()
+                        return 0
+                    }
+                    return prev - 1
+                })
+            }, 1000)
+
+            return () => clearInterval(timer)
+        }
+    }, [timeLimit])
+
+    // Format time as mm:ss
+    const formatTime = (seconds: number | null) => {
+        if (seconds === null) return ''
+        const minutes = Math.floor(seconds / 60)
+        const remainingSeconds = seconds % 60
+        return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+    }
+
     return (
-        <div className="min-h-screen">
+        <div className="min-h-screen relative">
             <Header
                 material={material}
                 mode={mode}
@@ -821,6 +850,22 @@ export default function MainFlashCardLayout() {
                     )}
                 </div>
             </main>
+
+            {/* Timer Display - Added at bottom */}
+            {timeLimit && timeRemaining !== null && (
+                <div className="fixed bottom-0 left-0 w-full flex justify-center pb-4">
+                    <div
+                        className={`text-2xl font-bold px-6 py-2 rounded-full 
+                            ${timeRemaining <= 7
+                                ? 'text-red-500 animate-pulse'
+                                : 'text-white'
+                            }
+                            transition-colors duration-300`}
+                    >
+                        {formatTime(timeRemaining)}
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

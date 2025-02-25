@@ -70,13 +70,14 @@ const SetUpQuestionType: React.FC = () => {
         },
       });
     }
-    // If the mode is "Peaceful Mode", navigate to LoadingScreen
+    // If the mode is "Peaceful", navigate to LoadingScreen
     else if (mode === "Peaceful") {
       navigate("/dashboard/loading-screen", {
         state: {
           mode,
           material,
-          selectedQuestionTypes: selectedTypes
+          selectedTypes,
+          timeLimit: null
         },
       });
     }
