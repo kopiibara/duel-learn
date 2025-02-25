@@ -10,11 +10,14 @@ import {
   verifyPasswordResetCode,
   confirmPasswordReset,
 } from "firebase/auth";
-import { auth } from "../../services/firebase"; // Adjust the path as needed
+import { auth, db } from "../../services/firebase"; // Adjust the path as needed
 import usePasswordValidation from "../../hooks/validation.hooks/usePasswordValidation";
 import PageTransition from "../../styles/PageTransition";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
 import useResetPasswordApi from "../../hooks/api.hooks/useResetPasswordApi";
+import moment from "moment"; // Add this import
+import { setDoc, doc, getDoc } from "firebase/firestore";
+import bcrypt from "bcryptjs"; // Add this import
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -74,7 +77,7 @@ const ResetPassword = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const { newpassword, confirmPassword } = formData;
-
+    const updated_at = moment().format("YYYY-MM-DD HH:mm:ss"); // Use moment to format the timestamp
     const formIsValid = validatePasswordForm({
       newpassword,
       confirmPassword,
@@ -89,6 +92,8 @@ const ResetPassword = () => {
     const queryParams = new URLSearchParams(location.search);
     const oobCode = queryParams.get("oobCode");
     const firebase_uid = queryParams.get("firebase_uid") || "";
+    // Hash the new password using bcrypt
+    const password_hash = await bcrypt.hash(newpassword, 10);
 
     if (!oobCode) {
       setError({ general: "Invalid or missing reset code." });
@@ -100,11 +105,28 @@ const ResetPassword = () => {
     console.log("firebase_uid received from location SecurityCode:", firebase_uid);
 
     try {
+      const userDoc = await getDoc(doc(db, "users", firebase_uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const isMatch = await bcrypt.compare(newpassword, userData.password_hash);
+        if (isMatch) {
+          setError({ general: "Cannot use old password. Please try again" });
+          setLoading(false);
+          return;
+        }
+      }
+
       await confirmPasswordReset(auth, oobCode, newpassword);
-      await resetPasswordApi(firebase_uid, newpassword);
+      await resetPasswordApi(firebase_uid, password_hash, updated_at);
+      await setDoc(doc(db, "users", firebase_uid), { updated_at, password_hash }, { merge: true });
       console.log(firebase_uid, newpassword) // Call the backend API to update the password hash
       alert("Password successfully reset!");
-      navigate("/login");
+
+      // Send message to other tabs using BroadcastChannel
+      const bc = new BroadcastChannel('password-reset');
+      bc.postMessage('reset_password_success');
+
+      navigate("/password-changed-successfully");
     } catch (err) {
       setError({ general: "Failed to Reset Password." });
     } finally {
@@ -185,8 +207,8 @@ const ResetPassword = () => {
                 onChange={(e) => handleInputChange("newpassword", e.target.value)}
                 onCopy={(e) => e.preventDefault()} // Disable copy
                 onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
-                  errors.newpassword ? "border border-red-500" : ""
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
+                  errors.newpassword ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
                 }`}
                 
               />
@@ -218,8 +240,8 @@ const ResetPassword = () => {
                 onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                 onPaste={(e) => e.preventDefault()}
                 onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] pr-12 ${
-                  errors.confirmPassword ? "border border-red-500" : ""
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
+                  errors.confirmPassword ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
                 }`}
               />
               {/* Confirm Password Toggle Button */}

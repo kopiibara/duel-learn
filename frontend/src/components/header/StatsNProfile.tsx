@@ -30,16 +30,6 @@ const StatsNProfile = () => {
     setAnchorEl(null);
   };
 
-  const getInitials = (name: string | null) => {
-    if (!name) return "";
-    const nameParts = name.split(" ");
-    const initials = nameParts
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase();
-    return initials;
-  };
-
   return (
     <Box className="flex items-center space-x-2 sm:space-x-6">
       {/* Xp */}
@@ -106,10 +96,7 @@ const StatsNProfile = () => {
               backgroundColor: "rgba(0, 0, 0, 0.08)", // Optional: add a subtle background color change on hover
             },
           }}
-        >
-          {!user?.display_picture && getInitials(user?.username ?? null)}{" "}
-          {/* Display initials if no photoURL */}
-        </Avatar>
+        />
       </Tooltip>
 
       {/* Profile Popover */}
