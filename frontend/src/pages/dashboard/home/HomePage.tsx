@@ -6,7 +6,6 @@ import PageTransition from "../../../styles/PageTransition";
 import ChooseYourChallenge from "../../../components/ChooseYourChallenge";
 import DiscoverMore from "./DiscoverMore";
 import RecentlyOpened from "./RecentlyOpened";
-import PremiumAdsBG from "../../../assets/shop-picture/premium-ads-bg.png";
 
 
 const HomePage = ({
