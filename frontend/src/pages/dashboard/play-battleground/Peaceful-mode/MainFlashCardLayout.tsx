@@ -4,12 +4,13 @@ import { useState, useEffect } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import Header from "./Header"
 import VisibilityIcon from '@mui/icons-material/Visibility'
+import clockTimePressured from "../../../../assets/clockTimePressured.png"
 
 interface Question {
     question: string;
     correctAnswer: string;
     options?: string[];  // Optional since identification won't have options
-    mode: 'Peaceful' | 'time-pressured' | 'pvp';
+    mode: 'Peaceful' | 'Time Pressured' | 'pvp';
     difficulty?: 'easy' | 'average' | 'hard';  // Only for pvp mode
     questionType: 'multiple-choice' | 'identification' | 'true-false';
 }
@@ -92,71 +93,140 @@ const questionsData: Question[] = [
         question: "Which sorting algorithm has the worst time complexity?",
         correctAnswer: "Bubble Sort",
         options: ["Quick Sort", "Merge Sort", "Bubble Sort", "Heap Sort"],
-        mode: "time-pressured",
+        mode: "Time Pressured",
         questionType: "multiple-choice"
     },
     {
         question: "What is the output of 2 + '2' in JavaScript?",
         correctAnswer: "22",
         options: ["4", "22", "NaN", "Error"],
-        mode: "time-pressured",
+        mode: "Time Pressured",
         questionType: "multiple-choice"
     },
     {
         question: "What is the result of typeof null in JavaScript?",
         correctAnswer: "object",
         options: ["object", "null", "undefined", "number"],
-        mode: "time-pressured",
+        mode: "Time Pressured",
         questionType: "multiple-choice"
     },
     {
         question: "Which method removes the last element from an array?",
         correctAnswer: "pop()",
         options: ["pop()", "push()", "shift()", "unshift()"],
-        mode: "time-pressured",
+        mode: "Time Pressured",
         questionType: "multiple-choice"
     },
     {
         question: "What is the default value of a variable declared with let?",
         correctAnswer: "undefined",
         options: ["undefined", "null", "0", "''"],
-        mode: "time-pressured",
+        mode: "Time Pressured",
         questionType: "multiple-choice"
     },
     {
         question: "Which operator is used for strict equality?",
         correctAnswer: "===",
         options: ["===", "==", "=", "!="],
-        mode: "time-pressured",
+        mode: "Time Pressured",
         questionType: "multiple-choice"
     },
     {
         question: "What method converts JSON to a JavaScript object?",
         correctAnswer: "JSON.parse()",
         options: ["JSON.parse()", "JSON.stringify()", "JSON.convert()", "JSON.toObject()"],
-        mode: "time-pressured",
+        mode: "Time Pressured",
         questionType: "multiple-choice"
     },
     {
         question: "What is the result of 3 > 2 > 1?",
         correctAnswer: "false",
         options: ["false", "true", "undefined", "Error"],
-        mode: "time-pressured",
+        mode: "Time Pressured",
         questionType: "multiple-choice"
     },
     {
         question: "Which method adds elements to the beginning of an array?",
         correctAnswer: "unshift()",
         options: ["unshift()", "shift()", "push()", "pop()"],
-        mode: "time-pressured",
+        mode: "Time Pressured",
         questionType: "multiple-choice"
     },
     {
         question: "What is the result of typeof NaN?",
         correctAnswer: "number",
         options: ["number", "NaN", "undefined", "object"],
-        mode: "time-pressured",
+        mode: "Time Pressured",
         questionType: "multiple-choice"
+    },
+
+    // Time Pressured Mode - Identification Questions (5)
+    {
+        question: "What programming paradigm is JavaScript primarily based on?",
+        correctAnswer: "Object-Oriented Programming",
+        mode: "Time Pressured",
+        questionType: "identification"
+    },
+    {
+        question: "What command is used to initialize a new Git repository?",
+        correctAnswer: "git init",
+        mode: "Time Pressured",
+        questionType: "identification"
+    },
+    {
+        question: "What hook is used in React to perform side effects?",
+        correctAnswer: "useEffect",
+        mode: "Time Pressured",
+        questionType: "identification"
+    },
+    {
+        question: "What is the name of Node.js's package manager?",
+        correctAnswer: "npm",
+        mode: "Time Pressured",
+        questionType: "identification"
+    },
+    {
+        question: "What property is used to change the text color in CSS?",
+        correctAnswer: "color",
+        mode: "Time Pressured",
+        questionType: "identification"
+    },
+
+    // Time Pressured Mode - True/False Questions (5)
+    {
+        question: "In JavaScript, NaN is of type 'number'.",
+        correctAnswer: "true",
+        options: ["true", "false"],
+        mode: "Time Pressured",
+        questionType: "true-false"
+    },
+    {
+        question: "The === operator in JavaScript compares both value and type.",
+        correctAnswer: "true",
+        options: ["true", "false"],
+        mode: "Time Pressured",
+        questionType: "true-false"
+    },
+    {
+        question: "React components must always return multiple elements.",
+        correctAnswer: "false",
+        options: ["true", "false"],
+        mode: "Time Pressured",
+        questionType: "true-false"
+    },
+    {
+        question: "localStorage data persists even after the browser is closed.",
+        correctAnswer: "true",
+        options: ["true", "false"],
+        mode: "Time Pressured",
+        questionType: "true-false"
+    },
+    {
+        question: "CSS flexbox is only for horizontal alignment.",
+        correctAnswer: "false",
+        options: ["true", "false"],
+        mode: "Time Pressured",
+        questionType: "true-false"
     },
 
     // PVP Mode - Easy Questions (10)
@@ -573,6 +643,8 @@ export default function MainFlashCardLayout() {
     const [correctCount, setCorrectCount] = useState(0)
     const [incorrectCount, setIncorrectCount] = useState(0)
     const [timeRemaining, setTimeRemaining] = useState<number | null>(null)
+    const [questionTimer, setQuestionTimer] = useState<number | null>(null);
+    const [timerProgress, setTimerProgress] = useState(100); // Progress percentage
 
     // Add safety check for required props
     if (!location.state) {
@@ -607,6 +679,37 @@ export default function MainFlashCardLayout() {
     // Add this helper function to check if it's the last question
     const isLastQuestion = currentQuestionIndex === filteredQuestions.length - 1;
 
+    // Initialize timer when component mounts or when moving to next question
+    useEffect(() => {
+        let timer: NodeJS.Timeout;
+
+        // Only start timer if in Time Pressured mode and not showing result
+        if (timeLimit && mode === "Time Pressured" && !showResult) {
+            setQuestionTimer(timeLimit);
+            setTimerProgress(100);
+
+            timer = setInterval(() => {
+                setQuestionTimer(prev => {
+                    if (prev === null || prev <= 0) {
+                        clearInterval(timer);
+                        // Auto submit wrong answer when time is up
+                        if (!showResult) {
+                            handleAnswerSubmit('');
+                            // Don't auto-advance, let user see the correct answer first
+                        }
+                        return 0;
+                    }
+                    // Calculate progress percentage
+                    const progress = (prev / timeLimit) * 100;
+                    setTimerProgress(progress);
+                    return prev - 1;
+                });
+            }, 1000);
+        }
+
+        return () => clearInterval(timer);
+    }, [currentQuestionIndex, timeLimit, showResult, mode]);
+
     const handleAnswerSubmit = (answer: string) => {
         if (showResult) return;
 
@@ -626,20 +729,20 @@ export default function MainFlashCardLayout() {
 
     const handleNextQuestion = () => {
         if (!isLastQuestion) {
-            setIsFlipped(false);  // Start flip back animation
+            setIsFlipped(false);
 
-            // Change content when card is perpendicular (middle of flip animation)
             setTimeout(() => {
                 setCurrentQuestionIndex(prev => prev + 1);
                 setSelectedAnswer(null);
-                setInputAnswer("");  // Clear the input answer
+                setInputAnswer("");
                 setShowResult(false);
                 setShowNextButton(false);
+                // Timer will automatically start for next question due to useEffect dependencies
             }, 300);
         } else {
             handleGameComplete();
         }
-    }
+    };
 
     const handleGameComplete = () => {
         const endTime = new Date();
@@ -745,25 +848,6 @@ export default function MainFlashCardLayout() {
         }
     };
 
-    // Initialize timer when component mounts
-    useEffect(() => {
-        if (timeLimit) {
-            setTimeRemaining(timeLimit * 60) // Convert minutes to seconds
-            const timer = setInterval(() => {
-                setTimeRemaining(prev => {
-                    if (prev === null || prev <= 0) {
-                        clearInterval(timer)
-                        handleGameComplete()
-                        return 0
-                    }
-                    return prev - 1
-                })
-            }, 1000)
-
-            return () => clearInterval(timer)
-        }
-    }, [timeLimit])
-
     // Format time as mm:ss
     const formatTime = (seconds: number | null) => {
         if (seconds === null) return ''
@@ -771,6 +855,40 @@ export default function MainFlashCardLayout() {
         const remainingSeconds = seconds % 60
         return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
     }
+
+    // Modify the TimerDisplay component
+    const TimerDisplay = () => {
+        if (!questionTimer && questionTimer !== 0) return null;
+
+        return (
+            <div className="fixed bottom-0 left-0 w-full">
+                {/* Timer text with clock icon - Positioned at right side */}
+                <div className="absolute left-12 bottom-8 flex items-center gap-2">
+                    <img
+                        src={clockTimePressured}
+                        alt="Timer"
+                        className="w-6 h-6"  // Adjust size as needed
+                    />
+                    <div
+                        className={`text-2xl font-bold ${questionTimer <= 7
+                            ? 'text-red-500 animate-pulse'
+                            : 'text-white'
+                            }`}
+                    >
+                        {questionTimer}s
+                    </div>
+                </div>
+
+                {/* Progress bar - At the bottom */}
+                <div className="w-full h-2 bg-gray-700">
+                    <div
+                        className={`h-full transition-all duration-1000 ${questionTimer <= 7 ? 'bg-red-500' : 'bg-[#fff]'}`}
+                        style={{ width: `${timerProgress}%` }}
+                    />
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="min-h-screen relative">
@@ -851,21 +969,8 @@ export default function MainFlashCardLayout() {
                 </div>
             </main>
 
-            {/* Timer Display - Added at bottom */}
-            {timeLimit && timeRemaining !== null && (
-                <div className="fixed bottom-0 left-0 w-full flex justify-center pb-4">
-                    <div
-                        className={`text-2xl font-bold px-6 py-2 rounded-full 
-                            ${timeRemaining <= 7
-                                ? 'text-red-500 animate-pulse'
-                                : 'text-white'
-                            }
-                            transition-colors duration-300`}
-                    >
-                        {formatTime(timeRemaining)}
-                    </div>
-                </div>
-            )}
+            {/* Add TimerDisplay component */}
+            {mode === "Time Pressured" && <TimerDisplay />}
         </div>
     )
 }
