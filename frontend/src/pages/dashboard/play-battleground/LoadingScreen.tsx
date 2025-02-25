@@ -20,10 +20,10 @@ export default function LoadingScreen() {
                         timeLimit
                     }
                 });
-            } else if (mode === "Time Pressured") {
+            } else if (mode === "Time Pressured") {  // Change this line
                 navigate("/dashboard/study/peaceful-mode/flashcards", {
                     state: {
-                        mode,
+                        mode: "Time Pressured",  // Add this line to normalize the mode name
                         material,
                         selectedTypes,
                         timeLimit

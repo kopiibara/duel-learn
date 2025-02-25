@@ -47,7 +47,7 @@ const SetUpTimeQuestion: React.FC = () => {
       // Navigate to loading screen with all parameters
       navigate("/dashboard/loading-screen", {
         state: {
-          mode,
+          mode: "Time Pressured",
           material,
           selectedTypes,
           timeLimit: timeLimit // Convert seconds to minutes
