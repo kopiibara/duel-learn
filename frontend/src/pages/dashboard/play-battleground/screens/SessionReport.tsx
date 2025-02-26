@@ -1,10 +1,9 @@
 import { Button } from "@mui/material";
-import SessionComplete from "../../../assets/General/SessionComplete.png";
-import SessionReportBanner from "../../../assets/General/SessionReportBanner.png";
-import ClockIcon from "../../../assets/clock.png";
-import ManaIcon from "../../../assets/ManaIcon.png";
+import SessionComplete from "../../../../assets/General/SessionComplete.png";
+import ClockIcon from "../../../../assets/clock.png";
+import ManaIcon from "../../../../assets/ManaIcon.png";
 import { useNavigate, useLocation } from 'react-router-dom';
-import banner from "./banner.jpg"
+import banner from "../banner.jpg"
 
 interface SessionReportProps {
     timeSpent: string;

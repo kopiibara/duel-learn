@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import DefaultUnknownPic from "../../../assets/General/DefaultUnknownPic.png";
+import DefaultUnknownPic from "../../../../assets/General/DefaultUnknownPic.png";
 
 const WelcomeGameMode: React.FC = () => {
   const location = useLocation();

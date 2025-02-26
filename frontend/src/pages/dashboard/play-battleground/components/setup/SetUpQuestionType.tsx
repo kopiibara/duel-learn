@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Alert, Snackbar } from "@mui/material"; // Import Snackbar and Alert from MUI
-import "./styles/setupques.css";
-import ManaIcon from "../../../assets/ManaIcon.png";
+import "./../../styles/setupques.css";
+import ManaIcon from "../../../../../assets/ManaIcon.png";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
-import PageTransition from "../../../styles/PageTransition";
+import PageTransition from "../../../../../styles/PageTransition";
 
 const SetUpQuestionType: React.FC = () => {
   const location = useLocation();
