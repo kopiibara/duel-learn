@@ -165,7 +165,7 @@ const ExplorePage = () => {
               <img
                 src={cauldronGif}
                 alt="Loading..."
-                style={{ width: "200px", height: "200px" }}
+                style={{ width: "8rem", height: "auto" }}
               />
             </Box>
           ) : (

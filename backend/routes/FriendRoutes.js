@@ -3,6 +3,8 @@ import friendController from "../controller/FriendController.js";
 
 const router = express.Router();
 
-router.get("/list/:user", friendController.getUserFriend);
+router.get("/info/:firebase_uid", friendController.getUserInfo);
+router.post("/request", friendController.sendFriendRequest);
+
 
 export default router;

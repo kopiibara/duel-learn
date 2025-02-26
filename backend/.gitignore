@@ -7,6 +7,8 @@ logs/
 
 # Environment variables
 .env
+*.env
+.env.*
 
 # Build output
 dist/
@@ -24,7 +26,8 @@ bower_components/
 # Windows files
 Thumbs.db
 
-/config/firebase-admin.json
+# Package files
+package-lock.json
+package.json
 
-.package-lock.json
-.packge.json
+.vscode/*

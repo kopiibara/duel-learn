@@ -169,7 +169,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         }}
       >
         <Stack spacing={3} className="flex">
-          <Stack direction="row" className="flex items-center" spacing={2}>
+          <Stack
+            direction="row"
+            className="flex items-center pb-2  "
+            spacing={2}
+          >
             <Button
               onClick={handleLandingPage}
               sx={{
@@ -228,7 +232,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               )}
             </Fab>
           </Stack>
-          <div style={{ marginTop: '10px' }} /> {/* This adds padding below Create */}
+
+          {/* This adds padding below Create */}
           {renderButton(
             <AddIcon
               fontSize="small"
