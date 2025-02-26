@@ -10,6 +10,9 @@ const WelcomeGameMode: React.FC = () => {
   const [fadeOut, setFadeOut] = useState(false);
   const [setupIsReady, setSetupIsReady] = useState(false);
 
+  // Add console log to debug
+  console.log("WelcomeGameMode received state:", { mode, material });
+
   // Check if SetUpQuestionType is ready
   useEffect(() => {
     const checkSetupComponent = async () => {
@@ -35,7 +38,7 @@ const WelcomeGameMode: React.FC = () => {
           navigate("/dashboard/setup/questions", {
             state: {
               mode,
-              material,
+              material: typeof material === 'string' ? { title: material } : material,
               fromWelcome: true
             }
           });

@@ -95,8 +95,22 @@ const TimePressuredMode: React.FC<GameState> = ({ mode, material, selectedTypes,
         }
     };
 
+    const getHeartbeatClass = () => {
+        if (questionTimer === null || questionTimer === 0) return '';
+        if (questionTimer <= 3) return 'animate-heartbeat';
+        return '';
+    };
+
+    const getBorderClass = () => {
+        if (questionTimer === null || questionTimer === 0) return '';
+        if (questionTimer <= (timeLimit ?? 30) / 2) {
+            return 'animate-danger-pulse rounded-lg backdrop-blur-sm';
+        }
+        return '';
+    };
+
     return (
-        <div className="min-h-screen relative">
+        <div className={`min-h-screen relative ${getBorderClass()}`}>
             <Header
                 material={material}
                 mode={mode}
@@ -106,12 +120,14 @@ const TimePressuredMode: React.FC<GameState> = ({ mode, material, selectedTypes,
             />
             <main className="pt-24 px-4">
                 <div className="mx-auto max-w-[1200px] flex flex-col items-center gap-8 h-[calc(100vh-96px)] justify-center">
-                    <FlashCard
-                        question={currentQuestion?.question || ''}
-                        correctAnswer={currentQuestion?.correctAnswer || ''}
-                        isFlipped={isFlipped}
-                        onFlip={handleFlip}
-                    />
+                    <div className={`w-[1200px] flex flex-col items-center gap-8 ${getHeartbeatClass()}`}>
+                        <FlashCard
+                            question={currentQuestion?.question || ''}
+                            correctAnswer={currentQuestion?.correctAnswer || ''}
+                            isFlipped={isFlipped}
+                            onFlip={handleFlip}
+                        />
+                    </div>
                     {renderQuestionContent()}
                     {showNextButton && (
                         <button
@@ -123,7 +139,11 @@ const TimePressuredMode: React.FC<GameState> = ({ mode, material, selectedTypes,
                     )}
                 </div>
             </main>
-            <Timer timeRemaining={questionTimer} progress={timerProgress} />
+            <Timer
+                timeRemaining={questionTimer}
+                progress={timerProgress}
+                timeLimit={timeLimit ?? 30}
+            />
         </div>
     );
 };
