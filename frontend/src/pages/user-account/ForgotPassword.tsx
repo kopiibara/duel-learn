@@ -1,144 +1,185 @@
-import { useNavigate } from "react-router-dom"; // Import useNavigate
-import { Box } from "@mui/material"; // Import Box component
-// Import left arrow icon
+import { Link, useNavigate } from "react-router-dom";
+import ExitIcon from "../../assets/images/Exit.png";
+import React, { useState } from "react";
+import { CircularProgress, Modal } from "@mui/material";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../../services/firebase";
+import PageTransition from "../../styles/PageTransition";
+import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
 
-  const handleSubmitButton = () => {
-    navigate("/email-Verification-Code");
+  const [formData, setFormData] = useState({
+    email: "",
+  });
+
+  const [errors, setErrors] = useState({
+    email: "",
+  });
+
+  const [error, setError] = useState({ general: "" });
+  const [loading, setLoading] = useState(false);
+  const [isSSOModalOpen, setIsSSOModalOpen] = useState(false);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const { email } = formData;
+    let formIsValid = true;
+    let newErrors = { email: "" };
+
+    if (!email) {
+      newErrors.email = "Email or phone is required.";
+      formIsValid = false;
+    }
+
+    if (!formIsValid) {
+      setErrors(newErrors);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const usersRef = collection(db, "users");
+      let q;
+
+      // Check if the input is an email or phone number
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const phonePattern = /^\d{10,15}$/;
+
+      if (emailPattern.test(email)) {
+        q = query(usersRef, where("email", "==", email));
+      } else if (phonePattern.test(email)) {
+        q = query(usersRef, where("phone", "==", email));
+      } else {
+        setError({ general: "Invalid email or phone format." });
+        setLoading(false);
+        return;
+      }
+
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        setError({ general: "Account doesn't exist." });
+      } else {
+        const userDoc = querySnapshot.docs[0];
+        const userData = userDoc.data();
+        if (userData.isSSO) {
+          setIsSSOModalOpen(true);
+        } else {
+          navigate("/confirmation-account", { state: { email } });
+        }
+      }
+    } catch (error) {
+      setError({ general: (error as any).message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prevData) => ({ ...prevData, [field]: value }));
+    setErrors((prevErrors) => ({ ...prevErrors, [field]: "" }));
+    setError({ general: "" });
   };
 
   const handleExitClick = () => {
-    navigate("/"); // Navigate to LoginPage
-  };
-
-  const handleSigninClick = () => {
-    navigate("/login"); // Navigate to LoginPage
+    navigate("/");
   };
 
   return (
-    <Box className=" flex flex-col items-center justify-center">
-      {/* Main content */}
-      <div
-        className="d-flex flex-column position-relative justify-content-center align-items-center w-100"
-        style={{
-          gap: "20px",
-          padding: "100px", // Padding for larger screens
-          minHeight: "100vh", // Ensures it takes the full vertical space
-          maxWidth: "100vw", // Max width for responsiveness
-        }}
-      >
-        {/* Exit Button for Larger Screens */}
-        <button
-          className="d-none d-lg-block border-0 bg-transparent position-absolute"
-          onClick={handleExitClick}
-          style={{
-            right: "100px", // Maintain fixed right padding for large screens
-            top: "40px", // Adjust vertical position
-          }}
-        ></button>
+    <PageTransition>
+      <div className="h-screen mt-[-30px] flex flex-col items-center justify-center">
+        <header className="absolute top-20 left-20 right-20 flex justify-between items-center">
+          {/* Logo & Title */}
+          <Link to="/" className="flex items-center space-x-4">
+            <img src="/duel-learn-logo.svg" className="w-10 h-10" alt="icon" />
+            <p className="text-white text-xl font-semibold">Duel Learn</p>
+          </Link>
 
-        {/* Arrow Icon Button for Smaller Screens */}
-        <button
-          className="d-lg-none border-0 bg-transparent position-absolute"
-          onClick={handleExitClick}
-          style={{
-            left: "50px", // Maintain fixed left padding for small screens
-            top: "40px", // Adjust vertical position
-          }}
-        ></button>
+          {/* Exit Button */}
+          <img
+            src={ExitIcon}
+            alt="Exit Icon"
+            style={{ width: "39px" }}
+            className="hover:scale-110 cursor-pointer"
+            onClick={handleExitClick}
+          />
+        </header>
 
-        {/* Form Content */}
-        <div className="text-center w-100" style={{ maxWidth: "450px" }}>
-          {/* Title */}
-          <h2
-            className="fw-bold text-white"
-            style={{ fontSize: "48px", color: "#1D242E" }}
-          >
-            Forgot password?
-          </h2>
-          <p
-            className="mb-4 fw-regular"
-            style={{
-              fontSize: "24px",
-              color: "#E2DDF3",
-              maxWidth: "100%",
-              wordWrap: "break-word",
-              margin: "0 auto", // Center the subtitle
-            }}
-          >
-            Please enter your email or mobile number to search for your account.
+        <div className="w-full max-w-md rounded-lg p-8 shadow-md">
+          <h1 className="text-3xl font-bold text-center text-white mb-2">
+            Forgot Password
+          </h1>
+          <p className="text-lg text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
+            Please enter your email or phone to search for your account.
           </p>
 
-          {/* Form */}
-          <div className="d-flex flex-column align-items-center w-100">
-            <input
-              type="text"
-              className="form-control mb-2"
-              style={{
-                backgroundColor: "#3B354D",
-                color: "#E2DDF3",
-                marginTop: "30px",
-                width: "100%", // Responsive width
-                padding: "0.75rem 1rem",
-                fontSize: "20px",
-                border: "none",
-              }}
-              id="userIDInput"
-              placeholder="Enter your phone or email"
-            />
+          {error.general && (
+            <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-md border border-red-300">
+              {error.general}
+            </div>
+          )}
 
-            {/* Submit Button */}
+          <form onSubmit={handleSubmit}>
+            <div className="mt-0 mb-0">
+              <input
+                id="email"
+                type="text"
+                placeholder="Enter your email or phone"
+                value={formData.email}
+                autoComplete="off"
+                onChange={(e) => handleInputChange("email", e.target.value)}
+                className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] ${
+                  errors.email ? "border border-red-500" : ""
+                }`}
+              />
+            </div>
             <button
-              style={{
-                marginTop: "12px",
-                width: "100%", // Responsive width
-                fontWeight: "600",
-                padding: "0.75rem 1rem",
-                borderRadius: "10px",
-                backgroundColor: "#4D18E8",
-                color: "#E2DDF3",
-                fontSize: "20px",
-                transition: "background-color 0.3s ease, transform 0.3s ease",
-              }}
-              className="btn btn-hover"
               type="submit"
-              onClick={handleSubmitButton}
+              className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
+              disabled={loading}
             >
-              Submit
+              {loading ? (
+                <CircularProgress size={24} sx={{ color: "#fff" }} />
+              ) : (
+                "Submit"
+              )}
             </button>
-            <p
-              className="mb-4 fw-regular"
-              style={{
-                fontSize: "20px",
-                marginTop: "30px",
-                color: "#A1A1A1",
-                wordWrap: "break-word",
-                margin: "0 auto", // Center the subtitle
-              }}
-            >
-              Already have an account?{" "}
-              <button
-                style={{
-                  marginTop: "39px",
-                  background: "none",
-                  border: "none",
-                  fontWeight: "700",
-                  color: "#E2DDF3",
-                  textDecoration: "none",
-                  cursor: "pointer",
-                  padding: 0,
-                }}
-                onClick={handleSigninClick}
-              >
-                Sign in
-              </button>
-            </p>
-          </div>
+          </form>
         </div>
       </div>
-    </Box>
+
+      <Modal
+        open={isSSOModalOpen}
+        onClose={() => setIsSSOModalOpen(false)}
+        aria-labelledby="sso-modal-title"
+        aria-describedby="sso-modal-description"
+      >
+        <div className="h-screen flex flex-col items-center justify-center bg-black">
+          <div className="flex flex-col mb-11 items-center justify-center">
+            <img
+              src={sampleAvatar2}
+              style={{ width: "200px" }}
+              alt="Profile Avatar"
+            />
+          </div>
+          <div className="w-full max-w-md rounded-lg p-8 shadow-md bg-black">
+            <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
+              This account was created using Google. You cannot change the
+              password.
+            </p>
+            <button
+              type="button"
+              className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
+              onClick={() => setIsSSOModalOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </Modal>
+    </PageTransition>
   );
 };
 

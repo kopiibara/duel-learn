@@ -1,198 +1,131 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
-import axios from "axios";
-import { toast } from "react-hot-toast";
-import { auth, googleProvider } from "../../services/firebase";
+
 import {
-  signInWithPopup,
-  createUserWithEmailAndPassword,
-  sendEmailVerification,
-} from "firebase/auth";
+  auth,
+  googleProvider,
+  getAdditionalInfo,
+  db,
+} from "../../services/firebase";
+import { signInWithPopup, createUserWithEmailAndPassword } from "firebase/auth";
 import { setDoc, doc, serverTimestamp } from "firebase/firestore";
-import { db } from "../../services/firebase"; // Ensure you have this import for Firestore
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
-
+import useValidation from "../../hooks/validation.hooks/useValidation";
+import useHandleError from "../../hooks/validation.hooks/useHandleError";
+import PageTransition from "../../styles/PageTransition";
+import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
+import useApiError from "../../hooks/api.hooks/useApiError";
 const SignUp = () => {
-  const { setUser } = useUser();
+  const { setUser, user } = useUser();
+  const { handleLoginError } = useHandleError();
   const [formData, setFormData] = useState({
     username: "",
     password: "",
     confirmPassword: "",
     email: "",
-    terms: false, // Add this to track the checkbox status
-    passwordError: "",
-    confirmPasswordError: "",
-    usernameError: "",
-    emailError: "",
-    termsError: "", // Add this to track terms and conditions error
+    terms: false,
   });
 
+  const { errors, validate, validateForm } = useValidation();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const { signUpApi } = useSignUpApi();
+  const { apiError, handleApiError } = useApiError();
+
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
   };
 
-  const validateForm = async (event: React.FormEvent) => {
-    event.preventDefault(); // Prevent form submission by default
-    setFormData((prev) => ({
-      ...prev,
-      passwordError: "",
-      confirmPasswordError: "",
-      usernameError: "",
-      emailError: "",
-      termsError: "", // Reset the terms error
-    }));
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
 
     const { username, password, confirmPassword, email, terms } = formData;
 
-    let hasError = false;
-
-    // Username validation
-    if (!username) {
-      setFormData((prev) => ({
-        ...prev,
-        usernameError: "Username is required.",
-      }));
-      hasError = true;
-    } else if (username.length < 6) {
-      setFormData((prev) => ({
-        ...prev,
-        usernameError: "Username must be at least 6 characters.",
-      }));
-      hasError = true;
-    } else if (username.length > 20) {
-      setFormData((prev) => ({
-        ...prev,
-        usernameError: "Username cannot exceed 20 characters.",
-      }));
-      hasError = true;
-    } else if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      setFormData((prev) => ({
-        ...prev,
-        usernameError:
-          "Username can only contain alphanumeric characters and underscores.",
-      }));
-      hasError = true;
+    if (
+      !validateForm({
+        username,
+        password,
+        confirmPassword,
+        email,
+        terms: terms.toString(),
+      })
+    ) {
+      return;
     }
-
-    // Email validation
-    if (!email) {
-      setFormData((prev) => ({ ...prev, emailError: "Email is required." }));
-      hasError = true;
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      setFormData((prev) => ({
-        ...prev,
-        emailError: "Please enter a valid email address.",
-      }));
-      hasError = true;
-    }
-
-    // Password validation
-    if (!password) {
-      setFormData((prev) => ({
-        ...prev,
-        passwordError: "Password is required.",
-      }));
-      hasError = true;
-    } else if (password.length < 8) {
-      setFormData((prev) => ({
-        ...prev,
-        passwordError: "Password must be at least 8 characters.",
-      }));
-      hasError = true;
-    } else if (!/[A-Z]/.test(password)) {
-      setFormData((prev) => ({
-        ...prev,
-        passwordError: "Password must contain at least one uppercase letter.",
-      }));
-      hasError = true;
-    } else if (!/[a-z]/.test(password)) {
-      setFormData((prev) => ({
-        ...prev,
-        passwordError: "Password must contain at least one lowercase letter.",
-      }));
-      hasError = true;
-    } else if (!/[0-9]/.test(password)) {
-      setFormData((prev) => ({
-        ...prev,
-        passwordError: "Password must contain at least one number.",
-      }));
-      hasError = true;
-    } else if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-      setFormData((prev) => ({
-        ...prev,
-        passwordError: "Password must contain at least one special character.",
-      }));
-      hasError = true;
-    }
-
-    // Confirm Password validation
-    if (!confirmPassword) {
-      setFormData((prev) => ({
-        ...prev,
-        confirmPasswordError: "Please confirm your password.",
-      }));
-      hasError = true;
-    } else if (confirmPassword !== password) {
-      setFormData((prev) => ({
-        ...prev,
-        confirmPasswordError: "Passwords do not match.",
-      }));
-      hasError = true;
-    }
-
-    // Terms and Conditions validation
-    if (!terms) {
-      setFormData((prev) => ({
-        ...prev,
-        termsError: "You must agree to the terms and conditions.",
-      }));
-      hasError = true;
-    }
-
-    if (hasError) return; // Stop if there are errors
 
     try {
-      const userCredential = await createUserWithEmailAndPassword(
+      const result = await createUserWithEmailAndPassword(
         auth,
         email,
         password
       );
-      console.log("formData:", formData);
 
-      console.log(userCredential);
-      const user = userCredential.user;
-      await setDoc(doc(db, "users", user.uid), {
+      const token = await result.user.getIdToken();
+      const additionalUserInfo = getAdditionalInfo(result);
+      const userData = {
+        firebaseToken: token,
+        firebase_uid: result.user.uid,
+
         username: username,
         email: email,
-        dateCreated: serverTimestamp(),
+        display_picture: null,
+        isNew: additionalUserInfo,
+        full_name: "",
+        email_verified: result.user.emailVerified,
+        isSSO: false,
+        account_type: "free" as "free" | "premium",
+      };
+
+      await setDoc(doc(db, "users", userData.firebase_uid), {
+        firebase_uid: userData.firebase_uid || "",
+        username: userData.username,
+        email: userData.email,
+        password_hash: "N/A", // Store the hashed password if needed
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        display_picture: userData.display_picture || "",
+        full_name: "",
+        email_verified: userData.email_verified,
+        isSSO: userData.isSSO,
+        account_type: userData.account_type,
       });
-      await sendEmailVerification(userCredential.user);
+
+      // Call the API
+      await signUpApi(
+        userData.firebase_uid,
+        username,
+        email,
+        password,
+        false,
+        false
+      );
+
+      console.log("signUpApi", signUpApi);
+
       setFormData({
         username: "",
         password: "",
         confirmPassword: "",
         email: "",
         terms: false,
-        passwordError: "",
-        confirmPasswordError: "",
-        usernameError: "",
-        emailError: "",
-        termsError: "",
       });
       setSuccessMessage(
         "Account successfully created! Redirecting to login..."
       );
       setTimeout(() => {
-        navigate("/login");
+        if (userData.isNew) {
+          navigate("/dashboard/welcome");
+        } else {
+          navigate("/dashboard/home");
+        }
       }, 2000);
     } catch (error) {
       console.error("Registration error:", error);
+      handleApiError(error);
       setFormData((prev) => ({ ...prev, emailError: (error as any).message }));
     }
   };
@@ -200,188 +133,238 @@ const SignUp = () => {
   const handleGoogleSignIn = async () => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      console.log(result);
       const token = await result.user.getIdToken();
-
-      // Handle user data directly on the frontend
+      const additionalUserInfo = getAdditionalInfo(result);
       const userData = {
-        displayName: result.user.displayName,
+        firebaseToken: token,
+        firebase_uid: result.user.uid,
+        username: result.user.displayName,
         email: result.user.email,
-        photoURL: result.user.photoURL,
-        uid: result.user.uid,
+        display_picture: result.user.photoURL,
+        isNew: additionalUserInfo?.isNewUser,
+        full_name: "",
+        email_verified: result.user.emailVerified,
+        isSSO: true,
+        account_type: "free" as "free" | "premium",
       };
-      console.log("User Data:", userData);
 
-      // Store user data in context
+      await setDoc(doc(db, "users", userData.firebase_uid), {
+        firebase_uid: userData.firebase_uid || "",
+        username: userData.username,
+        email: userData.email,
+        password_hash: "N/A", // Store the hashed password if needed
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        display_picture: userData.display_picture || "",
+        full_name: "",
+        email_verified: userData.email_verified,
+        isSSO: userData.isSSO,
+        account_type: userData.account_type,
+      });
+
       setUser(userData);
-
-      // Optionally, you can store the token in local storage or context
       localStorage.setItem("userToken", token);
 
-      // Redirect to a protected route or dashboard
-      navigate("/dashboard/home");
-    } catch (error) {
-      console.error("Error during sign-in:", error);
-      toast.error("Google sign-in failed. Please try again.");
+      // Call the API
+      await signUpApi(
+        userData.firebase_uid,
+        userData.username ?? "Anonymous",
+        userData.email || "",
+        "",
+        true,
+        result.user.emailVerified
+      );
+
+      setTimeout(() => {
+        if (userData.isNew) {
+          navigate("/dashboard/welcome");
+        } else {
+          navigate("/dashboard/home");
+        }
+      }, 2000);
+    } catch (error: any) {
+      handleLoginError(error);
     }
   };
 
   return (
-    <div className=" font-aribau min-h-screen flex items-center justify-center">
-      <div className=" p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-2 text-center text-[#E2DDF3]">
-          Create an Account
-        </h1>
-        <p className="text-sm mb-8 text-center text-[#9F9BAE]">
-          Please enter your details to sign up.
-        </p>
-        {successMessage && (
-          <div className="bg-green-700 text-white text-center py-2 mb-4 rounded">
-            {successMessage}
-          </div>
-        )}
-        <form onSubmit={validateForm}>
-          <input
-            type="text"
-            id="username"
-            name="username"
-            placeholder="Enter your username"
-            required
-            value={formData.username}
-            onChange={(e) =>
-              setFormData({ ...formData, username: e.target.value })
-            }
-            className="block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
-          />
-          {formData.usernameError && (
-            <p className="text-red-500 mt-1 text-sm">
-              {formData.usernameError}
-            </p>
+    <PageTransition>
+      <div className="font-aribau min-h-screen flex items-center justify-center">
+        <header className="absolute top-20 left-20 flex items-center">
+          <Link to="/" className="flex items-center space-x-4">
+            <img src="/duel-learn-logo.svg" className="w-10 h-10" alt="icon" />
+            <p className="text-white text-xl font-semibold">Duel Learn</p>
+          </Link>
+        </header>
+        <div className="p-8 rounded-lg shadow-md w-full max-w-md">
+          <h1 className="text-3xl font-bold mb-2 text-center text-[#E2DDF3]">
+            Create an Account
+          </h1>
+          <p className="text-lg mb-8 text-center text-[#9F9BAE]">
+            Please enter your details to sign up.
+          </p>
+          {successMessage && (
+            <div className="bg-green-700 text-white text-center py-2 mb-4 rounded">
+              {successMessage}
+            </div>
           )}
 
-          <div className="relative mb-4">
-            <input
-              type={showPassword ? "text" : "password"}
-              id="password"
-              name="password"
-              placeholder="Enter your password"
-              required
-              value={formData.password}
-              onChange={(e) =>
-                setFormData({ ...formData, password: e.target.value })
-              }
-              className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
-            />
-            <span
-              onClick={togglePassword}
-              className="absolute top-3 right-3 text-[#9F9BAE] cursor-pointer"
-            >
-              {showPassword ? (
-                <VisibilityRoundedIcon />
-              ) : (
-                <VisibilityOffRoundedIcon />
+          {apiError && (
+            <div className="bg-red-700 text-white text-center py-2 mb-4 rounded">
+              {apiError}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            <div className="relative mb-4">
+              <input
+                type="text"
+                id="username"
+                name="username"
+                placeholder="Enter your username"
+                required
+                value={formData.username}
+                onChange={(e) => {
+                  setFormData({ ...formData, username: e.target.value });
+                  validate("username", e.target.value);
+                }}
+                className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+              />
+              {errors.username && (
+                <p className="text-red-500 mt-1 text-sm">{errors.username}</p>
               )}
-            </span>
-            {formData.passwordError && (
-              <p className="text-red-500 mt-1 text-sm">
-                {formData.passwordError}
-              </p>
-            )}
-          </div>
-
-          <div className="relative mb-4">
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              placeholder="Confirm your password"
-              required
-              value={formData.confirmPassword}
-              onChange={(e) =>
-                setFormData({ ...formData, confirmPassword: e.target.value })
-              }
-              className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
-            />
-            {formData.confirmPasswordError && (
-              <p className="text-red-500 mt-1 text-sm">
-                {formData.confirmPasswordError}
-              </p>
-            )}
-          </div>
-
-          <input
-            type="email"
-            id="email"
-            name="email"
-            placeholder="Enter your email"
-            required
-            value={formData.email}
-            onChange={(e) =>
-              setFormData({ ...formData, email: e.target.value })
-            }
-            className="block w-full p-3 mb-6 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
-          />
-          {formData.emailError && (
-            <p className="text-red-500 mt-1 text-sm">{formData.emailError}</p>
-          )}
-
-          <div className="flex items-center mb-6">
-            <input
-              type="checkbox"
-              id="terms"
-              className="w-4 h-4 text-[#4D18E8] bg-[#3B354D] border-gray-300 rounded focus:ring-2 focus:ring-[#4D18E8]"
-              checked={formData.terms}
-              onChange={(e) =>
-                setFormData({ ...formData, terms: e.target.checked })
-              }
-            />
-            <label htmlFor="terms" className="ml-2 text-[#9F9BAE] text-sm">
-              I agree to{" "}
-              <a
-                href="#"
-                className="text-[#4D18E8] underline hover:text-[#4D18E8]"
+            </div>
+            <div className="relative mb-4">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                name="password"
+                placeholder="Enter your password"
+                required
+                value={formData.password}
+                onChange={(e) => {
+                  setFormData({ ...formData, password: e.target.value });
+                  validate("password", e.target.value);
+                }}
+                onCopy={(e) => e.preventDefault()} // Disable copy
+                className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+              />
+              <span
+                onClick={togglePassword}
+                className="absolute top-3 right-3 text-[#9F9BAE] cursor-pointer"
               >
-                Terms and Conditions
-              </a>
-            </label>
+                {showPassword ? (
+                  <VisibilityRoundedIcon />
+                ) : (
+                  <VisibilityOffRoundedIcon />
+                )}
+              </span>
+              {errors.password && (
+                <p className="text-red-500 mt-1 text-sm">{errors.password}</p>
+              )}
+            </div>
+            <div className="relative mb-4">
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                placeholder="Confirm your password"
+                required
+                value={formData.confirmPassword}
+                onChange={(e) => {
+                  setFormData({ ...formData, confirmPassword: e.target.value });
+                  validate("confirmPassword", e.target.value, formData);
+                }}
+                onPaste={(e) => e.preventDefault()} // Disable paste
+                className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+              />
+              {errors.confirmPassword && (
+                <p className="text-red-500 mt-1 text-sm">
+                  {errors.confirmPassword}
+                </p>
+              )}
+            </div>
+            <div className="relative mb-4">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                placeholder="Enter your email"
+                required
+                value={formData.email}
+                onChange={(e) => {
+                  setFormData({ ...formData, email: e.target.value });
+                  validate("email", e.target.value);
+                }}
+                className="block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+              />
+              {errors.email && (
+                <p className="text-red-500 mt-1 text-sm">{errors.email}</p>
+              )}
+            </div>
+            <div className="flex items-center mb-4">
+              <input
+                type="checkbox"
+                id="terms"
+                className="w-4 h-4 text-[#4D18E8] bg-[#3B354D] border-gray-300 rounded focus:ring-2 focus:ring-[#4D18E8]"
+                checked={formData.terms}
+                onChange={(e) => {
+                  setFormData({ ...formData, terms: e.target.checked });
+                  validate("terms", e.target.checked.toString());
+                }}
+              />
+              <label htmlFor="terms" className="ml-2 text-[#9F9BAE] text-sm">
+                I agree to {""}
+                <Link
+                  to="/terms-and-conditions"
+                  target="_blank"
+                  className="text-[#4D18E8] underline hover:text-[#4D18E8]"
+                >
+                  Terms and Conditions
+                </Link>
+              </label>
+            </div>
+            {errors.terms && (
+              <p className="text-red-500 mt-1 text-sm">{errors.terms}</p>
+            )}
+            <button
+              type="submit"
+              className="w-full py-3 text-white bg-[#4D18E8] rounded-lg hover:bg-[#3814b6] focus:outline-none focus:ring-4 focus:ring-[#4D18E8]"
+            >
+              Create Account
+            </button>
+          </form>
+
+          <div className="flex items-center my-6">
+            <hr className="flex-grow border-t border-[#9F9BAE]" />
+            <span className="mx-2 text-[#9F9BAE]">or</span>
+            <hr className="flex-grow border-t border-[#9F9BAE]" />
           </div>
-          {formData.termsError && (
-            <p className="text-red-500 mt-1 text-sm">{formData.termsError}</p>
-          )}
 
           <button
-            type="submit"
-            className="w-full py-3 text-white bg-[#4D18E8] rounded-lg hover:bg-[#3814b6] focus:outline-none focus:ring-4 focus:ring-[#4D18E8]"
+            className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors"
+            onClick={handleGoogleSignIn}
           >
-            Create Account
+            <img
+              src="/google-logo.png"
+              className="w-5 h-5 mr-3"
+              alt="Google Icon"
+            ></img>
+            Sign up with Google
           </button>
-        </form>
 
-        <div className="flex items-center my-6">
-          <hr className="flex-grow border-t border-[#9F9BAE]" />
-          <span className="mx-2 text-[#9F9BAE]">or</span>
-          <hr className="flex-grow border-t border-[#9F9BAE]" />
+          <p className="mt-4 text-center text-sm text-[#9F9BAE]">
+            Already have an account?{" "}
+            <button
+              onClick={() => navigate("/login")}
+              className="text-[#4D18E8] hover:underline"
+            >
+              Log in
+            </button>
+          </p>
         </div>
-
-        {/* Google Sign-In */}
-        <button
-          className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors"
-          onClick={handleGoogleSignIn}
-        >
-          Sign in with Google
-        </button>
-
-        <p className="mt-4 text-center text-sm text-[#9F9BAE]">
-          Already have an account?{" "}
-          <button
-            onClick={() => navigate("/login")}
-            className="text-[#4D18E8] hover:underline"
-          >
-            Log in
-          </button>
-        </p>
       </div>
-    </div>
+    </PageTransition>
   );
 };
 

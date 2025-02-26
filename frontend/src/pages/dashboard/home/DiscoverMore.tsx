@@ -3,26 +3,61 @@ import { Box, Fab } from "@mui/material";
 import CardComponent from "../../../components/CardComponent";
 import NextIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import PreviousIcon from "@mui/icons-material/ArrowBackIosNewRounded";
+import { useUser } from "../../../contexts/UserContext";
+import { useNavigate } from "react-router-dom";
 
-type CardData = {
+interface Item {
+  term: string;
+  definition: string;
+  image?: string | null; // Update to string for Base64 images
+}
+
+interface StudyMaterial {
   title: string;
-  description: string;
   tags: string[];
-  creator: string;
-};
+  images: string[];
+  total_items: number;
+  created_by: string;
+  total_views: number;
+  visibility: number;
+  created_at: string;
+  study_material_id: string;
+  items: Item[]; // Expecting an array of terms and definitions
+}
 
 const DiscoverMore = () => {
-  const [cards, setCards] = useState<CardData[]>([]);
+  const { user } = useUser();
+  const navigate = useNavigate();
+  const [cards, setCards] = useState<StudyMaterial[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const cardsToShow = 3; // Number of cards to display at once
   const cardWidth = 100 / cardsToShow; // Each card takes a fraction of the total width
 
   useEffect(() => {
-    fetch("/mock-data/StudyMaterialDetails.json")
-      .then((response) => response.json())
-      .then((data: CardData[]) => setCards(data))
-      .catch((error) => console.error("Error fetching cards data:", error));
-  }, []);
+    if (user?.username) {
+      const fetchData = async () => {
+        try {
+          const encodedUsername = encodeURIComponent(user.username || "");
+          const response = await fetch(
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/study-material/discover/${encodedUsername}`
+          );
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+
+          const data: StudyMaterial[] = await response.json();
+          setCards(data);
+        } catch (error) {
+          console.error("Error fetching cards data:", error);
+        }
+      };
+
+      fetchData();
+    }
+  }, [user]);
 
   const handleNext = () => {
     if (currentIndex + cardsToShow < cards.length) {
@@ -36,6 +71,25 @@ const DiscoverMore = () => {
     }
   };
 
+  const handleCardClick = async (studyMaterialId: string, title: string) => {
+    try {
+      await fetch(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/study-material/increment-views/${studyMaterialId}`,
+        {
+          method: "POST",
+        }
+      );
+
+      navigate(`/dashboard/study-material/preview/${studyMaterialId}`, {
+        state: { title },
+      });
+    } catch (error) {
+      console.error("Error updating total views:", error);
+    }
+  };
+
   const isNextDisabled = currentIndex + cardsToShow >= cards.length;
   const isPrevDisabled = currentIndex === 0;
 
@@ -46,8 +100,9 @@ const DiscoverMore = () => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        height: "20rem",
+        height: "auto",
         overflow: "hidden",
+        paddingY: "1rem",
       }}
     >
       <Box
@@ -65,9 +120,17 @@ const DiscoverMore = () => {
           >
             <CardComponent
               title={item.title}
-              description={item.description}
               tags={item.tags}
-              creator={item.creator}
+              images={item.images}
+              totalItems={item.total_items}
+              createdBy={item.created_by}
+              totalViews={item.total_views}
+              createdAt={item.created_at}
+              visibility={item.visibility}
+              items={item.items}
+              onClick={() =>
+                handleCardClick(item.study_material_id, item.title)
+              }
             />
           </Box>
         ))}

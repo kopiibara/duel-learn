@@ -1,50 +1,99 @@
 import { Box, Stack, Typography, Button } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import DocumentHead from "../../../components/DocumentHead";
+import PageTransition from "../../../styles/PageTransition";
+
 import ChooseYourChallenge from "../../../components/ChooseYourChallenge";
 import DiscoverMore from "./DiscoverMore";
 import RecentlyOpened from "./RecentlyOpened";
+import PremiumAdsBG from "../../../assets/shop-picture/premium-ads-bg.png";
 
-const HomePage = () => {
+const HomePage = ({
+  setSelectedIndex,
+}: {
+  setSelectedIndex: (index: number) => void;
+}) => {
+  const navigate = useNavigate();
+
+  const handleSeeMore = () => {
+    setSelectedIndex(1); // Set "Explore" as the active sidebar item (index 1)
+    navigate("/dashboard/explore");
+  };
+
   return (
-    <Box>
-      <DocumentHead title="Home" />
-      <Stack spacing={2} className="px-6">
-        {/* Choose Your Challenge */}
-        <Stack spacing={2} className="pb-6">
-          <Stack
-            direction={"row"}
-            spacing={2}
-            className="flex items-center justify-start"
+    <PageTransition>
+      <Box className="h-full w-full">
+        <DocumentHead title="Home | Duel Learn" />
+        <Box
+          className="h-[232px] mx-8 rounded-[1rem] p-6 px-12 flex flex-col justify-center items-start text-left mb-10"
+          style={{
+            background: "linear-gradient(90deg, #9F87E5 0%, #6F58D9 100%)",
+          }}
+        >
+          <h1
+            className="text-white text-xl md:text-[29px] font-medium mb-2"
+            style={{ letterSpacing: "0.01em", lineHeight: "1.1" }}
           >
-            <img src="/book.svg" className="w-10 h-10" alt="icon" />
-            <Typography variant="h5">Choose your Challenge</Typography>
-          </Stack>
-          <ChooseYourChallenge />
-        </Stack>
-
-        {/* Recently Opened */}
-        <Stack spacing={0}>
-          <Typography variant="h5">Recently Opened</Typography>
-          <RecentlyOpened />
-        </Stack>
-
-        {/* Discover More */}
-        <Stack spacing={0}>
-          <Stack direction={"row"} spacing={2} className="flex items-center">
-            <Typography variant="h5">Discover more materials</Typography>
-            <Box flexGrow={1} />
-            <Button
-              variant="text"
-              sx={{ color: "#3B354D", fontSize: "0.8rem" }}
+            Those gaps in your <br /> materials? Let’s fill ‘em up!
+          </h1>
+          <p className="text-white text-sm md:text-[15px] mt-1 opacity-80">
+            AI cross-referencing available in Duel-Learn Premium!
+          </p>
+          <button
+            className="mt-4 px-6 py-2 text-sm md:text-base bg-white text-[#9F87E5] rounded-full font-bold"
+            onClick={() => navigate("/dashboard/buy-premium-account")}
+          >
+            Learn More
+          </button>
+        </Box>
+        <Stack spacing={2} className="px-6">
+          <Stack spacing={2} className="pb-6">
+            <Stack
+              direction={"row"}
+              spacing={1.5}
+              className="flex items-center justify-start pl-2"
             >
-              See More
-            </Button>
+              <img src="/book.png" className="w-9 h-7" alt="icon" />
+              <Typography variant="h5">Choose your Challenge</Typography>
+            </Stack>
+            <ChooseYourChallenge />
           </Stack>
 
-          <DiscoverMore />
+          <Stack spacing={0}>
+            <Typography variant="h5" className="pl-2">
+              Recently Opened
+            </Typography>
+            <RecentlyOpened />
+          </Stack>
+
+          <Stack spacing={0}>
+            <Stack direction={"row"} spacing={2} className="flex items-center">
+              <Typography variant="h5" className="pl-2">
+                Discover more materials
+              </Typography>
+              <Box flexGrow={1} />
+              <Button
+                variant="text"
+                onClick={handleSeeMore}
+                sx={{
+                  color: "#3B354D",
+                  fontSize: "0.8rem",
+                  borderRadius: "0.5rem", // Optional: You can add a border radius for rounded corners
+                  transition: "color 0.3s ease", // Optional: You can add a transition effect
+                  "&:hover": {
+                    color: "#E2DDF3", // Change the text color on hover
+                    borderRadius: "0.5rem", // Optional: You can add a border radius for rounded corners
+                  },
+                }}
+              >
+                See More
+              </Button>
+            </Stack>
+            <DiscoverMore />
+          </Stack>
         </Stack>
-      </Stack>
-    </Box>
+      </Box>
+    </PageTransition>
   );
 };
 

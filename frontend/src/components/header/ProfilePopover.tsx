@@ -4,6 +4,7 @@ import { auth } from "../../services/firebase";
 import { signOut } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import { useUser } from "../../contexts/UserContext";
+import { useNavigate } from "react-router-dom";
 
 interface ProfilePopoverProps {
   anchorEl: PopoverProps["anchorEl"];
@@ -17,6 +18,7 @@ export default function ProfilePopover({
   handleClose,
 }: ProfilePopoverProps) {
   const { setUser } = useUser();
+  const navigate = useNavigate();
 
   const handleLogout = async () => {
     try {
@@ -114,6 +116,21 @@ export default function ProfilePopover({
           </Button>
           {/* Divider with more space above */}
           <Divider sx={{ mt: 3, mb: 2, backgroundColor: "#444" }} />
+          <Button
+            variant="text"
+            sx={{
+              justifyContent: "flex-start",
+              textTransform: "none",
+              color: "inherit",
+              fontWeight: 400,
+              ":hover": {
+                fontWeight: 700, // Make text bold on hover
+              },
+            }}
+            onClick={() => navigate("/dashboard/verify-email")}
+          >
+            Verify Email
+          </Button>
           <Button
             variant="text"
             sx={{

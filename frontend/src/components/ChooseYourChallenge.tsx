@@ -1,5 +1,5 @@
 //import * as React from "react";
-import { Box, Card, CardContent, Typography } from "@mui/material";
+import { Box, Card, CardContent, Typography, CardMedia } from "@mui/material";
 import { styled } from "@mui/system";
 
 const ModeCard = styled(Card)({
@@ -9,9 +9,9 @@ const ModeCard = styled(Card)({
   alignItems: "flex-start",
   padding: "2rem",
   borderRadius: "1rem",
-  height: "200px",
+  height: "14rem",
   cursor: "pointer",
-  background: "linear-gradient(to bottom, #ECE6FF, #DDD3FF)",
+  background: "#E2DDF3",
   position: "relative",
   transform: "scale(1)", // Initial transform state
   transition: "all 0.3s", // Ensure smooth transition between hover and unhover states
@@ -63,6 +63,18 @@ const ChooseYourChallenge = () => {
               Study your way, no rush, just flow!
             </Typography>
           </Box>
+          <CardMedia
+            component="svg"
+            sx={{
+              position: "absolute",
+              top: 0,
+              right: 0,
+              zIndex: -1,
+              width: "auto",
+              height: "100%",
+            }}
+            image="/trial5.svg"
+          />
         </CardContent>
       </ModeCard>
 
@@ -124,7 +136,7 @@ const ChooseYourChallenge = () => {
               PvP Mode
             </Typography>
             <Typography variant="body2" className="text-[#322168]">
-              Face off, outsmart your opponent, and win!
+              Outsmart your opponent and win!
             </Typography>
           </Box>
         </CardContent>

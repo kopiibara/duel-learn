@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Outlet } from "react-router-dom";
 import Sidebar from "../components/Sidebar";
 import Header from "../components/header/Header";
+import Footer from "../components/Footer";
 import RightSideBar from "../components/RighSideBar/RightSideBar";
 import DrawerRightSideBar from "../components/DrawerRightSideBar"; // Import the new Drawer component
 import { Box } from "@mui/system";
@@ -14,30 +15,39 @@ import { useMediaQuery } from "@mui/material"; // Import useMediaQuery from Mate
 const DashboardLayout = () => {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isMobile = useMediaQuery("(max-width:1022px)"); // Check if the screen size is mobile
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(0);
 
   const toggleDrawer = (open: boolean) => {
     setDrawerOpen(open);
   };
 
   return (
-    <Box className="h-screen px-1 flex flex-col lg:flex-row w-screen overflow-x-hidden">
+    <Box className="h-screen px-8 flex flex-col lg:flex-row w-screen overflow-x-hidden ">
       {/* Sidebar (hidden on small screens) */}
-      <aside className="hidden lg:block pl-4 pr-5 top-0 h-screen">
-        <Box className="sticky top-0">
-          <Sidebar />
+      <aside className="hidden lg:block pl-4 pr-4 h-screen sticky top-0">
+        <Box>
+          <Sidebar
+            selectedIndex={selectedIndex}
+            setSelectedIndex={setSelectedIndex}
+          />
         </Box>
       </aside>
 
       {/* Main Section */}
       <Box className="flex-1 flex flex-col">
-        <header className="w-full pr-2 top-0 ">
+        <header className="w-full pr-2 top-0 pb-2 sticky z-50 bg-[#080511] shadow-sm">
           <Header />
         </header>
 
         {/* Main Content Section */}
         <Box className="flex flex-1">
-          <main className="flex-1 pt-3 relative">
+          <main
+            className={`flex-1 pt-3 relative ${
+              useMediaQuery("(min-width:1400px)") ? "px-11" : ""
+            }`}
+          >
             <Outlet />
+            <Footer />
 
             {/* Absolute icon button in the top-right corner (only shown on mobile screens) */}
             {isMobile && (
@@ -51,7 +61,12 @@ const DashboardLayout = () => {
           </main>
 
           {/* Right Sidebar */}
-          <aside className="hidden lg:block pr-2">
+          <aside
+            className="pr-2 pb-12"
+            style={{
+              display: useMediaQuery("(min-width:1400px)") ? "block" : "none",
+            }}
+          >
             <Box className="sticky top-0">
               <RightSideBar />
             </Box>

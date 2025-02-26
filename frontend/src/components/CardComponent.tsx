@@ -1,45 +1,69 @@
-import { Box, Stack, Typography, Chip, Card, CardContent } from "@mui/material";
+import {
+  Box,
+  Stack,
+  Typography,
+  Chip,
+  Card,
+  CardContent,
+  CardMedia,
+} from "@mui/material";
 import { styled } from "@mui/system";
-import PropTypes from "prop-types";
+
+interface Item {
+  term: string;
+  definition: string;
+  image?: string | null; // Update to string for Base64 images
+}
 
 interface CardComponentProps {
   title: string;
-  description: string;
   tags: string[];
-  creator: string;
-  clicked?: number;
-  mutual?: string;
-  date?: string;
-  filter?: string;
-  createdBy?: string;
+  images: string[];
+  totalItems: number;
+  createdBy: string;
+  totalViews: number;
+  createdAt: string;
+  visibility: number;
+  items: Item[];
+  onClick?: () => void; // Optional onClick prop to handle card clicks
 }
 
 const CardComponent: React.FC<CardComponentProps> = ({
   title,
-  description,
   tags,
-  creator,
+  images,
+  totalItems,
+  createdBy,
+  totalViews,
+  createdAt,
+  visibility,
+  items,
+  onClick, // Destructured onClick handler
 }) => {
+  const safeTags = Array.isArray(tags) ? tags : []; // Ensure it's always an array
+
   const ModeCard = styled(Card)(() => ({
     display: "flex",
     flexDirection: "column",
     justifyContent: "flex-end",
     alignItems: "flex-start",
     borderRadius: "1rem",
-    height: "16rem",
+    height: "14rem",
     cursor: "pointer",
     maxHeight: "100%",
-    background: "linear-gradient(to bottom, #ECE6FF, #DDD3FF)",
+    background: "#E2DDF3",
     position: "relative",
     transform: "scale(1)", // Initial transform state
-    transition: "all 0.3s", // Ensure smooth transition between hover and unhover states
+    transition: "all 0.3s ease", // Ensure smooth transition between hover and unhover states
     "&:hover": {
       transform: "scale(1.03)", // Scales slightly on hover
     },
   }));
 
   return (
-    <ModeCard>
+    <ModeCard onClick={onClick}>
+      {" "}
+      {/* Added onClick to the card */}
       <CardContent
         sx={{
           display: "flex",
@@ -50,57 +74,93 @@ const CardComponent: React.FC<CardComponentProps> = ({
         <Box
           sx={{
             position: "absolute",
-            bottom: 28,
-            left: 28,
+            bottom: 30,
+            left: 26,
             textAlign: "left",
           }}
         >
-          <Stack spacing={1}>
-            <Typography variant="body1" className="text-[#322168]">
-              {description}
-            </Typography>
+          <Stack spacing={0} className="flex items-baseline justify-end">
+            <Stack direction="row" spacing={1} alignItems={"center"}>
+              <Typography
+                sx={{
+                  color: "#000000",
+                  fontSize: "0.7rem",
+                  fontWeight: "600",
+                }}
+              >
+                {totalItems} Items
+              </Typography>
+              <Typography
+                sx={{
+                  color: "#000000",
+                  fontSize: "0.7rem",
+                  fontWeight: "600",
+                }}
+              >
+                &#x2022;
+              </Typography>
+              <Typography
+                sx={{
+                  color: "#000000",
+                  fontSize: "0.7rem",
+                  fontWeight: "600",
+                }}
+              >
+                {totalViews} Views
+              </Typography>
+            </Stack>{" "}
             <Typography
               variant="h6"
-              className="text-[#080511]"
+              className="text-[#080511] pb-[0.2rem]"
               fontWeight="bold"
             >
               {title}
             </Typography>
-            <Stack direction="row" spacing={1}>
-              {tags.map((tag, index) => (
+            <Stack direction="row" spacing={1} className="w-auto mb-3">
+              {safeTags.map((tag, index) => (
                 <Chip
                   key={index}
                   label={tag}
                   sx={{
-                    backgroundColor: "#3B354D",
-                    color: "#E2DDF3",
-                    borderRadius: "0.5rem",
-                    padding: "1rem",
+                    backgroundColor: "#4F4A64",
+                    color: "#FFFFFF",
+                    borderRadius: "0.3rem",
                     width: "fit-content",
+                    height: "fit-content",
+                    py: "0.3rem",
+                    fontSize: "0.7rem",
+                    fontWeight: "600",
                   }}
                 />
               ))}
             </Stack>
-            <Typography variant="body2" className="text-[#322168]">
-              Made by <strong>{creator}</strong>
+            <Typography
+              sx={{
+                color: "#000000",
+                fontSize: "0.7rem",
+                fontWeight: "600",
+                paddingLeft: "1px",
+              }}
+            >
+              Made by <strong>{createdBy}</strong>
             </Typography>
           </Stack>
         </Box>
+        <CardMedia
+          component="img"
+          sx={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            zIndex: -1,
+            width: "12rem",
+            height: "100%",
+          }}
+          image="/cardBackground.svg"
+        />
       </CardContent>
     </ModeCard>
   );
-};
-
-CardComponent.propTypes = {
-  title: PropTypes.string.isRequired,
-  description: PropTypes.string.isRequired,
-  tags: PropTypes.arrayOf(PropTypes.string.isRequired).isRequired,
-  creator: PropTypes.string.isRequired,
-  clicked: PropTypes.number,
-  mutual: PropTypes.string,
-  date: PropTypes.string,
-  filter: PropTypes.string,
-  createdBy: PropTypes.string,
 };
 
 export default CardComponent;

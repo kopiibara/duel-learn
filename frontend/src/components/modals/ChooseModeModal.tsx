@@ -40,7 +40,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
             hoverBackground: "#E8E2FE",
         },
         {
-            label: "Multiplayer Mode",
+            label: "PvP Mode",
             subtitle: "Face off, outsmart, and win now!",
             variant: "contained",
             backgroundColor: "#E2DBF8",
@@ -65,7 +65,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
                 BackdropProps={{
                     timeout: 500,
                     sx: {
-                        backgroundColor: "rgba(0, 0, 0, 0.8)", // Darker background
+                        backgroundColor: "rgba(0, 0, 0, 0.5)", // Darker background
                     },
                 }}
             >
@@ -172,7 +172,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
                                         textAlign: "center",
                                     }}
                                     onClick={() => {
-                                        if (button.label !== "Multiplayer Mode") {
+                                        if (button.label !== "PvP Mode") {
                                             setSelectedMode(button.label); // Set the selected mode
                                             setModalOpen(true); // Open the SelectStudyMaterialModal
                                         }
@@ -245,9 +245,9 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
                                                         },
                                                     }}
                                                     onClick={() => {
-                                                        setSelectedMode(`${button.label} - ${subButton.label}`); // Set the selected mode
-                                                        setModalOpen(true); // Open the SelectStudyMaterialModal
-                                                    }} // Handle sub-button click
+                                                        setSelectedMode(`${button.label} - ${subButton.label}`); // Updated template literal
+                                                        setModalOpen(true);
+                                                    }}
                                                 >
                                                     <Typography sx={{ fontWeight: "bold", fontSize: "17px" }}>
                                                         {subButton.label}
