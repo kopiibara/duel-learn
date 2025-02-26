@@ -1,7 +1,7 @@
 /* custom-scrollbar.css */
 
 ::-webkit-scrollbar {
-  width: 8px; /* Makes the scrollbar thinner */
+  width: 5px; /* Makes the scrollbar thinner */
 }
 
 ::-webkit-scrollbar-thumb {
