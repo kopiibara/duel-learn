@@ -7,9 +7,17 @@ export default {
         serif: ['Nunito'],
       },
       keyframes: {
-        heartbeat: {
+        'heartbeat-3': {
           '0%, 100%': { transform: 'scale(1)' },
-          '50%': { transform: 'scale(1.05)' },
+          '50%': { transform: 'scale(1.02)' },
+        },
+        'heartbeat-2': {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.03)' },
+        },
+        'heartbeat-1': {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.04)' },
         },
         dangerPulse: {
           '0%, 100%': {
@@ -23,7 +31,9 @@ export default {
         }
       },
       animation: {
-        'heartbeat': 'heartbeat 0.5s ease-in-out infinite',
+        'heartbeat-3': 'heartbeat-3 0.6s infinite',
+        'heartbeat-2': 'heartbeat-2 0.4s infinite',
+        'heartbeat-1': 'heartbeat-1 0.3s infinite',
         'danger-pulse': 'dangerPulse 3s ease-in-out infinite'
       }
     },

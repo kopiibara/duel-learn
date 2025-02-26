@@ -97,12 +97,14 @@ const TimePressuredMode: React.FC<GameState> = ({ mode, material, selectedTypes,
 
     const getHeartbeatClass = () => {
         if (questionTimer === null || questionTimer === 0) return '';
-        if (questionTimer <= 3) return 'animate-heartbeat';
+        if (questionTimer <= 1) return 'animate-heartbeat-1';
+        if (questionTimer <= 2) return 'animate-heartbeat-2';
+        if (questionTimer <= 3) return 'animate-heartbeat-3';
         return '';
     };
 
     const getBorderClass = () => {
-        if (questionTimer === null || questionTimer === 0) return '';
+        if (questionTimer === null) return '';
         if (questionTimer <= (timeLimit ?? 30) / 2) {
             return 'animate-danger-pulse rounded-lg backdrop-blur-sm';
         }
