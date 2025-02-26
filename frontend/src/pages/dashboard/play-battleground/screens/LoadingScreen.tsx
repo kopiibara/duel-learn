@@ -1,8 +1,8 @@
 import React, { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import cauldronGif from "../../../assets/General/Cauldron.gif";
-import PageTransition from "../../../styles/PageTransition";
-import ellipseShadow from "../../../assets/General/Ellipse.png";
+import cauldronGif from "../../../../assets/General/Cauldron.gif";
+import PageTransition from "../../../../styles/PageTransition";
+import ellipseShadow from "../../../../assets/General/Ellipse.png";
 
 export default function LoadingScreen() {
     const location = useLocation();
@@ -12,7 +12,15 @@ export default function LoadingScreen() {
     useEffect(() => {
         const timer = setTimeout(() => {
             if (mode === "Peaceful") {
-                navigate("/dashboard/study/peaceful-mode/flashcards", {
+                navigate("/dashboard/study/peaceful-mode", {
+                    state: {
+                        mode,
+                        material,
+                        selectedTypes
+                    }
+                });
+            } else if (mode === "Time Pressured") {
+                navigate("/dashboard/study/time-pressured-mode", {
                     state: {
                         mode,
                         material,
@@ -20,25 +28,8 @@ export default function LoadingScreen() {
                         timeLimit
                     }
                 });
-            } else if (mode === "Time Pressured") {  // Change this line
-                navigate("/dashboard/study/peaceful-mode/flashcards", {
-                    state: {
-                        mode: "Time Pressured",  // Add this line to normalize the mode name
-                        material,
-                        selectedTypes,
-                        timeLimit
-                    }
-                });
             }
-            // ... existing code for other modes ...
         }, 4000);
-
-        console.log("LoadingScreen state:", {
-            mode,
-            material,
-            selectedTypes,
-            timeLimit
-        });
 
         return () => clearTimeout(timer);
     }, [mode, material, selectedTypes, timeLimit, navigate]);
