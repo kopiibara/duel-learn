@@ -11,6 +11,7 @@ interface SessionReportProps {
     incorrectCount: number;
     mode: 'Peaceful' | 'time-pressured' | 'pvp';
     material: string;
+    earlyEnd?: boolean;
 }
 
 interface StatisticProps {
@@ -31,7 +32,23 @@ const StatisticBox = ({ label, value, icon }: StatisticProps & { icon: string })
 const SessionReport = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { timeSpent, correctCount, incorrectCount, mode, material } = location.state as SessionReportProps;
+    const { timeSpent, correctCount, incorrectCount, mode, material, earlyEnd } = location.state as SessionReportProps;
+
+    // Calculate XP based on mode and early ending
+    const calculateXP = () => {
+        // If the game was ended early, return 0 XP
+        if (earlyEnd) {
+            return 0;
+        }
+
+        if (mode === 'Peaceful') {
+            return 5; // Constant 5 XP for peaceful mode
+        }
+        // For other modes, multiply by 5
+        return correctCount * 5;
+    };
+
+    const earnedXP = calculateXP();
 
     // Add console logs to check passed data
     console.log('Session Report Data:', {
@@ -40,11 +57,8 @@ const SessionReport = () => {
         incorrectCount,
         mode,
         material,
-        earnedXP: correctCount * 5
+        earnedXP
     });
-
-    // Calculate XP based on correct answers
-    const earnedXP = correctCount * 5;
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4">
@@ -101,7 +115,7 @@ const SessionReport = () => {
                                 backgroundColor: '#1E1E26',
                             }
                         }}
-                        onClick={() => navigate('/dashboard/setup/questions', {
+                        onClick={() => navigate('/dashboard/welcome-game-mode', {
                             state: { mode, material }
                         })}
                     >

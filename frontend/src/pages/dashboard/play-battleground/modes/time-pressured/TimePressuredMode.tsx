@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGameLogic } from '../../hooks/useGameLogic';
 import FlashCard from '../../components/common/FlashCard';
 import Header from '../../components/common/Header';
@@ -22,6 +22,8 @@ const TimePressuredMode: React.FC<GameState> = ({ mode, material, selectedTypes,
         questionTimer,
         timerProgress
     } = useGameLogic({ mode, material, selectedTypes, timeLimit });
+
+    const [startTime] = useState(new Date());
 
     const renderQuestionContent = () => {
         if (!currentQuestion) return null;
@@ -100,6 +102,7 @@ const TimePressuredMode: React.FC<GameState> = ({ mode, material, selectedTypes,
                 mode={mode}
                 correct={correctCount}
                 incorrect={incorrectCount}
+                startTime={startTime}
             />
             <main className="pt-24 px-4">
                 <div className="mx-auto max-w-[1200px] flex flex-col items-center gap-8 h-[calc(100vh-96px)] justify-center">

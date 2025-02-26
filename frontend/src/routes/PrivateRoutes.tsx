@@ -80,7 +80,6 @@ const PrivateRoutes = () => {
       <Route path="/buy-premium-account" element={<BuyPremium />} />
 
       {/* Game Setup Routes */}
-      <Route path="/set-up-questions" element={<SetUpQuestionType />} />
       <Route path="/welcome-game-mode" element={<WelcomeGameMode />} />
       <Route path="/setup/questions" element={<SetUpQuestionType />} />
       <Route path="/setup/timer" element={<SetUpTimeQuestion />} />

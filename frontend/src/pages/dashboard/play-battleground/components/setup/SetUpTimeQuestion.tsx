@@ -20,6 +20,8 @@ const SetUpTimeQuestion: React.FC = () => {
     selectedTypes
   );
 
+  // Add manaCost variable
+  const manaCost = 10; // This can be changed later to fetch from DB or props
   const [timeLimit, setTimeLimit] = useState(10);
   const [manaPoints, setManaPoints] = useState(10); // Example starting mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana points alert
@@ -40,17 +42,16 @@ const SetUpTimeQuestion: React.FC = () => {
 
   // Handle Start Learning button click
   const handleStartLearning = () => {
-    if (manaPoints < 10) {
-      setOpenManaAlert(true); // Show the alert if mana points are below 10
+    if (manaPoints < manaCost) {
+      setOpenManaAlert(true);
     } else {
       console.log("Starting learning with time limit:", timeLimit, "seconds.");
-      // Navigate to loading screen with all parameters
       navigate("/dashboard/loading-screen", {
         state: {
           mode: "Time Pressured",
           material,
           selectedTypes,
-          timeLimit: timeLimit // Convert seconds to minutes
+          timeLimit: timeLimit
         },
       });
     }
@@ -192,7 +193,7 @@ const SetUpTimeQuestion: React.FC = () => {
                 onClick={handleStartLearning}
                 className="mt-8 sm:mt-10 w-full max-w-[250px] mx-auto sm:max-w-[300px] md:max-w-[350px] py-2 sm:py-3 border-2 border-black text-black rounded-lg text-md sm:text-lg shadow-lg hover:bg-purple-700 hover:text-white hover:border-transparent flex items-center justify-center"
               >
-                START LEARNING! -0
+                START LEARNING! -{manaCost}
                 <img src={ManaIcon} alt="Mana" className="w-3 sm:w-4 ml-2" />
               </button>
             </div>

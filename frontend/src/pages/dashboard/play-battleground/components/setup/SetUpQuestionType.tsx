@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Alert, Snackbar } from "@mui/material"; // Import Snackbar and Alert from MUI
 import "./../../styles/setupques.css";
@@ -10,9 +10,11 @@ import CloseIcon from "@mui/icons-material/Close";
 import PageTransition from "../../../../../styles/PageTransition";
 
 const SetUpQuestionType: React.FC = () => {
+  // Move all hooks to the top before any conditional logic
   const location = useLocation();
   const navigate = useNavigate();
-  const { mode, material } = location.state || {};
+  const { mode, material, fromWelcome } = location.state || {};
+  const [isComponentReady, setIsComponentReady] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [questionTypes] = useState([
     {
@@ -31,6 +33,35 @@ const SetUpQuestionType: React.FC = () => {
   const [openAlert, setOpenAlert] = useState(false); // State to control alert visibility
   const [manaPoints, setManaPoints] = useState(10); // State for dynamic mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana alert
+
+  // Signal when component is fully ready
+  useEffect(() => {
+    const prepareComponent = async () => {
+      try {
+        // Add any necessary initialization here
+        setIsComponentReady(true);
+      } catch (error) {
+        console.error('Error preparing component:', error);
+      }
+    };
+
+    prepareComponent();
+  }, []);
+
+  // Redirect if not coming from welcome
+  useEffect(() => {
+    if (!fromWelcome) {
+      navigate("/dashboard/welcome", {
+        state: { mode, material },
+        replace: true
+      });
+    }
+  }, [fromWelcome, navigate, mode, material]);
+
+  // Show nothing until everything is ready
+  if (!isComponentReady || !fromWelcome) {
+    return null;
+  }
 
   console.log(
     "Mode:",
