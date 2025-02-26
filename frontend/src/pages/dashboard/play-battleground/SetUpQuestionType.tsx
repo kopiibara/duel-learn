@@ -254,12 +254,7 @@ const SetUpQuestionType: React.FC = () => {
                       "Continue" // This will not check mana points
                     ) : (
                       <>
-                        START LEARNING! -0
-                        <img
-                          src={ManaIcon}
-                          alt="Mana"
-                          className="w-3 h-3 sm:w-4 sm:h-4 ml-2"
-                        />
+                        START LEARNING!
                       </>
                     )}
                   </button>
