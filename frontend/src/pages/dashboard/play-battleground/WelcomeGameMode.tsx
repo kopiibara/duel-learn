@@ -8,7 +8,7 @@ const WelcomeGameMode: React.FC = () => {
   const navigate = useNavigate();
   const { mode, material } = location.state || {};
   const [fadeOut, setFadeOut] = useState(false);
-
+  console.log(mode);
   useEffect(() => {
     const timer = setTimeout(() => {
       setFadeOut(true);
@@ -48,6 +48,22 @@ const WelcomeGameMode: React.FC = () => {
             transition={{ duration: 1, delay: 0.3 }}
           >
             {mode} Mode Activated!
+          </motion.p>
+          <motion.p
+            className="text-sm sm:text-base md:text-lg lg:text-xl mt-16"
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 1, delay: 0.5 }}
+            style={{
+              color: "#6F658D",
+              maxWidth: "700px",
+              margin: "31px auto",
+              marginTop: "1.7rem"
+            }}
+          >
+            {mode === "Peaceful" && "Take your time, master at your own pace! ✨"}
+            {mode === "Time Pressured" && "Beat the clock, unleash your magical prowess! ⚡"}
+            {mode?.includes("PvP") && "Battle head-to-head for magical supremacy! 🏆"}
           </motion.p>
         </>
       )}
