@@ -20,11 +20,12 @@ const useHandleError = () => {
       "auth/requires-recent-login": "Please log in again to continue.",
       "auth/operation-not-allowed": "This authentication method is disabled.",
       "auth/missing-email": "Please enter an email address.",
-      "auth/missing-password": "Please enter a password.",
+      "auth/missing-password": "Please enter a passwords.",
       "auth/invalid-credential":
         "Invalid credentials. Please check your details.",
       "auth/account-exists-with-different-credential":
         "This email is linked to another sign-in method. Try using Google or Facebook login.",
+        
     };
 
     // Set a friendly error message or fallback to Firebase's default message
@@ -34,7 +35,7 @@ const useHandleError = () => {
     );
   };
 
-  return { error, handleLoginError };
+  return { error, handleLoginError, setError };
 };
 
 export default useHandleError;
