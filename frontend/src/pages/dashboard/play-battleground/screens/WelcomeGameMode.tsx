@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import DefaultUnknownPic from "../../../../assets/General/DefaultUnknownPic.png";
@@ -8,19 +8,41 @@ const WelcomeGameMode: React.FC = () => {
   const navigate = useNavigate();
   const { mode, material } = location.state || {};
   const [fadeOut, setFadeOut] = useState(false);
-  console.log(mode);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setFadeOut(true);
-      setTimeout(
-        () =>
-          navigate("/dashboard/setup/questions", { state: { mode, material } }),
-        1000
-      );
-    }, 2000);
+  const [setupIsReady, setSetupIsReady] = useState(false);
 
-    return () => clearTimeout(timer);
-  }, [navigate, mode, material]);
+  // Check if SetUpQuestionType is ready
+  useEffect(() => {
+    const checkSetupComponent = async () => {
+      try {
+        // Preload the SetUpQuestionType component
+        await import('../components/setup/SetUpQuestionType');
+        setSetupIsReady(true);
+      } catch (error) {
+        console.error('Error loading setup component:', error);
+      }
+    };
+
+    checkSetupComponent();
+  }, []);
+
+  // Only start transition when setup is ready
+  useEffect(() => {
+    if (setupIsReady) {
+      // Add 1.5 second delay before starting transition
+      setTimeout(() => {
+        setFadeOut(true);
+        setTimeout(() => {
+          navigate("/dashboard/setup/questions", {
+            state: {
+              mode,
+              material,
+              fromWelcome: true
+            }
+          });
+        }, 1000);
+      }, 1500); // 1.5 second delay
+    }
+  }, [setupIsReady, navigate, mode, material]);
 
   return (
     <motion.div

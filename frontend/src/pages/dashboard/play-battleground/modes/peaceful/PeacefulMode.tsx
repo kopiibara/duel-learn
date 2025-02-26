@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useGameLogic } from '../../hooks/useGameLogic';
 import FlashCard from '../../components/common/FlashCard';
 import Header from '../../components/common/Header'
@@ -19,6 +19,8 @@ const PeacefulMode: React.FC<GameState> = ({ mode, material, selectedTypes }) =>
         inputAnswer,
         setInputAnswer
     } = useGameLogic({ mode, material, selectedTypes });
+
+    const [startTime] = useState(new Date());
 
     const renderQuestionContent = () => {
         if (!currentQuestion) return null;
@@ -97,6 +99,7 @@ const PeacefulMode: React.FC<GameState> = ({ mode, material, selectedTypes }) =>
                 mode={mode}
                 correct={correctCount}
                 incorrect={incorrectCount}
+                startTime={startTime}
             />
             <main className="pt-24 px-4">
                 <div className="mx-auto max-w-[1200px] flex flex-col items-center gap-8 h-[calc(100vh-96px)] justify-center">

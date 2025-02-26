@@ -12,23 +12,51 @@ interface HeaderProps {
     } | null;
     correct: number;
     incorrect: number;
+    startTime: Date;
 }
 
-export default function Header({ material, mode, correct, incorrect }: HeaderProps) {
+export default function Header({ material, mode, correct, incorrect, startTime }: HeaderProps) {
     const navigate = useNavigate();
-    const [openDialog, setOpenDialog] = useState(false);
+    const [openGameOptionsDialog, setOpenGameOptionsDialog] = useState(false);
+    const [openLeaveConfirmDialog, setOpenLeaveConfirmDialog] = useState(false);
+    const [openEndGameDialog, setOpenEndGameDialog] = useState(false);
 
     const handleBackClick = () => {
-        setOpenDialog(true);
+        setOpenGameOptionsDialog(true);
+    };
+
+    const handleLeaveGame = () => {
+        setOpenGameOptionsDialog(false);
+        setOpenLeaveConfirmDialog(true);
+    };
+
+    const handleEndGame = () => {
+        setOpenGameOptionsDialog(false);
+        setOpenEndGameDialog(true);
     };
 
     const handleConfirmLeave = () => {
-        setOpenDialog(false);
+        setOpenLeaveConfirmDialog(false);
         navigate("/dashboard/home");
     };
 
-    const handleCancelLeave = () => {
-        setOpenDialog(false);
+    const handleConfirmEndGame = () => {
+        const endTime = new Date();
+        const timeDiff = endTime.getTime() - startTime.getTime();
+        const minutes = Math.floor(timeDiff / 60000);
+        const seconds = Math.floor((timeDiff % 60000) / 1000);
+        const timeSpent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        navigate('/dashboard/study/session-summary', {
+            state: {
+                timeSpent,
+                correctCount: correct,
+                incorrectCount: incorrect,
+                mode,
+                material: material?.title || 'Unknown Material',
+                earlyEnd: true
+            }
+        });
     };
 
     return (
@@ -64,11 +92,10 @@ export default function Header({ material, mode, correct, incorrect }: HeaderPro
                 </div>
             </header>
 
-            {/* Confirmation Modal */}
+            {/* Game Options Dialog */}
             <Dialog
-                open={openDialog}
-                aria-labelledby="confirmation-dialog-title"
-                aria-describedby="confirmation-dialog-description"
+                open={openGameOptionsDialog}
+                onClose={() => setOpenGameOptionsDialog(false)}
                 sx={{
                     "& .MuiDialog-paper": {
                         backgroundColor: "#080511",
@@ -76,35 +103,70 @@ export default function Header({ material, mode, correct, incorrect }: HeaderPro
                         paddingX: "20px",
                         paddingRight: "40px",
                         borderRadius: "10px",
-                    },
-                    "& .MuiDialog-root": {
-                        backgroundColor: "transparent",
-                    },
+                    }
                 }}
             >
-                <DialogTitle
-                    id="confirmation-dialog-title"
-                    className="text-white py-4 px-6"
-                    sx={{
+                <DialogTitle className="text-white">
+                    Game Options
+                </DialogTitle>
+                <DialogContent className="text-white">
+                    <p className="mb-4">Choose an action:</p>
+                    <div className="flex flex-col gap-3">
+                        <Button
+                            onClick={handleLeaveGame}
+                            sx={{
+                                color: "#B0B0B0",
+                                py: 1,
+                                px: 4,
+                                "&:hover": {
+                                    backgroundColor: "#080511",
+                                    color: "#FFFFFF",
+                                },
+                            }}
+                        >
+                            Leave Game
+                        </Button>
+                        <Button
+                            onClick={handleEndGame}
+                            sx={{
+                                color: "#B0B0B0",
+                                py: 1,
+                                px: 4,
+                                "&:hover": {
+                                    backgroundColor: "#080511",
+                                    color: "#FFFFFF",
+                                },
+                            }}
+                        >
+                            End Game (0 XP)
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Leave Game Confirmation Dialog */}
+            <Dialog
+                open={openLeaveConfirmDialog}
+                onClose={() => setOpenLeaveConfirmDialog(false)}
+                sx={{
+                    "& .MuiDialog-paper": {
                         backgroundColor: "#080511",
-                    }}
-                >
+                        paddingY: "30px",
+                        paddingX: "20px",
+                        paddingRight: "40px",
+                        borderRadius: "10px",
+                    }
+                }}
+            >
+                <DialogTitle className="text-white">
                     Are you sure you want to leave?
                 </DialogTitle>
-
-                <DialogContent
-                    className="text-white py-6 px-6"
-                    sx={{ backgroundColor: "#080511" }}
-                >
-                    <p>
-                        If you leave, your current progress will be lost. Please confirm if
-                        you wish to proceed.
-                    </p>
+                <DialogContent className="text-white">
+                    <p>If you leave, your current progress will be lost. Please confirm if you wish to proceed.</p>
                 </DialogContent>
-
                 <DialogActions className="bg-[#080511]" sx={{ padding: "16px 0" }}>
                     <Button
-                        onClick={handleCancelLeave}
+                        onClick={() => setOpenLeaveConfirmDialog(false)}
                         sx={{
                             color: "#B0B0B0",
                             py: 1,
@@ -127,11 +189,63 @@ export default function Header({ material, mode, correct, incorrect }: HeaderPro
                             px: 4,
                             "&:hover": {
                                 backgroundColor: "#6A3EEA",
-                                color: "#fff",
                             },
                         }}
                     >
                         Yes, Leave
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* End Game Confirmation Dialog */}
+            <Dialog
+                open={openEndGameDialog}
+                onClose={() => setOpenEndGameDialog(false)}
+                sx={{
+                    "& .MuiDialog-paper": {
+                        backgroundColor: "#080511",
+                        paddingY: "30px",
+                        paddingX: "20px",
+                        paddingRight: "40px",
+                        borderRadius: "10px",
+                    }
+                }}
+            >
+                <DialogTitle className="text-white">
+                    End Game Early?
+                </DialogTitle>
+                <DialogContent className="text-white">
+                    <p>Ending the game now will result in 0 XP earned. Your progress will still be recorded. Do you want to continue?</p>
+                </DialogContent>
+                <DialogActions className="bg-[#080511]" sx={{ padding: "16px 0" }}>
+                    <Button
+                        onClick={() => setOpenEndGameDialog(false)}
+                        sx={{
+                            color: "#B0B0B0",
+                            py: 1,
+                            px: 4,
+                            "&:hover": {
+                                backgroundColor: "#080511",
+                                color: "#FFFFFF",
+                            },
+                        }}
+                    >
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleConfirmEndGame}
+                        autoFocus
+                        sx={{
+                            backgroundColor: "#4D1EE3",
+                            color: "#FFFFFF",
+                            py: 1,
+                            px: 4,
+                            "&:hover": {
+                                backgroundColor: "#6A3EEA",
+                            },
+                        }}
+                    >
+                        End Game
                     </Button>
                 </DialogActions>
             </Dialog>
