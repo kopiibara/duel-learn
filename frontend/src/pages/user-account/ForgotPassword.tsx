@@ -6,8 +6,8 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../services/firebase";
 import PageTransition from "../../styles/PageTransition";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
-import useHandleError from "../../hooks/validation.hooks/useHandleError"; // Add this import
-import useValidation from "../../hooks/validation.hooks/useValidation"; // Add this import
+import useHandleForgotPasswordError from "../../hooks/validation.hooks/useHandleForgotPasswordError"; // Updated import
+import useForgotPasswordValidation from "../../hooks/validation.hooks/useForgotPasswordValidation"; // Updated import
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -16,10 +16,10 @@ const ForgotPassword = () => {
     email: "",
   });
 
-  const { errors, validate } = useValidation(formData);
+  const { errors, validate } = useForgotPasswordValidation(formData); // Updated hook
   const [loading, setLoading] = useState(false);
   const [isSSOModalOpen, setIsSSOModalOpen] = useState(false);
-  const { error, handleLoginError, setError } = useHandleError();
+  const { error, handleForgotPasswordError, setError } = useHandleForgotPasswordError(); // Updated hook
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -27,49 +27,38 @@ const ForgotPassword = () => {
     let formIsValid = true;
     let newErrors = { email: "" };
 
-    if (!email) {
-      newErrors.email = "Email is required.";
-      formIsValid = false;
-    } else {
-      const emailError = await validate("email", email);
-      if (emailError) {
-        newErrors.email = emailError;
-        formIsValid = false;
-      }
-    }
+    if (formIsValid && !errors.email) { // Check if there are no validation errors
+      try {
+        setLoading(true);
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("email", "==", email));
 
-    if (!formIsValid) {
-      setError("Please fill in all required fields.");
-      return;
-    }
+        const querySnapshot = await getDocs(q);
 
-    try {
-      setLoading(true);
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", email));
-
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        setError("Account doesn't exist.");
-      } else {
-        const userDoc = querySnapshot.docs[0];
-        const userData = userDoc.data();
-        if (userData.isSSO) {
-          setIsSSOModalOpen(true);
+        if (querySnapshot.empty) {
+          setError("Account doesn't exist.");
         } else {
-          navigate("/confirmation-account", { state: { email } });
+          const userDoc = querySnapshot.docs[0];
+          const userData = userDoc.data();
+          if (userData.isSSO) {
+            setIsSSOModalOpen(true);
+          } else {
+            navigate("/confirmation-account", { state: { email } });
+          }
         }
+      } catch (error) {
+        handleForgotPasswordError(error); // Updated error handler
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      handleLoginError(error);
-    } finally {
-      setLoading(false);
+    } else {
+      setError(newErrors.email);
     }
   };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prevData) => ({ ...prevData, [field]: value }));
+    validate(field, value); // Validate on change
     setError("");
   };
 
@@ -105,7 +94,7 @@ const ForgotPassword = () => {
             Please enter your email to search for your account.
           </p>
 
-          {error && (
+          {(error) && (
             <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-md border border-red-300">
               {error}
             </div>
@@ -121,10 +110,10 @@ const ForgotPassword = () => {
                 autoComplete="off"
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
-                  errors.email ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                  error||errors.email ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
                 }`}
               />
-              {errors.email && (
+              {errors.email &&  (
                 <p className="text-red-500 mt-1 text-sm">{errors.email}</p>
               )}
               
