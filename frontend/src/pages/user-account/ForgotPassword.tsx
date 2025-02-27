@@ -19,7 +19,8 @@ const ForgotPassword = () => {
   const { errors, validate } = useForgotPasswordValidation(formData); // Updated hook
   const [loading, setLoading] = useState(false);
   const [isSSOModalOpen, setIsSSOModalOpen] = useState(false);
-  const { error, handleForgotPasswordError, setError } = useHandleForgotPasswordError(); // Updated hook
+  const { error, handleForgotPasswordError, setError } =
+    useHandleForgotPasswordError(); // Updated hook
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -27,7 +28,8 @@ const ForgotPassword = () => {
     let formIsValid = true;
     let newErrors = { email: "" };
 
-    if (formIsValid && !errors.email) { // Check if there are no validation errors
+    if (formIsValid && !errors.email) {
+      // Check if there are no validation errors
       try {
         setLoading(true);
         const usersRef = collection(db, "users");
@@ -63,7 +65,7 @@ const ForgotPassword = () => {
   };
 
   const handleExitClick = () => {
-    navigate("/");
+    navigate("/login");
   };
 
   return (
@@ -75,15 +77,6 @@ const ForgotPassword = () => {
             <img src="/duel-learn-logo.svg" className="w-10 h-10" alt="icon" />
             <p className="text-white text-xl font-semibold">Duel Learn</p>
           </Link>
-
-          {/* Exit Button */}
-          <img
-            src={ExitIcon}
-            alt="Exit Icon"
-            style={{ width: "39px" }}
-            className="hover:scale-110 cursor-pointer"
-            onClick={handleExitClick}
-          />
         </header>
 
         <div className="w-full max-w-md rounded-lg p-8 shadow-md">
@@ -94,13 +87,13 @@ const ForgotPassword = () => {
             Please enter your email to search for your account.
           </p>
 
-          {(error) && (
+          {error && (
             <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-md border border-red-300">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="justify-center items-center">
             <div className="mt-0 mb-0">
               <input
                 id="email"
@@ -110,13 +103,14 @@ const ForgotPassword = () => {
                 autoComplete="off"
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
-                  error||errors.email ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                  error || errors.email
+                    ? "border border-red-500 focus:ring-red-500"
+                    : "focus:ring-[#4D18E8]"
                 }`}
               />
-              {errors.email &&  (
+              {errors.email && (
                 <p className="text-red-500 mt-1 text-sm">{errors.email}</p>
               )}
-              
             </div>
             <button
               type="submit"
@@ -128,6 +122,13 @@ const ForgotPassword = () => {
               ) : (
                 "Submit"
               )}
+            </button>
+            <button
+              type="button"
+              className="w-full mt-2 text-[#3B354D] py-3 rounded-lg  justify-center "
+              onClick={handleExitClick}
+            >
+              <p className="hover:text-white transition-colors">Back</p>
             </button>
           </form>
         </div>
@@ -149,7 +150,8 @@ const ForgotPassword = () => {
           </div>
           <div className="w-full max-w-md rounded-lg p-8 shadow-md bg-black">
             <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
-              This account was created using Google. You cannot change the password.
+              This account was created using Google. You cannot change the
+              password.
             </p>
             <button
               type="button"
