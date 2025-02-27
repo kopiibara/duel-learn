@@ -8,8 +8,8 @@ import {
   DialogTitle,
 } from "@mui/material";
 import { motion } from "framer-motion"; // Import motion from framer-motion
-import "./../styles/setupques.css";
-import ManaIcon from "../../../../assets/ManaIcon.png";
+import "./../../styles/setupques.css";
+import ManaIcon from "../../../../../assets/ManaIcon.png";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { ContentCopy, CheckCircle } from "@mui/icons-material";
