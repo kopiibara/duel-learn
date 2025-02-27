@@ -10,8 +10,10 @@ interface SessionReportProps {
     correctCount: number;
     incorrectCount: number;
     mode: 'Peaceful' | 'time-pressured' | 'pvp';
-    material: string;
+    material: { title: string }; // Update this line
     earlyEnd?: boolean;
+    startTime: Date;
+    highestStreak: number;
 }
 
 interface StatisticProps {
@@ -32,19 +34,36 @@ const StatisticBox = ({ label, value, icon }: StatisticProps & { icon: string })
 const SessionReport = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { timeSpent, correctCount, incorrectCount, mode, material, earlyEnd } = location.state as SessionReportProps;
+    const { timeSpent, correctCount, incorrectCount, mode, material, earlyEnd, startTime, highestStreak } = location.state as SessionReportProps;
 
-    // Calculate XP based on mode and early ending
+
+    // Add console log to check the value of highestStreak after destructuring it from location.state
+    console.log('Received highestStreak:', highestStreak);
+
+    // Calculate XP based on mode and number of questions answered
     const calculateXP = () => {
         // If the game was ended early, return 0 XP
         if (earlyEnd) {
             return 0;
         }
 
+        // For Peaceful mode
         if (mode === 'Peaceful') {
-            return 5; // Constant 5 XP for peaceful mode
+            return 5;
         }
-        // For other modes, multiply by 5
+
+        // For Time Pressured mode
+        if (mode === 'time-pressured') {
+            const totalQuestions = correctCount + incorrectCount;
+
+            if (totalQuestions >= 50) return 30;
+            if (totalQuestions >= 40) return 25;
+            if (totalQuestions >= 30) return 20;
+            if (totalQuestions >= 20) return 10;
+            if (totalQuestions < 10) return 5; // For below 10 questions
+        }
+
+        // For other modes (like PVP if implemented later)
         return correctCount * 5;
     };
 
@@ -57,8 +76,10 @@ const SessionReport = () => {
         incorrectCount,
         mode,
         material,
-        earnedXP
+        earnedXP,
+        highestStreak
     });
+
 
     return (
         <div className="min-h-screen flex items-center justify-center p-4">
@@ -98,6 +119,13 @@ const SessionReport = () => {
                                 value={timeSpent}
                                 icon={ClockIcon}
                             />
+                            {!earlyEnd && (
+                                <StatisticBox
+                                    label="HIGHEST STREAK"
+                                    value={`${highestStreak}x`}
+                                    icon={ManaIcon}
+                                />
+                            )}
                         </div>
                     </div>
                 </div>

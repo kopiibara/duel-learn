@@ -6,6 +6,7 @@ interface FlashCardProps {
     correctAnswer: string;
     isFlipped: boolean;
     onFlip: () => void;
+    timeRemaining?: number | null;
 }
 
 const FlashCard: React.FC<FlashCardProps> = ({ question, correctAnswer, isFlipped, onFlip }) => {
