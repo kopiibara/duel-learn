@@ -1,15 +1,9 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-import {
-  CircularProgress,
-  Modal,
-} from "@mui/material";
+import { CircularProgress, Modal } from "@mui/material";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
-import {
-  verifyPasswordResetCode,
-  confirmPasswordReset,
-} from "firebase/auth";
+import { verifyPasswordResetCode, confirmPasswordReset } from "firebase/auth";
 import { auth, db } from "../../services/firebase"; // Adjust the path as needed
 import usePasswordValidation from "../../hooks/validation.hooks/usePasswordValidation";
 import PageTransition from "../../styles/PageTransition";
@@ -36,7 +30,10 @@ const ResetPassword = () => {
       return;
     }
 
-    console.log("firebase_uid received from location SecurityCode:", firebase_uid);
+    console.log(
+      "firebase_uid received from location SecurityCode:",
+      firebase_uid
+    );
 
     const validateCode = async () => {
       try {
@@ -56,8 +53,8 @@ const ResetPassword = () => {
     confirmPassword: "", // New field for confirming password
   });
 
-
-  const { errors, validatePassword, validatePasswordForm } = usePasswordValidation();
+  const { errors, validatePassword, validatePasswordForm } =
+    usePasswordValidation();
 
   const [loading, setLoading] = useState(false); // Loading state for the submit button
 
@@ -78,10 +75,13 @@ const ResetPassword = () => {
     event.preventDefault();
     const { newpassword, confirmPassword } = formData;
     const updated_at = moment().format("YYYY-MM-DD HH:mm:ss"); // Use moment to format the timestamp
-    const formIsValid = validatePasswordForm({
-      newpassword,
-      confirmPassword,
-    }, "newpassword");
+    const formIsValid = validatePasswordForm(
+      {
+        newpassword,
+        confirmPassword,
+      },
+      "newpassword"
+    );
 
     if (!formIsValid) {
       return;
@@ -102,13 +102,19 @@ const ResetPassword = () => {
       return;
     }
 
-    console.log("firebase_uid received from location SecurityCode:", firebase_uid);
+    console.log(
+      "firebase_uid received from location SecurityCode:",
+      firebase_uid
+    );
 
     try {
       const userDoc = await getDoc(doc(db, "users", firebase_uid));
       if (userDoc.exists()) {
         const userData = userDoc.data();
-        const isMatch = await bcrypt.compare(newpassword, userData.password_hash);
+        const isMatch = await bcrypt.compare(
+          newpassword,
+          userData.password_hash
+        );
         if (isMatch) {
           setError({ general: "Cannot use old password. Please try again" });
           setLoading(false);
@@ -118,17 +124,22 @@ const ResetPassword = () => {
 
       await confirmPasswordReset(auth, oobCode, newpassword);
       await resetPasswordApi(firebase_uid, password_hash, updated_at);
-      await setDoc(doc(db, "users", firebase_uid), { updated_at, password_hash }, { merge: true });
-      console.log(firebase_uid, newpassword) // Call the backend API to update the password hash
+      await setDoc(
+        doc(db, "users", firebase_uid),
+        { updated_at, password_hash },
+        { merge: true }
+      );
+      console.log(firebase_uid, newpassword); // Call the backend API to update the password hash
       alert("Password successfully reset!");
 
       // Send message to other tabs using BroadcastChannel
-      const bc = new BroadcastChannel('password-reset');
-      bc.postMessage('reset_password_success');
+      const bc = new BroadcastChannel("password-reset");
+      bc.postMessage("reset_password_success");
 
       navigate("/password-changed-successfully");
     } catch (err) {
       setError({ general: "Failed to Reset Password." });
+      console.log(err);
     } finally {
       setLoading(false);
     }
@@ -204,13 +215,16 @@ const ResetPassword = () => {
                 placeholder="Enter your password"
                 required
                 value={formData.newpassword}
-                onChange={(e) => handleInputChange("newpassword", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("newpassword", e.target.value)
+                }
                 onCopy={(e) => e.preventDefault()} // Disable copy
                 onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
-                  errors.newpassword ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                  errors.newpassword
+                    ? "border border-red-500 focus:ring-red-500"
+                    : "focus:ring-[#4D18E8]"
                 }`}
-                
               />
               {/* Password Toggle Button */}
               <span
@@ -224,7 +238,9 @@ const ResetPassword = () => {
                 )}
               </span>
               {errors.newpassword && (
-                <p className="text-red-500 mt-1 text-sm">{errors.newpassword}</p>
+                <p className="text-red-500 mt-1 text-sm">
+                  {errors.newpassword}
+                </p>
               )}
             </div>
 
@@ -237,11 +253,15 @@ const ResetPassword = () => {
                 placeholder="Confirm your password"
                 required
                 value={formData.confirmPassword}
-                onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                onChange={(e) =>
+                  handleInputChange("confirmPassword", e.target.value)
+                }
                 onPaste={(e) => e.preventDefault()}
                 onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
-                  errors.confirmPassword ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                  errors.confirmPassword
+                    ? "border border-red-500 focus:ring-red-500"
+                    : "focus:ring-[#4D18E8]"
                 }`}
               />
               {/* Confirm Password Toggle Button */}
@@ -261,7 +281,6 @@ const ResetPassword = () => {
                 </p>
               )}
             </div>
-
 
             {/* Submit Button */}
             <button
