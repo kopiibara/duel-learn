@@ -15,6 +15,8 @@ export const useGameLogic = ({ mode, material, selectedTypes, timeLimit }: GameS
     const [startTime] = useState(new Date());
     const [timerProgress, setTimerProgress] = useState(100);
     const [questionTimer, setQuestionTimer] = useState<number | null>(null);
+    const [currentStreak, setCurrentStreak] = useState(0);
+    const [highestStreak, setHighestStreak] = useState(0);
     
     const navigate = useNavigate();
 
@@ -61,8 +63,16 @@ export const useGameLogic = ({ mode, material, selectedTypes, timeLimit }: GameS
 
         if (isCorrect) {
             setCorrectCount(prev => prev + 1);
+            setCurrentStreak(prev => {
+                const newStreak = prev + 1;
+                if (newStreak > highestStreak) {
+                    setHighestStreak(newStreak);
+                }
+                return newStreak;
+            });
         } else {
             setIncorrectCount(prev => prev + 1);
+            setCurrentStreak(0);
         }
 
         setSelectedAnswer(answer);
@@ -93,13 +103,24 @@ export const useGameLogic = ({ mode, material, selectedTypes, timeLimit }: GameS
         const seconds = Math.floor((timeDiff % 60000) / 1000);
         const timeSpent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
+        console.log('Game Complete:', {
+            timeSpent,
+            correctCount,
+            incorrectCount,
+            mode,
+            material
+        });
+
+        console.log('Highest Streak before navigating:', highestStreak);
+
         navigate('/dashboard/study/session-summary', {
             state: {
                 timeSpent,
                 correctCount,
                 incorrectCount,
                 mode,
-                material
+                material,
+                highestStreak
             }
         });
     };
@@ -128,6 +149,8 @@ export const useGameLogic = ({ mode, material, selectedTypes, timeLimit }: GameS
         questionTimer,
         timerProgress,
         inputAnswer,
+        currentStreak,
+        highestStreak,
         handleFlip: () => setIsFlipped(!isFlipped),
         handleAnswerSubmit,
         handleNextQuestion,
