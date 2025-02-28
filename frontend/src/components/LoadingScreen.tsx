@@ -1,12 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import cauldronGif from "../assets/General/Cauldron.gif"; // Importing the gif animation for cauldron asset
-import PageTransition from "../styles/PageTransition"; // Importing the PageTransition component
+import React, { useState } from "react";
+import cauldronGif from "../assets/General/Cauldron.gif";
+import PageTransition from "../styles/PageTransition";
 
 export const LoadingScreen: React.FC = () => {
-  const navigate = useNavigate(); // Hook to programmatically navigate to different routes
-
-  // Array of magical-themed loading lines
   const loadingLines = [
     "For relaxed practice and review. The best way to retain those lessons in your head, Magician.",
     "A true Magician never stops learning. Prepare your spells of knowledge!",
@@ -25,17 +21,6 @@ export const LoadingScreen: React.FC = () => {
     loadingLines[Math.floor(Math.random() * loadingLines.length)]
   );
 
-  useEffect(() => {
-    // Set a timer to navigate to the dashboard home page after 5 seconds
-    const timer = setTimeout(() => {
-      navigate("/dashboard/home");
-    }, 5000);
-
-    // Clear the timer when the component unmounts
-    return () => clearTimeout(timer);
-  }, [navigate]);
-
-  // Function to update the loading line on user interaction
   const changeLine = () => {
     setCurrentLine(
       loadingLines[Math.floor(Math.random() * loadingLines.length)]
@@ -46,14 +31,14 @@ export const LoadingScreen: React.FC = () => {
     <PageTransition>
       <main
         className="flex overflow-hidden flex-col justify-center items-center min-h-screen px-10 py-28 bg-gray-950 max-md:px-2 max-md:py-12"
-        onClick={changeLine} // Change text when user clicks anywhere
+        onClick={changeLine}
       >
         <section className="flex flex-col items-center max-w-full w-[406px]">
           <img
             loading="lazy"
-            src={cauldronGif} // Using the imported cauldron gif
+            src={cauldronGif}
             className="object-contain max-w-full aspect-square w-[225px]"
-            alt="Loading animation" // Alt text for the image
+            alt="Loading animation"
           />
           <h1
             className="mt-8 text-2xl font-extrabold text-white max-md:mt-5"
