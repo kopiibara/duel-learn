@@ -3,6 +3,7 @@ import { useGameLogic } from '../../hooks/useGameLogic';
 import FlashCard from '../../components/common/FlashCard';
 import Header from '../../components/common/Header'
 import { GameState } from '../../types';
+import Timer from '../../components/common/Timer';
 
 const PeacefulMode: React.FC<GameState> = ({ mode, material, selectedTypes }) => {
     const {
@@ -17,7 +18,17 @@ const PeacefulMode: React.FC<GameState> = ({ mode, material, selectedTypes }) =>
         handleNextQuestion,
         getButtonStyle,
         inputAnswer,
-        setInputAnswer
+        setInputAnswer,
+        questionTimer,
+        timerProgress,
+        timeLimit,
+        currentStreak,
+        highestStreak,
+        masteredCount,
+        unmasteredCount,
+        handleUnmastered,
+        handleMastered,
+        isCorrect
     } = useGameLogic({ mode, material, selectedTypes });
 
     const [startTime] = useState(new Date());
@@ -100,6 +111,9 @@ const PeacefulMode: React.FC<GameState> = ({ mode, material, selectedTypes }) =>
                 correct={correctCount}
                 incorrect={incorrectCount}
                 startTime={startTime}
+                highestStreak={highestStreak}
+                masteredCount={masteredCount}  // Ensure this is included
+                unmasteredCount={unmasteredCount}  // Ensure this is included
             />
             <main className="pt-24 px-4">
                 <div className="mx-auto max-w-[1200px] flex flex-col items-center gap-8 h-[calc(100vh-96px)] justify-center">
@@ -110,6 +124,14 @@ const PeacefulMode: React.FC<GameState> = ({ mode, material, selectedTypes }) =>
                         onFlip={handleFlip}
                     />
                     {renderQuestionContent()}
+                    <Timer
+                        timeRemaining={30}
+                        progress={100}
+                        timeLimit={1}
+                        currentStreak={currentStreak}
+                        highestStreak={highestStreak}
+                        showTimerUI={false}
+                    />
                     {showNextButton && (
                         <button
                             onClick={handleNextQuestion}
@@ -117,6 +139,22 @@ const PeacefulMode: React.FC<GameState> = ({ mode, material, selectedTypes }) =>
                         >
                             Next Question
                         </button>
+                    )}
+                    {showResult && isCorrect === true && (
+                        <div className="flex justify-between mt-6">
+                            <button
+                                onClick={handleUnmastered}
+                                className="px-8 py-3 bg-[#FF3B3F] text-white rounded-lg hover:bg-[#D32F2F] transition-colors"
+                            >
+                                Unmastered
+                            </button>
+                            <button
+                                onClick={handleMastered}
+                                className="px-8 py-3 bg-[#52A647] text-white rounded-lg hover:bg-[#388E3C] transition-colors"
+                            >
+                                Mastered
+                            </button>
+                        </div>
                     )}
                 </div>
             </main>
