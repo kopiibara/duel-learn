@@ -24,7 +24,9 @@ const TimePressuredMode: React.FC<GameState> = ({ mode, material, selectedTypes,
         questionTimer,
         timerProgress,
         currentStreak,
-        highestStreak
+        highestStreak,
+        masteredCount,
+        unmasteredCount
     } = useGameLogic({ mode, material, selectedTypes, timeLimit });
 
     const [startTime] = useState(new Date());
@@ -132,7 +134,7 @@ const TimePressuredMode: React.FC<GameState> = ({ mode, material, selectedTypes,
             </div>
         );
     };
-  
+
 
     return (
         <div className={`min-h-screen relative ${getBorderClass()}`}>
@@ -144,6 +146,9 @@ const TimePressuredMode: React.FC<GameState> = ({ mode, material, selectedTypes,
                     correct={correctCount}
                     incorrect={incorrectCount}
                     startTime={startTime}
+                    highestStreak={highestStreak}
+                    masteredCount={masteredCount}
+                    unmasteredCount={unmasteredCount}
                 />
                 <main className="pt-24 px-4">
                     <div className="mx-auto max-w-[1200px] flex flex-col items-center gap-8 h-[calc(100vh-96px)] justify-center">
@@ -172,6 +177,7 @@ const TimePressuredMode: React.FC<GameState> = ({ mode, material, selectedTypes,
                     progress={timerProgress}
                     timeLimit={timeLimit ?? 30}
                     currentStreak={currentStreak}
+                    highestStreak={highestStreak}
                 />
             </div>
         </div>

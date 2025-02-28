@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import clockTimePressured from "../../../../../assets/clockTimePressured.png";
-import PentakillAnimation from './ScoreStreakAnimation';
+import ScoreStreakAnimation from './ScoreStreakAnimation';
 
 interface TimerProps {
     timeRemaining: number | null;
@@ -8,9 +8,11 @@ interface TimerProps {
     onCriticalTime?: (isCritical: boolean) => void;
     timeLimit: number;
     currentStreak: number;
+    highestStreak: number;
+    showTimerUI?: boolean;
 }
 
-const Timer: React.FC<TimerProps> = ({ timeRemaining, progress, onCriticalTime, timeLimit, currentStreak }) => {
+const Timer: React.FC<TimerProps> = ({ timeRemaining, progress, onCriticalTime, timeLimit, currentStreak, highestStreak, showTimerUI = true }) => {
     const [shouldAnimate, setShouldAnimate] = useState(true);
     const [showStreak, setShowStreak] = useState(false);
 
@@ -30,10 +32,13 @@ const Timer: React.FC<TimerProps> = ({ timeRemaining, progress, onCriticalTime, 
     }, [progress]);
 
     useEffect(() => {
+        console.log('Current Streak:', currentStreak);
         if (currentStreak >= 3) {
             setShowStreak(true);
+            console.log('Showing Streak Animation');
             const timer = setTimeout(() => {
                 setShowStreak(false);
+                console.log('Hiding Streak Animation');
             }, 3000); // Show for 3 seconds
             return () => clearTimeout(timer);
         }
@@ -75,47 +80,49 @@ const Timer: React.FC<TimerProps> = ({ timeRemaining, progress, onCriticalTime, 
                 </div>
             )}
 
-            <div className="fixed bottom-0 left-0 w-full">
-                <div className="absolute left-12 bottom-8 flex items-center gap-2">
-                    <img
-                        src={clockTimePressured}
-                        alt="Timer"
-                        className={`w-6 h-6 ${isCriticalTime ? 'animate-pulse' : ''}`}
-                    />
-                    <div className={`text-2xl font-bold ${isZero
-                        ? 'text-red-600 animate-health-glitch'
-                        : isCriticalTime
-                            ? 'text-red-500'
-                            : 'text-white'
-                        }`}>
-                        {Math.ceil(timeRemaining)}s
+            {showTimerUI && (
+                <div className="fixed bottom-0 left-0 w-full">
+                    <div className="absolute left-12 bottom-8 flex items-center gap-2">
+                        <img
+                            src={clockTimePressured}
+                            alt="Timer"
+                            className={`w-6 h-6 ${isCriticalTime ? 'animate-pulse' : ''}`}
+                        />
+                        <div className={`text-2xl font-bold ${isZero
+                            ? 'text-red-600 animate-health-glitch'
+                            : isCriticalTime
+                                ? 'text-red-500'
+                                : 'text-white'
+                            }`}>
+                            {Math.ceil(timeRemaining)}s
+                        </div>
                     </div>
-                </div>
 
-                <div className="w-full h-2 bg-gray-700/50 relative overflow-hidden">
-                    <div
-                        className={`${getProgressBarClass()}`}
-                        style={{
-                            width: getProgressBarWidth(),
-                            transition: shouldAnimate ? 'all 1s linear' : 'none',
-                            boxShadow: isNearZero ? '0 0 8px 2px rgba(239, 68, 68, 0.5)' : 'none'
-                        }}
-                    />
-                    {isNearZero && (
+                    <div className="w-full h-2 bg-gray-700/50 relative overflow-hidden">
                         <div
-                            className="absolute inset-0 bg-red-500/20"
+                            className={`${getProgressBarClass()}`}
                             style={{
-                                backdropFilter: 'blur(1px)',
-                                transition: 'opacity 0.3s ease'
+                                width: getProgressBarWidth(),
+                                transition: shouldAnimate ? 'all 1s linear' : 'none',
+                                boxShadow: isNearZero ? '0 0 8px 2px rgba(239, 68, 68, 0.5)' : 'none'
                             }}
                         />
-                    )}
+                        {isNearZero && (
+                            <div
+                                className="absolute inset-0 bg-red-500/20"
+                                style={{
+                                    backdropFilter: 'blur(1px)',
+                                    transition: 'opacity 0.3s ease'
+                                }}
+                            />
+                        )}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {showStreak && currentStreak >= 3 && (
                 <div className="absolute top-[120px] left-1/2 transform -translate-x-1/2 pointer-events-none z-50">
-                    <PentakillAnimation streak={currentStreak} />
+                    <ScoreStreakAnimation streak={highestStreak} />
                 </div>
             )}
         </>

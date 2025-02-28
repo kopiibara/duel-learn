@@ -17,6 +17,9 @@ export const useGameLogic = ({ mode, material, selectedTypes, timeLimit }: GameS
     const [questionTimer, setQuestionTimer] = useState<number | null>(null);
     const [currentStreak, setCurrentStreak] = useState(0);
     const [highestStreak, setHighestStreak] = useState(0);
+    const [masteredCount, setMasteredCount] = useState(0);
+    const [unmasteredCount, setUnmasteredCount] = useState(0);
+    const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
     
     const navigate = useNavigate();
 
@@ -59,9 +62,10 @@ export const useGameLogic = ({ mode, material, selectedTypes, timeLimit }: GameS
     const handleAnswerSubmit = (answer: string) => {
         if (showResult) return;
 
-        const isCorrect = answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+        const isAnswerCorrect = answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+        setIsCorrect(isAnswerCorrect);
 
-        if (isCorrect) {
+        if (isAnswerCorrect) {
             setCorrectCount(prev => prev + 1);
             setCurrentStreak(prev => {
                 const newStreak = prev + 1;
@@ -70,9 +74,12 @@ export const useGameLogic = ({ mode, material, selectedTypes, timeLimit }: GameS
                 }
                 return newStreak;
             });
+            setShowNextButton(false);
         } else {
             setIncorrectCount(prev => prev + 1);
+            setUnmasteredCount(prev => prev + 1);
             setCurrentStreak(0);
+            setShowNextButton(true);
         }
 
         setSelectedAnswer(answer);
@@ -125,6 +132,16 @@ export const useGameLogic = ({ mode, material, selectedTypes, timeLimit }: GameS
         });
     };
 
+    const handleMastered = () => {
+        setMasteredCount(prev => prev + 1);
+        handleNextQuestion();
+    };
+
+    const handleUnmastered = () => {
+        setUnmasteredCount(prev => prev + 1);
+        handleNextQuestion();
+    };
+
     const getButtonStyle = (option: string) => {
         if (!showResult) {
             return `border ${selectedAnswer === option ? 'border-[#4D18E8] border-2' : 'border-gray-800'}`
@@ -151,10 +168,16 @@ export const useGameLogic = ({ mode, material, selectedTypes, timeLimit }: GameS
         inputAnswer,
         currentStreak,
         highestStreak,
+        timeLimit,
+        masteredCount,
+        unmasteredCount,
+        isCorrect,
         handleFlip: () => setIsFlipped(!isFlipped),
         handleAnswerSubmit,
         handleNextQuestion,
         getButtonStyle,
-        setInputAnswer
+        setInputAnswer,
+        handleMastered,
+        handleUnmastered,
     };
 }; 
