@@ -77,7 +77,8 @@ const ResetPassword = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const { newpassword, confirmPassword } = formData;
-    const updated_at = moment().format("YYYY-MM-DD HH:mm:ss"); // Use moment to format the timestamp
+    const updated_at = new Date().toISOString()
+
     const formIsValid = validatePasswordForm({
       newpassword,
       confirmPassword,
