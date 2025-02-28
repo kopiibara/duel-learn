@@ -73,9 +73,16 @@ const Login = () => {
         localStorage.setItem("userToken", token);
 
         setTimeout(() => {
-          if (userData.isNew) {
+          if (userData.isNew && userData.email_verified) {
             navigate("/dashboard/welcome");
-          } else {
+          } 
+          else if(userData.isNew && userData.email_verified === false){
+            navigate("/dashboard/verify-email");
+          }
+          else if(userData.isNew === false && userData.email_verified === false){
+            navigate("/dashboard/verify-email");
+          }
+          else {
             navigate("/dashboard/home");
           }
         }, 2000);
@@ -134,9 +141,16 @@ const Login = () => {
         localStorage.setItem("userToken", token);
 
         setTimeout(() => {
-          if (userData.isNew) {
+          if (userData.isNew && userData.email_verified) {
             navigate("/dashboard/welcome");
-          } else {
+          } 
+          else if(userData.isNew && userData.email_verified === false){
+            navigate("/dashboard/verify-email");
+          }
+          else if(userData.email_verified === false){
+            navigate("/dashboard/verify-email");
+          }
+          else {
             navigate("/dashboard/home");
           }
         }, 2000);

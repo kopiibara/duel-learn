@@ -21,7 +21,6 @@ import TutorialSix from "../pages/user-onboarding/TutorialSix";
 import TutorialLast from "../pages/user-onboarding/TutorialLast";
 import WelcomeGameMode from "../pages/dashboard/play-battleground/WelcomeGameMode";
 import SetUpTimeQuestion from "../pages/dashboard/play-battleground/time-pressured/SetUptTimeQuestion";
-
 import PVPLobby from "../pages/dashboard/play-battleground/multiplayer-mode/PVPLobby";
 import { useState } from "react"; // Import useState
 import VerifyEmail from "../pages/user-account/VerifyEmail";
@@ -35,6 +34,10 @@ const PrivateRoutes = () => {
 
   if (!user || !token) {
     return <Navigate to="/landing-page" />;
+  }
+
+  if (user && token && !user.email_verified) {
+    return <Navigate to="/verify-email" />;
   }
 
   return (

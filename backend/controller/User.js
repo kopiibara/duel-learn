@@ -1,4 +1,3 @@
-import manilacurrentTimestamp from "../utils/CurrentTimestamp.js";
 import { pool } from "../config/db.js";
 import { v4 as uuidv4 } from "uuid";
 import bcrypt from "bcrypt";
@@ -15,8 +14,7 @@ export default {
       const hashedPassword = isSSO ? null : await bcrypt.hash(password, 10);
 
       // Get the current timestamp
-      const currentTimestamp = manilacurrentTimestamp;
-
+      const currentTimestamp = moment().format("YYYY-MM-DD HH:mm:ss");
       // Get a connection from the pool
       connection = await pool.getConnection();
 
@@ -74,6 +72,35 @@ export default {
       });
     } catch (error) {
       console.error("Error resetting password:", error);
+      res.status(500).json({ error: "Internal server error", details: error });
+    } finally {
+      if (connection) connection.release();
+    }
+  },
+
+  updateEmailVerified: async (req, res) => {
+    let connection;
+    try {
+      const { firebase_uid, email_verified, updated_at } = req.body;
+
+      // Convert the updated_at to the desired format
+      const sqlTimestamp = moment(updated_at).format("YYYY-MM-DD HH:mm:ss");
+
+      // Get a connection from the pool
+      connection = await pool.getConnection();
+
+      // Update the user's email_verified and updated_at in the database
+      await connection.execute(
+        `UPDATE users SET email_verified = ?, updated_at = ? WHERE firebase_uid = ?;`,
+        [email_verified, sqlTimestamp, firebase_uid]
+      );
+
+      // Send a success response
+      res.status(200).json({
+        message: "Email verified status updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating email verified status:", error);
       res.status(500).json({ error: "Internal server error", details: error });
     } finally {
       if (connection) connection.release();

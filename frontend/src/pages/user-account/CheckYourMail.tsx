@@ -4,13 +4,13 @@ import EmailSent from "../../assets/General/EmailSent.png"; // Importing the big
 import PageTransition from "../../styles/PageTransition"; // Importing the PageTransition component
 import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { auth, sendResetEmail } from "../../services/firebase";
+import { auth, sendResetEmail, sendEmail} from "../../services/firebase";
 import useEmailTimestamp from "../../hooks/useEmailTimestamp";
 
 export default function CheckYourMail() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { email, firebase_uid } = location.state || {};
+  const { email, firebase_uid, type } = location.state || JSON.parse(localStorage.getItem("userData") || "{}");
   const [buttonLoading, setButtonLoading] = useState(false);
   const [error, setError] = useState("");
   const [buttonText, setButtonText] = useState("Send Email");
@@ -51,10 +51,45 @@ export default function CheckYourMail() {
 
     const canSendEmail = await checkTimestamp();
     if (canSendEmail) {
-      await handleSendPasswordResetEmail();
+      if (type === "verification") {
+        await handleSendVerificationEmail();
+      } else {
+        await handleSendPasswordResetEmail();
+      }
     } else {
       setButtonLoading(false);
       console.log("Cannot send email yet");
+    }
+  };
+
+  const handleSendVerificationEmail = async () => {
+    try {
+      const actionCodeSettings = {
+        url: `http://localhost:5173/email-verified?mode=verifyEmail&firebase_uid=${firebase_uid}`,
+        handleCodeInApp: true,
+      };
+
+      await sendEmail(auth.currentUser!, actionCodeSettings);
+      setButtonText("Resend Email");
+      setButtonLoading(false);
+
+      const db = getFirestore();
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", email));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        await setDoc(doc(db, "users", userDoc.id), {
+          emailTimestamp: serverTimestamp(),
+        }, { merge: true });
+      }
+
+      const now = new Date();
+      localStorage.setItem("emailTimestamp", now.toISOString());
+    } catch (err) {
+      setError("Failed to send verification email");
+      setButtonLoading(false);
     }
   };
 
@@ -86,6 +121,23 @@ export default function CheckYourMail() {
       bc.close();
     };
   }, [navigate]);
+  useEffect(() => {
+    const bc = new BroadcastChannel('email-verification');
+  
+    const handleEmailVerifiedSuccess = (message: MessageEvent) => {
+      if (message.data === 'email_verified_success') {
+        navigate("/email-verified");
+      }
+    };
+  
+    bc.addEventListener('message', handleEmailVerifiedSuccess);
+  
+    return () => {
+      bc.removeEventListener('message', handleEmailVerifiedSuccess);
+      bc.close();
+    };
+  }, [navigate]);
+
   return (
     <PageTransition>
       <main
@@ -129,8 +181,10 @@ export default function CheckYourMail() {
                 style={{ fontFamily: "Nunito" }}
               >
                 {/* Paragraph with margin, font size, and color */}
-                We sent you a link for your password recovery. Check your spam
-                folder if you do not hear from us after awhile.
+                {type === "verification" ? 
+                  "We sent you a link for your email verification. Check your spam folder if you do not hear from us after awhile." :
+                  "We sent you a link for your password recovery. Check your spam folder if you do not hear from us after awhile."
+                }
               </p>
             </div>
 

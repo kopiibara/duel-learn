@@ -11,6 +11,7 @@ const EmailActionHandler: React.FC = () => {
     const mode = queryParams.get("mode");
     const oobCode = queryParams.get("oobCode");
     const continueUrl = queryParams.get("continueUrl");
+    const firebase_uid = queryParams.get("firebase_uid");
 
     if (mode && oobCode && continueUrl) {
       handleEmailAction(mode, oobCode, continueUrl);

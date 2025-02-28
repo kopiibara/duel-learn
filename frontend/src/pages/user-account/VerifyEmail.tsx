@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth } from "../../services/firebase";
-import { sendEmailVerification } from "firebase/auth";
+import { auth, signOutUser, sendEmail } from "../../services/firebase";
 import { toast } from "react-hot-toast";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
@@ -14,28 +13,54 @@ const VerifyEmail = () => {
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
-  const user = auth.currentUser;
-  const email = user?.email || "";
-  const { timeRemaining, isButtonDisabled: isTimestampButtonDisabled } = useEmailTimestamp(email);
+  const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+  const email = userData.email || "";
+  const { timeRemaining, isButtonDisabled: isTimestampButtonDisabled, checkTimestamp } = useEmailTimestamp(email);
 
   useEffect(() => {
-    if (user) {
-      setIsEmailVerified(user.emailVerified);
-      console.log("Email Verified:", user.emailVerified);
+    if (userData) {
+      setIsEmailVerified(userData.email_verified);
+      console.log("Email Verified:", userData.email_verified);
+      if(auth.currentUser){
+        console.log("Email Verified:", auth.currentUser.emailVerified);
+      }
     }
-  }, [user]);
+  }, [userData]);
 
+  useEffect(() => {
+    const bc = new BroadcastChannel('email-verification');
+
+    const handleEmailVerifiedSuccess = (message: MessageEvent) => {
+      if (message.data === 'email_verified_success') {
+        navigate("/email-verified");
+      }
+    };
+
+    bc.addEventListener('message', handleEmailVerifiedSuccess);
+
+    return () => {
+      bc.removeEventListener('message', handleEmailVerifiedSuccess);
+      bc.close();
+    };
+  }, [navigate]);
+ 
   const handleSendVerificationEmail = async () => {
-    try {
-      if (user) {
-        await sendEmailVerification(user);
+    try {      
+      console.log("Email Verified:", userData.email_verified);
+      const firebase_uid = userData.firebase_uid;
+      if (auth.currentUser) {
+        const actionCodeSettings = {
+          url: `http://localhost:5173/email-verified?mode=verifyEmail&firebase_uid=${firebase_uid}`,
+          handleCodeInApp: true,
+          };
+          await sendEmail(auth.currentUser!, actionCodeSettings);
         toast.success("Verification email sent.");
         setIsButtonDisabled(true);
         setIsEmailSent(true);
 
         const db = getFirestore();
         const usersRef = collection(db, "users");
-        const q = query(usersRef, where("email", "==", user.email));
+        const q = query(usersRef, where("email", "==", auth.currentUser.email));
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
@@ -44,6 +69,8 @@ const VerifyEmail = () => {
             emailTimestamp: serverTimestamp(),
           }, { merge: true });
         }
+
+        navigate("/check-your-mail", { state: { email, firebase_uid: auth.currentUser.uid, type: "verification" } });
       } else {
         toast.error("No user is currently signed in.");
       }
@@ -57,8 +84,23 @@ const VerifyEmail = () => {
     }
   };
 
-  const handleBacktoLoginClick = () => {
-    navigate("/dashboard/home");
+  const handleButtonClick = async () => {
+    const canSendEmail = await checkTimestamp();
+    if (canSendEmail) {
+      await handleSendVerificationEmail();
+    } else {
+      navigate("/check-your-mail", { state: { email, firebase_uid: auth.currentUser?.uid, type: "verification" } });
+    }
+  };
+
+  const handleLogoutClick = async () => {
+    try {
+      await signOutUser(auth);
+      navigate("/login");
+    } catch (error) {
+      console.error("Error logging out:", error);
+      toast.error("Failed to log out. Please try again.");
+    }
   };
 
   useEffect(() => {
@@ -88,11 +130,11 @@ const VerifyEmail = () => {
             <button
               type="button"
               className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
-              onClick={handleSendVerificationEmail}
+              onClick={handleButtonClick}
               disabled={isButtonDisabled || isTimestampButtonDisabled}
             >
               {isButtonDisabled ? (
-                <div className="relative">
+                <div className="relative flex justify-center items-center">
                   <div className="loader w-6 h-6 rounded-full border-2 border-t-transparent border-white animate-spin"></div>
                   <div className="absolute inset-0 w-6 h-6 rounded-full border-2 border-transparent border-t-[#D1C4E9] animate-pulse"></div>
                 </div>
@@ -106,9 +148,9 @@ const VerifyEmail = () => {
           <button
             type="button"
             className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
-            onClick={handleBacktoLoginClick}
+            onClick={handleLogoutClick}
           >
-            Back to Dashboard
+            Logout
           </button>
         </div>
       </div>

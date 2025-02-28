@@ -14,6 +14,7 @@ const firebaseEmailHandler = () => {
         firebase_uid = nestedParams.get("firebase_uid") || "";
       }
       console.log("firebase_uid:", firebase_uid);
+      console.log("oobCode:", oobCode);
 
       switch (mode) {
         case "resetPassword":
@@ -22,7 +23,8 @@ const firebaseEmailHandler = () => {
           break;
         case "verifyEmail":
           await applyActionCode(auth, oobCode);
-          navigate(`/email-verified?oobCode=${oobCode}`);
+          navigate(`/email-verified?mode=${mode}&oobCode=${oobCode}&firebase_uid=${firebase_uid}`);
+          console.log("Email verification successful");
           break;
         default:
           throw new Error("Invalid mode");

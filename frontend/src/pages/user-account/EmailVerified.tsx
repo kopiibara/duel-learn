@@ -1,44 +1,79 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import React, { useEffect, useState } from "react";
-import { applyActionCode } from "firebase/auth";
 import { auth } from "../../services/firebase";
-import ProfileAvatar from "../../assets/images/profileAvatar.png";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
 import { toast } from "react-hot-toast";
+import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import useUpdateEmailVerifiedApi from "../../hooks/api.hooks/useUpdateEmailVerifiedApi";
 
 const EmailVerified = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isVerified, setIsVerified] = useState(false);
+  const { updateEmailVerifiedApi, apiError } = useUpdateEmailVerifiedApi();
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
-    const oobCode = queryParams.get("oobCode");
-    const mode = queryParams.get("mode");
+    const firebase_uid = queryParams.get("firebase_uid") || "";
 
-    if (mode === "verifyEmail" && oobCode) {
-      applyActionCode(auth, oobCode)
-        .then(() => {
-          setIsVerified(true);
-          toast.success("Email has been successfully verified.");
-        })
-        .catch((error) => {
-          console.error("Error verifying email:", error);
-          toast.error("Failed to verify email. Please try again.");
-        });
-    }
-  }, [location]);
+    const updateEmailVerifiedStatus = async () => {
+      console.log("firebase_uid:", firebase_uid);
+      try {
+          const db = getFirestore();
+          const userDocRef = doc(db, "users", firebase_uid);
+
+          // Update Firebase users collection
+          await setDoc(userDocRef, {
+            email_verified: true,
+            updated_at: serverTimestamp(),
+          }, { merge: true });
+          console.log('Updating Firebase users collection');
+
+          // Update users table in the backend
+          await updateEmailVerifiedApi(
+            firebase_uid,
+            true,
+            new Date().toISOString()
+          );
+          console.log('Updating TABLE users in the backend');
+
+          console.log('Email verified status updated');
+          const bc = new BroadcastChannel('email-verification');
+          bc.postMessage('email_verified_success');
+      } catch (error: any) {
+        console.error("Error updating email verified status:", error);
+        toast.error("Failed to update email verified status. Please try again.");
+      }
+    };
+
+    updateEmailVerifiedStatus();
+  }, [location.search, updateEmailVerifiedApi]);
+
+  useEffect(() => {
+    const bc = new BroadcastChannel('email-verification');
+
+    const handleEmailVerifiedSuccess = (message: MessageEvent) => {
+      if (message.data === 'email_verified_success') {
+        navigate("/email-verified");
+      }
+    };
+
+    bc.addEventListener('message', handleEmailVerifiedSuccess);
+
+    return () => {
+      bc.removeEventListener('message', handleEmailVerifiedSuccess);
+      bc.close();
+    };
+  }, [navigate]);
 
   const handleBacktoLoginClick = () => {
-    navigate("/login"); // Navigate to login when the button is clicked
+    navigate("/dashboard/welcome"); // Navigate to login when the button is clicked
   };
 
   return (
     <PageTransition>
       <div className="h-screen flex flex-col items-center justify-center">
         <div className="flex flex-col mb-11 items-center justify-center">
-          {/* <img src={ProfileAvatar} alt="" className="w-40 h-40" /> */}
           <img
             src={sampleAvatar2}
             style={{ width: "200px" }}
@@ -56,7 +91,7 @@ const EmailVerified = () => {
             className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
             onClick={handleBacktoLoginClick}
           >
-            Back to sign in
+            Continue Onboarding
           </button>
         </div>
       </div>

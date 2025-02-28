@@ -7,6 +7,7 @@ import Login from "../pages/user-account/Login";
 import SignUp from "../pages/user-account/SignUp";
 import ForgotPassword from "../pages/user-account/ForgotPassword";
 import TermsAndConditions from "../components/TermsAndConditions";
+import VerifyEmail from "../pages/user-account/VerifyEmail";
 import CheckYourMail from "../pages/user-account/CheckYourMail";
 import PasswordChangedSuccessfully from "../pages/user-account/PasswordChangedSuccessfully";
 import ConfirmationAccount from "../pages/user-account/ConfirmationAccount";
@@ -57,6 +58,8 @@ const AppRoutes: React.FC = () => {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/success-reset" element={<SuccessReset />} />
         <Route path="/email-action" element={<EmailActionHandler />} />{" "}
+        <Route path ="verify-email" element={<VerifyEmail />} />
+        <Route path="/check-your-mail" element={<CheckYourMail />} />
         <Route path="/email-verified" element={<EmailVerified />} />{" "}
         <Route path="*" element={<NotFoundPage />} />
         <Route path="/loading" element={<LoadingScreen />} />
