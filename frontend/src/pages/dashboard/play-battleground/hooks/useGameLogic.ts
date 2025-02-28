@@ -127,7 +127,9 @@ export const useGameLogic = ({ mode, material, selectedTypes, timeLimit }: GameS
                 incorrectCount,
                 mode,
                 material,
-                highestStreak
+                highestStreak,
+                masteredCount,
+                unmasteredCount
             }
         });
     };

@@ -10,10 +10,12 @@ interface SessionReportProps {
     correctCount: number;
     incorrectCount: number;
     mode: 'Peaceful' | 'time-pressured' | 'pvp';
-    material: { title: string }; // Update this line
+    material: { title: string };
     earlyEnd?: boolean;
     startTime: Date;
     highestStreak: number;
+    masteredCount: number;
+    unmasteredCount: number;
 }
 
 interface StatisticProps {
@@ -34,7 +36,7 @@ const StatisticBox = ({ label, value, icon }: StatisticProps & { icon: string })
 const SessionReport = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { timeSpent, correctCount, incorrectCount, mode, material, earlyEnd, startTime, highestStreak } = location.state as SessionReportProps;
+    const { timeSpent, correctCount, incorrectCount, mode, material, earlyEnd, startTime, highestStreak, masteredCount, unmasteredCount } = location.state as SessionReportProps;
 
 
     // Add console log to check the value of highestStreak after destructuring it from location.state
@@ -118,21 +120,38 @@ const SessionReport = () => {
                                 value={timeSpent}
                                 icon={ClockIcon}
                             />
-                            <StatisticBox
-                                label="HIGHEST STREAK"
-                                value={`${highestStreak}x`}
-                                icon={ManaIcon}
-                            />
-                            <StatisticBox
-                                label="CORRECT ANSWERS"
-                                value={correctCount}
-                                icon={ManaIcon}
-                            />
-                            <StatisticBox
-                                label="INCORRECT ANSWERS"
-                                value={incorrectCount}
-                                icon={ManaIcon}
-                            />
+                            {mode === 'Peaceful' ? (
+                                <>
+                                    <StatisticBox
+                                        label="MASTERED"
+                                        value={masteredCount}
+                                        icon={ManaIcon}
+                                    />
+                                    <StatisticBox
+                                        label="UNMASTERED"
+                                        value={unmasteredCount}
+                                        icon={ManaIcon}
+                                    />
+                                </>
+                            ) : (
+                                <>
+                                    <StatisticBox
+                                        label="HIGHEST STREAK"
+                                        value={`${highestStreak}x`}
+                                        icon={ManaIcon}
+                                    />
+                                    <StatisticBox
+                                        label="CORRECT ANSWERS"
+                                        value={correctCount}
+                                        icon={ManaIcon}
+                                    />
+                                    <StatisticBox
+                                        label="INCORRECT ANSWERS"
+                                        value={incorrectCount}
+                                        icon={ManaIcon}
+                                    />
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>

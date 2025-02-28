@@ -11,24 +11,17 @@ const PeacefulMode: React.FC<GameState> = ({ mode, material, selectedTypes }) =>
         isFlipped,
         handleFlip,
         handleAnswerSubmit,
-        correctCount,
-        incorrectCount,
-        showResult,
-        showNextButton,
-        handleNextQuestion,
-        getButtonStyle,
-        inputAnswer,
-        setInputAnswer,
-        questionTimer,
-        timerProgress,
-        timeLimit,
-        currentStreak,
-        highestStreak,
         masteredCount,
         unmasteredCount,
+        showResult,
+        showNextButton,
+        isCorrect,
+        inputAnswer,
+        setInputAnswer,
         handleUnmastered,
         handleMastered,
-        isCorrect
+        getButtonStyle,
+        handleNextQuestion,
     } = useGameLogic({ mode, material, selectedTypes });
 
     const [startTime] = useState(new Date());
@@ -108,12 +101,12 @@ const PeacefulMode: React.FC<GameState> = ({ mode, material, selectedTypes }) =>
             <Header
                 material={material}
                 mode={mode}
-                correct={correctCount}
-                incorrect={incorrectCount}
+                correct={0}
+                incorrect={0}
                 startTime={startTime}
-                highestStreak={highestStreak}
-                masteredCount={masteredCount}  // Ensure this is included
-                unmasteredCount={unmasteredCount}  // Ensure this is included
+                highestStreak={0}
+                masteredCount={masteredCount}
+                unmasteredCount={unmasteredCount}
             />
             <main className="pt-24 px-4">
                 <div className="mx-auto max-w-[1200px] flex flex-col items-center gap-8 h-[calc(100vh-96px)] justify-center">
@@ -128,11 +121,11 @@ const PeacefulMode: React.FC<GameState> = ({ mode, material, selectedTypes }) =>
                         timeRemaining={30}
                         progress={100}
                         timeLimit={1}
-                        currentStreak={currentStreak}
-                        highestStreak={highestStreak}
+                        currentStreak={0}
+                        highestStreak={0}
                         showTimerUI={false}
                     />
-                    {showNextButton && (
+                    {showResult && isCorrect === false && (
                         <button
                             onClick={handleNextQuestion}
                             className="mt-6 px-8 py-3 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
@@ -141,19 +134,23 @@ const PeacefulMode: React.FC<GameState> = ({ mode, material, selectedTypes }) =>
                         </button>
                     )}
                     {showResult && isCorrect === true && (
-                        <div className="flex justify-between mt-6">
-                            <button
-                                onClick={handleUnmastered}
-                                className="px-8 py-3 bg-[#FF3B3F] text-white rounded-lg hover:bg-[#D32F2F] transition-colors"
-                            >
-                                Unmastered
-                            </button>
-                            <button
-                                onClick={handleMastered}
-                                className="px-8 py-3 bg-[#52A647] text-white rounded-lg hover:bg-[#388E3C] transition-colors"
-                            >
-                                Mastered
-                            </button>
+                        <div className="absolute bottom-0 left-0 right-0 flex justify-between px-8 mb-6">
+                            <div className="flex items-center">
+                                <div className="relative">
+                                    <div className="w-1 h-24 bg-gray-800 absolute left-0"></div> {/* Flagpole */}
+                                    <div className="bg-[#FF3B3F] text-white rounded-lg p-4 text-3xl animate-waving-flag cursor-pointer" onClick={handleUnmastered}>
+                                        <span>Unmastered</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="flex items-center">
+                                <div className="relative">
+                                    <div className="w-1 h-24 bg-gray-800 absolute right-0"></div> {/* Flagpole */}
+                                    <div className="bg-[#52A647] text-white rounded-lg p-4 text-3xl animate-waving-flag cursor-pointer" onClick={handleMastered}>
+                                        <span>Mastered</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
