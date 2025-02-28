@@ -87,7 +87,7 @@ const EmailVerified = () => {
           </p>
           {/* Submit Button */}
           <button
-            type="submit"
+            type="button"
             className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
             onClick={handleBacktoLoginClick}
           >
