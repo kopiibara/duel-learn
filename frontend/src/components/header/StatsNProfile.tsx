@@ -30,16 +30,6 @@ const StatsNProfile = () => {
     setAnchorEl(null);
   };
 
-  const getInitials = (name: string | null) => {
-    if (!name) return "";
-    const nameParts = name.split(" ");
-    const initials = nameParts
-      .map((part) => part[0])
-      .join("")
-      .toUpperCase();
-    return initials;
-  };
-
   return (
     <Box className="flex items-center space-x-2 sm:space-x-6">
       {/* Xp */}
@@ -57,7 +47,7 @@ const StatsNProfile = () => {
       >
         <div className="flex items-center space-x-2">
           <img src={CoinIcon} alt="Coins" className="w-6 h-6" />
-          <span className="text-[#3B354D]">{stats.xp}</span>
+          <span className="text-[#fff]">{stats.xp}</span>
         </div>
       </Tooltip>
 
@@ -76,7 +66,7 @@ const StatsNProfile = () => {
       >
         <div className="flex items-center space-x-2">
           <img src={ManaIcon} alt="Mana" className="w-6 h-6" />
-          <span className="text-[#3B354D]">{stats.mana}</span>
+          <span className="text-[#fff]">{stats.mana}</span>
         </div>
       </Tooltip>
 
@@ -106,10 +96,7 @@ const StatsNProfile = () => {
               backgroundColor: "rgba(0, 0, 0, 0.08)", // Optional: add a subtle background color change on hover
             },
           }}
-        >
-          {!user?.display_picture && getInitials(user?.username ?? null)}{" "}
-          {/* Display initials if no photoURL */}
-        </Avatar>
+        />
       </Tooltip>
 
       {/* Profile Popover */}

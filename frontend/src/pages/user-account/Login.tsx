@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
-import ErrorsSnackbar from "../../components/ErrorsSnackbar";
+import { toast } from "react-hot-toast";
 import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import {
   getFirestore,
@@ -34,10 +34,8 @@ const Login = () => {
     password: "",
   });
   const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
-  const { handleLoginError } = useHandleError();
+  const { error, handleLoginError, setError } = useHandleError();
   const navigate = useNavigate();
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     if (user) {
@@ -47,10 +45,6 @@ const Login = () => {
 
   const togglePassword = () => {
     setShowPassword(!showPassword); // Toggle password visibility
-  };
-
-  const handleSnackbarClose = () => {
-    setSnackbarOpen(false);
   };
 
   // Login Component (handleGoogleSignIn)
@@ -91,10 +85,9 @@ const Login = () => {
           }
         }, 2000);
       }
-    } catch (error: any) {
-      handleLoginError(error);
-      setErrorMessage(error.message);
-      setSnackbarOpen(true);
+    } catch (error) {
+      console.error("Error during sign-in:", error);
+      toast.error("Google sign-in failed. Please try again.");
     }
   };
 
@@ -105,24 +98,17 @@ const Login = () => {
 
     try {
       if (!/\S+@\S+\.\S+/.test(username)) {
-        try {
-          const usersRef = collection(db, "users");
-          const q = query(usersRef, where("username", "==", username));
-          const querySnapshot = await getDocs(q);
+        // If username is not an email, fetch email from user collection
+        const db = getFirestore();
+        const usersRef = collection(db, "users");
+        const q = query(usersRef, where("username", "==", username));
+        const querySnapshot = await getDocs(q);
 
-          if (!querySnapshot.empty) {
-            email = querySnapshot.docs[0].data().email;
-          } else {
-            handleLoginError({ code: "auth/user-not-found" });
-            setErrorMessage("No account found with this email. Sign up first.");
-            setSnackbarOpen(true);
-            return;
-          }
-        } catch (firestoreError) {
-          handleLoginError({ code: "auth/network-request-failed" });
-          setErrorMessage("Network error. Please check your connection.");
-          setSnackbarOpen(true);
-          return;
+        if (!querySnapshot.empty) {
+          const userDoc = querySnapshot.docs[0];
+          email = userDoc.data().email;
+        } else {
+          throw setError("Username not found");
         }
       }
 
@@ -160,10 +146,8 @@ const Login = () => {
           }
         }, 2000);
       }
-    } catch (error: any) {
-      handleLoginError(error);
-      setErrorMessage(error.message);
-      setSnackbarOpen(true);
+    } catch (error) {
+      handleLoginError(error); // Use the hook to handle login error
     }
   };
 
@@ -202,7 +186,11 @@ const Login = () => {
                 onChange={(e) => setData({ ...data, username: e.target.value })}
                 placeholder="Enter your username or email"
                 required
-                className="w-full bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
+                  error
+                    ? "border border-red-500 focus:ring-red-500"
+                    : "focus:ring-[#4D18E8]"
+                }`}
               />
             </div>
 
@@ -219,7 +207,11 @@ const Login = () => {
                 onChange={(e) => setData({ ...data, password: e.target.value })}
                 placeholder="Enter your password"
                 required
-                className="w-full bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
+                  error
+                    ? "border border-red-500 focus:ring-red-500"
+                    : "focus:ring-[#4D18E8]"
+                }`}
               />
               <span
                 onClick={togglePassword}
@@ -232,6 +224,9 @@ const Login = () => {
                 )}
               </span>
             </div>
+
+            {/* Error Message */}
+            {error && <p className="text-red-500 text-center mt-2">{error}</p>}
 
             {/* Forgot Password */}
             <div className="text-right">
@@ -274,18 +269,13 @@ const Login = () => {
 
           {/* Footer */}
           <p className="text-center text-sm text-[#9F9BAE] mt-6">
-            Don't have an account?{" "}
+            Don’t have an account?{" "}
             <Link to="/sign-up" className="text-[#4D18E8] hover:underline">
               Sign up
             </Link>
           </p>
         </div>
       </div>
-      <ErrorsSnackbar
-        open={snackbarOpen}
-        message={errorMessage}
-        onClose={handleSnackbarClose}
-      />
     </PageTransition>
   );
 };
