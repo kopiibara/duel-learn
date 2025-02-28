@@ -199,21 +199,21 @@ const studyMaterialController = {
   getRecommendedForYouCards: async (req, res) => {
     const connection = await pool.getConnection();
     try {
-      let { user } = req.params;
-      console.log("Raw user param:", user);
+      let { username } = req.params;
+      console.log("Raw user param:", username);
 
       // Ensure decoding only if necessary
-      if (user.includes("%")) {
-        user = decodeURIComponent(user);
+      if (username.includes("%")) {
+        username = decodeURIComponent(username);
       }
-      console.log("Decoded user param:", user);
+      console.log("Decoded user param:", username);
 
       // Fetch tags of the user's created study materials
       const [tagRows] = await connection.execute(
         `SELECT DISTINCT JSON_EXTRACT(tags, '$[*]') AS tags
                  FROM study_material_info
                  WHERE created_by = ?;`,
-        [user]
+        [username]
       );
 
       if (tagRows.length === 0) {
@@ -231,7 +231,7 @@ const studyMaterialController = {
         `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
                  FROM study_material_info 
                  WHERE created_by != ?;`,
-        [user]
+        [username]
       );
 
       if (infoRows.length === 0) {
@@ -363,6 +363,78 @@ const studyMaterialController = {
     } catch (error) {
       console.error("Error fetching top picks:", error);
       res.status(500).json({ error: "Internal server error", details: error });
+    } finally {
+      connection.release();
+    }
+  },
+
+  getMadeByFriends: async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+      const { userId } = req.params;
+      console.log("Fetching study materials made by friends for user:", userId);
+
+      // Get the list of friend IDs where status is "accepted"
+      const [friends] = await connection.execute(
+        `SELECT CASE 
+                  WHEN sender_id = ? THEN receiver_id 
+                  WHEN receiver_id = ? THEN sender_id 
+                END AS friend_id
+         FROM friend_requests
+         WHERE (sender_id = ? OR receiver_id = ?) AND status = 'accepted';`,
+        [userId, userId, userId, userId]
+      );
+
+      if (friends.length === 0) {
+        return res.status(404).json({ message: "No friends found" });
+      }
+
+      // Extract friend IDs
+      const friendIds = friends.map(friend => friend.friend_id);
+
+      // Fetch study materials created by friends
+      const [studyMaterials] = await connection.execute(
+        `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
+         FROM study_material_info 
+         WHERE created_by IN (?);`,
+        [friendIds]
+      );
+
+      if (studyMaterials.length === 0) {
+        return res.status(404).json({ message: "No study materials found from friends" });
+      }
+
+      // Process each study material
+      const detailedMaterials = await Promise.all(
+        studyMaterials.map(async (material) => {
+          const [contentRows] = await connection.execute(
+            `SELECT term, definition, image 
+             FROM study_material_content 
+             WHERE study_material_id = ?;`,
+            [material.study_material_id]
+          );
+
+          return {
+            study_material_id: material.study_material_id,
+            title: material.title,
+            tags: JSON.parse(material.tags),
+            total_items: material.total_items,
+            created_by: material.created_by,
+            total_views: material.total_views,
+            created_at: material.created_at,
+            items: contentRows.map((item) => ({
+              term: item.term,
+              definition: item.definition,
+              image: item.image ? item.image.toString("base64") : null,
+            })),
+          };
+        })
+      );
+
+      res.status(200).json(detailedMaterials);
+    } catch (error) {
+      console.error("Error fetching study materials made by friends:", error);
+      res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
