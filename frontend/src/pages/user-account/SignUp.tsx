@@ -19,7 +19,8 @@ import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import PageTransition from "../../styles/PageTransition";
 import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
 import useApiError from "../../hooks/api.hooks/useApiError";
-import bcrypt from 'bcryptjs';
+import LoadingScreen from "../../components/LoadingScreen";
+import bcrypt from "bcryptjs";
 
 const SignUp = () => {
   const { setUser, user } = useUser();
@@ -38,6 +39,7 @@ const SignUp = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const { signUpApi } = useSignUpApi();
   const { apiError, handleApiError } = useApiError();
+  const [loading, setLoading] = useState(false);
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
@@ -45,6 +47,7 @@ const SignUp = () => {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setLoading(true);
 
     const { username, password, confirmPassword, email, terms } = formData;
 
@@ -62,7 +65,11 @@ const SignUp = () => {
 
     try {
       const hashedPassword = await bcrypt.hash(password, 10);
-      const result = await createUserWithEmailAndPassword(auth, email, password);
+      const result = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
 
       const token = await result.user.getIdToken();
       const additionalUserInfo = getAdditionalInfo(result);
@@ -197,9 +204,18 @@ const SignUp = () => {
         }
       }, 2000);
     } catch (error: any) {
+      setLoading(false);
       handleLoginError(error);
     }
   };
+
+  if (loading) {
+    return (
+      <PageTransition>
+        <LoadingScreen />
+      </PageTransition>
+    ); // Show the loading screen
+  }
 
   return (
     <PageTransition>
@@ -238,10 +254,14 @@ const SignUp = () => {
                 placeholder="Enter your username"
                 required
                 value={formData.username}
-                onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, username: e.target.value })
+                }
                 onBlur={(e) => validate("username", e.target.value)} // Validate on blur
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
-                  errors.username ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                  errors.username
+                    ? "border border-red-500 focus:ring-red-500"
+                    : "focus:ring-[#4D18E8]"
                 }`}
               />
               {errors.username && (
@@ -262,7 +282,9 @@ const SignUp = () => {
                 }}
                 onCopy={(e) => e.preventDefault()} // Disable copy
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
-                  errors.password ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                  errors.password
+                    ? "border border-red-500 focus:ring-red-500"
+                    : "focus:ring-[#4D18E8]"
                 }`}
               />
               <span
@@ -293,7 +315,9 @@ const SignUp = () => {
                 }}
                 onPaste={(e) => e.preventDefault()} // Disable paste
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
-                  errors.confirmPassword ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                  errors.confirmPassword
+                    ? "border border-red-500 focus:ring-red-500"
+                    : "focus:ring-[#4D18E8]"
                 }`}
               />
               {errors.confirmPassword && (
@@ -310,10 +334,14 @@ const SignUp = () => {
                 placeholder="Enter your email"
                 required
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 onBlur={(e) => validate("email", e.target.value)} // Validate on blur
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
-                  errors.email ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                  errors.email
+                    ? "border border-red-500 focus:ring-red-500"
+                    : "focus:ring-[#4D18E8]"
                 }`}
               />
               {errors.email && (
