@@ -6,7 +6,6 @@ import cors from "cors"; // Import CORS package
 import studyMaterialRoutes from "./routes/StudyMaterial.js";
 import userRoutes from "./routes/UserAccount.js";
 import friendRoutes from "./routes/FriendRoutes.js";
-
 // Load environment variables
 dotenv.config();
 

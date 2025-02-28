@@ -6,83 +6,27 @@ import { toast } from "react-hot-toast";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
 import { getFirestore, collection, query, where, getDocs, setDoc, doc, serverTimestamp } from "firebase/firestore";
+import useEmailTimestamp from "../../hooks/useEmailTimestamp";
 
 const VerifyEmail = () => {
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
-  const [timer, setTimer] = useState(0);
   const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const navigate = useNavigate();
+  const user = auth.currentUser;
+  const email = user?.email || "";
+  const { timeRemaining, isButtonDisabled: isTimestampButtonDisabled } = useEmailTimestamp(email);
 
   useEffect(() => {
-    const user = auth.currentUser;
     if (user) {
       setIsEmailVerified(user.emailVerified);
       console.log("Email Verified:", user.emailVerified);
     }
-  }, []);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (timer > 0) {
-      interval = setInterval(() => {
-        setTimer((prevTimer) => prevTimer - 1);
-      }, 1000);
-    } else {
-      setIsButtonDisabled(false);
-    }
-    return () => clearInterval(interval);
-  }, [timer]);
-
-  useEffect(() => {
-    const fetchEmailTimestamp = async () => {
-      try {
-        const user = auth.currentUser;
-        if (user) {
-          const db = getFirestore();
-          const usersRef = collection(db, "users");
-          const q = query(usersRef, where("email", "==", user.email));
-          const querySnapshot = await getDocs(q);
-
-          if (!querySnapshot.empty) {
-            const userDoc = querySnapshot.docs[0];
-            const userData = userDoc.data();
-
-            if (userData.emailTimestamp) {
-              const emailTimestamp = userData.emailTimestamp.toDate();
-              const now = new Date();
-              const elapsed = now.getTime() - emailTimestamp.getTime();
-              const remaining = 5 * 60 * 1000 - elapsed;
-
-              if (remaining > 0) {
-                setTimeRemaining(remaining);
-                const interval = setInterval(() => {
-                  setTimeRemaining((prev) => {
-                    if (prev && prev > 1000) {
-                      return prev - 1000;
-                    } else {
-                      clearInterval(interval);
-                      return null;
-                    }
-                  });
-                }, 1000);
-              }
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Error fetching email timestamp:", err);
-      }
-    };
-
-    fetchEmailTimestamp();
-  }, []);
+  }, [user]);
 
   const handleSendVerificationEmail = async () => {
     try {
-      const user = auth.currentUser;
       if (user) {
         await sendEmailVerification(user);
         toast.success("Verification email sent.");
@@ -100,18 +44,6 @@ const VerifyEmail = () => {
             emailTimestamp: serverTimestamp(),
           }, { merge: true });
         }
-
-        setTimeRemaining(5 * 60 * 1000); // 5 minutes
-        const interval = setInterval(() => {
-          setTimeRemaining((prev) => {
-            if (prev && prev > 1000) {
-              return prev - 1000;
-            } else {
-              clearInterval(interval);
-              return null;
-            }
-          });
-        }, 1000);
       } else {
         toast.error("No user is currently signed in.");
       }
@@ -128,6 +60,14 @@ const VerifyEmail = () => {
   const handleBacktoLoginClick = () => {
     navigate("/dashboard/home");
   };
+
+  useEffect(() => {
+    if (timeRemaining !== null && timeRemaining > 0) {
+      setIsButtonDisabled(true);
+    } else {
+      setIsButtonDisabled(false);
+    }
+  }, [timeRemaining]);
 
   return (
     <PageTransition>
@@ -149,7 +89,7 @@ const VerifyEmail = () => {
               type="button"
               className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
               onClick={handleSendVerificationEmail}
-              disabled={isButtonDisabled || (timeRemaining !== null && timeRemaining > 0)}
+              disabled={isButtonDisabled || isTimestampButtonDisabled}
             >
               {isButtonDisabled ? (
                 <div className="relative">

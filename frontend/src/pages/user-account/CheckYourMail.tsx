@@ -1,25 +1,91 @@
-import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import EmailSent from "../../assets/General/EmailSent.png"; // Importing the big star image
 import PageTransition from "../../styles/PageTransition"; // Importing the PageTransition component
+import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { auth, sendResetEmail } from "../../services/firebase";
+import useEmailTimestamp from "../../hooks/useEmailTimestamp";
 
 export default function CheckYourMail() {
-  const [countdown, setCountdown] = useState<number | null>(null); // State to manage countdown timer
-  const navigate = useNavigate(); // Hook to programmatically navigate to different routes
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { email, firebase_uid } = location.state || {};
+  const [buttonLoading, setButtonLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [buttonText, setButtonText] = useState("Send Email");
+  const { timeRemaining, isButtonDisabled, checkTimestamp } = useEmailTimestamp(email);
+  const handleSendPasswordResetEmail = async () => {
+    try {
+      const actionCodeSettings = {
+        url: `http://localhost:5173/Reset-Password?mode=resetPassword&firebase_uid=${firebase_uid}`,
+        handleCodeInApp: true,
+      };
 
-  useEffect(() => {
-    setCountdown(20); // Ensure countdown starts fresh when component mounts
-  }, []);
+      await sendResetEmail(auth, email, actionCodeSettings);
+      setButtonText("Resend Email");
+      setButtonLoading(false);
 
-  useEffect(() => {
-    if (countdown !== null && countdown > 0) {
-      const timer = setTimeout(() => setCountdown(countdown - 1), 1000); // Decrease countdown every second
-      return () => clearTimeout(timer); // Clear timer when component unmounts
-    } else if (countdown === 0) {
-      navigate("/login"); // Navigate to sign-up page when countdown reaches zero
+      const db = getFirestore();
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", email));
+      const querySnapshot = await getDocs(q);
+
+      if (!querySnapshot.empty) {
+        const userDoc = querySnapshot.docs[0];
+        await setDoc(doc(db, "users", userDoc.id), {
+          emailTimestamp: serverTimestamp(),
+        }, { merge: true });
+      }
+
+      const now = new Date();
+      localStorage.setItem("emailTimestamp", now.toISOString());
+    } catch (err) {
+      setError("Failed to send password reset email");
+      setButtonLoading(false);
     }
-  }, [countdown, navigate]);
+  };
 
+  const handleSendEmail = async () => {
+    setButtonLoading(true);
+
+    const canSendEmail = await checkTimestamp();
+    if (canSendEmail) {
+      await handleSendPasswordResetEmail();
+    } else {
+      setButtonLoading(false);
+      console.log("Cannot send email yet");
+    }
+  };
+
+  const handleExitClick = () => {
+    navigate("/");
+  };
+
+  useEffect(() => {
+    if (timeRemaining !== null && timeRemaining > 0) {
+      setButtonText(`Resend Email (${Math.ceil(timeRemaining / 1000)}s)`);
+    } else {
+      setButtonText("Send Email");
+    }
+  }, [timeRemaining]);
+  
+  useEffect(() => {
+    const bc = new BroadcastChannel('password-reset');
+  
+    const handleResetPasswordSuccess = (message: MessageEvent) => {
+      if (message.data === 'reset_password_success') {
+        navigate("/password-changed-successfully");
+      }
+    };
+  
+    bc.addEventListener('message', handleResetPasswordSuccess);
+  
+    return () => {
+      bc.removeEventListener('message', handleResetPasswordSuccess);
+      bc.close();
+    };
+  }, [navigate]);
   return (
     <PageTransition>
       <main
@@ -74,12 +140,18 @@ export default function CheckYourMail() {
                 {/* Container for the button with flexbox layout */}
                 <button
                   className="w-[400px] px-5 py-2 bg-violet-700 rounded-xl max-md:px-2 max-md:max-w-full hover:bg-violet-600 transition-colors text-base"
-                  onClick={() => navigate("/sign-up")}
+                  onClick={handleSendEmail}
+                  disabled={buttonLoading || isButtonDisabled}
                   style={{ fontFamily: "Nunito" }}
-                  // Button with specific styling and click event to navigate to sign-up page
                 >
-                  Back to Sign In ({countdown !== null ? countdown : 20}s)
-                  {/* Button text with countdown timer */}
+                  {buttonLoading ? (
+                    <div className="relative">
+                      <div className="loader w-6 h-6 rounded-full border-2 border-t-transparent border-white animate-spin"></div>
+                      <div className="absolute inset-0 w-6 h-6 rounded-full border-2 border-transparent border-t-[#D1C4E9] animate-pulse"></div>
+                    </div>
+                  ) : (
+                    buttonText
+                  )}
                 </button>
               </div>
             </div>

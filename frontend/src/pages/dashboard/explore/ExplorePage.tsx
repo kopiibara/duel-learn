@@ -35,9 +35,7 @@ const ExplorePage = () => {
         await fetchRecommendedCards();
         break;
       case 2:
-        setFilteredCards(
-          cards.filter((card) => card.created_by === user?.username)
-        );
+        await fetchMadeByFriends();
         break;
       default:
         setFilteredCards([...cards]);
@@ -46,21 +44,27 @@ const ExplorePage = () => {
 
   // Fetch recommended cards
   const fetchRecommendedCards = async () => {
+    console.log("Fetching recommended cards for:", user?.username); // Debugging
     if (!user?.username) return;
-    setIsLoading(true); // Set loading to true before fetch
+    const encodedUser = encodeURIComponent(user?.username);
+
+    setIsLoading(true);
 
     try {
       const response = await fetch(
         `${
           import.meta.env.VITE_BACKEND_URL
-        }/api/study-material/get-recommended-for-you/${encodeURIComponent(
-          user.username
-        )}`
+        }/api/study-material/get-recommended-for-you/${encodedUser}`
       );
+      console.log("Response status:", response.status);
 
-      if (!response.ok) throw new Error("Failed to fetch recommended cards");
+      if (!response.ok) {
+        const errorText = await response.text(); // Get detailed error
+        throw new Error(`Failed to fetch recommended cards: ${errorText}`);
+      }
 
       const data: StudyMaterial[] = await response.json();
+      console.log("Fetched data:", data);
 
       if (Array.isArray(data)) {
         setCards(data);
@@ -69,7 +73,7 @@ const ExplorePage = () => {
     } catch (error) {
       console.error("Error fetching recommended cards:", error);
     } finally {
-      setIsLoading(false); // Set loading to false after fetch
+      setIsLoading(false);
     }
   };
 
@@ -94,11 +98,44 @@ const ExplorePage = () => {
     }
   };
 
+  const fetchMadeByFriends = async () => {
+    if (!user?.username) {
+      console.error("User username is undefined");
+      return;
+    }
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/study-material/get-made-by-friends/${encodeURIComponent(
+          user.username
+        )}`
+      );
+
+      if (!response.ok)
+        throw new Error(`Failed to fetch: ${response.statusText}`);
+
+      const data: StudyMaterial[] = await response.json();
+
+      if (Array.isArray(data)) {
+        setFilteredCards(data);
+      } else {
+        console.error("Unexpected response format:", data);
+      }
+    } catch (error) {
+      console.error("Error fetching made by friends:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!user?.username) return;
 
     // Initial data fetch
-    fetchRecommendedCards();
+    fetchTopPicks();
 
     // Listen for real-time study material updates
     const handleNewMaterial = async (newMaterial: StudyMaterial) => {
@@ -165,7 +202,7 @@ const ExplorePage = () => {
               <img
                 src={cauldronGif}
                 alt="Loading..."
-                style={{ width: "200px", height: "200px" }}
+                style={{ width: "8rem", height: "auto" }}
               />
             </Box>
           ) : (
