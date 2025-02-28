@@ -89,7 +89,9 @@ export default function Header({ material, mode, correct, incorrect, startTime, 
                 mode,
                 material: material?.title || 'Unknown Material',
                 earlyEnd: true,
-                highestStreak
+                highestStreak,
+                masteredCount,
+                unmasteredCount
             }
         });
     };

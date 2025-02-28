@@ -66,7 +66,12 @@ export default {
             opacity: '0.7',
             transform: 'translateX(-1px)'
           }
-        }
+        },
+        'waving-flag': {
+          '0%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-5px)' },
+          '100%': { transform: 'translateY(0)' },
+        },
       },
       animation: {
         'heartbeat-3': 'heartbeat-3 0.6s infinite',
@@ -76,7 +81,8 @@ export default {
         'pulse-vignette': 'pulse-vignette 2s ease-in-out infinite',
         'screen-shake': 'screen-shake 0.5s ease-in-out infinite',
         'blur-in-out': 'blur-in-out 4s ease-in-out infinite',
-        'health-glitch': 'health-glitch 0.3s ease-in-out infinite'
+        'health-glitch': 'health-glitch 0.3s ease-in-out infinite',
+        'waving-flag': 'waving-flag 1s infinite',
       }
     },
   },
