@@ -9,7 +9,7 @@ import Shop from "../pages/dashboard/shop/ShopPage";
 import BuyPremium from "../components/BuyPremium";
 import CreateStudyMaterial from "../pages/dashboard/study-material/material-create/CreateStudyMaterial";
 import ViewStudyMaterial from "../pages/dashboard/study-material/view-study-material/ViewStudyMaterial";
-import SetUpQuestionType from "../pages/dashboard/play-battleground/SetUpQuestionType";
+import SetUpQuestionType from "../pages/dashboard/play-battleground/components/setup/SetUpQuestionType";
 import WelcomePage from "../pages/user-onboarding/WelcomePage";
 import TutorialOnePage from "../pages/user-onboarding/TutorialOne";
 import TutorialTwo from "../pages/user-onboarding/TutorialTwo";
@@ -19,17 +19,21 @@ import TutorialFour from "../pages/user-onboarding/TutorialFour";
 import TutorialFive from "../pages/user-onboarding/TutorialFive";
 import TutorialSix from "../pages/user-onboarding/TutorialSix";
 import TutorialLast from "../pages/user-onboarding/TutorialLast";
-import WelcomeGameMode from "../pages/dashboard/play-battleground/WelcomeGameMode";
-import SetUpTimeQuestion from "../pages/dashboard/play-battleground/time-pressured/SetUptTimeQuestion";
-
-import PVPLobby from "../pages/dashboard/play-battleground/multiplayer-mode/PVPLobby";
-import { useState } from "react"; // Import useState
+import WelcomeGameMode from "../pages/dashboard/play-battleground/screens/WelcomeGameMode";
+import SetUpTimeQuestion from "../pages/dashboard/play-battleground/components/setup/SetUpTimeQuestion";
+import PVPLobby from "../pages/dashboard/play-battleground/modes/multiplayer/PVPLobby";
+import { useState } from "react";
 import VerifyEmail from "../pages/user-account/VerifyEmail";
 import CheckYourMail from "../pages/user-account/CheckYourMail";
+import LoadingScreen from "../pages/dashboard/play-battleground/screens/LoadingScreen";
+import SessionReport from "../pages/dashboard/play-battleground/screens/SessionReport";
+import PeacefulMode from "../pages/dashboard/play-battleground/modes/peaceful/PeacefulMode";
+import TimePressuredMode from "../pages/dashboard/play-battleground/modes/time-pressured/TimePressuredMode";
+import GameModeWrapper from "../pages/dashboard/play-battleground/components/common/GameModeWrapper";
 
 const PrivateRoutes = () => {
   const { user } = useUser();
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(1); // Define state
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(1);
 
   const token = localStorage.getItem("userToken");
 
@@ -66,18 +70,39 @@ const PrivateRoutes = () => {
           element={<ViewStudyMaterial />}
         />
       </Route>
-      <Route path ="verify-email" element={<VerifyEmail />} />
+
+      {/* Authentication Routes */}
+      <Route path="verify-email" element={<VerifyEmail />} />
       <Route path="/check-your-mail" element={<CheckYourMail />} />
 
-      {/* Route for buying premium account */}
+      {/* Premium Routes */}
       <Route path="/buy-premium-account" element={<BuyPremium />} />
 
-      {/* Route for playing mode*/}
-      <Route path="/set-up-questions" element={<SetUpQuestionType />} />
+      {/* Game Setup Routes */}
       <Route path="/welcome-game-mode" element={<WelcomeGameMode />} />
       <Route path="/setup/questions" element={<SetUpQuestionType />} />
       <Route path="/setup/timer" element={<SetUpTimeQuestion />} />
+      <Route path="/loading-screen" element={<LoadingScreen />} />
+
+      {/* Game Mode Routes */}
+      <Route
+        path="/study/peaceful-mode"
+        element={
+          <GameModeWrapper>
+            {(props) => <PeacefulMode {...props} />}
+          </GameModeWrapper>
+        }
+      />
+      <Route
+        path="/study/time-pressured-mode"
+        element={
+          <GameModeWrapper>
+            {(props) => <TimePressuredMode {...props} />}
+          </GameModeWrapper>
+        }
+      />
       <Route path="/pvp-lobby" element={<PVPLobby />} />
+      <Route path="/study/session-summary" element={<SessionReport />} />
     </Routes>
   );
 };

@@ -1,28 +1,67 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Alert, Snackbar } from "@mui/material"; // Import Snackbar and Alert from MUI
-import "./styles/setupques.css";
-import ManaIcon from "../../../assets/ManaIcon.png";
+import "./../../styles/setupques.css";
+import ManaIcon from "../../../../../assets/ManaIcon.png";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
-import PageTransition from "../../../styles/PageTransition";
+import PageTransition from "../../../../../styles/PageTransition";
 
 const SetUpQuestionType: React.FC = () => {
+  // Move all hooks to the top before any conditional logic
   const location = useLocation();
   const navigate = useNavigate();
-  const { mode, material } = location.state || {};
+  const { mode, material, fromWelcome } = location.state || {};
+  const [isComponentReady, setIsComponentReady] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [questionTypes] = useState([
-    "Identification",
-    "Multiple Choice",
-    "True or False",
-    "Matching Type",
+    {
+      display: "Identification",
+      value: "identification"
+    },
+    {
+      display: "Multiple Choice",
+      value: "multiple-choice"
+    },
+    {
+      display: "True or False",
+      value: "true-false"
+    }
   ]);
   const [openAlert, setOpenAlert] = useState(false); // State to control alert visibility
   const [manaPoints, setManaPoints] = useState(10); // State for dynamic mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana alert
+
+  // Signal when component is fully ready
+  useEffect(() => {
+    const prepareComponent = async () => {
+      try {
+        // Add any necessary initialization here
+        setIsComponentReady(true);
+      } catch (error) {
+        console.error('Error preparing component:', error);
+      }
+    };
+
+    prepareComponent();
+  }, []);
+
+  // Redirect if not coming from welcome
+  useEffect(() => {
+    if (!fromWelcome) {
+      navigate("/dashboard/welcome", {
+        state: { mode, material },
+        replace: true
+      });
+    }
+  }, [fromWelcome, navigate, mode, material]);
+
+  // Show nothing until everything is ready
+  if (!isComponentReady || !fromWelcome) {
+    return null;
+  }
 
   console.log(
     "Mode:",
@@ -59,6 +98,17 @@ const SetUpQuestionType: React.FC = () => {
           mode,
           material,
           selectedTypes,
+        },
+      });
+    }
+    // If the mode is "Peaceful", navigate to LoadingScreen
+    else if (mode === "Peaceful") {
+      navigate("/dashboard/loading-screen", {
+        state: {
+          mode,
+          material,
+          selectedTypes,
+          timeLimit: null
         },
       });
     }
@@ -188,38 +238,35 @@ const SetUpQuestionType: React.FC = () => {
                 <div className="mt-5 space-y-2">
                   {questionTypes.map((type) => (
                     <div
-                      key={type}
+                      key={type.value}
                       className="flex justify-between items-center text-black py-2 sm:py-3 px-8 sm:px-10 md:px-14"
                     >
                       <span className="font-bold text-[14px] sm:text-[16px]">
-                        {type}
+                        {type.display}
                       </span>
 
                       {/* Toggle Button */}
                       <div
-                        onClick={() => toggleSelection(type)}
-                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all ${
-                          selectedTypes.includes(type) ? "bg-black" : "bg-black"
-                        }`}
+                        onClick={() => toggleSelection(type.value)}
+                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all ${selectedTypes.includes(type.value) ? "bg-black" : "bg-black"
+                          }`}
                       >
                         {/* Check Icon */}
                         <div
-                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md transition-all ${
-                            selectedTypes.includes(type)
-                              ? "bg-black text-[#461ABD]"
-                              : "bg-white text-[#461ABD]"
-                          } `}
+                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md transition-all ${selectedTypes.includes(type.value)
+                            ? "bg-black text-[#461ABD]"
+                            : "bg-white text-[#461ABD]"
+                            } `}
                         >
                           <CloseIcon />
                         </div>
 
                         {/* Uncheck Icon */}
                         <div
-                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded transition-all ${
-                            selectedTypes.includes(type)
-                              ? "bg-white text-[#461ABD]"
-                              : "bg-black text-[#461ABD]"
-                          }`}
+                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded transition-all ${selectedTypes.includes(type.value)
+                            ? "bg-white text-[#461ABD]"
+                            : "bg-black text-[#461ABD]"
+                            }`}
                         >
                           <CheckIcon />
                         </div>
@@ -238,12 +285,7 @@ const SetUpQuestionType: React.FC = () => {
                       "Continue" // This will not check mana points
                     ) : (
                       <>
-                        START LEARNING! -0
-                        <img
-                          src={ManaIcon}
-                          alt="Mana"
-                          className="w-3 h-3 sm:w-4 sm:h-4 ml-2"
-                        />
+                        START LEARNING!
                       </>
                     )}
                   </button>
