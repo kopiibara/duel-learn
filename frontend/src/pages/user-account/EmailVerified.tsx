@@ -1,8 +1,7 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { applyActionCode } from "firebase/auth";
 import { auth } from "../../services/firebase";
-import ProfileAvatar from "../../assets/images/profileAvatar.png";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
 import { toast } from "react-hot-toast";

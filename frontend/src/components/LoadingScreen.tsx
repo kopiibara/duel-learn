@@ -30,8 +30,8 @@ export const LoadingScreen: React.FC = () => {
   return (
     <PageTransition>
       <main
-        className="flex overflow-hidden flex-col justify-center items-center min-h-screen px-10 py-28 bg-gray-950 max-md:px-2 max-md:py-12"
-        onClick={changeLine}
+        className="flex overflow-hidden flex-col justify-center items-center min-h-screen px-10 py-28  max-md:px-2 max-md:py-12"
+        onClick={changeLine} // Change text when user clicks anywhere
       >
         <section className="flex flex-col items-center max-w-full w-[406px]">
           <img

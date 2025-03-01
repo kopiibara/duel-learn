@@ -5,44 +5,30 @@ import PageTransition from "../../../styles/PageTransition";
 import MyLibraryCards from "./MyLibraryCards";
 import Filter from "./Filter";
 import { useUser } from "../../../contexts/UserContext";
-
-// Define StudyMaterial interface
-interface Item {
-  term: string;
-  definition: string;
-  image?: string | null; // Update to string for Base64 images
-}
-
-interface StudyMaterial {
-  title: string;
-  tags: string[];
-  images: string[];
-  total_items: number;
-  created_by: string;
-  visibility: number;
-  created_at: string;
-  total_views: number;
-  study_material_id: string;
-  items: Item[]; // Expecting an array of terms and definitions
-}
+import { Item, StudyMaterial } from "../../../types/studyMaterial";
+import cauldronGif from "../../../assets/General/Cauldron.gif"; // Importing the gif animation for cauldron asset
 
 const MyLibraryPage = () => {
   const { user } = useUser();
-  const created_by = user?.displayName;
+  const created_by = user?.username;
   const [cards, setCards] = useState<StudyMaterial[]>([]);
   const [filteredCards, setFilteredCards] = useState<StudyMaterial[]>([]);
   const [count, setCount] = useState<number>(0);
   const [filter, setFilter] = useState<string | number>("all");
   const [sort, setSort] = useState<string | number>("most recent");
+  const [isLoading, setIsLoading] = useState(true); // Add loading state
 
   // Fetch study materials created by the user
   useEffect(() => {
     const fetchStudyMaterials = async () => {
       if (!created_by) return;
+      setIsLoading(true); // Set loading to true before fetch
 
       try {
         const response = await fetch(
-          `http://localhost:5000/api/study-material/get-by-user/${created_by}`
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/study-material/get-by-user/${created_by}`
         );
         if (!response.ok) {
           throw new Error("Failed to fetch study materials");
@@ -51,6 +37,8 @@ const MyLibraryPage = () => {
         setCards(data);
       } catch (error) {
         console.error("Error fetching study materials:", error);
+      } finally {
+        setIsLoading(false); // Set loading to false after fetch
       }
     };
 
@@ -92,7 +80,7 @@ const MyLibraryPage = () => {
 
   return (
     <PageTransition>
-      <Box className="h-screen w-full">
+      <Box className="h-full w-full">
         <DocumentHead title="My Library | Duel Learn" />
         <Stack spacing={2} className="px-8">
           <Stack
@@ -131,8 +119,24 @@ const MyLibraryPage = () => {
               />
             </Stack>
           </Stack>
-          {created_by && (
-            <MyLibraryCards cards={filteredCards} createdBy={created_by} />
+
+          {isLoading ? (
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              minHeight="60vh"
+            >
+              <img
+                src={cauldronGif}
+                alt="Loading..."
+                style={{ width: "8rem", height: "auto" }}
+              />
+            </Box>
+          ) : (
+            created_by && (
+              <MyLibraryCards cards={filteredCards} createdBy={created_by} />
+            )
           )}
         </Stack>
       </Box>
