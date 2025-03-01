@@ -1,20 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import "./styles/EffectUserOnboarding.css";
 import { useNavigate } from "react-router-dom";
 import useWandCursor from "./data/useWandCursor"; // Import the custom hook
 import WelcomePhoto from "../../assets/UserOnboarding/WelcomePhoto.gif";
 import { useUser } from "../../contexts/UserContext"; // Import the useUser hook
 import PageTransition from "../../styles/PageTransition";
+import { useAudio } from "../../contexts/AudioContext"; // Import the useAudio hook
 
 const WelcomePage = () => {
   const [fadeIn, setFadeIn] = useState(false);
   const navigate = useNavigate();
   const { user } = useUser();
+  const { playStartAudio, playLoopAudio, isPlaying } = useAudio();
+  const startAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // Use the wand cursor effect
   useWandCursor();
 
-  // Handle click or key press event to navigate to /dashboard/home
   const handleNavigate = () => {
     console.log("Navigating to /tutorial/step-one...");
     navigate("/dashboard/tutorial/step-one");
@@ -23,26 +24,47 @@ const WelcomePage = () => {
   useEffect(() => {
     const timer = setTimeout(() => setFadeIn(true), 500);
 
-    // Event listener for keydown to detect key press
-    const handleKeyDown = (event: KeyboardEvent) => {
-      handleNavigate(); // Navigate when any key is pressed
+    const initAudio = async () => {
+      if (!isPlaying) {
+        await playStartAudio();
+      }
     };
 
-    // Adding event listener for keydown event
+    initAudio();
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      handleNavigate();
+    };
+
     window.addEventListener("keydown", handleKeyDown);
 
-    // Cleanup event listener on component unmount
     return () => {
       clearTimeout(timer);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [navigate]);
+  }, [isPlaying, playStartAudio, handleNavigate]);
+
+  useEffect(() => {
+    const handleStartAudioEnded = async () => {
+      await playLoopAudio();
+    };
+
+    if (startAudioRef.current) {
+      startAudioRef.current.addEventListener("ended", handleStartAudioEnded);
+    }
+
+    return () => {
+      if (startAudioRef.current) {
+        startAudioRef.current.removeEventListener("ended", handleStartAudioEnded);
+      }
+    };
+  }, [playLoopAudio]);
 
   return (
     <PageTransition>
       <div
         className="flex flex-col items-center justify-center h-screen bg-[#080511] relative overflow-hidden cursor-none"
-        onClick={handleNavigate} // Navigate on click
+        onClick={handleNavigate}
       >
         {/* Animated Background Glow */}
         <div className="absolute w-[500px] h-[500px] bg-[#6B21A8] blur-[250px] rounded-full opacity-40 animate-pulse"></div>
@@ -64,8 +86,7 @@ const WelcomePage = () => {
             fadeIn ? "opacity-100" : "opacity-0"
           }`}
         >
-          You've finally made it here,{" "}
-          <span className="font-bold">{user?.displayName}</span>!
+          You've finally made it here, <span className="font-bold">{user?.username}</span>!
         </p>
 
         {/* Click to Continue Text */}
