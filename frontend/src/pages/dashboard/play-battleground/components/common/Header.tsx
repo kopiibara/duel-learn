@@ -13,6 +13,9 @@ interface HeaderProps {
     correct: number;
     incorrect: number;
     startTime: Date;
+    highestStreak: number;
+    masteredCount: number;
+    unmasteredCount: number;
 }
 
 const commonDialogStyle = {
@@ -46,7 +49,7 @@ const commonButtonStyles = {
     }
 };
 
-export default function Header({ material, mode, correct, incorrect, startTime }: HeaderProps) {
+export default function Header({ material, mode, correct, incorrect, startTime, highestStreak, masteredCount, unmasteredCount }: HeaderProps) {
     const navigate = useNavigate();
     const [openGameOptionsDialog, setOpenGameOptionsDialog] = useState(false);
     const [openLeaveConfirmDialog, setOpenLeaveConfirmDialog] = useState(false);
@@ -85,7 +88,10 @@ export default function Header({ material, mode, correct, incorrect, startTime }
                 incorrectCount: incorrect,
                 mode,
                 material: material?.title || 'Unknown Material',
-                earlyEnd: true
+                earlyEnd: true,
+                highestStreak,
+                masteredCount,
+                unmasteredCount
             }
         });
     };
@@ -112,8 +118,18 @@ export default function Header({ material, mode, correct, incorrect, startTime }
                                 {mode} Mode - {material?.title || 'No Material Selected'}
                             </span>
                             <div className="flex items-center gap-4 text-[12px] sm:text-[14px] text-[#6F658D]">
-                                <div>Correct {correct}</div>
-                                <div>Incorrect {incorrect}</div>
+                                {mode === 'Time Pressured' && (
+                                    <>
+                                        <div>Correct {correct}</div>
+                                        <div>Incorrect {incorrect}</div>
+                                    </>
+                                )}
+                                {mode === 'Peaceful' && (
+                                    <>
+                                        <div>Mastered {masteredCount}</div>
+                                        <div>Unmastered {unmasteredCount}</div>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>

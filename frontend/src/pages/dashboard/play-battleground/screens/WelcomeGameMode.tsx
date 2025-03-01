@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import DefaultUnknownPic from "../../../../assets/General/DefaultUnknownPic.png";
+import { useAudio } from "../../../../contexts/AudioContext"; // Import the useAudio hook
 
 const WelcomeGameMode: React.FC = () => {
   const location = useLocation();
@@ -9,7 +10,7 @@ const WelcomeGameMode: React.FC = () => {
   const { mode, material } = location.state || {};
   const [fadeOut, setFadeOut] = useState(false);
   const [setupIsReady, setSetupIsReady] = useState(false);
-
+  const { playPeacefulModeAudio } = useAudio(); // Use the playPeacefulModeAudio function
   // Add console log to debug
   console.log("WelcomeGameMode received state:", { mode, material });
 
@@ -46,6 +47,11 @@ const WelcomeGameMode: React.FC = () => {
       }, 1500); // 1.5 second delay
     }
   }, [setupIsReady, navigate, mode, material]);
+
+  // Play peaceful mode audio when the component mounts
+  useEffect(() => {
+    playPeacefulModeAudio();
+  }, [playPeacefulModeAudio]);
 
   return (
     <motion.div

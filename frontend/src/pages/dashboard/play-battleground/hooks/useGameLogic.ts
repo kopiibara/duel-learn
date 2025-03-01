@@ -15,6 +15,11 @@ export const useGameLogic = ({ mode, material, selectedTypes, timeLimit }: GameS
     const [startTime] = useState(new Date());
     const [timerProgress, setTimerProgress] = useState(100);
     const [questionTimer, setQuestionTimer] = useState<number | null>(null);
+    const [currentStreak, setCurrentStreak] = useState(0);
+    const [highestStreak, setHighestStreak] = useState(0);
+    const [masteredCount, setMasteredCount] = useState(0);
+    const [unmasteredCount, setUnmasteredCount] = useState(0);
+    const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
     
     const navigate = useNavigate();
 
@@ -57,12 +62,24 @@ export const useGameLogic = ({ mode, material, selectedTypes, timeLimit }: GameS
     const handleAnswerSubmit = (answer: string) => {
         if (showResult) return;
 
-        const isCorrect = answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+        const isAnswerCorrect = answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+        setIsCorrect(isAnswerCorrect);
 
-        if (isCorrect) {
+        if (isAnswerCorrect) {
             setCorrectCount(prev => prev + 1);
+            setCurrentStreak(prev => {
+                const newStreak = prev + 1;
+                if (newStreak > highestStreak) {
+                    setHighestStreak(newStreak);
+                }
+                return newStreak;
+            });
+            setShowNextButton(false);
         } else {
             setIncorrectCount(prev => prev + 1);
+            setUnmasteredCount(prev => prev + 1);
+            setCurrentStreak(0);
+            setShowNextButton(true);
         }
 
         setSelectedAnswer(answer);
@@ -93,15 +110,38 @@ export const useGameLogic = ({ mode, material, selectedTypes, timeLimit }: GameS
         const seconds = Math.floor((timeDiff % 60000) / 1000);
         const timeSpent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
+        console.log('Game Complete:', {
+            timeSpent,
+            correctCount,
+            incorrectCount,
+            mode,
+            material
+        });
+
+        console.log('Highest Streak before navigating:', highestStreak);
+
         navigate('/dashboard/study/session-summary', {
             state: {
                 timeSpent,
                 correctCount,
                 incorrectCount,
                 mode,
-                material
+                material,
+                highestStreak,
+                masteredCount,
+                unmasteredCount
             }
         });
+    };
+
+    const handleMastered = () => {
+        setMasteredCount(prev => prev + 1);
+        handleNextQuestion();
+    };
+
+    const handleUnmastered = () => {
+        setUnmasteredCount(prev => prev + 1);
+        handleNextQuestion();
     };
 
     const getButtonStyle = (option: string) => {
@@ -128,10 +168,18 @@ export const useGameLogic = ({ mode, material, selectedTypes, timeLimit }: GameS
         questionTimer,
         timerProgress,
         inputAnswer,
+        currentStreak,
+        highestStreak,
+        timeLimit,
+        masteredCount,
+        unmasteredCount,
+        isCorrect,
         handleFlip: () => setIsFlipped(!isFlipped),
         handleAnswerSubmit,
         handleNextQuestion,
         getButtonStyle,
-        setInputAnswer
+        setInputAnswer,
+        handleMastered,
+        handleUnmastered,
     };
 }; 
