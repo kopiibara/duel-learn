@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Box, Stack, Button } from "@mui/material";
 import Profile from "../../../assets/profile-picture/bunny-picture.png";
 import ProfileIcon from "../../../assets/profile-picture/kopibara-picture.png";
 import GoldMedal from "../../../assets/General/gold-medal.svg";
@@ -33,39 +34,39 @@ const Leaderboards = () => {
   };
 
   return (
-    <div className="rounded-md shadow-md border-3" style={{ borderColor: "#3B354C", borderWidth: "3px" }}>
-      <div className="p-5">
-        <div className="flex flex-row items-center mb-5 gap-4">
-          <img src="/leaderboard.png" className="w-[34px] h-[35px] ml-2" alt="icon" />
-          <h2 className="text-xl text-white font-semibold">Leaderboards</h2>
+    <Box className="rounded-[1rem] shadow-md border-[3px] border-[#3B354C]">
+      <div className="px-8 pt-8 pb-5">
+        <div className="pl-1 flex flex-row items-center mb-5 gap-4">
+          <img
+            src="/leaderboard.png"
+            className="w-[37px] h-[35px]"
+            alt="icon"
+          />
+          <h2 className="text-xl text-[#FFFFFF] font-semibold">Leaderboards</h2>
         </div>
 
-        {/* Filter Buttons */}
-        <div className="flex justify-center gap-3 my-4">
-          {filters.map((filter) => (
-            <button
-              key={filter}
-              onClick={() => setSelectedFilter(filter)}
-              className={`px-3 py-1 text-white rounded-md transition-colors duration-200 ${
-                selectedFilter === filter ? "bg-[#4D1EE3]" : "bg-[#1A1625]"
-              }`}
-            >
-              {filter}
-            </button>
-          ))}
-        </div>
+        <hr className="border-t-2 border-[#3B354D] mb-7" />
 
-        <hr className="border-t-1 border-white mb-5" />
-
-        {covenHierarchy.slice(0, 4).map((member, index) => (
-          <div key={member.id} className="flex items-center justify-between mb-4">
+        {covenHierarchy.slice(0, 5).map((member, index) => (
+          <div
+            key={member.id}
+            className="flex items-center justify-between mb-4"
+          >
             <div className="flex items-center">
               {index < 3 ? (
-                <img src={getMedal(index + 1)} alt="Medal" className="w-8 h-8 mr-5" />
+                <img
+                  src={getMedal(index + 1)}
+                  alt="Medal"
+                  className="w-8 h-8 mr-5"
+                />
               ) : (
                 <p className="text-lg font-semibold ml-3 mr-7">{index + 1}</p>
               )}
-              <img src={member.avatar} alt="Avatar" className="w-12 h-12 rounded-[5px] object-cover mr-3" />
+              <img
+                src={member.avatar}
+                alt="Avatar"
+                className="w-12 h-12 rounded-[5px] object-cover mr-3"
+              />
               <p className="font-medium">{member.name}</p>
             </div>
             <p className="text-gray-400">{member.xp} XP</p>
@@ -73,45 +74,73 @@ const Leaderboards = () => {
         ))}
       </div>
 
-      {/* VIEW MORE Button - Full Width, Outside Padding */}
-      <button
-        style={{ borderColor: "#3B354C", borderWidth: "1px" }}
-        className="w-full p-4 mt-[-7px] text-[#48405f] bg-[#120F1C] text-center hover:text-white"
-        onClick={() => setIsModalOpen(true)}
+      {/* View More Button */}
+      <Stack
+        direction={"row"}
+        spacing={1}
+        className="flex justify-center bg-[#120F1C] py-6 px-4 border-t-[3px] rounded-b-[0.8rem] border-[#3B354C]"
       >
-        VIEW MORE
-      </button>
+        <p
+          className="text-[#3B354D] hover:text-[#A38CE6] cursor-pointer transition-colors font-bold"
+          onClick={() => setIsModalOpen(true)}
+        >
+          VIEW MORE
+        </p>
+      </Stack>
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-4" onClick={() => setIsModalOpen(false)}>
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-4"
+          onClick={() => setIsModalOpen(false)}
+        >
           <div
             className="bg-[#080511] px-6 py-8 border-[#3B354D] border rounded-lg w-full max-w-[689px] max-h-[90vh] shadow-lg flex flex-col space-y-6 items-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-xl text-white font-semibold">Top 10 Leaderboards</h2>
+            <h2 className="text-xl text-white font-semibold">
+              Top 10 Leaderboards
+            </h2>
             <hr className="border-t-2 border-[#363D46] w-full mb-6" />
-
-            <div className="overflow-y-auto w-full max-h-[60vh] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-4">
+            <div className="overflow-y-auto w-full max-h-[40vh] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-4">
               {covenHierarchy.map((member, index) => (
-                <div key={member.id} className="flex items-center justify-between px-7">
-                  <div className="flex items-center space-x-4">
+                <div
+                  key={member.id}
+                  className="flex items-center justify-between w-full px-6 mb-4"
+                >
+                  <div className="flex items-center">
                     {index < 3 ? (
-                      <img src={getMedal(index + 1)} alt="Medal" className="w-8 h-8 mr-3" />
+                      <img
+                        src={getMedal(index + 1)}
+                        alt="Medal"
+                        className="w-8 h-8 mr-5"
+                      />
                     ) : (
-                      <p className="text-lg ml-3 mr-[22px] font-semibold text-white">{index + 1}</p>
+                      <p className="text-lg font-semibold ml-3 mr-7">
+                        {index + 1}
+                      </p>
                     )}
-                    <img src={member.avatar} alt="Avatar" className="w-12 h-12 rounded-[5px] object-cover" />
-                    <p className="font-medium text-white">{member.name}</p>
+                    <img
+                      src={member.avatar}
+                      alt="Avatar"
+                      className="w-12 h-12 rounded-[5px] object-cover mr-3"
+                    />
+                    <p className="font-medium">{member.name}</p>
                   </div>
                   <p className="text-gray-400">{member.xp} XP</p>
                 </div>
               ))}
             </div>
+            <button
+              className="mt-6 bg-[#4D1EE3] text-white px-6 py-2 rounded-md hover:bg-[#3B1BC9]"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
-    </div>
+    </Box>
   );
 };
 
