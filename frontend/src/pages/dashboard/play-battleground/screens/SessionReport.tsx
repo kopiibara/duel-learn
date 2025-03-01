@@ -5,6 +5,8 @@ import ManaIcon from "../../../../assets/ManaIcon.png";
 import { useNavigate, useLocation } from 'react-router-dom';
 import AutoConfettiAnimation from '../../../../pages/dashboard/play-battleground/components/common/AutoConfettiAnimation';
 import SessionReportBanner from "../../../../assets/General/SessionReportBanner.png"
+import { useAudio } from "../../../../contexts/AudioContext"; // Import the useAudio hook
+
 interface SessionReportProps {
     timeSpent: string;
     correctCount: number;
@@ -37,6 +39,7 @@ const SessionReport = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { timeSpent, correctCount, incorrectCount, mode, material, earlyEnd, startTime, highestStreak, masteredCount, unmasteredCount } = location.state as SessionReportProps;
+    const { pauseAudio } = useAudio(); // Use the pauseAudio function
 
 
     // Add console log to check the value of highestStreak after destructuring it from location.state
@@ -186,7 +189,10 @@ const SessionReport = () => {
                                 backgroundColor: '#3A12B0',
                             }
                         }}
-                        onClick={() => navigate('/dashboard/home')}
+                        onClick={() => {
+                            pauseAudio(); // Stop audio when navigating back to home
+                            navigate('/dashboard/home');
+                        }}
                     >
                         Go Back to Home
                     </Button>

@@ -3,20 +3,34 @@ import { useNavigate } from "react-router-dom";
 import useWandCursor from "./data/useWandCursor";
 import GateRabbit from "../../assets/UserOnboarding/Gate.gif";
 import PageTransition from "../../styles/PageTransition";
+import { useAudio } from "../../contexts/AudioContext"; // Import the useAudio hook
 
 const TutorialLast: React.FC = () => {
   const [fadeIn, setFadeIn] = useState(false);
   const navigate = useNavigate();
+  const { pauseAudio } = useAudio(); // Use the pauseAudio function
 
   useWandCursor();
 
   useEffect(() => {
     const fadeInTimer = setTimeout(() => setFadeIn(true), 500); // Start fade-in after 500ms
-    return () => clearTimeout(fadeInTimer);
-  }, []);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      pauseAudio();
+      navigate("/dashboard/home");
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      clearTimeout(fadeInTimer);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [navigate, pauseAudio]);
 
   const handleNavigate = () => {
     console.log("Navigating to /dashboard/home...");
+    pauseAudio();
     navigate("/dashboard/home");
   };
 

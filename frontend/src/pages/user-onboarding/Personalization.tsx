@@ -6,6 +6,7 @@ import PurpleGem from "../../assets/General/PurpleGem.png";
 import { useNavigate } from "react-router-dom";
 import { topics } from "./data/topics";
 import PageTransition from "../../styles/PageTransition";
+import { useAudio } from "../../contexts/AudioContext"; // Import the useAudio hook
 
 const Personalization: React.FC = () => {
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
@@ -15,6 +16,7 @@ const Personalization: React.FC = () => {
     topics.map(() => 0)
   );
   const navigate = useNavigate();
+  const { playUserOnboardingAudio } = useAudio(); // Use the playUserOnboardingAudio function
   const subjectsPerView = 5; // Number of subjects to display at once
 
   useEffect(() => {
@@ -38,8 +40,15 @@ const Personalization: React.FC = () => {
     document.body.style.overflow = "hidden";
   }, []);
 
-  const handleClickDone = () => {
+  const handleClickDone = async () => {
     alert(`Selected topics: ${selectedSubjects.join(", ")}`);
+    await playUserOnboardingAudio();
+    navigate("/dashboard/tutorial/step-two");
+  };
+
+  const handleSkip = async () => {
+    setSelectedSubjects([]);
+    await playUserOnboardingAudio();
     navigate("/dashboard/tutorial/step-two");
   };
 
@@ -117,10 +126,7 @@ const Personalization: React.FC = () => {
               padding: "10px 20px",
               "&:hover": { color: "white" },
             }}
-            onClick={() => {
-              setSelectedSubjects([]);
-              navigate("/dashboard/tutorial/step-two");
-            }}
+            onClick={handleSkip}
           >
             Skip
           </Button>
@@ -243,7 +249,6 @@ const Personalization: React.FC = () => {
       </div>
     </PageTransition>
   );
-  
 };
 
 export default Personalization;
