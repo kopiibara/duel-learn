@@ -11,7 +11,7 @@ const Profile = () => {
   return (
     <PageTransition>
       <DocumentHead title="Profile | Duel Learn" />
-      <div className="min-h-screen text-white px-7">
+      <div className="h-full w-full text-white px-7">
         {/* Profile Header */}
         <ProfileHeader />
 

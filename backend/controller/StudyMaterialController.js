@@ -1,12 +1,13 @@
 import { pool } from "../config/db.js";
 import { nanoid } from "nanoid";
-import moment from "moment-timezone";
+import manilacurrentTimestamp from "../utils/CurrentTimestamp.js";
+
 
 const studyMaterialController = {
   saveStudyMaterial: async (req, res) => {
-    const connection = await pool.getConnection();
-
+    let connection;
     try {
+      connection = await pool.getConnection();
       let studyMaterialId = req.body.studyMaterialId || nanoid();
       const {
         title,
@@ -19,9 +20,7 @@ const studyMaterialController = {
       } = req.body;
 
       console.log("Generated Study Material ID:", studyMaterialId);
-      const currentTimestamp = moment()
-        .tz("Asia/Manila")
-        .format("YYYY-MM-DD HH:mm:ss");
+      const currentTimestamp = manilacurrentTimestamp;
 
       await connection.beginTransaction();
 
@@ -75,11 +74,23 @@ const studyMaterialController = {
         studyMaterialId,
       });
     } catch (error) {
-      await connection.rollback();
       console.error("Error saving study material:", error);
-      res.status(500).json({ error: "Internal server error", details: error });
+      if (connection) {
+        try {
+          await connection.rollback();
+        } catch (rollbackError) {
+          console.error("Error rolling back transaction:", rollbackError);
+        }
+      }
+      res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
-      connection.release();
+      if (connection) {
+        try {
+          connection.release();
+        } catch (releaseError) {
+          console.error("Error releasing connection:", releaseError);
+        }
+      }
     }
   },
 
@@ -188,21 +199,21 @@ const studyMaterialController = {
   getRecommendedForYouCards: async (req, res) => {
     const connection = await pool.getConnection();
     try {
-      let { user } = req.params;
-      console.log("Raw user param:", user);
+      let { username } = req.params;
+      console.log("Raw user param:", username);
 
       // Ensure decoding only if necessary
-      if (user.includes("%")) {
-        user = decodeURIComponent(user);
+      if (username.includes("%")) {
+        username = decodeURIComponent(username);
       }
-      console.log("Decoded user param:", user);
+      console.log("Decoded user param:", username);
 
       // Fetch tags of the user's created study materials
       const [tagRows] = await connection.execute(
         `SELECT DISTINCT JSON_EXTRACT(tags, '$[*]') AS tags
                  FROM study_material_info
                  WHERE created_by = ?;`,
-        [user]
+        [username]
       );
 
       if (tagRows.length === 0) {
@@ -220,7 +231,7 @@ const studyMaterialController = {
         `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
                  FROM study_material_info 
                  WHERE created_by != ?;`,
-        [user]
+        [username]
       );
 
       if (infoRows.length === 0) {
@@ -357,64 +368,60 @@ const studyMaterialController = {
     }
   },
 
-  getNonMatchingTags: async (req, res) => {
+  getMadeByFriends: async (req, res) => {
     const connection = await pool.getConnection();
     try {
-      let { user } = req.params;
-      if (user.includes("%")) user = decodeURIComponent(user);
-      console.log("Fetching non-matching tags for user:", user);
+      const { userId } = req.params;
+      console.log("Fetching study materials made by friends for user:", userId);
 
-      // Fetch tags of study materials created by the user
-      const [tagRows] = await connection.execute(
-        `SELECT tags FROM study_material_info WHERE created_by = ?;`,
-        [user]
+      // Get the list of friend IDs where status is "accepted"
+      const [friends] = await connection.execute(
+        `SELECT CASE 
+                  WHEN sender_id = ? THEN receiver_id 
+                  WHEN receiver_id = ? THEN sender_id 
+                END AS friend_id
+         FROM friend_requests
+         WHERE (sender_id = ? OR receiver_id = ?) AND status = 'accepted';`,
+        [userId, userId, userId, userId]
       );
 
-      if (tagRows.length === 0) {
-        return res.status(404).json({ message: "No tags found for this user" });
+      if (friends.length === 0) {
+        return res.status(404).json({ message: "No friends found" });
       }
 
-      // Extract and flatten all tags
-      const userTags = tagRows.flatMap((row) => JSON.parse(row.tags));
-      if (userTags.length === 0) {
-        return res.status(404).json({ message: "User has not used any tags" });
-      }
+      // Extract friend IDs
+      const friendIds = friends.map(friend => friend.friend_id);
 
-      // Fetch study materials that do not contain any matching tags
-      const [infoRows] = await connection.execute(
+      // Fetch study materials created by friends
+      const [studyMaterials] = await connection.execute(
         `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
-             FROM study_material_info;`
+         FROM study_material_info 
+         WHERE created_by IN (?);`,
+        [friendIds]
       );
 
-      // Filter study materials by checking if they do not share any tags with the user
-      const filteredMaterials = infoRows.filter((info) => {
-        const materialTags = JSON.parse(info.tags);
-        return !materialTags.some((tag) => userTags.includes(tag));
-      });
-
-      if (filteredMaterials.length === 0) {
-        return res
-          .status(404)
-          .json({ message: "No non-matching study materials found" });
+      if (studyMaterials.length === 0) {
+        return res.status(404).json({ message: "No study materials found from friends" });
       }
 
-      const studyMaterials = await Promise.all(
-        filteredMaterials.map(async (info) => {
+      // Process each study material
+      const detailedMaterials = await Promise.all(
+        studyMaterials.map(async (material) => {
           const [contentRows] = await connection.execute(
             `SELECT term, definition, image 
-                 FROM study_material_content 
-                 WHERE study_material_id = ?;`,
-            [info.study_material_id]
+             FROM study_material_content 
+             WHERE study_material_id = ?;`,
+            [material.study_material_id]
           );
 
           return {
-            study_material_id: info.study_material_id,
-            title: info.title,
-            tags: JSON.parse(info.tags),
-            total_items: info.total_items,
-            created_by: info.created_by,
-            total_views: info.total_views,
-            created_at: info.created_at,
+            study_material_id: material.study_material_id,
+            title: material.title,
+            tags: JSON.parse(material.tags),
+            total_items: material.total_items,
+            created_by: material.created_by,
+            total_views: material.total_views,
+            created_at: material.created_at,
             items: contentRows.map((item) => ({
               term: item.term,
               definition: item.definition,
@@ -424,10 +431,105 @@ const studyMaterialController = {
         })
       );
 
-      res.status(200).json(studyMaterials);
+      res.status(200).json(detailedMaterials);
     } catch (error) {
-      console.error("Error fetching non-matching tags:", error);
-      res.status(500).json({ error: "Internal server error", details: error });
+      console.error("Error fetching study materials made by friends:", error);
+      res.status(500).json({ error: "Internal server error", details: error.message });
+    } finally {
+      connection.release();
+    }
+  },
+
+  getNonMatchingTags: async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+      let { username } = req.params;
+      if (username.includes('%')) {
+        username = decodeURIComponent(username);
+      }
+      console.log("Fetching discover content for user:", username);
+
+      // First, get the user's tags
+      const [userTagRows] = await connection.execute(
+        `SELECT DISTINCT tags 
+             FROM study_material_info 
+             WHERE created_by = ?`,
+        [username]
+      );
+
+      // Parse and flatten user's tags
+      const userTags = userTagRows
+        .flatMap(row => JSON.parse(row.tags))
+        .map(tag => tag.toLowerCase());
+
+      console.log("User's tags:", userTags);
+
+      // Get study materials not created by the user
+      const [materials] = await connection.execute(
+        `SELECT study_material_id, title, tags, total_items, created_by, 
+                    total_views, created_at, visibility
+             FROM study_material_info 
+             WHERE created_by != ? 
+             AND visibility = 0
+             ORDER BY created_at DESC
+             LIMIT 10`,
+        [username]
+      );
+
+      // Process each study material
+      const discoveryMaterials = await Promise.all(
+        materials.map(async (material) => {
+          // Parse material tags
+          const materialTags = JSON.parse(material.tags);
+
+          // Calculate tag difference score
+          const uniqueTags = materialTags.filter(
+            tag => !userTags.includes(tag.toLowerCase())
+          ).length;
+
+          // Get content for this material
+          const [contentRows] = await connection.execute(
+            `SELECT term, definition, image 
+                     FROM study_material_content 
+                     WHERE study_material_id = ?`,
+            [material.study_material_id]
+          );
+
+          return {
+            study_material_id: material.study_material_id,
+            title: material.title,
+            tags: materialTags,
+            total_items: material.total_items,
+            created_by: material.created_by,
+            total_views: material.total_views,
+            created_at: material.created_at,
+            uniqueness_score: uniqueTags,
+            items: contentRows.map(item => ({
+              term: item.term,
+              definition: item.definition,
+              image: item.image ? item.image.toString('base64') : null
+            }))
+          };
+        })
+      );
+
+      // Sort by uniqueness score and limit results
+      const sortedMaterials = discoveryMaterials
+        .sort((a, b) => b.uniqueness_score - a.uniqueness_score)
+        .slice(0, 10);
+
+      if (sortedMaterials.length === 0) {
+        return res.status(200).json([]); // Return empty array instead of 404
+      }
+
+      res.status(200).json(sortedMaterials);
+
+    } catch (error) {
+      console.error("Error in discover endpoint:", error);
+      res.status(500).json({
+        error: "Internal server error",
+        details: error.message
+      });
     } finally {
       connection.release();
     }

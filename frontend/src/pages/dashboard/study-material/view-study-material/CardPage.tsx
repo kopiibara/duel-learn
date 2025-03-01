@@ -3,7 +3,7 @@ import { Box, Stack, Typography } from "@mui/material";
 interface Item {
   term: string;
   definition: string;
-  image?: File | null;
+  image?: string | null;
 }
 
 interface StudyMaterial {
@@ -33,8 +33,13 @@ const CardPage = ({ studyMaterial }: CardPageProps) => {
             key={index}
             className="bg-[#E2DDF3] py-4 px-8 rounded-[0.8rem] shadow-lg"
           >
-            <Stack direction={"row"} spacing={1}>
-              <Stack spacing={1}>
+            <Stack
+              direction="row"
+              spacing={4}
+              justifyContent="space-between"
+              alignItems="center"
+            >
+              <Stack spacing={1} flex={1}>
                 <Typography
                   variant="h6"
                   fontWeight="bold"
@@ -49,11 +54,15 @@ const CardPage = ({ studyMaterial }: CardPageProps) => {
                   {item.definition}
                 </Typography>
               </Stack>
-              <img
-                src={studyMaterial.images[index]}
-                alt=""
-                className="w-1/3 h-1/3"
-              />
+              {item.image && (
+                <Box className="w-48 h-48 flex-shrink-0">
+                  <img
+                    src={typeof item.image === "string" ? item.image : ""}
+                    alt={item.term}
+                    className="w-full h-full object-cover rounded-lg"
+                  />
+                </Box>
+              )}
             </Stack>
           </Box>
         ))
