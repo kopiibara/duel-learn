@@ -5,10 +5,12 @@ import { useNavigate } from "react-router-dom";
 import CharacterTalking from "../../assets/UserOnboarding/NoddingBunny.gif";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import PageTransition from "../../styles/PageTransition";
+import { useAudio } from "../../contexts/AudioContext"; // Import the useAudio hook
 
 export default function TutorialSix() {
   useWandCursor();
   const navigate = useNavigate();
+  const { pauseAudio } = useAudio(); // Use the pauseAudio function
 
   const dialogues = [
     `Lastly, <span class="font-bold">PvP Mode</span> to duel with other wizards. A great way to unleash your competitive side.`,
@@ -21,7 +23,17 @@ export default function TutorialSix() {
 
   React.useEffect(() => {
     setTimeout(() => setAnimate(true), 100);
-  }, []);
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      navigate("/dashboard/tutorial/last-step");
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [navigate]);
 
   const handleClick = () => {
     if (!typingDone) {
