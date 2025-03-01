@@ -7,8 +7,8 @@ const TermsAndConditions = () => {
   return (
     <PageTransition>
       <main
-        className="flex overflow-hidden flex-col items-center"
-        style={{ backgroundColor: "#080511" }}
+        className="flex overflow-y-auto flex-col items-center"
+        style={{ backgroundColor: "#080511", height: "100vh" }}
       >
         {/* Main container with flexbox layout, padding, and background color */}
         <header
