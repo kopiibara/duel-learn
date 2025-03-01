@@ -7,7 +7,6 @@ import ChooseYourChallenge from "../../../components/ChooseYourChallenge";
 import DiscoverMore from "./DiscoverMore";
 import RecentlyOpened from "./RecentlyOpened";
 
-
 const HomePage = ({
   setSelectedIndex,
 }: {
@@ -22,10 +21,10 @@ const HomePage = ({
 
   return (
     <PageTransition>
-      <Box className="h-screen w-full">
+      <Box className="h-full w-full">
         <DocumentHead title="Home | Duel Learn" />
-        <div
-          className="h-[232px] mx-8 rounded-lg p-6 px-12 flex flex-col justify-center items-start text-left mb-10"
+        <Box
+          className="h-[232px] mx-8 rounded-[1rem] p-6 px-12 flex flex-col justify-center items-start text-left mb-10"
           style={{
             background: "linear-gradient(90deg, #9F87E5 0%, #6F58D9 100%)",
           }}
@@ -45,7 +44,7 @@ const HomePage = ({
           >
             Learn More
           </button>
-        </div>
+        </Box>
         <Stack spacing={2} className="px-6">
           <Stack spacing={2} className="pb-6">
             <Stack
