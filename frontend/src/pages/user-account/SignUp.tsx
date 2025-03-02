@@ -23,7 +23,7 @@ import bcrypt from "bcryptjs";
 
 const SignUp = () => {
   const { setUser, user } = useUser();
-  const { handleError, firebaseError, networkError, sqlError } = useCombinedErrorHandler();
+  const { handleError, combinedError } = useCombinedErrorHandler();
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -114,10 +114,6 @@ const SignUp = () => {
         console.error("API Error:", apiError);
         handleError(apiError);
         setLoading(false);
-        if (auth.currentUser) {
-          await deleteUser(auth.currentUser);
-          await deleteDoc(doc(db, "users", auth.currentUser.uid));
-        }
         return; // Exit the function if API call fails
       }
 
@@ -151,10 +147,6 @@ const SignUp = () => {
       console.error("Registration error:", error);
       handleError(error);
       setLoading(false);
-      if (auth.currentUser) {
-        await deleteUser(auth.currentUser);
-        await deleteDoc(doc(db, "users", auth.currentUser.uid));
-      }
     }
   };
 
@@ -220,10 +212,6 @@ const SignUp = () => {
     } catch (error: any) {
       setLoading(false);
       handleError(error);
-      if (auth.currentUser) {
-        await deleteUser(auth.currentUser);
-        await deleteDoc(doc(db, "users", auth.currentUser.uid));
-      }
     }
   };
 
@@ -257,9 +245,9 @@ const SignUp = () => {
             </div>
           )}
 
-          {(firebaseError || networkError || sqlError) && (
+          {combinedError && (
             <div className="bg-red-700 text-white text-center py-2 mb-4 rounded">
-              {firebaseError || networkError || sqlError}
+              {combinedError}
             </div>
           )}
 
