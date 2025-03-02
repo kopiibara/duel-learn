@@ -128,21 +128,6 @@ export default function ProfilePopover({
                 fontWeight: 700, // Make text bold on hover
               },
             }}
-            onClick={() => navigate("/dashboard/verify-email")}
-          >
-            Verify Email
-          </Button>
-          <Button
-            variant="text"
-            sx={{
-              justifyContent: "flex-start",
-              textTransform: "none",
-              color: "inherit",
-              fontWeight: 400,
-              ":hover": {
-                fontWeight: 700, // Make text bold on hover
-              },
-            }}
             onClick={handleLogout}
           >
             Logout

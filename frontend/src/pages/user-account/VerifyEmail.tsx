@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { auth, signOutUser, sendEmail } from "../../services/firebase";
+import { auth, signOutUser, sendEmail, db } from "../../services/firebase";
 import { toast } from "react-hot-toast";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
-import { getFirestore, collection, query, where, getDocs, setDoc, doc, serverTimestamp } from "firebase/firestore";
+import { getFirestore, collection, query, where, getDocs, setDoc, doc, serverTimestamp,getDoc } from "firebase/firestore";
 import useEmailTimestamp from "../../hooks/useEmailTimestamp";
 
 const VerifyEmail = () => {
@@ -50,9 +50,9 @@ const VerifyEmail = () => {
       const firebase_uid = userData.firebase_uid;
       if (auth.currentUser) {
         const actionCodeSettings = {
-          url: `${import.meta.env.VITE_FRONTEND_URL}/email-verified?mode=verifyEmail&firebase_uid=${firebase_uid}`,
+          url: `http://localhost:5173/email-verified?mode=verifyEmail&firebase_uid=${firebase_uid}`,
           handleCodeInApp: true,
-        };
+          };
           await sendEmail(auth.currentUser!, actionCodeSettings);
         toast.success("Verification email sent.");
         setIsButtonDisabled(true);
@@ -94,13 +94,25 @@ const VerifyEmail = () => {
   };
 
   const handleLogoutClick = async () => {
-    try {
-      await signOutUser(auth);
-      navigate("/login");
-    } catch (error) {
-      console.error("Error logging out:", error);
-      toast.error("Failed to log out. Please try again.");
-    }
+
+    const userDoc = await getDoc(doc(db, "users", userData.firebase_uid));
+    const isNewUser =
+    !userDoc.exists() ||
+    (userDoc.exists() &&
+      Date.now() - userDoc.data().created_at.toMillis() < 5000);
+      setTimeout(() => {
+        if (userData.account_type === "admin") {
+          navigate("/admin/admin-dashboard");
+        } else if (isNewUser && userData.email_verified) {
+          navigate("/dashboard/welcome");
+        } else if (isNewUser && userData.email_verified === false) {
+          navigate("/dashboard/verify-email");
+        } else if (userData.email_verified === false) {
+          navigate("/dashboard/verify-email");
+        } else {
+          navigate("/dashboard/home");
+        }
+      }, 2000);
   };
 
   useEffect(() => {
@@ -124,7 +136,7 @@ const VerifyEmail = () => {
 
         <div className="w-full max-w-md rounded-lg p-8 shadow-md">
           <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
-            {errorMessage ? errorMessage : isEmailVerified ? "Email is Already Verified" : isEmailSent ? "Email has been sent. Please check your inbox." : "Please verify your email to continue."}
+            {errorMessage ? errorMessage : isEmailVerified ? "🌟 A Star Twinkles — Your Email Verification is Complete! 🌟" : isEmailSent ? "Email has been sent. Please check your inbox." : "Please verify your email to continue."}
           </p>
           {!isEmailVerified && (
             <button
@@ -150,7 +162,7 @@ const VerifyEmail = () => {
             className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
             onClick={handleLogoutClick}
           >
-            Logout
+            Continue
           </button>
         </div>
       </div>
