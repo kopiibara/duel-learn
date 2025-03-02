@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Box, Button, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import Header from "../../components/header/Header"; // Import the Header component
 import "./AdminDashboard.css"; // Import the CSS file
 
 const AdminDashboard = () => {
@@ -28,7 +29,7 @@ const AdminDashboard = () => {
 
   const handleDeleteAllUsers = async () => {
     try {
-    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user`, { method: 'DELETE' });
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user`, { method: 'DELETE' });
       if (!response.ok) {
         throw new Error("Failed to delete all users");
       }
@@ -38,8 +39,26 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleDeleteUser = async (firebase_uid) => {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/${firebase_uid}`, { method: 'DELETE' });
+      if (!response.ok) {
+        throw new Error("Failed to delete user");
+      }
+      setUsers(users.filter(user => user.firebase_uid !== firebase_uid));
+    } catch (error) {
+      console.error("Error deleting user:", error);
+    }
+  };
+
+  const handleLogout = () => {
+    // Implement your logout logic here
+    console.log("User logged out");
+  };
+
   return (
     <Box p={3}>
+      <Header />
       <Typography variant="h4" gutterBottom>
         Admin Dashboard
       </Typography>
@@ -66,7 +85,7 @@ const AdminDashboard = () => {
                 <TableCell>{user.existInFirebaseAuth ? "Yes" : "No"}</TableCell>
                 <TableCell>{user.existInFirestore ? "Yes" : "No"}</TableCell>
                 <TableCell>
-                  <Button variant="contained" color="secondary">
+                  <Button variant="contained" color="secondary" onClick={() => handleDeleteUser(user.firebase_uid)}>
                     Delete
                   </Button>
                 </TableCell>

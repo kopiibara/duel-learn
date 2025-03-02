@@ -49,23 +49,6 @@ const EmailVerified = () => {
     updateEmailVerifiedStatus();
   }, [location.search, updateEmailVerifiedApi]);
 
-  useEffect(() => {
-    const bc = new BroadcastChannel('email-verification');
-
-    const handleEmailVerifiedSuccess = (message: MessageEvent) => {
-      if (message.data === 'email_verified_success') {
-        navigate("/email-verified");
-      }
-    };
-
-    bc.addEventListener('message', handleEmailVerifiedSuccess);
-
-    return () => {
-      bc.removeEventListener('message', handleEmailVerifiedSuccess);
-      bc.close();
-    };
-  }, [navigate]);
-
   const handleBacktoLoginClick = () => {
     navigate("/dashboard/welcome"); // Navigate to login when the button is clicked
   };

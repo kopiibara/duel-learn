@@ -19,7 +19,7 @@ export default {
       // Get a connection from the pool
       connection = await pool.getConnection();
 
-      // Insert the user details into the database
+      // Insert the user details into the users table
       await connection.execute(
         `INSERT INTO users (firebase_uid, username, email, password_hash, created_at, updated_at, display_picture, full_name, email_verified, isSSO)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
@@ -34,6 +34,20 @@ export default {
           null,
           emailVerified,
           isSSO,
+        ]
+      );
+
+      // Insert the user details into the user_info table
+      await connection.execute(
+        `INSERT INTO user_info (firebase_uid, username, display_picture, level, exp, coins)
+         VALUES (?, ?, ?, ?, ?, ?);`,
+        [
+          firebase_uid,
+          username,
+          null,
+          1, // Default level
+          0, // Default experience points
+          0, // Default coins
         ]
       );
 
