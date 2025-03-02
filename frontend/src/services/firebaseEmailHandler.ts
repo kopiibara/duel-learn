@@ -31,6 +31,7 @@ const firebaseEmailHandler = () => {
       }
     } catch (error) {
       console.error("Error handling email action:", error);
+      throw error; // Propagate the error
     }
   };
 
