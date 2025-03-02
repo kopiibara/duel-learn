@@ -371,37 +371,47 @@ const studyMaterialController = {
   getMadeByFriends: async (req, res) => {
     const connection = await pool.getConnection();
     try {
-      const { userId } = req.params;
-      console.log("Fetching study materials made by friends for user:", userId);
+      const { firebase_uid } = req.params;
+      console.log("Received userId:", firebase_uid);
 
-      // Get the list of friend IDs where status is "accepted"
+      if (!firebase_uid) {
+        return res.status(400).json({ error: "User ID is required" });
+      }
+
+      // Get mutual friends where status is "accepted"
       const [friends] = await connection.execute(
         `SELECT CASE 
-                  WHEN sender_id = ? THEN receiver_id 
-                  WHEN receiver_id = ? THEN sender_id 
-                END AS friend_id
-         FROM friend_requests
-         WHERE (sender_id = ? OR receiver_id = ?) AND status = 'accepted';`,
-        [userId, userId, userId, userId]
+                        WHEN sender_id = ? THEN receiver_id 
+                        WHEN receiver_id = ? THEN sender_id 
+                    END AS mutual_friend_id
+             FROM friend_requests
+             WHERE (sender_id = ? OR receiver_id = ?) AND status = 'accepted';`,
+        [firebase_uid, firebase_uid, firebase_uid, firebase_uid]
       );
 
       if (friends.length === 0) {
-        return res.status(404).json({ message: "No friends found" });
+        console.log("No mutual friends found for user:", userId);
+        return res.status(200).json([]);
       }
 
-      // Extract friend IDs
-      const friendIds = friends.map(friend => friend.friend_id);
+      const mutualFriendIds = friends.map(friend => friend.mutual_friend_id);
+      console.log("Mutual Friend IDs:", mutualFriendIds);
 
-      // Fetch study materials created by friends
+      if (mutualFriendIds.length === 0) {
+        return res.status(200).json([]);
+      }
+
+      // Fetch study materials created by mutual friends
       const [studyMaterials] = await connection.execute(
         `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
-         FROM study_material_info 
-         WHERE created_by IN (?);`,
-        [friendIds]
+             FROM study_material_info 
+             WHERE created_by IN (${mutualFriendIds.map(() => '?').join(', ')});`,
+        mutualFriendIds
       );
 
       if (studyMaterials.length === 0) {
-        return res.status(404).json({ message: "No study materials found from friends" });
+        console.log("No study materials found from mutual friends.");
+        return res.status(200).json([]);
       }
 
       // Process each study material
@@ -409,8 +419,8 @@ const studyMaterialController = {
         studyMaterials.map(async (material) => {
           const [contentRows] = await connection.execute(
             `SELECT term, definition, image 
-             FROM study_material_content 
-             WHERE study_material_id = ?;`,
+                     FROM study_material_content 
+                     WHERE study_material_id = ?;`,
             [material.study_material_id]
           );
 
@@ -433,12 +443,13 @@ const studyMaterialController = {
 
       res.status(200).json(detailedMaterials);
     } catch (error) {
-      console.error("Error fetching study materials made by friends:", error);
+      console.error("Error fetching study materials made by mutual friends:", error);
       res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
   },
+
 
   getNonMatchingTags: async (req, res) => {
     const connection = await pool.getConnection();

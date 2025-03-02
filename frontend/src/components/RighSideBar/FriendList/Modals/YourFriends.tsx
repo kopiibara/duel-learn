@@ -1,16 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import CloseIcon from "@mui/icons-material/Close";
 import { useFriendList } from "../../../../hooks/friends.hooks/useFriendList";
+import { useFriendSocket } from "../../../../hooks/friends.hooks/useFriendSocket";
 import { useUser } from "../../../../contexts/UserContext";
-import { Box, Tooltip } from "@mui/material";
+import { Box, Tooltip, Stack } from "@mui/material";
 import ErrorSnackbar from "../../../ErrorsSnackbar";
 import cauldronGif from "../../../../assets/General/Cauldron.gif";
-
-interface User {
-  firebase_uid: string;
-  username: string;
-  level: number;
-}
+import { Friend } from "../../../../types/friend.types";
+import noFriend from "../../../../assets/images/NoFriend.svg";
 
 const YourFriends: React.FC = () => {
   const { user } = useUser();
@@ -20,9 +17,36 @@ const YourFriends: React.FC = () => {
     isError: false,
   });
 
-  const { friendList, handleRemoveFriend, loading } = useFriendList(
-    user?.firebase_uid
-  );
+  const { friendList, handleRemoveFriend, loading, fetchFriends } =
+    useFriendList(user?.firebase_uid);
+
+  // Set up socket listener for friend request accepted events
+  const handleFriendRequestAccepted = (data: { newFriend: Friend }) => {
+    console.log("Friend added in YourFriends:", data.newFriend);
+    setSnackbar({
+      open: true,
+      message: `${data.newFriend.username} is now your friend!`,
+      isError: false,
+    });
+    // Refresh friend list when a new friend is added
+    fetchFriends();
+  };
+
+  const handleFriendRemoved = (data: { removedFriendId: string }) => {
+    setSnackbar({
+      open: true,
+      message: "A friend was removed from your list.",
+      isError: false,
+    });
+    fetchFriends();
+  };
+
+  // Use the socket hook to listen for real-time updates
+  useFriendSocket({
+    userId: user?.firebase_uid,
+    onFriendRequestAccepted: handleFriendRequestAccepted,
+    onFriendRemoved: handleFriendRemoved,
+  });
 
   const onRemoveFriend = async (friendId: string) => {
     if (!user?.firebase_uid) return;
@@ -50,7 +74,7 @@ const YourFriends: React.FC = () => {
         <img
           src={cauldronGif}
           alt="Loading..."
-          style={{ width: "4rem", height: "auto" }}
+          style={{ width: "6rem", height: "auto" }}
         />
       </Box>
     );
@@ -64,9 +88,24 @@ const YourFriends: React.FC = () => {
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       />
       {friendList.length === 0 ? (
-        <Box className="text-gray-400 text-center p-4">
-          You don't have any friends yet
-        </Box>
+        <Stack
+          spacing={2}
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+        >
+          <Box display="flex" justifyContent="center" alignItems="center">
+            <img
+              src={noFriend}
+              alt="noFriend"
+              style={{ width: "12rem", height: "auto" }}
+            />
+          </Box>
+          <p className=" text-[#6F658D] font-bold text-[0.95rem]">
+            {" "}
+            No friends yet. Add friends and share the magic!
+          </p>
+        </Stack>
       ) : (
         friendList.map((friend) => (
           <Box

@@ -1,18 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useFriendSocket } from "./useFriendSocket";
-
-interface PendingRequest {
-  friendrequest_id: string;
-  sender_id: string;
-  receiver_id: string;
-  status: string;
-  created_at: string;
-  sender_info?: {
-    username: string;
-    level: number;
-  };
-}
+import { PendingRequest } from "../../types/friend.types";
 
 export const usePendingFriendRequests = (userId: string | undefined) => {
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
@@ -42,7 +31,8 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
       console.log("Socket: Friend request accepted", data);
       if (data.newFriend) {
         removePendingRequest(data.newFriend.firebase_uid);
-        setRequestsCount((prev) => Math.max(0, prev + 1));
+        // Fix this line - should be decrementing the count when a request is accepted
+        setRequestsCount((prev) => Math.max(0, prev - 1));
       }
     },
     onFriendRequestRejected: (data) => {
@@ -141,6 +131,19 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
     if (!userId) return;
 
     try {
+      console.log("Accepting friend request from:", senderId);
+
+      // First get both users' information
+      const [senderInfo, receiverInfo] = await Promise.all([
+        axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/friend/user-info/${senderId}`
+        ),
+        axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/friend/user-info/${userId}`
+        ),
+      ]);
+
+      // Then accept the request
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/friend/accept`,
         {
@@ -153,17 +156,25 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
       removePendingRequest(senderId);
       setRequestsCount((prev) => Math.max(0, prev - 1));
 
-      // Emit socket event for real-time update
+      // Emit socket event for real-time update with complete user info
       if (socket && isConnected) {
+        console.log("Emitting acceptFriendRequest event with user info:", {
+          sender_id: senderId,
+          receiver_id: userId,
+          senderInfo: senderInfo.data,
+          receiverInfo: receiverInfo.data,
+        });
+
         socket.emit("acceptFriendRequest", {
           sender_id: senderId,
           receiver_id: userId,
-          senderInfo: {
-            firebase_uid: senderId,
-            username: senderUsername,
-          },
-          receiverInfo: response.data.senderInfo,
+          senderInfo: senderInfo.data,
+          receiverInfo: receiverInfo.data,
         });
+      } else {
+        console.log(
+          "Socket not connected, couldn't emit acceptFriendRequest event"
+        );
       }
 
       return response.data;

@@ -81,35 +81,50 @@ const setupSocket = (server) => {
             }
         });
 
-        // Handle friend request acceptance
+        // Update the acceptFriendRequest handler to include more detailed information
         socket.on("acceptFriendRequest", (data) => {
             try {
                 const { sender_id, receiver_id, senderInfo, receiverInfo } = data;
 
-                if (!sender_id || !receiver_id || !senderInfo || !receiverInfo) {
-                    throw new Error("Missing required friend acceptance data");
+                console.log("Socket: Processing friend request acceptance", {
+                    sender_id,
+                    receiver_id,
+                    senderInfo: senderInfo ? {
+                        username: senderInfo.username,
+                        uid: senderInfo.firebase_uid || senderInfo.uid
+                    } : 'missing',
+                    receiverInfo: receiverInfo ? {
+                        username: receiverInfo.username,
+                        uid: receiverInfo.firebase_uid || receiverInfo.uid
+                    } : 'missing'
+                });
+
+                if (!sender_id || !receiver_id) {
+                    throw new Error("Missing required sender or receiver ID");
                 }
 
-                console.log("✅ Friend request accepted:", {
-                    sender_id,
-                    receiver_id
-                });
+                // Notify sender - send receiver's info
+                if (activeUsers.has(sender_id)) {
+                    console.log(`Notifying sender ${sender_id} about accepted request`);
+                    io.to(sender_id).emit("friendRequestAccepted", {
+                        newFriend: receiverInfo || { firebase_uid: receiver_id }
+                    });
+                } else {
+                    console.log(`Sender ${sender_id} is not active, cannot notify`);
+                }
 
-                // Notify both users about the accepted friendship
-                io.to(sender_id).emit("friendRequestAccepted", {
-                    newFriend: receiverInfo
-                });
-                io.to(receiver_id).emit("friendRequestAccepted", {
-                    newFriend: senderInfo
-                });
-
+                // Notify receiver - send sender's info
+                if (activeUsers.has(receiver_id)) {
+                    console.log(`Notifying receiver ${receiver_id} about accepted request`);
+                    io.to(receiver_id).emit("friendRequestAccepted", {
+                        newFriend: senderInfo || { firebase_uid: sender_id }
+                    });
+                } else {
+                    console.log(`Receiver ${receiver_id} is not active, cannot notify`);
+                }
             } catch (error) {
-                console.error("Error processing friend acceptance:", error);
-                socket.emit("error", {
-                    type: "friendAcceptance",
-                    message: "Failed to process friend acceptance",
-                    details: error.message
-                });
+                console.error("Error handling friend request acceptance:", error);
+                socket.emit("error", { message: "Failed to process friend acceptance", details: error.message });
             }
         });
 

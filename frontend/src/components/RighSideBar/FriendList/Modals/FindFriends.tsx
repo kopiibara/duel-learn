@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import { Box, Tooltip, CircularProgress } from "@mui/material";
+import { Box, Tooltip } from "@mui/material";
 import axios, { AxiosError } from "axios";
 import { useUser } from "../../../../contexts/UserContext";
 import { useFriendList } from "../../../../hooks/friends.hooks/useFriendList";
@@ -138,7 +138,7 @@ const FindFriends: React.FC = () => {
   return (
     <>
       <div>
-        <div className="mb-4 flex items-center">
+        <div className="mb-8 flex items-center">
           <input
             type="text"
             placeholder="Search users..."
@@ -166,15 +166,39 @@ const FindFriends: React.FC = () => {
                 </div>
               </div>
               <div className="flex space-x-2">
-                <Tooltip title="Send Friend Request" enterDelay={100} arrow>
+                <Tooltip title="Add Friend" enterDelay={100} arrow>
                   <button
                     className="bg-[#5CA654] text-white py-2 px-4 rounded-md hover:scale-105 transition-all duration-300"
-                    onClick={() =>
+                    onClick={() => {
+                      if (!user?.firebase_uid) return;
+
+                      // First update the pendingRequests state
+                      setPendingRequests((prev) => ({
+                        ...prev,
+                        [otherUser.firebase_uid]: otherUser.username,
+                      }));
+
+                      // Then send the friend request via socket
+                      sendFriendRequest({
+                        sender_id: user.firebase_uid,
+                        receiver_id: otherUser.firebase_uid,
+                        senderUsername: user.username || "User", // Use actual username from user context
+                      });
+
+                      // Also send HTTP request for persistence
                       handleSendFriendRequest(
                         otherUser.firebase_uid,
+                        user.firebase_uid,
                         otherUser.username
-                      )
-                    }
+                      ).catch((err) => {
+                        console.error("Error sending friend request:", err);
+                        // Show error in snackbar
+                        setSnackbar({
+                          open: true,
+                          message: "You've already sent a friend request!",
+                        });
+                      });
+                    }}
                   >
                     <PersonAddIcon sx={{ fontSize: 18 }} />
                   </button>

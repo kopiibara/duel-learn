@@ -282,7 +282,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         transform: "scale(1.05)",
                       },
                       "&.Mui-selected": {
-                        color: "#FFFFFF",
+                        color: "#4D18E8",
                         fontWeight: "bold",
                       },
                       transition: "all 0.3s ease",

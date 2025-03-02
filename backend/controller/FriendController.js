@@ -168,6 +168,7 @@ const FriendRequestController = {
         console.log("Received Friend Request:", req.body);
 
         const { sender_id, receiver_id } = req.body;
+
         if (!sender_id || !receiver_id) {
             return res.status(400).json({ message: "Missing sender_id or receiver_id" });
         }
@@ -177,6 +178,7 @@ const FriendRequestController = {
 
         const connection = await pool.getConnection();
         try {
+            // Check for existing requests that are not declined
             const [existingRequest] = await connection.execute(
                 `SELECT * FROM friend_requests 
                 WHERE sender_id = ? AND receiver_id = ? AND status != 'declined'`,
@@ -201,16 +203,8 @@ const FriendRequestController = {
                 [friendrequest_id, sender_id, receiver_id, currentTimestamp, updatedTimestamp]
             );
 
-            const [senderInfo] = await connection.execute(
-                'SELECT username FROM user_info WHERE firebase_uid = ?',
-                [sender_id]
-            );
-
-            console.log("Friend Request Sent Successfully");
-
             res.status(201).json({
                 message: "Friend request sent successfully",
-                senderUsername: senderInfo[0]?.username
             });
         } catch (error) {
             console.error("Database Error:", error);
@@ -219,6 +213,7 @@ const FriendRequestController = {
             connection.release();
         }
     },
+
 
     acceptFriendRequest: async (req, res) => {
         const { sender_id, receiver_id } = req.body;

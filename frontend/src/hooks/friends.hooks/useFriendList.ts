@@ -7,6 +7,9 @@ export const useFriendList = (userId: string | undefined) => {
   const [friendList, setFriendList] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [pendingRequests, setPendingRequests] = useState<{
+    [key: string]: string;
+  }>({});
 
   const addFriend = useCallback((newFriend: Friend) => {
     setFriendList((prevList) => {
@@ -27,21 +30,6 @@ export const useFriendList = (userId: string | undefined) => {
     );
   }, []);
 
-  const {
-    socket,
-    isConnected,
-    acceptFriendRequest,
-    removeFriend: emitRemoveFriend,
-  } = useFriendSocket({
-    userId,
-    onFriendRequestAccepted: (data) => {
-      addFriend(data.newFriend);
-    },
-    onFriendRemoved: (data) => {
-      removeFriend(data.removedFriendId);
-    },
-  });
-
   const fetchFriends = useCallback(async () => {
     if (!userId) return;
 
@@ -60,9 +48,37 @@ export const useFriendList = (userId: string | undefined) => {
     }
   }, [userId]);
 
+  // Enhanced handler for friend request acceptance via socket
+  const handleFriendRequestAccepted = useCallback(
+    (data: { newFriend: Friend }) => {
+      console.log(
+        "Friend request accepted, adding new friend:",
+        data.newFriend
+      );
+      addFriend(data.newFriend);
+      // Refresh the friend list to ensure consistency
+      fetchFriends();
+    },
+    [addFriend, fetchFriends]
+  );
+
+  const {
+    socket,
+    isConnected,
+    acceptFriendRequest,
+    removeFriend: emitRemoveFriend,
+  } = useFriendSocket({
+    userId,
+    onFriendRequestAccepted: handleFriendRequestAccepted,
+    onFriendRemoved: (data) => {
+      removeFriend(data.removedFriendId);
+    },
+  });
+
   const handleSendFriendRequest = async (
     receiverId: string,
-    senderId: string
+    senderId: string,
+    username: string
   ) => {
     if (!senderId || !receiverId) {
       throw new Error("Invalid user ID. Please try again.");
@@ -74,6 +90,12 @@ export const useFriendList = (userId: string | undefined) => {
         { sender_id: senderId, receiver_id: receiverId },
         { headers: { "Content-Type": "application/json" } }
       );
+
+      // Update pendingRequests state
+      setPendingRequests((prev) => ({
+        ...prev,
+        [receiverId]: username,
+      }));
 
       return response;
     } catch (error) {
@@ -91,20 +113,52 @@ export const useFriendList = (userId: string | undefined) => {
     receiverId: string
   ) => {
     try {
+      console.log("Accepting friend request:", { senderId, receiverId });
+
+      // First, make the HTTP request to update the database
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/friend/accept`,
         { sender_id: senderId, receiver_id: receiverId },
         { headers: { "Content-Type": "application/json" } }
       );
 
-      if (socket && isConnected) {
-        acceptFriendRequest({
-          sender_id: senderId,
-          receiver_id: receiverId,
-          senderInfo: response.data.senderInfo,
-          receiverInfo: response.data.receiverInfo,
-        });
+      // Then fetch the users' info to pass to the socket event
+      try {
+        const [senderRes, receiverRes] = await Promise.all([
+          axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/user/info/${senderId}`
+          ),
+          axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/user/info/${receiverId}`
+          ),
+        ]);
+
+        const senderInfo = senderRes.data;
+        const receiverInfo = receiverRes.data;
+
+        // Emit socket event with complete user info
+        if (socket && isConnected) {
+          console.log("Emitting acceptFriendRequest event:", {
+            sender_id: senderId,
+            receiver_id: receiverId,
+            senderInfo,
+            receiverInfo,
+          });
+
+          acceptFriendRequest({
+            sender_id: senderId,
+            receiver_id: receiverId,
+            senderInfo: senderInfo,
+            receiverInfo: receiverInfo,
+          });
+        }
+      } catch (err) {
+        console.error("Error fetching user info for socket event:", err);
+        // Even if socket part fails, the DB update is still successful
       }
+
+      // Force a refresh of the friend list
+      fetchFriends();
 
       return response;
     } catch (error) {
@@ -140,6 +194,14 @@ export const useFriendList = (userId: string | undefined) => {
     }
   };
 
+  // Listen for socket reconnects to refresh data
+  useEffect(() => {
+    if (isConnected && userId) {
+      fetchFriends();
+    }
+  }, [isConnected, userId, fetchFriends]);
+
+  // Initial data fetch
   useEffect(() => {
     fetchFriends();
   }, [userId, fetchFriends]);

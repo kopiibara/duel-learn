@@ -74,7 +74,10 @@ export const useFriendSocket = ({
 
     // Listen for friend request accepted events
     if (onFriendRequestAccepted) {
-      socket.on("friendRequestAccepted", onFriendRequestAccepted);
+      socket.on("friendRequestAccepted", (data) => {
+        console.log("Received friendRequestAccepted event:", data);
+        onFriendRequestAccepted(data);
+      });
     }
 
     // Listen for friend request rejected events
@@ -145,6 +148,7 @@ export const useFriendSocket = ({
     }
   };
 
+  // Enhance the acceptFriendRequest function with better logging
   const acceptFriendRequest = (data: {
     sender_id: string;
     receiver_id: string;
@@ -152,9 +156,12 @@ export const useFriendSocket = ({
     receiverInfo: any;
   }) => {
     if (socket?.connected) {
+      console.log("Emitting acceptFriendRequest socket event:", data);
       socket.emit("acceptFriendRequest", data);
     } else {
-      console.error("Socket not connected");
+      console.error(
+        "Socket not connected when trying to accept friend request"
+      );
     }
   };
 
