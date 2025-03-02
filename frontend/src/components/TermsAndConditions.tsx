@@ -1,11 +1,13 @@
-import * as React from "react";
+import { Link } from "react-router-dom"; // Importing the Link component from React Router
 import BunnyWithStar from "../assets/General/bunny-with-star.png"; // Importing the bunny with star image
 import BigStar from "../assets/General/BigStar.png"; // Importing the big star image
 import PageTransition from "../styles/PageTransition"; // Importing the PageTransition component
+import DocumentHead from "./DocumentHead"; // Importing the DocumentHead component
 
 const TermsAndConditions = () => {
   return (
     <PageTransition>
+      <DocumentHead title="Terms and Conditions | Duel Learn" />
       <main
         className="flex overflow-y-auto flex-col items-center"
         style={{ backgroundColor: "#080511", height: "100vh" }}
@@ -22,47 +24,32 @@ const TermsAndConditions = () => {
               className="flex gap-6 self-start text-2xl font-bold text-white mt-2"
               style={{ fontFamily: "Nunito" }}
             >
-              {/* Container for logo and title with flexbox layout and gap */}
-              <img
-                loading="lazy"
-                src="/duel-learn-logo.svg" // Importing duel learn logo in SVG format
-                className="object-contain shrink-0 aspect-square"
-                style={{ width: "32px", height: "32px" }}
-                alt="Duel Learn Logo" // Alt text for the image
-              />
-              <h1
-                className="my-auto basis-auto"
-                style={{
-                  width: "123px",
-                  height: "33px",
-                  fontSize: "17px",
-                  fontFamily: "Nunito",
-                }}
-              >
-                {/* Title with specific width, height, and font size */}
-                Duel Learn
-              </h1>
+              <div className="relative w-full">
+                <header className="relative top-10 left-4 flex items-center">
+                  <Link to="/" className="flex items-center space-x-4">
+                    <img
+                      src="/duel-learn-logo.svg"
+                      className="w-10 h-10"
+                      alt="icon"
+                    />
+                    <p className="text-white text-xl font-semibold">
+                      Duel Learn
+                    </p>
+                  </Link>
+                </header>
+              </div>
             </div>
             <div className="flex-auto max-md:max-w-full">
               {/* Container for images with flexbox layout */}
               <div className="flex gap-5 max-md:flex-col">
                 {/* Container for images with flexbox layout and gap */}
-                <div className="w-6/12 max-md:ml-0 max-md:w-full">
-                  {/* Container for big star image with specific width */}
-                  <img
-                    loading="lazy"
-                    src={BigStar} // Using the imported big star image
-                    className="object-contain grow mt-14 max-md:mt-10 max-md:max-w-full"
-                    style={{ width: "400px", height: "222px" }} // Adjusted size proportionally
-                    alt="Big Star" // Alt text for the image
-                  />
-                </div>
-                <div className="ml-5 w-6/12 max-md:ml-0 max-md:w-full">
+
+                <div className="ml-auto w-6/12 max-md:ml-0 max-md:w-full">
                   {/* Container for bunny with star image with specific width */}
                   <img
                     loading="lazy"
                     src={BunnyWithStar} // Using the imported bunny with star image
-                    className="object-contain max-md:mt-10 max-md:max-w-full"
+                    className="object-contain max-md:mt-10 max-md:max-w-full mx-auto"
                     style={{
                       width: "345px",
                       height: "250px",
@@ -114,8 +101,8 @@ const TermsAndConditions = () => {
             <p style={{ fontSize: "20px", fontFamily: "Nunito" }}>
               By registering, accessing, or using Duel Learn, you confirm that
               you have read, understood, and agree to these Terms. If you are
-              under the age of <em>13</em>, you must have
-              parental or guardian consent to use the platform.
+              under the age of <em>13</em>, you must have parental or guardian
+              consent to use the platform.
             </p>
           </article>
 

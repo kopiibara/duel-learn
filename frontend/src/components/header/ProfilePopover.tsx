@@ -97,6 +97,7 @@ export default function ProfilePopover({
                 fontWeight: 700, // Make text bold on hover
               },
             }}
+            onClick={() => window.open("/privacy-policy", "_blank")}
           >
             Privacy Policy
           </Button>

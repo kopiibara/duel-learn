@@ -1,11 +1,13 @@
-import * as React from "react";
+import { Link } from "react-router-dom"; // Importing the Link component from React Router
 import BunnyWithStar from "../assets/General/bunny-with-star.png"; // Importing the bunny with star image
 import BigStar from "../assets/General/BigStar.png"; // Importing the big star image
 import PageTransition from "../styles/PageTransition"; // Importing the PageTransition component
+import DocumentHead from "./DocumentHead"; // Importing the DocumentHead component
 
 const PrivacyPolicy = () => {
   return (
     <PageTransition>
+      <DocumentHead title="Privacy Policy | Duel Learn" />
       <main
         className="flex overflow-y-auto flex-col items-center"
         style={{ backgroundColor: "#080511", height: "100vh" }}
@@ -22,47 +24,31 @@ const PrivacyPolicy = () => {
               className="flex gap-6 self-start text-2xl font-bold text-white mt-2"
               style={{ fontFamily: "Nunito" }}
             >
-              {/* Container for logo and title with flexbox layout and gap */}
-              <img
-                loading="lazy"
-                src="/duel-learn-logo.svg" // Importing duel learn logo in SVG format
-                className="object-contain shrink-0 aspect-square"
-                style={{ width: "32px", height: "32px" }}
-                alt="Duel Learn Logo" // Alt text for the image
-              />
-              <h1
-                className="my-auto basis-auto"
-                style={{
-                  width: "123px",
-                  height: "33px",
-                  fontSize: "17px",
-                  fontFamily: "Nunito",
-                }}
-              >
-                {/* Title with specific width, height, and font size */}
-                Duel Learn
-              </h1>
+              <div className="relative w-full">
+                <header className="relative top-10 left-4 flex items-center">
+                  <Link to="/" className="flex items-center space-x-4">
+                    <img
+                      src="/duel-learn-logo.svg"
+                      className="w-10 h-10"
+                      alt="icon"
+                    />
+                    <p className="text-white text-xl font-semibold">
+                      Duel Learn
+                    </p>
+                  </Link>
+                </header>
+              </div>
             </div>
             <div className="flex-auto max-md:max-w-full">
               {/* Container for images with flexbox layout */}
               <div className="flex gap-5 max-md:flex-col">
                 {/* Container for images with flexbox layout and gap */}
-                <div className="w-6/12 max-md:ml-0 max-md:w-full">
-                  {/* Container for big star image with specific width */}
-                  <img
-                    loading="lazy"
-                    src={BigStar} // Using the imported big star image
-                    className="object-contain grow mt-14 max-md:mt-10 max-md:max-w-full"
-                    style={{ width: "400px", height: "222px" }} // Adjusted size proportionally
-                    alt="Big Star" // Alt text for the image
-                  />
-                </div>
-                <div className="ml-5 w-6/12 max-md:ml-0 max-md:w-full">
+                <div className="ml-auto w-6/12 max-md:ml-0 max-md:w-full">
                   {/* Container for bunny with star image with specific width */}
                   <img
                     loading="lazy"
                     src={BunnyWithStar} // Using the imported bunny with star image
-                    className="object-contain max-md:mt-10 max-md:max-w-full"
+                    className="object-contain max-md:mt-10 max-md:max-w-full mx-auto"
                     style={{
                       width: "345px",
                       height: "250px",
@@ -99,14 +85,19 @@ const PrivacyPolicy = () => {
             style={{ fontSize: "20px", fontFamily: "Nunito" }}
           >
             {/* Paragraph with margin, font size, and color */}
-            Welcome to Duel Learn Platform. Your privacy is important to us, and we are committed to protecting your personal data. This Privacy Policy explains how we collect, use, and share your information when you use Duel Learn ("Platform").
+            Welcome to Duel Learn Platform. Your privacy is important to us, and
+            we are committed to protecting your personal data. This Privacy
+            Policy explains how we collect, use, and share your information when
+            you use Duel Learn ("Platform").
           </p>
           <p
             className="mt-10 text-2xl text-white max-md:mt-8 max-md:max-w-full text-justify"
             style={{ fontSize: "20px", fontFamily: "Nunito" }}
           >
             {/* Paragraph with margin, font size, and color */}
-            By accessing or using the Platform, you agree to the collection and use of your information as described in this Privacy Policy. If you do not agree, please do not use the Platform.
+            By accessing or using the Platform, you agree to the collection and
+            use of your information as described in this Privacy Policy. If you
+            do not agree, please do not use the Platform.
           </p>
 
           <article
@@ -116,25 +107,51 @@ const PrivacyPolicy = () => {
             {/* Article with margin, font size, and color */}
             <h3>1. Information We Collect</h3>
             <p style={{ fontSize: "20px", fontFamily: "Nunito" }}>
-              When you use Duel Learn, we may collect the following types of information:
+              When you use Duel Learn, we may collect the following types of
+              information:
             </p>
             <br />
             <h4>A. Information You Provide</h4>
-            <ul className="list-disc pl-6" style={{ fontSize: "18px", fontFamily: "Nunito" }}>
-              <li>Account Information: When you register, we collect your username, email address, password, and any optional profile details.</li>
-              <li>Study Materials: Any content you create, upload, or share on the Platform, such as flashcards and quizzes.</li>
-              <li>Communications: If you contact us, we may collect messages, feedback, or inquiries.</li>
+            <ul
+              className="list-disc pl-6"
+              style={{ fontSize: "18px", fontFamily: "Nunito" }}
+            >
+              <li>
+                Account Information: When you register, we collect your
+                username, email address, password, and any optional profile
+                details.
+              </li>
+              <li>
+                Study Materials: Any content you create, upload, or share on the
+                Platform, such as flashcards and quizzes.
+              </li>
+              <li>
+                Communications: If you contact us, we may collect messages,
+                feedback, or inquiries.
+              </li>
             </ul>
             <br />
             <h4>B. Information We Collect Automatically</h4>
-            <ul className="list-disc pl-6" style={{ fontSize: "18px", fontFamily: "Nunito" }}>
-              <li>Usage Data: We collect information about how you interact with the Platform, such as pages visited, time spent, and game activity.</li>
-              <li>Device Information: We may collect information about your device, including IP address, browser type, and operating system.</li>
+            <ul
+              className="list-disc pl-6"
+              style={{ fontSize: "18px", fontFamily: "Nunito" }}
+            >
+              <li>
+                Usage Data: We collect information about how you interact with
+                the Platform, such as pages visited, time spent, and game
+                activity.
+              </li>
+              <li>
+                Device Information: We may collect information about your
+                device, including IP address, browser type, and operating
+                system.
+              </li>
             </ul>
             <br />
             <h4>C. Information from Third Parties</h4>
             <p style={{ fontSize: "20px", fontFamily: "Nunito" }}>
-              If you choose to log in via third-party services (e.g., Google), we may collect information as permitted by those services.
+              If you choose to log in via third-party services (e.g., Google),
+              we may collect information as permitted by those services.
             </p>
           </article>
 
@@ -144,10 +161,15 @@ const PrivacyPolicy = () => {
           >
             {/* Article with margin, font size, and color */}
             <h3>2. How We Use Your Information</h3>
-            <ul className="list-disc pl-6" style={{ fontSize: "18px", fontFamily: "Nunito" }}>
+            <ul
+              className="list-disc pl-6"
+              style={{ fontSize: "18px", fontFamily: "Nunito" }}
+            >
               <li>Provide and improve the Duel Learn experience.</li>
               <li>Allow you to create, share, and compete in PvP battles.</li>
-              <li>Personalize your experience and recommend study materials.</li>
+              <li>
+                Personalize your experience and recommend study materials.
+              </li>
               <li>Monitor Platform performance and prevent fraud or abuse.</li>
               <li>Communicate updates, promotions, or important notices.</li>
               <li>Comply with legal obligations.</li>
@@ -161,12 +183,26 @@ const PrivacyPolicy = () => {
             {/* Article with margin, font size, and color */}
             <h3>3. How We Share Your Information</h3>
             <p style={{ fontSize: "20px", fontFamily: "Nunito" }}>
-              We do not sell your personal data. However, we may share information in the following cases:
+              We do not sell your personal data. However, we may share
+              information in the following cases:
             </p>
-            <ul className="list-disc pl-6" style={{ fontSize: "18px", fontFamily: "Nunito" }}>
-              <li>With Other Users: Your username and study materials may be visible to others.</li>
-              <li>With Service Providers: We may share data with third-party providers who help operate the Platform (e.g., hosting, analytics).</li>
-              <li>For Legal Reasons: If required by law or to protect rights, safety, or security.</li>
+            <ul
+              className="list-disc pl-6"
+              style={{ fontSize: "18px", fontFamily: "Nunito" }}
+            >
+              <li>
+                With Other Users: Your username and study materials may be
+                visible to others.
+              </li>
+              <li>
+                With Service Providers: We may share data with third-party
+                providers who help operate the Platform (e.g., hosting,
+                analytics).
+              </li>
+              <li>
+                For Legal Reasons: If required by law or to protect rights,
+                safety, or security.
+              </li>
             </ul>
           </article>
 
@@ -177,7 +213,9 @@ const PrivacyPolicy = () => {
             {/* Article with margin, font size, and color */}
             <h3>4. Data Security</h3>
             <p style={{ fontSize: "20px", fontFamily: "Nunito" }}>
-              We use reasonable security measures to protect your information. However, no method of transmission is 100% secure, so we cannot guarantee absolute security.
+              We use reasonable security measures to protect your information.
+              However, no method of transmission is 100% secure, so we cannot
+              guarantee absolute security.
             </p>
           </article>
 
@@ -187,9 +225,18 @@ const PrivacyPolicy = () => {
           >
             {/* Article with margin, font size, and color */}
             <h3>5. Your Choices and Rights</h3>
-            <ul className="list-disc pl-6" style={{ fontSize: "18px", fontFamily: "Nunito" }}>
-              <li>Editing or Deleting Your Account: You can update or delete your account at any time.</li>
-              <li>Opting Out of Communications: You can unsubscribe from emails or notifications.</li>
+            <ul
+              className="list-disc pl-6"
+              style={{ fontSize: "18px", fontFamily: "Nunito" }}
+            >
+              <li>
+                Editing or Deleting Your Account: You can update or delete your
+                account at any time.
+              </li>
+              <li>
+                Opting Out of Communications: You can unsubscribe from emails or
+                notifications.
+              </li>
             </ul>
             <p style={{ fontSize: "20px", fontFamily: "Nunito" }}>
               For data access or deletion requests, contact us at [Email].
@@ -203,7 +250,8 @@ const PrivacyPolicy = () => {
             {/* Article with margin, font size, and color */}
             <h3>6. Changes to This Policy</h3>
             <p style={{ fontSize: "20px", fontFamily: "Nunito" }}>
-              We may update this Privacy Policy from time to time. Continued use of the Platform after changes means you accept the revised policy.
+              We may update this Privacy Policy from time to time. Continued use
+              of the Platform after changes means you accept the revised policy.
             </p>
           </article>
 
@@ -214,14 +262,14 @@ const PrivacyPolicy = () => {
             {/* Article with margin, font size, and color */}
             <h3>7. Contact Us</h3>
             <p style={{ fontSize: "20px", fontFamily: "Nunito" }}>
-              If you have any questions about this Privacy Policy, please contact us at:
+              If you have any questions about this Privacy Policy, please
+              contact us at:
             </p>
-            <p style={{ fontSize: "20px", fontFamily: "Nunito" }}>
-              📧 [Email]
-            </p>
+            <p style={{ fontSize: "20px", fontFamily: "Nunito" }}>📧 [Email]</p>
             <br />
             <p style={{ fontSize: "20px", fontFamily: "Nunito" }}>
-              By using Duel Learn, you acknowledge that you have read and understood this Privacy Policy.
+              By using Duel Learn, you acknowledge that you have read and
+              understood this Privacy Policy.
             </p>
           </article>
 

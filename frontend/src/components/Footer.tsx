@@ -5,7 +5,7 @@ const Footer = () => {
   const navigate = useNavigate();
 
   const handleTermsCondition = () => {
-    navigate("/terms-condition");
+    window.open("/terms-and-conditions", "_blank");
   };
 
   const handlePrivacyPolicy = () => {
