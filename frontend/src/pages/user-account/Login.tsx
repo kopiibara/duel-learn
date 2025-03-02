@@ -135,7 +135,7 @@ const Login = () => {
           full_name: userDoc.data().full_name,
           email_verified: userDoc.data().email_verified,
           isSSO: userDoc.data().isSSO,
-          account_type: userDoc.data().account_type as "free" | "premium", // Ensure the value is either 'free' or 'premium'
+          account_type: userDoc.data().account_type as "free" | "premium" | "admin", // Ensure the value is either 'free' or 'premium'
         };
         console.log("User Data:", userData);
 
@@ -146,16 +146,15 @@ const Login = () => {
         localStorage.setItem("userToken", token);
 
         setTimeout(() => {
-          if (userData.isNew && userData.email_verified) {
+          if (userData.account_type === "admin") {
+            navigate("/admin/admin-dashboard");
+          } else if (userData.isNew && userData.email_verified) {
             navigate("/dashboard/welcome");
-          } 
-          else if(userData.isNew && userData.email_verified === false){
+          } else if (userData.isNew && userData.email_verified === false) {
             navigate("/dashboard/verify-email");
-          }
-          else if(userData.email_verified === false){
+          } else if (userData.email_verified === false) {
             navigate("/dashboard/verify-email");
-          }
-          else {
+          } else {
             navigate("/dashboard/home");
           }
         }, 2000);

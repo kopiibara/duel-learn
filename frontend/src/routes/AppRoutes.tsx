@@ -19,6 +19,8 @@ import SuccessReset from "../pages/user-account/SuccessReset";
 import EmailActionHandler from "../pages/user-account/EmailActionHandler"; // Import EmailActionHandler
 import EmailVerified from "../pages/user-account/EmailVerified"; // Import EmailVerified
 import LoadingScreen from "../components/LoadingScreen";
+import AdminRoutes from "./AdminRoutes"; // Import AdminRoutes
+import AdminSignUp from "../pages/user-account/AdminSignUp"; // Import AdminSignUp
 
 const AppRoutes: React.FC = () => {
   const location = useLocation();
@@ -51,6 +53,8 @@ const AppRoutes: React.FC = () => {
         <Route path="*" element={<NotFoundPage />} />
         <Route path="/loading" element={<LoadingScreen />} />
         <Route path="/dashboard/*" element={<PrivateRoutes />} />
+        <Route path="/admin-sign-up" element={<AdminSignUp />} /> {/* Add AdminSignUp route */}
+        <Route path="/admin/*" element={<AdminRoutes />} /> {/* Add AdminRoutes */}
       </Routes>
     </AnimatePresence>
   );
