@@ -31,7 +31,10 @@ const termsValidation = (value: string) => {
   return "";
 };
 
-const checkUsernameUnique = async (username: string) => {
+const checkUsernameUnique = async (username: string, currentUsername: string = "") => {
+  if (username === currentUsername) {
+    return true; // No changes needed if the username is the same
+  }
   const db = getFirestore();
   const usersRef = collection(db, "users");
   const q = query(usersRef, where("username", "==", username));
@@ -51,14 +54,14 @@ const useValidation = (formData: any) => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const { validatePassword } = usePasswordValidation();
 
-  const validate = async (field: string, value: string, formData: any = {}, passwordField: string = "password") => {
+  const validate = async (field: string, value: string, formData: any = {}, passwordField: string = "password", currentUsername: string = "") => {
     let error = "";
 
     switch (field) {
       case "username":
         error = usernameValidation(value);
         if (!error) {
-          const isUnique = await checkUsernameUnique(value);
+          const isUnique = await checkUsernameUnique(value, currentUsername);
           if (!isUnique) {
             error = "Username is taken.";
           }
@@ -89,10 +92,10 @@ const useValidation = (formData: any) => {
     return error;
   };
 
-  const validateForm = async (fields: { [key: string]: string }, passwordField: string = "password") => {
+  const validateForm = async (fields: { [key: string]: string }, passwordField: string = "password", currentUsername: string = "") => {
     let valid = true;
     for (const field in fields) {
-      const error = await validate(field, fields[field], fields, passwordField);
+      const error = await validate(field, fields[field], fields, passwordField, currentUsername);
       if (error) valid = false;
     }
     return valid;

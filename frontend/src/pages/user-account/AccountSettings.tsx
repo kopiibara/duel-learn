@@ -1,11 +1,37 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
-import Avatar from "../../assets/profile-picture/bunny-picture.png";
+import sampleAvatar from "../../assets/profile-picture/bunny-picture.png"; // Import the sample avatar image
+import useEditUsernameValidation from "../../hooks/validation.hooks/useEditUsernameValidation"; // Import the new validation hook
 
 export default function AccountSettings() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [userData, setUserData] = useState<any>({});
+  const [isEditing, setIsEditing] = useState<boolean>(false);
+  const { errors, validate } = useEditUsernameValidation(userData, userData.firebase_uid); // Use the new validation hook
+
+  useEffect(() => {
+    const storedUserData = JSON.parse(localStorage.getItem("userData") || "{}");
+    setUserData(storedUserData);
+  }, []);
+
+  const handleEditClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleSaveClick = async () => {
+    const isValid = await validate("username", userData.username);
+    if (!isValid) {
+      return;
+    }
+    setIsEditing(false);
+    // Save logic here
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUserData({ ...userData, [e.target.id]: e.target.value });
+  };
 
   return (
     <div className="flex min-h-screen bg-[#080511] text-white" style={{ fontFamily: "Nunito, sans-serif" }}>
@@ -28,7 +54,7 @@ export default function AccountSettings() {
               </label>
               <div className="flex items-center gap-6">
                 <img
-                  src={Avatar || "/placeholder.svg"}
+                  src={userData.display_picture || sampleAvatar}
                   alt="Profile"
                   className="w-12 h-12"
                   style={{ width: "198px", height: "194.49px" }}
@@ -39,60 +65,73 @@ export default function AccountSettings() {
               <label
                 htmlFor="username"
                 className="block text-sm font-medium w-full"
-                style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px" }}
+                style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
               >
                 Username
               </label>
               <input
                 id="username"
                 type="text"
+                value={userData.username || ""}
+                disabled={!isEditing}
+                onChange={handleInputChange}
+                onBlur={(e) => validate("username", e.target.value)} // Validate on blur
                 className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
-                style={{ fontFamily: "Nunito, sans-serif" }}
+                style={{ fontFamily: "Nunito, sans-serif", color: isEditing ? "white" : "#6F658D" }}
               />
+              {errors.username && (
+                <p className="text-red-500 mt-1 text-sm">{errors.username}</p>
+              )}
             </div>
             <div className="flex flex-col items-start space-y-4">
               <label
                 htmlFor="email"
                 className="block text-sm font-medium w-full"
-                style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px" }}
+                style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
               >
                 Email
               </label>
               <input
                 id="email"
                 type="email"
+                value={userData.email || ""}
+                disabled
                 className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
-                style={{ fontFamily: "Nunito, sans-serif" }}
+                style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
               />
             </div>
             <div className="flex flex-col items-start space-y-4">
               <label
                 htmlFor="password"
                 className="block text-sm font-medium w-full"
-                style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px" }}
+                style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
               >
                 Create Password
               </label>
               <input
                 id="password"
                 type="password"
+                value={userData.password_hash || ""}
+                disabled
                 className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
-                style={{ fontFamily: "Nunito, sans-serif" }}
+                style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
               />
             </div>
             <div className="flex flex-col items-start space-y-4">
               <label
                 htmlFor="confirm"
                 className="block text-sm font-medium w-full"
-                style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px" }}
+                style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
               >
                 Confirm Password
               </label>
               <input
                 id="confirm"
                 type="password"
+                value={userData.password_hash || ""}
+                disabled
                 className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
-                style={{ fontFamily: "Nunito, sans-serif" }}
+                style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
               />
             </div>
             <div className="flex gap-2 mt-1">
@@ -103,10 +142,11 @@ export default function AccountSettings() {
                 Discard
               </button>
               <button
-                className="px-6 py-2 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3b13b3] transition-colors"
+                onClick={isEditing ? handleSaveClick : handleEditClick}
+                className={`px-6 py-2 ${isEditing ? "bg-[#4D18E8]" : "bg-[#2a2435]"} text-white rounded-lg hover:bg-[#3b13b3] transition-colors`}
                 style={{ fontFamily: "Nunito, sans-serif", width: "182.45px", height: "45px" }}
               >
-                Save
+                {isEditing ? "Save" : "Edit"}
               </button>
             </div>
             <div className="bg-[#1a1625]/50 rounded-lg p-6 mt-10">
