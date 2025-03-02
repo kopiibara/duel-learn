@@ -29,7 +29,7 @@ const AdminDashboard = () => {
 
   const handleDeleteAllUsers = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user`, { method: 'DELETE' });
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/$firebase_uid`, { method: 'DELETE' });
       if (!response.ok) {
         throw new Error("Failed to delete all users");
       }
@@ -41,7 +41,7 @@ const AdminDashboard = () => {
 
   const handleDeleteUser = async (firebase_uid) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/${firebase_uid}`, { method: 'DELETE' });
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/`, { method: 'DELETE' });
       if (!response.ok) {
         throw new Error("Failed to delete user");
       }

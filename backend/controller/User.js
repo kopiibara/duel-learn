@@ -205,13 +205,48 @@ export default {
 
   deleteUser: async (req, res) => {
     const { id } = req.params;
+    let connection;
     try {
+      // Get a connection from the pool
+      connection = await pool.getConnection();
+
+      // Check if the user exists in SQL
+      const [sqlUsers] = await connection.execute('SELECT firebase_uid FROM users WHERE firebase_uid = ?', [id]);
+      if (sqlUsers.length === 0) {
+        return res.status(404).json({ error: "User not found in SQL database" });
+      }
+
+      // Check if the user exists in Firestore
+      const firestoreUserDoc = await admin.firestore().collection('users').doc(id).get();
+      if (!firestoreUserDoc.exists) {
+        return res.status(404).json({ error: "User not found in Firestore" });
+      }
+
+      // Check if the user exists in Firebase Auth
+      try {
+        await admin.auth().getUser(id);
+      } catch (error) {
+        if (error.code === 'auth/user-not-found') {
+          return res.status(404).json({ error: "User not found in Firebase Auth" });
+        }
+        throw error;
+      }
+
+      // Delete user from Firebase Auth
       await admin.auth().deleteUser(id);
+
+      // Delete user from Firestore
       await admin.firestore().collection('users').doc(id).delete();
-      await pool.query('DELETE FROM users WHERE id = ?', [id]);
+
+      // Delete user from SQL
+      await connection.execute('DELETE FROM users WHERE firebase_uid = ?', [id]);
+
       res.status(204).end();
     } catch (error) {
-      res.status(500).json({ error: error.message });
+      console.error("Error deleting user:", error);
+      res.status(500).json({ error: "Internal server error", details: error.message });
+    } finally {
+      if (connection) connection.release();
     }
   },
 
