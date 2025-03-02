@@ -18,7 +18,7 @@ export default function CheckYourMail() {
   const handleSendPasswordResetEmail = async () => {
     try {
       const actionCodeSettings = {
-        url: `http://localhost:5173/Reset-Password?mode=resetPassword&firebase_uid=${firebase_uid}`,
+        url: `${import.meta.env.VITE_FRONTEND_URL}/Reset-Password?mode=resetPassword&firebase_uid=${firebase_uid}`,
         handleCodeInApp: true,
       };
 
@@ -65,7 +65,7 @@ export default function CheckYourMail() {
   const handleSendVerificationEmail = async () => {
     try {
       const actionCodeSettings = {
-        url: `http://localhost:5173/email-verified?mode=verifyEmail&firebase_uid=${firebase_uid}`,
+        url: `${import.meta.env.VITE_FRONTEND_URL}/email-verified?mode=verifyEmail&firebase_uid=${firebase_uid}`,
         handleCodeInApp: true,
       };
 

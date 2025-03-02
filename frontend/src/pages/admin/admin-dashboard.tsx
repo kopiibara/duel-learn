@@ -8,7 +8,7 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/user/admin/admin-dashboard/fetch-users");
+        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/admin/admin-dashboard/fetch-users`);
         if (!response.ok) {
           throw new Error("Failed to fetch users");
         }
@@ -28,7 +28,7 @@ const AdminDashboard = () => {
 
   const handleDeleteAllUsers = async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/user", { method: 'DELETE' });
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user`, { method: 'DELETE' });
       if (!response.ok) {
         throw new Error("Failed to delete all users");
       }

@@ -50,9 +50,9 @@ const VerifyEmail = () => {
       const firebase_uid = userData.firebase_uid;
       if (auth.currentUser) {
         const actionCodeSettings = {
-          url: `http://localhost:5173/email-verified?mode=verifyEmail&firebase_uid=${firebase_uid}`,
+          url: `${import.meta.env.VITE_FRONTEND_URL}/email-verified?mode=verifyEmail&firebase_uid=${firebase_uid}`,
           handleCodeInApp: true,
-          };
+        };
           await sendEmail(auth.currentUser!, actionCodeSettings);
         toast.success("Verification email sent.");
         setIsButtonDisabled(true);
