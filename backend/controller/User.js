@@ -20,7 +20,7 @@ export default {
 
       // Insert the user details into the database
       await connection.execute(
-        `INSERT INTO users (firebase_uid, username, email, password_hash, created_at, updated_at, display_picture, full_name, email_verified, isSSO)
+        `INSERT INTO users (irebase_uid, username, email, password_hash, created_at, updated_at, display_picture, full_name, email_verified, isSSO)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
           firebase_uid,

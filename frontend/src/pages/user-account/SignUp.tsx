@@ -10,21 +10,20 @@ import {
   getAdditionalInfo,
   db,
 } from "../../services/firebase";
-import { signInWithPopup, createUserWithEmailAndPassword } from "firebase/auth";
-import { setDoc, doc, serverTimestamp } from "firebase/firestore";
+import { signInWithPopup, createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
+import { setDoc, doc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
 import useValidation from "../../hooks/validation.hooks/useValidation";
-import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import PageTransition from "../../styles/PageTransition";
 import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
-import useApiError from "../../hooks/api.hooks/useApiError";
+import useCombinedErrorHandler from "../../hooks/validation.hooks/useCombinedErrorHandler";
 import LoadingScreen from "../../components/LoadingScreen";
 import bcrypt from "bcryptjs";
 
 const SignUp = () => {
   const { setUser, user } = useUser();
-  const { handleLoginError } = useHandleError();
+  const { handleError, firebaseError, networkError, sqlError } = useCombinedErrorHandler();
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -38,7 +37,6 @@ const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const { signUpApi } = useSignUpApi();
-  const { apiError, handleApiError } = useApiError();
   const [loading, setLoading] = useState(false);
 
   const togglePassword = () => {
@@ -60,6 +58,7 @@ const SignUp = () => {
         terms: terms.toString(),
       }))
     ) {
+      setLoading(false);
       return;
     }
 
@@ -102,14 +101,25 @@ const SignUp = () => {
       });
 
       // Call the API
-      await signUpApi(
-        userData.firebase_uid,
-        username,
-        email,
-        password,
-        false,
-        false
-      );
+      try {
+        await signUpApi(
+          userData.firebase_uid,
+          username,
+          email,
+          password,
+          false,
+          false
+        );
+      } catch (apiError: any) {
+        console.error("API Error:", apiError);
+        handleError(apiError);
+        setLoading(false);
+        if (auth.currentUser) {
+          await deleteUser(auth.currentUser);
+          await deleteDoc(doc(db, "users", auth.currentUser.uid));
+        }
+        return; // Exit the function if API call fails
+      }
 
       console.log("signUpApi", signUpApi);
 
@@ -139,8 +149,12 @@ const SignUp = () => {
       }, 2000);
     } catch (error) {
       console.error("Registration error:", error);
-      handleApiError(error);
-      setFormData((prev) => ({ ...prev, emailError: (error as any).message }));
+      handleError(error);
+      setLoading(false);
+      if (auth.currentUser) {
+        await deleteUser(auth.currentUser);
+        await deleteDoc(doc(db, "users", auth.currentUser.uid));
+      }
     }
   };
 
@@ -205,7 +219,11 @@ const SignUp = () => {
       }, 2000);
     } catch (error: any) {
       setLoading(false);
-      handleLoginError(error);
+      handleError(error);
+      if (auth.currentUser) {
+        await deleteUser(auth.currentUser);
+        await deleteDoc(doc(db, "users", auth.currentUser.uid));
+      }
     }
   };
 
@@ -239,9 +257,9 @@ const SignUp = () => {
             </div>
           )}
 
-          {apiError && (
+          {(firebaseError || networkError || sqlError) && (
             <div className="bg-red-700 text-white text-center py-2 mb-4 rounded">
-              {apiError}
+              {firebaseError || networkError || sqlError}
             </div>
           )}
 
