@@ -22,6 +22,9 @@ const useCombinedErrorHandler = () => {
     } else if (error.code && error.code.startsWith("ER_")) {
       handleSQLError(error);
       setCombinedError(error.message);
+    } else if (error.code === "ER_DUP_ENTRY") {
+      handleSQLError(error);
+      setCombinedError("Duplicate entry for a key.");
     } else {
       console.error("Unknown error:", error);
       setCombinedError("Registration Failed. Please try again.");
