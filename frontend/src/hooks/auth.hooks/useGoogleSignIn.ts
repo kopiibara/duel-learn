@@ -72,9 +72,9 @@ const useGoogleSignIn = () => {
       setTimeout(() => {
         if (userData.account_type === "admin") {
           navigate("/admin/admin-dashboard");
-        } else if (userData.isNew && userData.email_verified) {
+        } else if (isNewUser && userData.email_verified) {
           navigate("/dashboard/welcome");
-        } else if (userData.isNew && userData.email_verified === false) {
+        } else if (isNewUser && userData.email_verified === false) {
           navigate("/dashboard/verify-email");
         } else if (userData.email_verified === false) {
           navigate("/dashboard/verify-email");

@@ -4,12 +4,21 @@ import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import sampleAvatar from "../../assets/profile-picture/bunny-picture.png"; // Import the sample avatar image
 import useEditUsernameValidation from "../../hooks/validation.hooks/useEditUsernameValidation"; // Import the new validation hook
+import useChangePasswordValidation from "../../hooks/validation.hooks/useChangePasswordValidation"; // Import the change password validation hook
+import useUpdateUserDetailsApi from "../../hooks/api.hooks/useUpdateUserDetailsApi"; // Import the API hook
+import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 
 export default function AccountSettings() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [userData, setUserData] = useState<any>({});
   const [isEditing, setIsEditing] = useState<boolean>(false);
+  const [isChangingPassword, setIsChangingPassword] = useState<boolean>(false);
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
   const { errors, validate } = useEditUsernameValidation(userData, userData.firebase_uid); // Use the new validation hook
+  const { errors: passwordErrors, validatePassword } = useChangePasswordValidation(); // Use the change password validation hook
+  const { updateUserDetailsApi, apiError } = useUpdateUserDetailsApi(); // Use the API hook
 
   useEffect(() => {
     const storedUserData = JSON.parse(localStorage.getItem("userData") || "{}");
@@ -21,16 +30,52 @@ export default function AccountSettings() {
   };
 
   const handleSaveClick = async () => {
-    const isValid = await validate("username", userData.username);
-    if (!isValid) {
-      return;
+    console.log("handleSaveClick called"); // Debugging log
+  
+    console.log(
+      "Saving user details:",
+      userData.firebase_uid,
+      userData.username,
+      isChangingPassword ? userData.newpassword : undefined
+    );
+  
+    try {
+      await updateUserDetailsApi(
+        userData.firebase_uid,
+        userData.username,
+        isChangingPassword ? userData.newpassword : undefined
+      );
+      console.log("User details saved successfully"); // Debugging log
+  
+      setIsEditing(false);
+      setIsChangingPassword(false);
+      // Save logic here
+    } catch (error) {
+      console.error("Error updating user details:", error);
     }
+  };
+
+  const handleDiscardClick = () => {
+    const storedUserData = JSON.parse(localStorage.getItem("userData") || "{}");
+    setUserData(storedUserData);
     setIsEditing(false);
-    // Save logic here
+    setIsChangingPassword(false);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setUserData({ ...userData, [e.target.id]: e.target.value });
+  };
+
+  const handlePasswordChangeClick = () => {
+    setIsChangingPassword(true);
+  };
+
+  const togglePassword = () => {
+    setShowPassword((prev) => !prev);
+  };
+
+  const toggleConfirmPassword = () => {
+    setShowConfirmPassword((prev) => !prev);
   };
 
   return (
@@ -100,42 +145,157 @@ export default function AccountSettings() {
                 style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
               />
             </div>
-            <div className="flex flex-col items-start space-y-4">
-              <label
+            {userData.password_hash ? (
+              !isChangingPassword ? (
+                isEditing && (
+                  <div className="flex flex-col items-start space-y-4">
+                   <label
                 htmlFor="password"
                 className="block text-sm font-medium w-full"
                 style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
               >
-                Create Password
+                Password
               </label>
-              <input
-                id="password"
-                type="password"
-                value={userData.password_hash || ""}
-                disabled
-                className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
-                style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
-              />
-            </div>
-            <div className="flex flex-col items-start space-y-4">
-              <label
-                htmlFor="confirm"
-                className="block text-sm font-medium w-full"
-                style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
-              >
-                Confirm Password
-              </label>
-              <input
-                id="confirm"
-                type="password"
-                value={userData.password_hash || ""}
-                disabled
-                className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
-                style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
-              />
-            </div>
+                  <button
+                    onClick={handlePasswordChangeClick}
+                    className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] text-[#6F658D] rounded-lg hover:bg-[#3b354d] transition-colors"
+                    style={{ fontFamily: "Nunito, sans-serif" }}
+                  >
+                    Change Password
+                  </button>
+                  </div>
+                )
+              ) : (
+                <>
+                  <div className="relative mb-4">
+                    <label
+                      htmlFor="newpassword"
+                      className="block text-sm font-medium w-full"
+                      style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
+                    >
+                      New Password
+                    </label>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      id="newpassword"
+                      onChange={handleInputChange}
+                      onBlur={(e) => validatePassword("newpassword", e.target.value, userData)} // Validate on blur
+                      className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                      style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
+                    />
+                    <span
+                      onClick={togglePassword}
+                      className="absolute top-3 right-3 text-[#9F9BAE] cursor-pointer"
+                    >
+                      {showPassword ? (
+                        <VisibilityRoundedIcon />
+                      ) : (
+                        <VisibilityOffRoundedIcon />
+                      )}
+                    </span>
+                    {passwordErrors.newpassword && (
+                      <p className="text-red-500 mt-1 text-sm">{passwordErrors.newpassword}</p>
+                    )}
+                  </div>
+                  <div className="relative mb-4">
+                    <label
+                      htmlFor="confirmPassword"
+                      className="block text-sm font-medium w-full"
+                      style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
+                    >
+                      Confirm Password
+                    </label>
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      id="confirmPassword"
+                      onChange={handleInputChange}
+                      onBlur={(e) => validatePassword("confirmPassword", e.target.value, userData)} // Validate on blur
+                      className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                      style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
+                    />
+                    <span
+                      onClick={toggleConfirmPassword}
+                      className="absolute top-3 right-3 text-[#9F9BAE] cursor-pointer"
+                    >
+                      {showConfirmPassword ? (
+                        <VisibilityRoundedIcon />
+                      ) : (
+                        <VisibilityOffRoundedIcon />
+                      )}
+                    </span>
+                    {passwordErrors.confirmPassword && (
+                      <p className="text-red-500 mt-1 text-sm">{passwordErrors.confirmPassword}</p>
+                    )}
+                  </div>
+                </>
+              )
+            ) : userData.isSSO ? (
+              <>
+                <div className="relative mb-4">
+                  <label
+                    htmlFor="password"
+                    className="block text-sm font-medium w-full"
+                    style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
+                  >
+                    Create Password
+                  </label>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    id="password"
+                    onChange={handleInputChange}
+                    onBlur={(e) => validatePassword("password", e.target.value, userData)} // Validate on blur
+                    className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                    style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
+                  />
+                  <span
+                    onClick={togglePassword}
+                    className="absolute top-3 right-3 text-[#9F9BAE] cursor-pointer"
+                  >
+                    {showPassword ? (
+                      <VisibilityRoundedIcon />
+                    ) : (
+                      <VisibilityOffRoundedIcon />
+                    )}
+                  </span>
+                  {passwordErrors.password && (
+                    <p className="text-red-500 mt-1 text-sm">{passwordErrors.password}</p>
+                  )}
+                </div>
+                <div className="relative mb-4">
+                  <label
+                    htmlFor="confirmPassword"
+                    className="block text-sm font-medium w-full"
+                    style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
+                  >
+                    Confirm Password
+                  </label>
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    id="confirmPassword"
+                    onChange={handleInputChange}
+                    onBlur={(e) => validatePassword("confirmPassword", e.target.value, userData)} // Validate on blur
+                    className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                    style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
+                  />
+                  <span
+                    onClick={toggleConfirmPassword}
+                    className="absolute top-3 right-3 text-[#9F9BAE] cursor-pointer"
+                  >
+                    {showConfirmPassword ? (
+                      <VisibilityRoundedIcon />
+                    ) : (
+                      <VisibilityOffRoundedIcon />
+                    )}
+                  </span>
+                  {passwordErrors.confirmPassword && (
+                    <p className="text-red-500 mt-1 text-sm">{passwordErrors.confirmPassword}</p>
+                  )}
+                </div>
+              </>
+            ) : null}
             <div className="flex gap-2 mt-1">
               <button
+                onClick={handleDiscardClick}
                 className="px-6 py-2 bg-[#2a2435] text-[#6F658D] rounded-lg hover:bg-[#3b354d] transition-colors"
                 style={{ fontFamily: "Nunito, sans-serif", width: "182.45px", height: "45px" }}
               >

@@ -264,4 +264,59 @@ export default {
       res.status(500).json({ error: error.message });
     }
   },
+
+  updateUserDetails: async (req, res) => {
+    let connection;
+    try {
+      const { firebase_uid, username, newpassword } = req.body;
+
+      // Get a connection from the pool
+      connection = await pool.getConnection();
+
+      // Update username if provided
+      if (username) {
+        await connection.execute(
+          `UPDATE users SET username = ?, updated_at = ? WHERE firebase_uid = ?;`,
+          [username, moment().format("YYYY-MM-DD HH:mm:ss"), firebase_uid]
+        );
+
+        await admin.firestore().collection("users").doc(firebase_uid).update({
+          username: username,
+          updated_at: moment().format("YYYY-MM-DD HH:mm:ss"),
+        });
+
+        await admin.auth().updateUser(firebase_uid, {
+          displayName: username,
+        });
+      }
+
+      // Update password if provided
+      if (newpassword) {
+        const hashedPassword = await bcrypt.hash(newpassword, 10);
+
+        await connection.execute(
+          `UPDATE users SET password_hash = ?, updated_at = ? WHERE firebase_uid = ?;`,
+          [hashedPassword, moment().format("YYYY-MM-DD HH:mm:ss"), firebase_uid]
+        );
+
+        await admin.firestore().collection("users").doc(firebase_uid).update({
+          password_hash: hashedPassword,
+          updated_at: moment().format("YYYY-MM-DD HH:mm:ss"),
+        });
+
+        await admin.auth().updateUser(firebase_uid, {
+          password: newpassword,
+        });
+      }
+
+      res.status(200).json({
+        message: "User details updated successfully",
+      });
+    } catch (error) {
+      console.error("Error updating user details:", error);
+      res.status(500).json({ error: "Internal server error", details: error });
+    } finally {
+      if (connection) connection.release();
+    }
+  },
 };

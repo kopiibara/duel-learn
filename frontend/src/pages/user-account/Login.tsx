@@ -92,6 +92,10 @@ const Login = () => {
           account_type: userDoc.data().account_type as "free" | "premium" | "admin", // Ensure the value is either 'free' or 'premium'
         };
         console.log("User Data:", userData);
+        const isNewUser =
+        !userDoc.exists() ||
+        (userDoc.exists() &&
+          Date.now() - userDoc.data().created_at.toMillis() < 5000);
 
         // Store user data in context
         setUser(userData);
@@ -102,9 +106,9 @@ const Login = () => {
         setTimeout(() => {
           if (userData.account_type === "admin") {
             navigate("/admin/admin-dashboard");
-          } else if (userData.isNew && userData.email_verified) {
+          } else if (isNewUser && userData.email_verified) {
             navigate("/dashboard/welcome");
-          } else if (userData.isNew && userData.email_verified === false) {
+          } else if (isNewUser && userData.email_verified === false) {
             navigate("/dashboard/verify-email");
           } else if (userData.email_verified === false) {
             navigate("/dashboard/verify-email");

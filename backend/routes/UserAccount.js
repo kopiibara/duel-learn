@@ -30,5 +30,8 @@ router.delete("/", userController.deleteAllUsers);
 // Route to fetch users
 router.get("/admin/admin-dashboard/fetch-users", userController.fetchUsers);
 
+// Route to update user details
+router.post("/update-user-details", userController.updateUserDetails);
+
 // Export the router as default
 export default router;
