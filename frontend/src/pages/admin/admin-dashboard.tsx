@@ -41,7 +41,7 @@ const AdminDashboard = () => {
 
   const handleDeleteUser = async (firebase_uid) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/`, { method: 'DELETE' });
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/${firebase_uid}`, { method: 'DELETE' });
       if (!response.ok) {
         throw new Error("Failed to delete user");
       }
@@ -69,6 +69,7 @@ const AdminDashboard = () => {
               <TableCell>No.</TableCell>
               <TableCell>Firebase UID</TableCell>
               <TableCell>Username</TableCell>
+              <TableCell>Email</TableCell> {/* Added Email column */}
               <TableCell>Exist in SQL</TableCell>
               <TableCell>Exist in Firebase Auth</TableCell>
               <TableCell>Exist in Firestore Collection</TableCell>
@@ -81,6 +82,7 @@ const AdminDashboard = () => {
                 <TableCell>{index + 1}</TableCell>
                 <TableCell>{user.firebase_uid}</TableCell>
                 <TableCell>{user.username}</TableCell>
+                <TableCell>{user.email}</TableCell> {/* Added Email field */}
                 <TableCell>{user.existInSQL ? "Yes" : "No"}</TableCell>
                 <TableCell>{user.existInFirebaseAuth ? "Yes" : "No"}</TableCell>
                 <TableCell>{user.existInFirestore ? "Yes" : "No"}</TableCell>

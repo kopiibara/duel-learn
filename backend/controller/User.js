@@ -129,7 +129,7 @@ export default {
       connection = await pool.getConnection();
 
       // Fetch users from SQL
-      const [sqlUsers] = await connection.execute('SELECT firebase_uid, username FROM users');
+      const [sqlUsers] = await connection.execute('SELECT firebase_uid, username, email FROM users'); // Include email
 
       // Fetch users from Firestore
       const firestoreUsersSnapshot = await admin.firestore().collection('users').get();
@@ -150,6 +150,7 @@ export default {
         return {
           firebase_uid: sqlUser.firebase_uid,
           username: sqlUser.username,
+          email: sqlUser.email, // Include email
           existInSQL: true,
           existInFirestore: !!firestoreUser,
           existInFirebaseAuth: !!authUser,

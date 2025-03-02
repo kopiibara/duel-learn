@@ -60,6 +60,7 @@ export default function ProfilePopover({
         <Stack spacing={1}>
           <Button
             variant="text"
+            onClick={() => navigate("/account-settings")}
             sx={{
               justifyContent: "flex-start",
               textTransform: "none",
