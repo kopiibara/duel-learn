@@ -2,7 +2,13 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import ExitIcon from "../../assets/images/Exit.png";
 import sampleAvatarDeployment from "../../assets/images/sampleAvatar2.png";
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import PageTransition from "../../styles/PageTransition";
 
 const ConfirmationAccount = () => {
@@ -59,8 +65,6 @@ const ConfirmationAccount = () => {
           const userData = userDoc.data();
           setUsername(userData.username);
           setProfilePic(userData.profilePic);
-
-          
         } else {
           setError("User not found");
         }
@@ -82,7 +86,10 @@ const ConfirmationAccount = () => {
     try {
       const db = getFirestore();
       const usersRef = collection(db, "users");
-      const q = query(usersRef, where(isPhone ? "phone" : "email", "==", email));
+      const q = query(
+        usersRef,
+        where(isPhone ? "phone" : "email", "==", email)
+      );
       const querySnapshot = await getDocs(q);
 
       if (!querySnapshot.empty) {
@@ -156,7 +163,9 @@ const ConfirmationAccount = () => {
             type="submit"
             className={`w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors flex justify-center items-center`}
             onClick={handleContinueClick}
-            disabled={buttonLoading || (timeRemaining !== null && timeRemaining > 0)}
+            disabled={
+              buttonLoading || (timeRemaining !== null && timeRemaining > 0)
+            }
           >
             {buttonLoading ? (
               <div className="relative">

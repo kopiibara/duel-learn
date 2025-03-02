@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import useWandCursor from "./data/useWandCursor";
 import Tutorial1Magician from "../../assets/UserOnboarding/StandingBunny.gif";
 import PageTransition from "../../styles/PageTransition";
+import { useAudio } from "../../contexts/AudioContext";
 
 const TutorialOnePage: React.FC = () => {
   const [animate, setAnimate] = useState<boolean>(false);
@@ -13,13 +14,26 @@ const TutorialOnePage: React.FC = () => {
   const [typingDone, setTypingDone] = useState<boolean>(false);
   const [key, setKey] = useState(0); // Key to force Typewriter re-render
   const navigate = useNavigate();
+  const { pauseAudio, playLoopAudio, isPlaying } = useAudio();
 
   useWandCursor();
 
   useEffect(() => {
     setAnimate(true);
     setKey(prevKey => prevKey + 1); // Force Typewriter to restart
-  }, []);
+
+    const initAudio = async () => {
+      if (!isPlaying) {
+        await playLoopAudio();
+      }
+    };
+
+    initAudio();
+
+    return () => {
+      // Don't pause audio here, let it continue playing
+    };
+  }, [isPlaying, playLoopAudio]);
 
   const dialogues = [
     `Congratulations on stepping into the magical world of <span class="font-bold">Duel Learn</span>! Before we reveal the powerful spells you'll be casting here, let's first attune your grimoire to your unique style.`,
@@ -40,6 +54,7 @@ const TutorialOnePage: React.FC = () => {
         setKey(prevKey => prevKey + 1); // Restart Typewriter
       }, 100);
     } else {
+      pauseAudio(); // Stop audio before navigating away
       navigate("/dashboard/my-preferences");
     }
   };

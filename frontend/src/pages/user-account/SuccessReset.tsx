@@ -1,6 +1,4 @@
 import { useNavigate } from "react-router-dom";
-import React, { useState } from "react";
-import ProfileAvatar from "../../assets/images/profileAvatar.png";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
 

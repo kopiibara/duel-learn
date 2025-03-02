@@ -17,7 +17,12 @@ import { motion, AnimatePresence } from "framer-motion";
 
 // Define props interface for ItemComponent
 interface ItemComponentProps {
-  item: { id: number; term: string; definition: string; image?: File | null };
+  item: {
+    id: number;
+    term: string;
+    definition: string;
+    image?: string | File | null;
+  };
   deleteItem: () => void;
   updateItem: (field: string, value: string | File | null) => void;
 }
@@ -28,7 +33,11 @@ const ItemComponent: FC<ItemComponentProps> = ({
   updateItem,
 }) => {
   const [previewSrc, setPreviewSrc] = useState<string | null>(
-    item.image ? URL.createObjectURL(item.image) : null
+    typeof item.image === "string"
+      ? item.image
+      : item.image instanceof File
+      ? URL.createObjectURL(item.image)
+      : null
   );
 
   const handleAddPhoto = () => {
@@ -39,19 +48,12 @@ const ItemComponent: FC<ItemComponentProps> = ({
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         const reader = new FileReader();
-        reader.readAsArrayBuffer(file);
         reader.onloadend = () => {
-          const buffer = reader.result as ArrayBuffer;
-          const blob = new Blob([buffer], { type: file.type });
-
-          // Convert Blob to Base64 (Alternative: You can send as Buffer)
-          const base64Reader = new FileReader();
-          base64Reader.readAsDataURL(blob);
-          base64Reader.onloadend = () => {
-            const base64String = base64Reader.result as string;
-            updateItem("image", base64String);
-          };
+          const base64String = reader.result as string;
+          setPreviewSrc(base64String);
+          updateItem("image", base64String);
         };
+        reader.readAsDataURL(file);
       }
     };
     input.click();
@@ -96,7 +98,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                     <img
                       src={previewSrc}
                       alt="Uploaded"
-                      className="rounded-md max-w-full h-auto"
+                      className="rounded-md max-w-[12rem] h-auto"
                     />
                     <Tooltip title="Delete Photo" arrow>
                       <Fab
