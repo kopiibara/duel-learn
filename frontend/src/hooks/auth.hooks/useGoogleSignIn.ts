@@ -32,7 +32,7 @@ const useGoogleSignIn = () => {
         full_name: "",
         email_verified: result.user.emailVerified,
         isSSO: true,
-        account_type: "free" as "free" | "premium",
+        account_type: "free" as "free" | "premium" |"admin",
       };
 
       const userDoc = await getDoc(doc(db, "users", userData.firebase_uid));
