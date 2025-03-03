@@ -10,6 +10,10 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import { linkWithCredential, EmailAuthProvider } from "firebase/auth"; // Import Firebase auth functions
 import { auth } from "../../services/firebase"; // Import the Firebase auth service
+import { db } from "../../services/firebase"; // Import the Firestore database service
+import { doc, getDoc } from "firebase/firestore"; // Import the Firestore functions
+import bcrypt from "bcryptjs"; // Import the bcrypt library
+import CircularProgress from "@mui/material/CircularProgress"; // Import CircularProgress component
 
 export default function AccountSettings() {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -22,48 +26,92 @@ export default function AccountSettings() {
   const { errors, validate } = useEditUsernameValidation(userData, userData.firebase_uid); // Use the new validation hook
   const { errors: passwordErrors, validatePassword } = useChangePasswordValidation(); // Use the change password validation hook
   const { updateUserDetailsApi, apiError } = useUpdateUserDetailsApi(); // Use the API hook
+  const [error, setError] = useState({ general: "" }); // For general errors
+  const [hasNoPassword, setHasNoPassword] = useState<boolean>(false); // New state for hasNoPassword
+  const [isLoading, setIsLoading] = useState<boolean>(false); // New state for loading
 
   useEffect(() => {
     const storedUserData = JSON.parse(localStorage.getItem("userData") || "{}");
     setUserData(storedUserData);
   }, []);
+  useEffect(() => {
+    const hasNoPassword = userData.password_hash === "N/A";
+    setHasNoPassword(hasNoPassword); // Set the state for hasNoPassword
+  }, [userData]);
 
   const handleEditClick = () => {
     setIsEditing(true);
   };
 
   const handleSaveClick = async () => {
+    if (!isEditing) return;
+
+    const validationErrors = validate("username", userData.username);
+    if (Object.keys(validationErrors).length > 0) {
+      setError({ general: "Please fix the validation errors before saving." });
+      return;
+    }
+
+    setIsLoading(true); // Show loading spinner
     console.log("handleSaveClick called"); // Debugging log
   
     console.log(
       "Saving user details:",
       userData.firebase_uid,
       userData.username,
-      isChangingPassword ? userData.newpassword : undefined
+      (isChangingPassword || isCreatingPassword) ? userData.newpassword : undefined
     );
   
     try {
+      const userDoc = await getDoc(doc(db, "users", userData.firebase_uid));
+      if (userDoc.exists()) {
+        const userDataFromDb = userDoc.data();
+        if ((isChangingPassword || isCreatingPassword) && userData.newpassword) {
+          const isMatch = await bcrypt.compare(
+            userData.newpassword,
+            userDataFromDb.password_hash
+          );
+          console.log("isMatch:", isMatch); // Debugging log
+          if (isMatch) {
+            setError({ general: "Cannot use old password. Please try again" });
+            setIsLoading(false); // Hide loading spinner
+            return;
+          }
+        }
+      }
+  
+      if (isCreatingPassword) {
+        const credential = EmailAuthProvider.credential(userData.email, userData.newpassword);
+        await linkWithCredential(auth.currentUser!, credential);
+        console.log("Password linked successfully");
+      }
+  
       await updateUserDetailsApi(
         userData.firebase_uid,
         userData.username,
-        isChangingPassword ? userData.newpassword : undefined
+        (isChangingPassword || isCreatingPassword) ? userData.newpassword : undefined
       );
       console.log("User details saved successfully"); // Debugging log
   
       setIsEditing(false);
       setIsChangingPassword(false);
       setIsCreatingPassword(false); // Reset the create password state
+      setIsLoading(false); // Hide loading spinner
     } catch (error) {
       console.error("Error updating user details:", error);
+      setError({ general: "Error updating user details. Please try again." });
+      setIsLoading(false); // Hide loading spinner
     }
   };
 
   const handleDiscardClick = () => {
+    setIsLoading(true); // Show loading spinner
     const storedUserData = JSON.parse(localStorage.getItem("userData") || "{}");
     setUserData(storedUserData);
     setIsEditing(false);
     setIsChangingPassword(false);
     setIsCreatingPassword(false); // Reset the create password state
+    setIsLoading(false); // Hide loading spinner
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -105,6 +153,11 @@ export default function AccountSettings() {
 
   const toggleConfirmPassword = () => {
     setShowConfirmPassword((prev) => !prev);
+  };
+
+  const hasChanges = () => {
+    const storedUserData = JSON.parse(localStorage.getItem("userData") || "{}");
+    return JSON.stringify(storedUserData) !== JSON.stringify(userData);
   };
 
   return (
@@ -174,91 +227,7 @@ export default function AccountSettings() {
                 style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
               />
             </div>
-            {userData.password_hash !== "N/A" ? (
-              !isChangingPassword ? (
-                isEditing && (
-                  <div className="flex flex-col items-start space-y-4">
-                   <label
-                htmlFor="password"
-                className="block text-sm font-medium w-full"
-                style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
-              >
-                Password
-              </label>
-                  <button
-                    onClick={handlePasswordChangeClick}
-                    className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] text-[#6F658D] rounded-lg hover:bg-[#3b354d] transition-colors"
-                    style={{ fontFamily: "Nunito, sans-serif" }}
-                  >
-                    Change Password
-                  </button>
-                  </div>
-                )
-              ) : (
-                <>
-                  <div className="relative mb-4">
-                    <label
-                      htmlFor="newpassword"
-                      className="block text-sm font-medium w-full"
-                      style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
-                    >
-                      New Password
-                    </label>
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      id="newpassword"
-                      onChange={handleInputChange}
-                      onBlur={(e) => validatePassword("newpassword", e.target.value, userData)} // Validate on blur
-                      className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
-                      style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
-                    />
-                    <span
-                      onClick={togglePassword}
-                      className="absolute top-3 right-3 text-[#9F9BAE] cursor-pointer"
-                    >
-                      {showPassword ? (
-                        <VisibilityRoundedIcon />
-                      ) : (
-                        <VisibilityOffRoundedIcon />
-                      )}
-                    </span>
-                    {passwordErrors.newpassword && (
-                      <p className="text-red-500 mt-1 text-sm">{passwordErrors.newpassword}</p>
-                    )}
-                  </div>
-                  <div className="relative mb-4">
-                    <label
-                      htmlFor="confirmPassword"
-                      className="block text-sm font-medium w-full"
-                      style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
-                    >
-                      Confirm Password
-                    </label>
-                    <input
-                      type={showConfirmPassword ? "text" : "password"}
-                      id="confirmPassword"
-                      onChange={handleInputChange}
-                      onBlur={(e) => validatePassword("confirmPassword", e.target.value, userData)} // Validate on blur
-                      className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
-                      style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
-                    />
-                    <span
-                      onClick={toggleConfirmPassword}
-                      className="absolute top-3 right-3 text-[#9F9BAE] cursor-pointer"
-                    >
-                      {showConfirmPassword ? (
-                        <VisibilityRoundedIcon />
-                      ) : (
-                        <VisibilityOffRoundedIcon />
-                      )}
-                    </span>
-                    {passwordErrors.confirmPassword && (
-                      <p className="text-red-500 mt-1 text-sm">{passwordErrors.confirmPassword}</p>
-                    )}
-                  </div>
-                </>
-              )
-            ) : userData.password_hash == "N/A" ?(
+            {hasNoPassword ? (
               !isCreatingPassword ? (
                 isEditing && (
                   <div className="flex flex-col items-start space-y-4">
@@ -272,7 +241,7 @@ export default function AccountSettings() {
                     <button
                       onClick={handleCreatePasswordClick}
                       className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] text-[#6F658D] rounded-lg hover:bg-[#3b354d] transition-colors"
-                      style={{ fontFamily: "Nunito, sans-serif" }}
+                      style={{ fontFamily: "Nunito, sans-serif", color: isEditing ? "white" : "#6F658D" }}
                     >
                       Create Password
                     </button>
@@ -280,6 +249,12 @@ export default function AccountSettings() {
                 )
               ) : (
                 <>
+                  {/* Error Message Box */}
+                  {error.general && (
+                    <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-md border border-red-300">
+                      {error.general}
+                    </div>
+                  )}
                   <div className="relative mb-4">
                     <label
                       htmlFor="newpassword"
@@ -294,7 +269,7 @@ export default function AccountSettings() {
                       onChange={handleInputChange}
                       onBlur={(e) => validatePassword("newpassword", e.target.value, userData)} // Validate on blur
                       className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
-                      style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
+                      style={{ fontFamily: "Nunito, sans-serif", color: isEditing ? "white" : "#6F658D" }}
                     />
                     <span
                       onClick={togglePassword}
@@ -324,7 +299,7 @@ export default function AccountSettings() {
                       onChange={handleInputChange}
                       onBlur={(e) => validatePassword("confirmPassword", e.target.value, userData)} // Validate on blur
                       className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
-                      style={{ fontFamily: "Nunito, sans-serif", color: "#6F658D" }}
+                      style={{ fontFamily: "Nunito, sans-serif", color: isEditing ? "white" : "#6F658D" }}
                     />
                     <span
                       onClick={toggleConfirmPassword}
@@ -340,16 +315,105 @@ export default function AccountSettings() {
                       <p className="text-red-500 mt-1 text-sm">{passwordErrors.confirmPassword}</p>
                     )}
                   </div>
-                  <button
-                    onClick={handleLinkCredential}
-                    className="px-6 py-2 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3b13b3] transition-colors"
-                    style={{ fontFamily: "Nunito, sans-serif", width: "182.45px", height: "45px" }}
-                  >
-                    Save Password
-                  </button>
                 </>
               )
-            ) : null}
+            ) : (
+              !isChangingPassword ? (
+                isEditing && (
+                  <div className="flex flex-col items-start space-y-4">
+                    <label
+                      htmlFor="password"
+                      className="block text-sm font-medium w-full"
+                      style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
+                    >
+                      Password
+                    </label>
+                    <button
+                      onClick={handlePasswordChangeClick}
+                      className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] text-[#6F658D] rounded-lg hover:bg-[#3b354d] transition-colors"
+                      style={{ fontFamily: "Nunito, sans-serif" }}
+                    >
+                      Change Password
+                    </button>
+                  </div>
+                )
+              ) : (
+                <>
+                  {/* Error Message Box */}
+                  {error.general && (
+                    <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-md border border-red-300">
+                      {error.general}
+                    </div>
+                  )}
+                  <div className="relative mb-4">
+                    <label
+                      htmlFor="newpassword"
+                      className="block text-sm font-medium w-full"
+                      style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
+                    >
+                      New Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        id="newpassword"
+                        onChange={handleInputChange}
+                        onBlur={(e) => validatePassword("newpassword", e.target.value, userData)} // Validate on blur
+                        className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                        style={{ fontFamily: "Nunito, sans-serif", color: isEditing ? "white" : "#6F658D" }}
+                      />
+                      <span
+                        onClick={togglePassword}
+                        className="absolute top-1/2 right-3 text-[#9F9BAE] cursor-pointer"
+                        style={{ transform: "translateY(-50%)" }}
+                      >
+                        {showPassword ? (
+                          <VisibilityRoundedIcon />
+                        ) : (
+                          <VisibilityOffRoundedIcon />
+                        )}
+                      </span>
+                    </div>
+                    {passwordErrors.newpassword && (
+                      <p className="text-red-500 mt-1 text-sm">{passwordErrors.newpassword}</p>
+                    )}
+                  </div>
+                  <div className="relative mb-4">
+                    <label
+                      htmlFor="confirmPassword"
+                      className="block text-sm font-medium w-full"
+                      style={{ fontFamily: "Nunito, sans-serif", fontSize: "20px", color: "#6F658D" }}
+                    >
+                      Confirm Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        id="confirmPassword"
+                        onChange={handleInputChange}
+                        onBlur={(e) => validatePassword("confirmPassword", e.target.value, userData)} // Validate on blur
+                        className="w-[850px] h-[47px] px-3 py-2 bg-[#2a2435] border border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                        style={{ fontFamily: "Nunito, sans-serif", color: isEditing ? "white" : "#6F658D" }}
+                      />
+                      <span
+                        onClick={toggleConfirmPassword}
+                        className="absolute top-1/2 right-3 text-[#9F9BAE] cursor-pointer"
+                        style={{ transform: "translateY(-50%)" }}
+                      >
+                        {showConfirmPassword ? (
+                          <VisibilityRoundedIcon />
+                        ) : (
+                          <VisibilityOffRoundedIcon />
+                        )}
+                      </span>
+                    </div>
+                    {passwordErrors.confirmPassword && (
+                      <p className="text-red-500 mt-1 text-sm">{passwordErrors.confirmPassword}</p>
+                    )}
+                  </div>
+                </>
+              )
+            )}
             <div className="flex gap-2 mt-1">
               <button
                 onClick={handleDiscardClick}
@@ -362,8 +426,9 @@ export default function AccountSettings() {
                 onClick={isEditing ? handleSaveClick : handleEditClick}
                 className={`px-6 py-2 ${isEditing ? "bg-[#4D18E8]" : "bg-[#2a2435]"} text-white rounded-lg hover:bg-[#3b13b3] transition-colors`}
                 style={{ fontFamily: "Nunito, sans-serif", width: "182.45px", height: "45px" }}
+                disabled={isEditing && !hasChanges()}
               >
-                {isEditing ? "Save" : "Edit"}
+                {isLoading ? <CircularProgress size={24} /> : isEditing ? "Save" : "Edit"}
               </button>
             </div>
             <div className="bg-[#1a1625]/50 rounded-lg p-6 mt-10">

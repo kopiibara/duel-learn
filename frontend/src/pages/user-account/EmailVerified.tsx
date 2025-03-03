@@ -49,25 +49,35 @@ const EmailVerified = () => {
   }, [location.search, updateEmailVerifiedApi]);
 
   const handleBacktoLoginClick = async () => {
-    const userDoc = await getDoc(doc(db, "users", firebase_uid));
-    const isNewUser =
-      !userDoc.exists() ||
-      (userDoc.exists() &&
-        Date.now() - userDoc.data().created_at.toMillis() < 300000); // 5 minutes in milliseconds
+    const queryParams = new URLSearchParams(location.search);
+    const firebase_uid = queryParams.get("firebase_uid") || "";
 
-    setTimeout(() => {
-      if (userData.account_type === "admin") {
-        navigate("/admin/admin-dashboard");
-      } else if (isNewUser && userData.email_verified) {
-        navigate("/dashboard/welcome");
-      } else if (isNewUser && !userData.email_verified) {
-        navigate("/dashboard/verify-email");
-      } else if (!userData.email_verified) {
-        navigate("/dashboard/verify-email");
-      } else {
-        navigate("/dashboard/home");
-      }
-    }, 2000);
+    try {
+      const userDocRef = doc(db, "users", firebase_uid);
+      const userDoc = await getDoc(userDocRef);
+      const userData = JSON.parse(localStorage.getItem("userData") || "{}");
+      const isNewUser =
+        !userDoc.exists() ||
+        (userDoc.exists() &&
+          Date.now() - userDoc.data().created_at.toMillis() < 300000); // 5 minutes in milliseconds
+
+      setTimeout(() => {
+        if ((userDoc.exists() && userDoc.data()?.account_type === "admin") || userData.account_type === 'admin') {
+          navigate("/admin/admin-dashboard");
+        } else if (isNewUser && (userDoc.data()?.email_verified || userData.email_verified)) {
+          navigate("/dashboard/welcome");
+        } else if (isNewUser && !userDoc.data()?.email_verified) {
+          navigate("/dashboard/verify-email");
+        } else if (!userDoc.data()?.email_verified) {
+          navigate("/dashboard/verify-email");
+        } else {
+          navigate("/dashboard/home");
+        }
+      }, 2000);
+    } catch (error: any) {
+      console.error("Error fetching user document:", error);
+      toast.error("Failed to fetch user information. Please try again.");
+    }
   };
 
   return (
