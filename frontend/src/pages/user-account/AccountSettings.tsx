@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar";
 import sampleAvatar from "../../assets/profile-picture/bunny-picture.png"; // Import the sample avatar image
@@ -14,151 +12,36 @@ import { db } from "../../services/firebase"; // Import the Firestore database s
 import { doc, getDoc } from "firebase/firestore"; // Import the Firestore functions
 import bcrypt from "bcryptjs"; // Import the bcrypt library
 import CircularProgress from "@mui/material/CircularProgress"; // Import CircularProgress component
+import useAccountSettings from '../../hooks/useAccountSettings';
 
 export default function AccountSettings() {
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [userData, setUserData] = useState<any>({});
-  const [isEditing, setIsEditing] = useState<boolean>(false);
-  const [isChangingPassword, setIsChangingPassword] = useState<boolean>(false);
-  const [isCreatingPassword, setIsCreatingPassword] = useState<boolean>(false); // New state for creating password
-  const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
-  const { errors, validate } = useEditUsernameValidation(userData, userData.firebase_uid); // Use the new validation hook
-  const { errors: passwordErrors, validatePassword } = useChangePasswordValidation(); // Use the change password validation hook
-  const { updateUserDetailsApi, apiError } = useUpdateUserDetailsApi(); // Use the API hook
-  const [error, setError] = useState({ general: "" }); // For general errors
-  const [hasNoPassword, setHasNoPassword] = useState<boolean>(false); // New state for hasNoPassword
-  const [isLoading, setIsLoading] = useState<boolean>(false); // New state for loading
-
-  useEffect(() => {
-    const storedUserData = JSON.parse(localStorage.getItem("userData") || "{}");
-    setUserData(storedUserData);
-  }, []);
-  useEffect(() => {
-    const hasNoPassword = userData.password_hash === "N/A";
-    setHasNoPassword(hasNoPassword); // Set the state for hasNoPassword
-  }, [userData]);
-
-  const handleEditClick = () => {
-    setIsEditing(true);
-  };
-
-  const handleSaveClick = async () => {
-    if (!isEditing) return;
-
-    const validationErrors = validate("username", userData.username);
-    if (Object.keys(validationErrors).length > 0) {
-      setError({ general: "Please fix the validation errors before saving." });
-      return;
-    }
-
-    setIsLoading(true); // Show loading spinner
-    console.log("handleSaveClick called"); // Debugging log
-  
-    console.log(
-      "Saving user details:",
-      userData.firebase_uid,
-      userData.username,
-      (isChangingPassword || isCreatingPassword) ? userData.newpassword : undefined
-    );
-  
-    try {
-      const userDoc = await getDoc(doc(db, "users", userData.firebase_uid));
-      if (userDoc.exists()) {
-        const userDataFromDb = userDoc.data();
-        if ((isChangingPassword || isCreatingPassword) && userData.newpassword) {
-          const isMatch = await bcrypt.compare(
-            userData.newpassword,
-            userDataFromDb.password_hash
-          );
-          console.log("isMatch:", isMatch); // Debugging log
-          if (isMatch) {
-            setError({ general: "Cannot use old password. Please try again" });
-            setIsLoading(false); // Hide loading spinner
-            return;
-          }
-        }
-      }
-  
-      if (isCreatingPassword) {
-        const credential = EmailAuthProvider.credential(userData.email, userData.newpassword);
-        await linkWithCredential(auth.currentUser!, credential);
-        console.log("Password linked successfully");
-      }
-  
-      await updateUserDetailsApi(
-        userData.firebase_uid,
-        userData.username,
-        (isChangingPassword || isCreatingPassword) ? userData.newpassword : undefined
-      );
-      console.log("User details saved successfully"); // Debugging log
-  
-      setIsEditing(false);
-      setIsChangingPassword(false);
-      setIsCreatingPassword(false); // Reset the create password state
-      setIsLoading(false); // Hide loading spinner
-    } catch (error) {
-      console.error("Error updating user details:", error);
-      setError({ general: "Error updating user details. Please try again." });
-      setIsLoading(false); // Hide loading spinner
-    }
-  };
-
-  const handleDiscardClick = () => {
-    setIsLoading(true); // Show loading spinner
-    const storedUserData = JSON.parse(localStorage.getItem("userData") || "{}");
-    setUserData(storedUserData);
-    setIsEditing(false);
-    setIsChangingPassword(false);
-    setIsCreatingPassword(false); // Reset the create password state
-    setIsLoading(false); // Hide loading spinner
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUserData({ ...userData, [e.target.id]: e.target.value });
-  };
-
-  const handlePasswordChangeClick = () => {
-    setIsChangingPassword(true);
-  };
-
-  const handleCreatePasswordClick = () => {
-    setIsCreatingPassword(true);
-  };
-
-  const handleLinkCredential = async () => {
-    const { newpassword } = userData;
-    const credential = EmailAuthProvider.credential(userData.email, newpassword);
-
-    try {
-      await linkWithCredential(auth.currentUser!, credential);
-      console.log("Password linked successfully");
-
-      // Update Firestore and SQL after linking the password
-      await updateUserDetailsApi(
-        userData.firebase_uid,
-        userData.username,
-        newpassword
-      );
-
-      handleSaveClick(); // Save the user details after linking the password
-    } catch (error) {
-      console.error("Error linking password:", error);
-    }
-  };
-
-  const togglePassword = () => {
-    setShowPassword((prev) => !prev);
-  };
-
-  const toggleConfirmPassword = () => {
-    setShowConfirmPassword((prev) => !prev);
-  };
-
-  const hasChanges = () => {
-    const storedUserData = JSON.parse(localStorage.getItem("userData") || "{}");
-    return JSON.stringify(storedUserData) !== JSON.stringify(userData);
-  };
+  const {
+    selectedIndex,
+    setSelectedIndex,
+    userData,
+    isEditing,
+    isChangingPassword,
+    isCreatingPassword,
+    showPassword,
+    showConfirmPassword,
+    errors,
+    passwordErrors,
+    error,
+    hasNoPassword,
+    isLoading,
+    handleEditClick,
+    handleSaveClick,
+    handleDiscardClick,
+    handleInputChange,
+    handlePasswordChangeClick,
+    handleCreatePasswordClick,
+    handleLinkCredential,
+    togglePassword,
+    toggleConfirmPassword,
+    hasChanges,
+    validate,
+    validatePassword,
+  } = useAccountSettings();
 
   return (
     <div className="flex min-h-screen bg-[#080511] text-white" style={{ fontFamily: "Nunito, sans-serif" }}>
