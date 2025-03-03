@@ -39,7 +39,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleDeleteUser = async (firebase_uid) => {
+  const handleDeleteUser = async (firebase_uid: string) => {
     try {
       const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/`, { method: 'DELETE' });
       if (!response.ok) {

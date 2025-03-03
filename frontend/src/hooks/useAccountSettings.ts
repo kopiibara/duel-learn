@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { linkWithCredential, EmailAuthProvider } from "firebase/auth";
 import { auth, db } from "../services/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, updateDoc } from "firebase/firestore";
 import bcrypt from "bcryptjs";
 import useEditUsernameValidation from "./validation.hooks/useEditUsernameValidation";
 import useChangePasswordValidation from "./validation.hooks/useChangePasswordValidation";
@@ -15,16 +15,20 @@ const useAccountSettings = () => {
   const [isCreatingPassword, setIsCreatingPassword] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const [originalProfilePicture, setOriginalProfilePicture] = useState<string>("");
   const { errors, validate } = useEditUsernameValidation(userData, userData.firebase_uid);
   const { errors: passwordErrors, validatePassword } = useChangePasswordValidation();
   const { updateUserDetailsApi, apiError } = useUpdateUserDetailsApi();
   const [error, setError] = useState({ general: "" });
   const [hasNoPassword, setHasNoPassword] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
   useEffect(() => {
     const storedUserData = JSON.parse(localStorage.getItem("userData") || "{}");
     setUserData(storedUserData);
+    setOriginalProfilePicture(storedUserData.display_picture || "");
   }, []);
 
   useEffect(() => {
@@ -48,12 +52,7 @@ const useAccountSettings = () => {
     setIsLoading(true);
     console.log("handleSaveClick called");
 
-    console.log(
-      "Saving user details:",
-      userData.firebase_uid,
-      userData.username,
-      (isChangingPassword || isCreatingPassword) ? userData.newpassword : undefined
-    );
+    const hasProfilePictureChanged = originalProfilePicture !== userData.display_picture;
 
     try {
       const userDoc = await getDoc(doc(db, "users", userData.firebase_uid));
@@ -71,6 +70,13 @@ const useAccountSettings = () => {
             return;
           }
         }
+
+        if (hasProfilePictureChanged) {
+          await updateDoc(doc(db, "users", userData.firebase_uid), {
+            display_picture: userData.display_picture,
+            updated_at: new Date()
+          });
+        }
       }
 
       if (isCreatingPassword) {
@@ -82,9 +88,14 @@ const useAccountSettings = () => {
       await updateUserDetailsApi(
         userData.firebase_uid,
         userData.username,
-        (isChangingPassword || isCreatingPassword) ? userData.newpassword : undefined
+        (isChangingPassword || isCreatingPassword) ? userData.newpassword : undefined,
+        hasProfilePictureChanged ? userData.display_picture : undefined
       );
+
       console.log("User details saved successfully");
+      
+      localStorage.setItem("userData", JSON.stringify(userData));
+      setOriginalProfilePicture(userData.display_picture || "");
 
       setIsEditing(false);
       setIsChangingPassword(false);
@@ -147,10 +158,56 @@ const useAccountSettings = () => {
     setShowConfirmPassword((prev) => !prev);
   };
 
+  const handleProfilePictureChange = (newPicture: string) => {
+    setUserData({ ...userData, display_picture: newPicture });
+  };
+
   const hasChanges = () => {
     const storedUserData = JSON.parse(localStorage.getItem("userData") || "{}");
-    return JSON.stringify(storedUserData) !== JSON.stringify(userData);
+    return (
+      JSON.stringify(storedUserData) !== JSON.stringify(userData) ||
+      originalProfilePicture !== userData.display_picture
+    );
   };
+
+  const handleDeleteAccount = async () => {
+    try {
+      setIsDeletingAccount(true);
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/delete-account`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          firebase_uid: userData.firebase_uid 
+        }),
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete account');
+      }
+
+      // Sign out from Firebase
+      await auth.signOut();
+      
+      // Clear local storage
+      localStorage.removeItem('userData');
+      
+      // Redirect to home page
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error deleting account:', error);
+      setError({ general: error instanceof Error ? error.message : 'Failed to delete account. Please try again.' });
+    } finally {
+      setIsDeletingAccount(false);
+      setIsDeleteModalOpen(false);
+    }
+  };
+
+  const openDeleteModal = () => setIsDeleteModalOpen(true);
+  const closeDeleteModal = () => setIsDeleteModalOpen(false);
 
   return {
     selectedIndex,
@@ -178,6 +235,12 @@ const useAccountSettings = () => {
     hasChanges,
     validate,
     validatePassword,
+    handleProfilePictureChange,
+    isDeleteModalOpen,
+    isDeletingAccount,
+    openDeleteModal,
+    closeDeleteModal,
+    handleDeleteAccount,
   };
 };
 

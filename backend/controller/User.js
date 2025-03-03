@@ -4,6 +4,59 @@ import bcrypt from "bcrypt";
 import moment from "moment";
 import admin from "../services/firebaseAdmin.js";
 
+const archiveUser = async (connection, firebase_uid) => {
+  try {
+    // Get user data before deletion
+    const [userData] = await connection.execute(
+      'SELECT * FROM users WHERE firebase_uid = ?',
+      [firebase_uid]
+    );
+
+    if (userData.length === 0) {
+      throw new Error('User not found');
+    }
+
+    const user = userData[0];
+    const archiveTimestamp = moment().format("YYYY-MM-DD HH:mm:ss");
+
+    // Insert into archive_users table
+    await connection.execute(
+      `INSERT INTO archive_users 
+       (firebase_uid, username, email, password_hash, created_at, updated_at, 
+        display_picture, full_name, email_verified, isSSO, archived_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        user.firebase_uid,
+        user.username,
+        user.email,
+        user.password_hash,
+        user.created_at,
+        user.updated_at,
+        user.display_picture,
+        user.full_name,
+        user.email_verified,
+        user.isSSO,
+        archiveTimestamp
+      ]
+    );
+
+    // Archive in Firestore
+    const userDoc = await admin.firestore().collection('users').doc(firebase_uid).get();
+    if (userDoc.exists) {
+      const userData = userDoc.data();
+      await admin.firestore().collection('archive_users').doc(firebase_uid).set({
+        ...userData,
+        archived_at: new Date()
+      });
+    }
+
+    return true;
+  } catch (error) {
+    console.error('Error archiving user:', error);
+    throw error;
+  }
+};
+
 export default {
   signUpUser: async (req, res) => {
     let connection;
@@ -204,7 +257,7 @@ export default {
     }
   },
 
-  deleteUser: async (req, res) => {
+  deleteUserByAdmin: async (req, res) => {
     const { id } = req.params;
     let connection;
     try {
@@ -233,10 +286,13 @@ export default {
         throw error;
       }
 
+      // Archive user data
+      await archiveUser(connection, id);
+
       // Delete user from Firebase Auth
       await admin.auth().deleteUser(id);
 
-      // Delete user from Firestore
+      // Delete user from Firestore users collection (already archived)
       await admin.firestore().collection('users').doc(id).delete();
 
       // Delete user from SQL
@@ -246,6 +302,35 @@ export default {
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ error: "Internal server error", details: error.message });
+    } finally {
+      if (connection) connection.release();
+    }
+  },
+
+  deleteUserAccount: async (req, res) => {
+    let connection;
+    try {
+      const { firebase_uid } = req.body;
+
+      // Get a connection from the pool
+      connection = await pool.getConnection();
+
+      // Archive user data
+      await archiveUser(connection, firebase_uid);
+
+      // Delete from SQL database
+      await connection.execute('DELETE FROM users WHERE firebase_uid = ?', [firebase_uid]);
+
+      // Delete from Firestore users collection (already archived)
+      await admin.firestore().collection('users').doc(firebase_uid).delete();
+
+      // Delete from Firebase Auth
+      await admin.auth().deleteUser(firebase_uid);
+
+      res.status(200).json({ message: 'Account deleted and archived successfully' });
+    } catch (error) {
+      console.error('Error deleting user account:', error);
+      res.status(500).json({ error: 'Failed to delete account' });
     } finally {
       if (connection) connection.release();
     }
@@ -269,7 +354,7 @@ export default {
   updateUserDetails: async (req, res) => {
     let connection;
     try {
-      const { firebase_uid, username, newpassword } = req.body;
+      const { firebase_uid, username, newpassword, display_picture } = req.body;
 
       // Get a connection from the pool
       connection = await pool.getConnection();
@@ -288,6 +373,19 @@ export default {
 
         await admin.auth().updateUser(firebase_uid, {
           displayName: username,
+        });
+      }
+
+      // Update display picture if provided
+      if (display_picture) {
+        await connection.execute(
+          `UPDATE users SET display_picture = ?, updated_at = ? WHERE firebase_uid = ?;`,
+          [display_picture, moment().format("YYYY-MM-DD HH:mm:ss"), firebase_uid]
+        );
+
+        await admin.firestore().collection("users").doc(firebase_uid).update({
+          display_picture: display_picture,
+          updated_at: moment().format("YYYY-MM-DD HH:mm:ss"),
         });
       }
 

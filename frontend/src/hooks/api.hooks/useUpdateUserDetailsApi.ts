@@ -6,7 +6,8 @@ const useUpdateUserDetailsApi = () => {
   const updateUserDetailsApi = async (
     firebase_uid: string,
     username?: string,
-    newpassword?: string
+    newpassword?: string,
+    display_picture?: string
   ) => {
     try {
       const response = await fetch(
@@ -16,7 +17,13 @@ const useUpdateUserDetailsApi = () => {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ firebase_uid, username, newpassword }),
+          body: JSON.stringify({ 
+            firebase_uid, 
+            username, 
+            newpassword,
+            display_picture,
+            updated_at: new Date().toISOString()
+          }),
         }
       );
 
@@ -27,6 +34,7 @@ const useUpdateUserDetailsApi = () => {
       const data = await response.json();
       return data;
     } catch (error: any) {
+      console.error('Error updating user details:', error);
       setApiError(error.message);
       throw error;
     }
