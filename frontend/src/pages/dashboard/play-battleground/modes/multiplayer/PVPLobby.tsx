@@ -99,7 +99,7 @@ const PVPLobby: React.FC = () => {
   // Simulate fetching player data (replace with your actual API call)
   useEffect(() => {
     const fetchPlayerData = async () => {
-      console.log("User Data:", user); // Debug user data
+      console.log("User Data:", user);
       const fetchedPlayers: Player[] = [
         { id: 1, name: user?.username || 'Player 1', level: user?.level || 1, profilePicture: user?.display_picture || 'default-avatar.png' },
       ];
