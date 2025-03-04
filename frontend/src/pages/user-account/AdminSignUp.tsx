@@ -9,11 +9,7 @@ import {
   getAdditionalInfo,
   db,
 } from "../../services/firebase";
-import {
-  signInWithPopup,
-  createUserWithEmailAndPassword,
-  deleteUser,
-} from "firebase/auth";
+import { signInWithPopup, createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
 import { setDoc, doc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
@@ -23,9 +19,8 @@ import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
 import useCombinedErrorHandler from "../../hooks/validation.hooks/useCombinedErrorHandler";
 import LoadingScreen from "../../components/LoadingScreen";
 import bcrypt from "bcryptjs";
-import useGoogleSignIn from "../../hooks/auth.hooks/useGoogleSignIn";
 
-const SignUp = () => {
+const AdminSignUp = () => {
   const { setUser, user } = useUser();
   const { handleError, combinedError } = useCombinedErrorHandler();
   const [formData, setFormData] = useState({
@@ -42,7 +37,6 @@ const SignUp = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const { signUpApi } = useSignUpApi();
   const [loading, setLoading] = useState(false);
-  const { handleGoogleSignIn } = useGoogleSignIn();
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
@@ -88,7 +82,7 @@ const SignUp = () => {
         full_name: "",
         email_verified: result.user.emailVerified,
         isSSO: false,
-        account_type: "free" as "free" | "premium",
+        account_type: "admin" as "free" | "premium" | "admin",
       };
 
       await setDoc(doc(db, "users", userData.firebase_uid), {
@@ -135,13 +129,10 @@ const SignUp = () => {
         "Account successfully created! Redirecting to login..."
       );
       setTimeout(() => {
-        if (userData.isNew && userData.email_verified) {
-          navigate("/dashboard/welcome");
-        } else if (userData.isNew && userData.email_verified === false) {
-          navigate("/dashboard/verify-email");
-        } else if (userData.email_verified === false) {
-          navigate("/dashboard/verify-email");
-        } else {
+        if (userData.account_type === "admin") {
+            navigate("/admin/admin-dashboard");
+        }
+        else {
           navigate("/dashboard/home");
         }
       }, 2000);
@@ -149,6 +140,71 @@ const SignUp = () => {
       console.error("Registration error:", error);
       handleError(error);
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const token = await result.user.getIdToken();
+      const additionalUserInfo = getAdditionalInfo(result);
+      const userData = {
+        firebaseToken: token,
+        firebase_uid: result.user.uid,
+        username: result.user.displayName,
+        email: result.user.email,
+        display_picture: result.user.photoURL,
+        isNew: additionalUserInfo?.isNewUser,
+        full_name: "",
+        email_verified: result.user.emailVerified,
+        isSSO: true,
+        account_type: "admin" as "free" | "premium"| "admin",
+      };
+
+      await setDoc(doc(db, "users", userData.firebase_uid), {
+        firebase_uid: userData.firebase_uid || "",
+        username: userData.username,
+        email: userData.email,
+        password_hash: "N/A", // Store the hashed password if needed
+        created_at: serverTimestamp(),
+        updated_at: serverTimestamp(),
+        display_picture: userData.display_picture || "",
+        full_name: "",
+        email_verified: userData.email_verified,
+        isSSO: userData.isSSO,
+        account_type: userData.account_type,
+      });
+
+      setUser(userData);
+      localStorage.setItem("userToken", token);
+
+      // Call the API
+      await signUpApi(
+        userData.firebase_uid,
+        userData.username ?? "Anonymous",
+        userData.email || "",
+        "",
+        true,
+        result.user.emailVerified
+      );
+
+      setTimeout(() => {
+        if (userData.isNew && userData.email_verified) {
+          navigate("/dashboard/welcome");
+        } 
+        else if(userData.isNew && userData.email_verified === false){
+          navigate("/dashboard/verify-email");
+        }
+        else if(userData.email_verified === false){
+          navigate("/dashboard/verify-email");
+        }
+        else {
+          navigate("/dashboard/home");
+        }
+      }, 2000);
+    } catch (error: any) {
+      setLoading(false);
+      handleError(error);
     }
   };
 
@@ -171,7 +227,7 @@ const SignUp = () => {
         </header>
         <div className="p-8 rounded-lg shadow-md w-full max-w-md">
           <h1 className="text-3xl font-bold mb-2 text-center text-[#E2DDF3]">
-            Create an Account
+            Create an Admin Account
           </h1>
           <p className="text-lg mb-8 text-center text-[#9F9BAE]">
             Please enter your details to sign up.
@@ -357,4 +413,4 @@ const SignUp = () => {
   );
 };
 
-export default SignUp;
+export default AdminSignUp;

@@ -12,7 +12,7 @@ interface User {
   full_name: string | null;
   email_verified: boolean;
   isSSO: boolean;
-  account_type: 'free' | 'premium';
+  account_type: "free" | "premium" | "admin";
 }
 
 interface UserContextProps {
@@ -47,7 +47,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         localStorage.removeItem("userData");
       }
     });
-  
+
     return () => unsubscribe();
   }, []);
 

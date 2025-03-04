@@ -14,6 +14,8 @@ import {
   doc,
 } from "firebase/firestore";
 import PageTransition from "../../styles/PageTransition";
+import useGoogleSignIn from "../../hooks/auth.hooks/useGoogleSignIn";
+import LoadingScreen from "../../components/LoadingScreen";
 
 //import axios from "axios";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
@@ -36,6 +38,8 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
   const { error, handleLoginError, setError } = useHandleError();
   const navigate = useNavigate();
+  const { handleGoogleSignIn } = useGoogleSignIn();
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -47,52 +51,9 @@ const Login = () => {
     setShowPassword(!showPassword); // Toggle password visibility
   };
 
-  // Login Component (handleGoogleSignIn)
-  const handleGoogleSignIn = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      console.log(result);
-
-      const token = await result.user.getIdToken();
-      const additionalUserInfo = getAdditionalInfo(result);
-      const userDoc = await getDoc(doc(db, "users", result.user.uid));
-
-      if (userDoc.exists()) {
-        const userData = {
-          firebase_uid: result.user.uid,
-          username: userDoc.data().username,
-          email: userDoc.data().email,
-          display_picture: userDoc.data().display_picture,
-          isNew: additionalUserInfo?.isNewUser,
-          full_name: userDoc.data().full_name,
-          email_verified: userDoc.data().email_verified,
-          isSSO: userDoc.data().isSSO,
-          account_type: userDoc.data().account_type as "free" | "premium", // Ensure the value is either 'free' or 'premium'
-        };
-        console.log("User Data:", userData);
-
-        // Store user data in context
-        setUser(userData);
-
-        // Optionally, you can store the token in local storage or context
-        localStorage.setItem("userToken", token);
-
-        setTimeout(() => {
-          if (userData.isNew) {
-            navigate("/dashboard/welcome");
-          } else {
-            navigate("/dashboard/home");
-          }
-        }, 2000);
-      }
-    } catch (error) {
-      console.error("Error during sign-in:", error);
-      toast.error("Google sign-in failed. Please try again.");
-    }
-  };
-
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setLoading(true);
     const { username, password } = data;
     let email = username;
 
@@ -128,9 +89,16 @@ const Login = () => {
           full_name: userDoc.data().full_name,
           email_verified: userDoc.data().email_verified,
           isSSO: userDoc.data().isSSO,
-          account_type: userDoc.data().account_type as "free" | "premium", // Ensure the value is either 'free' or 'premium'
+          account_type: userDoc.data().account_type as
+            | "free"
+            | "premium"
+            | "admin", // Ensure the value is either 'free' or 'premium'
         };
         console.log("User Data:", userData);
+        const isNewUser =
+          !userDoc.exists() ||
+          (userDoc.exists() &&
+            Date.now() - userDoc.data().created_at.toMillis() < 5000);
 
         // Store user data in context
         setUser(userData);
@@ -139,8 +107,14 @@ const Login = () => {
         localStorage.setItem("userToken", token);
 
         setTimeout(() => {
-          if (userData.isNew) {
+          if (userData.account_type === "admin") {
+            navigate("/admin/admin-dashboard");
+          } else if (isNewUser && userData.email_verified) {
             navigate("/dashboard/welcome");
+          } else if (isNewUser && userData.email_verified === false) {
+            navigate("/dashboard/verify-email");
+          } else if (userData.email_verified === false) {
+            navigate("/dashboard/verify-email");
           } else {
             navigate("/dashboard/home");
           }
@@ -148,8 +122,18 @@ const Login = () => {
       }
     } catch (error) {
       handleLoginError(error); // Use the hook to handle login error
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (loading) {
+    return (
+      <PageTransition>
+        <LoadingScreen />
+      </PageTransition>
+    ); // Show the loading screen
+  }
 
   return (
     <PageTransition>

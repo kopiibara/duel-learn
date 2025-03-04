@@ -42,6 +42,10 @@ const PrivateRoutes = () => {
     return <Navigate to="/landing-page" />;
   }
 
+  if (user && token && !user.email_verified) {
+    return <Navigate to="/verify-email" />;
+  }
+
   return (
     <Routes>
       {/* Onboarding and Tutorial Routes */}
