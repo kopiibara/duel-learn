@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { auth, signOutUser, sendEmail, db } from "../../services/firebase";
+import { signOut } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
-import { getFirestore, collection, query, where, getDocs, setDoc, doc, serverTimestamp,getDoc } from "firebase/firestore";
+import { getFirestore, collection, query, where, getDocs, setDoc, doc, serverTimestamp, getDoc } from "firebase/firestore";
 import useEmailTimestamp from "../../hooks/useEmailTimestamp";
+import firebaseEmailHandler from "../../services/firebaseEmailHandler";
 
 const VerifyEmail = () => {
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
@@ -13,9 +15,11 @@ const VerifyEmail = () => {
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
   const userData = JSON.parse(localStorage.getItem("userData") || "{}");
   const email = userData.email || "";
   const { timeRemaining, isButtonDisabled: isTimestampButtonDisabled, checkTimestamp } = useEmailTimestamp(email);
+  const { handleEmailAction } = firebaseEmailHandler();
 
   useEffect(() => {
     if (userData) {
@@ -28,32 +32,35 @@ const VerifyEmail = () => {
   }, [userData]);
 
   useEffect(() => {
-    const bc = new BroadcastChannel('email-verification');
+    const queryParams = new URLSearchParams(location.search);
+    const mode = queryParams.get("mode");
+    const oobCode = queryParams.get("oobCode");
+    const continueUrl = queryParams.get("continueUrl");
 
-    const handleEmailVerifiedSuccess = (message: MessageEvent) => {
-      if (message.data === 'email_verified_success') {
-        navigate("/email-verified");
-      }
-    };
+    if (mode && oobCode && continueUrl) {
+      handleEmailAction(mode, oobCode, continueUrl)
+        .then((result) => {
+          if (result?.success && result.mode === "verifyEmail") {
+            navigate("/email-verified", { state: { email, firebase_uid: result.firebase_uid } });
+          }
+        })
+        .catch((err) => {
+          console.error("Error handling email action:", err);
+          setErrorMessage("The spell has faded — your magic link has expired.");
+        });
+    }
+  }, [location.search]);
 
-    bc.addEventListener('message', handleEmailVerifiedSuccess);
-
-    return () => {
-      bc.removeEventListener('message', handleEmailVerifiedSuccess);
-      bc.close();
-    };
-  }, [navigate]);
- 
   const handleSendVerificationEmail = async () => {
     try {      
       console.log("Email Verified:", userData.email_verified);
       const firebase_uid = userData.firebase_uid;
       if (auth.currentUser) {
         const actionCodeSettings = {
-          url: `http://localhost:5173/email-verified?mode=verifyEmail&firebase_uid=${firebase_uid}`,
+          url: `${import.meta.env.VITE_FRONTEND_URL}/email-action-handler?mode=verifyEmail&firebase_uid=${firebase_uid}&email=${email}`,
           handleCodeInApp: true,
-          };
-          await sendEmail(auth.currentUser!, actionCodeSettings);
+        };
+        await sendEmail(auth.currentUser!, actionCodeSettings);
         toast.success("Verification email sent.");
         setIsButtonDisabled(true);
         setIsEmailSent(true);
@@ -94,25 +101,14 @@ const VerifyEmail = () => {
   };
 
   const handleLogoutClick = async () => {
-
-    const userDoc = await getDoc(doc(db, "users", userData.firebase_uid));
-    const isNewUser =
-    !userDoc.exists() ||
-    (userDoc.exists() &&
-      Date.now() - userDoc.data().created_at.toMillis() < 5000);
-      setTimeout(() => {
-        if (userData.account_type === "admin") {
-          navigate("/admin/admin-dashboard");
-        } else if (isNewUser && userData.email_verified) {
-          navigate("/dashboard/welcome");
-        } else if (isNewUser && userData.email_verified === false) {
-          navigate("/dashboard/verify-email");
-        } else if (userData.email_verified === false) {
-          navigate("/dashboard/verify-email");
-        } else {
-          navigate("/dashboard/home");
-        }
-      }, 2000);
+    try {
+      await signOut(auth);
+      localStorage.removeItem("userData");
+      navigate("/login");
+    } catch (error: any) {
+      console.error("Error signing out:", error);
+      toast.error("Failed to sign out. Please try again.");
+    }
   };
 
   useEffect(() => {
@@ -162,7 +158,7 @@ const VerifyEmail = () => {
             className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
             onClick={handleLogoutClick}
           >
-            Continue
+            Logout
           </button>
         </div>
       </div>
