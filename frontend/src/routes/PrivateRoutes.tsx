@@ -30,6 +30,7 @@ import SessionReport from "../pages/dashboard/play-battleground/screens/SessionR
 import PeacefulMode from "../pages/dashboard/play-battleground/modes/peaceful/PeacefulMode";
 import TimePressuredMode from "../pages/dashboard/play-battleground/modes/time-pressured/TimePressuredMode";
 import GameModeWrapper from "../pages/dashboard/play-battleground/components/common/GameModeWrapper";
+import AccountSettings from "../pages/dashboard/settings/AccountSettings";
 
 const PrivateRoutes = () => {
   const { user } = useUser();
@@ -69,6 +70,7 @@ const PrivateRoutes = () => {
           path="study-material/preview/:studyMaterialId"
           element={<ViewStudyMaterial />}
         />
+        <Route path="account-settings" element={<AccountSettings />} />
       </Route>
 
       {/* Authentication Routes */}

@@ -32,6 +32,11 @@ export default function ProfilePopover({
       toast.error("Logout failed. Please try again.");
     }
   };
+
+  const handleSettings = () => {
+    navigate("/dashboard/account-settings");
+  };
+
   return (
     <Popover
       open={open}
@@ -60,6 +65,7 @@ export default function ProfilePopover({
         <Stack spacing={1}>
           <Button
             variant="text"
+            onClick={handleSettings}
             sx={{
               justifyContent: "flex-start",
               textTransform: "none",
