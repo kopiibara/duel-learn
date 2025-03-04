@@ -281,6 +281,8 @@ const ViewStudyMaterial = () => {
           anchorEl={anchorEl}
           open={open}
           onClose={handleClose}
+          studyMaterialId={studyMaterialId || ""}
+          isOwner={studyMaterial?.created_by_id !== user?.firebase_uid}
         />
       </Box>
     </PageTransition>

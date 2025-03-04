@@ -17,6 +17,7 @@ const studyMaterialController = {
         createdBy,
         createdById,
         totalView = 1,
+        status = "active",
         items, // Receiving items with Base64 images
       } = req.body;
 
@@ -29,14 +30,15 @@ const studyMaterialController = {
       // Insert into study_material_info
       await connection.execute(
         `INSERT INTO study_material_info 
-                (study_material_id, title, tags, total_items, visibility, created_by, created_by_id, total_views, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?,?, ?, ?,?);`,
+                (study_material_id, title, tags, total_items, visibility, status,created_by, created_by_id, total_views, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?,?,?, ?, ?,?);`,
         [
           studyMaterialId,
           title,
           JSON.stringify(tags), // Store tags as a JSON string
           totalItems,
           visibility,
+          status,
           createdBy,
           createdById,
           totalView,
@@ -197,6 +199,29 @@ const studyMaterialController = {
     }
   },
 
+  archiveStudyMaterial: async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+      const { studyMaterialId } = req.params;
+      console.log("Archiving study material with ID:", studyMaterialId);
+
+      // Update visibility to 1 (archived)
+      await connection.execute(
+        `UPDATE study_material_info
+         SET status = 'archived'
+          WHERE study_material_id = ?`,
+        [studyMaterialId]
+      );
+
+      res.status(200).json({ message: "Study material archived successfully" });
+    } catch (error) {
+      console.error("Error archiving study material:", error);
+      res.status(500).json({ error: "Internal server error", details: error });
+    } finally {
+      connection.release();
+    }
+  },
+
   getStudyMaterialById: async (req, res) => {
     const connection = await pool.getConnection();
     try {
@@ -254,7 +279,7 @@ const studyMaterialController = {
       const [infoRows] = await connection.execute(
         `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
                 FROM study_material_info 
-                WHERE created_by = ?;`,
+                WHERE created_by = ? AND status != 'archived';`,
         [created_by]
       );
 

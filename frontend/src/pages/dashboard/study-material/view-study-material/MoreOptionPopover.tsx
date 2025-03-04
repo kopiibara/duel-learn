@@ -1,5 +1,6 @@
-import * as React from "react";
+// import  React from "react";
 import { Popover, Button, Stack, Divider } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import coverPhoto from "../../../../assets/study-material-popover-icons/cover-photo.svg";
 import shareIcon from "../../../../assets/study-material-popover-icons/share-icon.svg";
 import printIcon from "../../../../assets/study-material-popover-icons/print-icon.svg";
@@ -10,14 +11,20 @@ interface MoreOptionPopoverProps {
   anchorEl: HTMLElement | null;
   open: boolean;
   onClose: () => void;
+  studyMaterialId: string;
+  isOwner: boolean;
 }
 
 export default function MoreOptionPopover({
   anchorEl,
   open,
   onClose,
+  studyMaterialId,
+  isOwner,
 }: MoreOptionPopoverProps) {
   const id = open ? "more-options-popover" : undefined;
+
+  const navigate = useNavigate();
 
   const handleChangeCover = () => {
     console.log("Change Cover clicked");
@@ -39,9 +46,34 @@ export default function MoreOptionPopover({
     // Implement export functionality here
   };
 
-  const handleArchive = () => {
-    console.log("Archive clicked");
-    // Implement archive functionality here
+  const handleArchive = async () => {
+    if (!studyMaterialId) return;
+
+    try {
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/study-material/archive/${studyMaterialId}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (response.ok) {
+        console.log("Study material archived successfully");
+        onClose();
+        // Navigate back to the dashboard after archiving
+        navigate("/dashboard/my-library");
+      } else {
+        const errorData = await response.json();
+        console.error("Error archiving study material:", errorData);
+      }
+    } catch (error) {
+      console.error("Error archiving study material:", error);
+    }
   };
 
   return (
@@ -150,26 +182,28 @@ export default function MoreOptionPopover({
           Export
         </Button>
         <Divider sx={{ height: "2px", backgroundColor: "#3B354C" }} />
-        <Button
-          variant="text"
-          startIcon={<img src={archiveIcon} alt="archive-icon" />}
-          sx={{
-            justifyContent: "flex-start",
-            textTransform: "none",
-            color: "inherit",
-            fontWeight: 400,
-            borderRadius: "0.8rem",
-            padding: "0.6rem 1rem",
-            transition: "all 0.3s ease-in-out",
-            "&:hover": {
-              transform: "scale(1.05)",
-              backgroundColor: "#3B354C",
-            },
-          }}
-          onClick={handleArchive}
-        >
-          Archive
-        </Button>
+        {isOwner && (
+          <Button
+            variant="text"
+            startIcon={<img src={archiveIcon} alt="archive-icon" />}
+            sx={{
+              justifyContent: "flex-start",
+              textTransform: "none",
+              color: "inherit",
+              fontWeight: 400,
+              borderRadius: "0.8rem",
+              padding: "0.6rem 1rem",
+              transition: "all 0.3s ease-in-out",
+              "&:hover": {
+                transform: "scale(1.05)",
+                backgroundColor: "#3B354C",
+              },
+            }}
+            onClick={handleArchive}
+          >
+            Archive
+          </Button>
+        )}
       </Stack>
     </Popover>
   );
