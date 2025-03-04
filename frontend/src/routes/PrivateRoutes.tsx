@@ -72,7 +72,7 @@ const PrivateRoutes = () => {
         <Route path="shop" element={<Shop />} />
         <Route path="study-material/create" element={<CreateStudyMaterial />} />
         <Route
-          path="study-material/preview/:studyMaterialId"
+          path="study-material/view/:studyMaterialId"
           element={<ViewStudyMaterial />}
         />
         <Route path="account-settings" element={<AccountSettings />} />

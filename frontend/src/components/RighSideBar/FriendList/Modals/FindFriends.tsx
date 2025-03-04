@@ -8,7 +8,7 @@ import { useFriendList } from "../../../../hooks/friends.hooks/useFriendList";
 import { useFriendSocket } from "../../../../hooks/friends.hooks/useFriendSocket";
 import cauldronGif from "../../../../assets/General/Cauldron.gif";
 import InviteSnackbar from "../../../../components/InviteSnackbar";
-import { FriendRequestData, Friend } from "../../../../types/friend.types";
+import { FriendRequestData, Friend } from "../../../../types/friendObject";
 
 const FindFriends: React.FC = () => {
   const { user } = useUser();

@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@mui/material";
 import ProfileIcon from "../../../assets/profile-picture/kopibara-picture.png";
-import { Friend } from "../../../types/friend.types";
+import { Friend } from "../../../types/friendObject";
 
 interface FriendListItemProps {
   friend: Friend;

@@ -93,15 +93,16 @@ export default {
 
       // Insert the user details into the user_info table
       await connection.execute(
-        `INSERT INTO user_info (firebase_uid, username, display_picture, level, exp, coins)
-         VALUES (?, ?, ?, ?, ?, ?);`,
+        `INSERT INTO user_info (firebase_uid, username, display_picture, level, exp, coins, mana)
+         VALUES (?, ?, ?, ?, ?, ?,?);`,
         [
           firebase_uid,
           username,
           null,
           1, // Default level
-          0, // Default experience points
-          0, // Default coins
+          50, // Default experience points
+          10, // Default coins
+          100, // Default mana
         ]
       );
 
@@ -423,4 +424,7 @@ export default {
       if (connection) connection.release();
     }
   },
-};
+
+
+}
+

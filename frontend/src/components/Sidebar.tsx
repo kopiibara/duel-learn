@@ -237,17 +237,14 @@ const Sidebar: React.FC<SidebarProps> = ({
           {renderButton(
             <AddIcon
               fontSize="small"
-              className={clsx({ "mr-2": !collapsed })}
+              className={clsx({ "mr-1": !collapsed })}
             />,
             "Create",
             "contained",
             handleCreateStudyMaterial
           )}
           {renderButton(
-            <PlayIcon
-              fontSize="small"
-              className={clsx({ "mr-2": !collapsed })}
-            />,
+            <PlayIcon className={clsx({ "mr-1": !collapsed })} />,
             "Play",
             "outlined",
             handleModalOpen

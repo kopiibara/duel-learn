@@ -313,12 +313,24 @@ const FriendRequestController = {
 
     getFriendsLeaderboard: async (req, res) => {
         const { firebase_uid } = req.params;
+        console.log("Fetching leaderboard for user:", firebase_uid);
+
         const connection = await pool.getConnection();
 
         try {
-            // Get the user and their friends' information sorted by level
+            // Debug: First check if the friend relationship exists
+            const [friendCheck] = await connection.execute(
+                `SELECT * FROM friend_requests 
+                WHERE (sender_id = ? OR receiver_id = ?) AND status = 'accepted'`,
+                [firebase_uid, firebase_uid]
+            );
+
+            console.log("Friend relationships found:", friendCheck.length);
+            console.log("Friend data:", friendCheck);
+
+            // Continue with your regular query...
             const [leaderboard] = await connection.execute(
-                `SELECT u.firebase_uid, u.username, u.level, u.exp, u.profile_pic_url,
+                `SELECT u.firebase_uid, u.username, u.level, u.exp, u.display_picture,
                     CASE WHEN u.firebase_uid = ? THEN TRUE ELSE FALSE END as isCurrentUser
                 FROM user_info u
                 WHERE u.firebase_uid = ? 
@@ -335,6 +347,8 @@ const FriendRequestController = {
                 [firebase_uid, firebase_uid, firebase_uid, firebase_uid, firebase_uid, firebase_uid]
             );
 
+            console.log("Leaderboard entries found:", leaderboard.length);
+
             // Add rank information
             const rankedLeaderboard = leaderboard.map((player, index) => ({
                 ...player,
@@ -350,6 +364,30 @@ const FriendRequestController = {
         finally {
             connection.release();
         }
+    },
+
+    getFriendCount: async (req, res) => {
+
+        const { firebase_uid } = req.params;
+        const connection = await pool.getConnection();
+
+        try {
+            const [friendCount] = await connection.execute(
+                `SELECT COUNT(*) as count FROM friend_requests 
+                WHERE (sender_id = ? OR receiver_id = ?) AND status = 'accepted'`,
+                [firebase_uid, firebase_uid]
+            );
+
+            res.status(200).json(friendCount[0]);
+        }
+        catch (error) {
+            console.error("Error retrieving friend count:", error);
+            res.status(500).json({ message: "Error retrieving friend count" });
+        }
+        finally {
+            connection.release();
+        }
+
     }
 
 };

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useFriendSocket } from "./useFriendSocket";
-import { PendingRequest } from "../../types/friend.types";
+import { PendingRequest } from "../../types/friendObject";
 
 export const usePendingFriendRequests = (userId: string | undefined) => {
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);

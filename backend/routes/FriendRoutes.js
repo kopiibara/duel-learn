@@ -9,6 +9,7 @@ router.get("/pending/:firebase_uid", friendController.getPendingFriendRequests);
 router.get("/requests-count/:firebase_uid", friendController.getFriendRequestsCount);
 router.get("/search/:searchQuery", friendController.searchUsers);
 router.get("/leaderboard/:firebase_uid", friendController.getFriendsLeaderboard);
+router.get("/friend-count/:firebase_uid", friendController.getFriendCount);
 
 router.post("/request", friendController.sendFriendRequest);
 router.post("/accept", friendController.acceptFriendRequest);

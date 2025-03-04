@@ -5,8 +5,9 @@ import PageTransition from "../../../styles/PageTransition";
 import MyLibraryCards from "./MyLibraryCards";
 import Filter from "./Filter";
 import { useUser } from "../../../contexts/UserContext";
-import { Item, StudyMaterial } from "../../../types/studyMaterial";
-import cauldronGif from "../../../assets/General/Cauldron.gif"; // Importing the gif animation for cauldron asset
+import { Item, StudyMaterial } from "../../../types/studyMaterialObject";
+import cauldronGif from "../../../assets/General/Cauldron.gif";
+import noStudyMaterial from "../../../assets/images/NoStudyMaterial.svg";
 
 const MyLibraryPage = () => {
   const { user } = useUser();
@@ -61,12 +62,12 @@ const MyLibraryPage = () => {
     if (sort === "most recent") {
       filteredData.sort(
         (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       );
     } else if (sort === "least recent") {
       filteredData.sort(
         (a, b) =>
-          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+          new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
       );
     } else if (sort === "A-Z") {
       filteredData.sort((a, b) => a.title.localeCompare(b.title));
@@ -80,7 +81,7 @@ const MyLibraryPage = () => {
 
   return (
     <PageTransition>
-      <Box className="h-full w-full">
+      <Box className="h-full min-h-screen w-full">
         <DocumentHead title="My Library | Duel Learn" />
         <Stack spacing={2} className="px-8">
           <Stack
@@ -88,12 +89,11 @@ const MyLibraryPage = () => {
             spacing={1}
             className="flex items-center justify-center"
           >
-            <Typography variant="h5" color="inherit">
+            <Typography variant="h6" color="inherit">
               My Library
             </Typography>
-            <Typography variant="h5" color="#6F658D">
-              ({count})
-            </Typography>
+            <Typography variant="subtitle2">•</Typography>
+            <Typography variant="h6">{count}</Typography>
             <Box flexGrow={1} />
             <Stack direction={"row"} spacing={2}>
               <Filter
@@ -132,6 +132,23 @@ const MyLibraryPage = () => {
                 alt="Loading..."
                 style={{ width: "8rem", height: "auto" }}
               />
+            </Box>
+          ) : filteredCards.length === 0 ? (
+            <Box
+              display="flex"
+              flexDirection="column"
+              justifyContent="center"
+              alignItems="center"
+              minHeight="60vh"
+            >
+              <img
+                src={noStudyMaterial}
+                alt="No Study Materials"
+                style={{ width: "22rem", height: "auto" }}
+              />
+              <p className="text-[#6F658D] font-bold text-[1rem] mt-4 pr-4 text-center">
+                You don't have any study materials yet
+              </p>
             </Box>
           ) : (
             created_by && (

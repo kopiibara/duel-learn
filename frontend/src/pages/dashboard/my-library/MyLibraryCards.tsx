@@ -1,25 +1,7 @@
 import { Box, Grid } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import CardComponent from "../../../components/CardComponent";
-
-interface Item {
-  term: string;
-  definition: string;
-  image?: string | null; // Update to string for Base64 images
-}
-
-interface StudyMaterial {
-  title: string;
-  tags: string[];
-  images: string[];
-  total_items: number;
-  created_by: string;
-  visibility: number;
-  created_at: string;
-  total_views: number;
-  study_material_id: string;
-  items: Item[]; // Expecting an array of terms and definitions
-}
+import { StudyMaterial } from "../../../types/studyMaterialObject";
 
 type MyLibraryCardsProps = {
   cards: StudyMaterial[];
@@ -34,7 +16,7 @@ const MyLibraryCards = ({ cards, createdBy }: MyLibraryCardsProps) => {
 
   // Handle card click to navigate to the study material page
   const handleCardClick = (studyMaterialId: string, title: string) => {
-    navigate(`/dashboard/study-material/preview/${studyMaterialId}`, {
+    navigate(`/dashboard/study-material/view/${studyMaterialId}`, {
       state: { title },
     });
   };
@@ -51,7 +33,7 @@ const MyLibraryCards = ({ cards, createdBy }: MyLibraryCardsProps) => {
               totalItems={item.total_items}
               createdBy={item.created_by}
               totalViews={item.total_views}
-              createdAt={item.created_at}
+              createdAt={item.updated_at}
               visibility={item.visibility} // Pass visibility as a number
               items={item.items}
               onClick={() =>

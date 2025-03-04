@@ -5,7 +5,7 @@ import NextIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import PreviousIcon from "@mui/icons-material/ArrowBackIosNewRounded";
 import { useUser } from "../../../contexts/UserContext";
 import { useNavigate } from "react-router-dom";
-import { StudyMaterial } from "../../../types/studyMaterial";
+import { StudyMaterial } from "../../../types/studyMaterialObject";
 
 const DiscoverMore = () => {
   const { user } = useUser();
@@ -80,7 +80,7 @@ const DiscoverMore = () => {
         }
       );
 
-      navigate(`/dashboard/study-material/preview/${studyMaterialId}`, {
+      navigate(`/dashboard/study-material/view/${studyMaterialId}`, {
         state: { title },
       });
     } catch (error) {
@@ -130,7 +130,7 @@ const DiscoverMore = () => {
               totalItems={item.total_items}
               createdBy={item.created_by}
               totalViews={item.total_views}
-              createdAt={item.created_at}
+              createdAt={item.updated_at}
               visibility={item.visibility}
               items={item.items}
               onClick={() =>

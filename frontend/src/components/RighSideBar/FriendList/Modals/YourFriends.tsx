@@ -6,7 +6,7 @@ import { useUser } from "../../../../contexts/UserContext";
 import { Box, Tooltip, Stack } from "@mui/material";
 import ErrorSnackbar from "../../../ErrorsSnackbar";
 import cauldronGif from "../../../../assets/General/Cauldron.gif";
-import { Friend } from "../../../../types/friend.types";
+import { Friend } from "../../../../types/friendObject";
 import noFriend from "../../../../assets/images/NoFriend.svg";
 
 const YourFriends: React.FC = () => {

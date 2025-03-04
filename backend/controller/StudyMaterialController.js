@@ -22,14 +22,15 @@ const studyMaterialController = {
 
       console.log("Generated Study Material ID:", studyMaterialId);
       const currentTimestamp = manilacurrentTimestamp;
+      const updatedTimestamp = currentTimestamp;
 
       await connection.beginTransaction();
 
       // Insert into study_material_info
       await connection.execute(
         `INSERT INTO study_material_info 
-                (study_material_id, title, tags, total_items, visibility, created_by, created_by_id, total_views, created_at)
-                VALUES (?, ?, ?, ?, ?, ?,?, ?, ?);`,
+                (study_material_id, title, tags, total_items, visibility, created_by, created_by_id, total_views, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?,?, ?, ?,?);`,
         [
           studyMaterialId,
           title,
@@ -40,6 +41,7 @@ const studyMaterialController = {
           createdById,
           totalView,
           currentTimestamp,
+          updatedTimestamp,
         ]
       );
 
@@ -77,6 +79,105 @@ const studyMaterialController = {
       });
     } catch (error) {
       console.error("Error saving study material:", error);
+      if (connection) {
+        try {
+          await connection.rollback();
+        } catch (rollbackError) {
+          console.error("Error rolling back transaction:", rollbackError);
+        }
+      }
+      res.status(500).json({ error: "Internal server error", details: error.message });
+    } finally {
+      if (connection) {
+        try {
+          connection.release();
+        } catch (releaseError) {
+          console.error("Error releasing connection:", releaseError);
+        }
+      }
+    }
+  },
+
+  editStudyMaterial: async (req, res) => {
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      const {
+        studyMaterialId,
+        title,
+        tags,
+        totalItems,
+        visibility,
+        items,
+      } = req.body;
+
+      // Validate required fields
+      if (!studyMaterialId || !title || !items || !items.length) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      await connection.beginTransaction();
+
+      // Get current timestamp for the update
+      const updatedTimestamp = manilacurrentTimestamp;
+
+      // Update study_material_info table with timestamp
+      await connection.execute(
+        `UPDATE study_material_info 
+         SET title = ?, tags = ?, total_items = ?, visibility = ?, updated_at = ?
+         WHERE study_material_id = ?`,
+        [
+          title,
+          JSON.stringify(tags), // Store tags as a JSON string
+          totalItems,
+          visibility || 0,
+          updatedTimestamp, // Add the updated timestamp
+          studyMaterialId,
+        ]
+      );
+
+      // Delete existing items for this study material
+      await connection.execute(
+        `DELETE FROM study_material_content WHERE study_material_id = ?`,
+        [studyMaterialId]
+      );
+
+      // Insert updated items into study_material_content
+      const insertItemPromises = items.map(async (item, index) => {
+        const itemId = nanoid();
+        let imageBuffer = null;
+
+        if (item.image) {
+          // Handle both new base64 images and existing ones
+          const base64Data = item.image.toString().replace(/^data:image\/\w+;base64,/, "");
+          imageBuffer = Buffer.from(base64Data, "base64");
+        }
+
+        return connection.execute(
+          `INSERT INTO study_material_content 
+           (study_material_id, item_id, item_number, term, definition, image) 
+           VALUES (?, ?, ?, ?, ?, ?);`,
+          [
+            studyMaterialId,
+            itemId,
+            index + 1,
+            item.term,
+            item.definition,
+            imageBuffer,
+          ]
+        );
+      });
+
+      await Promise.all(insertItemPromises);
+      await connection.commit();
+
+      res.status(200).json({
+        message: "Study material updated successfully",
+        studyMaterialId,
+        updated_at: updatedTimestamp
+      });
+    } catch (error) {
+      console.error("Error editing study material:", error);
       if (connection) {
         try {
           await connection.rollback();
@@ -238,7 +339,6 @@ const studyMaterialController = {
 
       if (infoRows.length === 0) {
         return res
-          .status(404)
           .json({ message: "No study materials found with matching tags" });
       }
 

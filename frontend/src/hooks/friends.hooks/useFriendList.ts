@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { Friend } from "../../types/friend.types";
+import { Friend } from "../../types/friendObject";
 import { useFriendSocket } from "./useFriendSocket";
 
 export const useFriendList = (userId: string | undefined) => {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Socket, io } from "socket.io-client";
-import { FriendRequestData } from "../../types/friend.types";
+import { FriendRequestData } from "../../types/friendObject";
 
 interface UseFriendSocketProps {
   userId: string | undefined;

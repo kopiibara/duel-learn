@@ -1,27 +1,132 @@
-import React, { useState } from "react";
-import { Box, Stack, Button } from "@mui/material";
-import Profile from "../../../assets/profile-picture/bunny-picture.png";
-import ProfileIcon from "../../../assets/profile-picture/kopibara-picture.png";
+import React, { useState, useEffect } from "react";
+import { Box, Stack, CircularProgress } from "@mui/material";
 import GoldMedal from "../../../assets/General/gold-medal.svg";
 import SilverMedal from "../../../assets/General/silver-medal.svg";
 import BronzeMedal from "../../../assets/General/bronze-medal.svg";
+import axios from "axios";
+import { useUser } from "../../../contexts/UserContext"; // Import your auth context
+import defaultAvatar from "../../../assets/profile-picture/bunny-picture.png";
+
+interface LeaderboardPlayer {
+  firebase_uid: string;
+  username: string;
+  level: number;
+  exp: number;
+  display_picture: string;
+  isCurrentUser: boolean;
+  rank: number;
+}
 
 const Leaderboards = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState("Daily");
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardPlayer[]>(
+    []
+  );
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useUser(); // Get the current user from your auth context
 
-  const [covenHierarchy] = useState([
-    { id: 1, name: "SAMIS", xp: 553, avatar: Profile },
-    { id: 2, name: "JUSTINE", xp: 400, avatar: ProfileIcon },
-    { id: 3, name: "BEA", xp: 100, avatar: Profile },
-    { id: 4, name: "JING009", xp: 56, avatar: ProfileIcon },
-    { id: 5, name: "LUCAS", xp: 45, avatar: Profile },
-    { id: 6, name: "MARIA", xp: 30, avatar: ProfileIcon },
-    { id: 7, name: "ALICE", xp: 28, avatar: Profile },
-    { id: 8, name: "BOB", xp: 20, avatar: ProfileIcon },
-    { id: 9, name: "CARLOS", xp: 18, avatar: Profile },
-    { id: 10, name: "ZOE", xp: 12, avatar: ProfileIcon },
-  ]);
+  useEffect(() => {
+    const fetchLeaderboardData = async () => {
+      if (!user?.firebase_uid) {
+        setLoading(false);
+        return;
+      }
+
+      // Update the try-catch block in fetchLeaderboardData with better type handling:
+
+      try {
+        setLoading(true);
+
+        // Debug the API URL
+        const apiUrl = `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/friend/leaderboard/${user.firebase_uid}`;
+        console.log("Fetching from:", apiUrl);
+
+        const response = await axios.get(apiUrl);
+        console.log("API Response type:", typeof response.data);
+        console.log("API Response:", response.data);
+
+        if (response.data === null || response.data === undefined) {
+          console.error("API returned null or undefined");
+          setLeaderboardData([]);
+          setError("No data received from server");
+          return;
+        }
+
+        // Handle string response - try to parse it as JSON if possible
+        if (typeof response.data === "string") {
+          console.error("API returned string instead of array:", response.data);
+          try {
+            // Try to parse it as JSON
+            const parsedData = JSON.parse(response.data);
+            if (Array.isArray(parsedData)) {
+              console.log("Successfully parsed string as JSON array");
+
+              // Add rank if missing
+              const dataWithRank = parsedData.map((player, index) => ({
+                ...player,
+                rank: player.rank || index + 1,
+              }));
+
+              setLeaderboardData(dataWithRank);
+              setError(null);
+              return;
+            }
+          } catch (jsonError) {
+            console.error("Failed to parse response as JSON:", jsonError);
+          }
+
+          // If we got here, string wasn't valid JSON array
+          setLeaderboardData([]);
+          setError(
+            `Server returned text instead of data: ${response.data.substring(
+              0,
+              50
+            )}...`
+          );
+          return;
+        }
+
+        // Continue with existing array handling logic
+        // Continue with existing array handling logic
+        if (Array.isArray(response.data)) {
+          console.log("Processing array data:", response.data.length, "items");
+          // Add rank if not already present
+          const dataWithRank = response.data.map((player, index) => ({
+            ...player,
+            rank: player.rank || index + 1,
+          }));
+
+          setLeaderboardData(dataWithRank);
+          setError(null);
+        } else if (
+          typeof response.data === "object" &&
+          response.data !== null
+        ) {
+          console.error(
+            "Response is an object but not an array:",
+            response.data
+          );
+          setLeaderboardData([]);
+          setError("Invalid data format: expected array but got object");
+        } else {
+          console.error("Unexpected response format:", typeof response.data);
+          setLeaderboardData([]);
+          setError(
+            `Invalid data format: expected array but got ${typeof response.data}`
+          );
+        }
+      } catch (err) {
+        // Your existing error handling...
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLeaderboardData();
+  }, [user]);
 
   // Medal assignment function
   const getMedal = (rank: number): string | undefined => {
@@ -30,6 +135,8 @@ const Leaderboards = () => {
     if (rank === 3) return BronzeMedal;
     return undefined;
   };
+
+  const getDefaultAvatar = () => "/default-avatar.png"; // Replace with your default avatar path
 
   return (
     <Box className="rounded-[1rem] shadow-md border-[3px] border-[#3B354C]">
@@ -45,31 +152,56 @@ const Leaderboards = () => {
 
         <hr className="border-t-2 border-[#3B354D] mb-7" />
 
-        {covenHierarchy.slice(0, 5).map((member, index) => (
-          <div
-            key={member.id}
-            className="flex items-center justify-between mb-4"
-          >
-            <div className="flex items-center">
-              {index < 3 ? (
-                <img
-                  src={getMedal(index + 1)}
-                  alt="Medal"
-                  className="w-8 h-8 mr-5"
-                />
-              ) : (
-                <p className="text-lg font-semibold ml-3 mr-7">{index + 1}</p>
-              )}
-              <img
-                src={member.avatar}
-                alt="Avatar"
-                className="w-12 h-12 rounded-[5px] object-cover mr-3"
-              />
-              <p className="font-medium">{member.name}</p>
-            </div>
-            <p className="text-gray-400">{member.xp} XP</p>
+        {loading ? (
+          <div className="flex justify-center items-center h-64">
+            <CircularProgress />
           </div>
-        ))}
+        ) : error ? (
+          <div className="text-center text-red-500 py-8">{error}</div>
+        ) : leaderboardData.length === 0 ? (
+          <div className="text-center text-gray-400 py-8">
+            No friends found. Add friends to see your leaderboard!
+          </div>
+        ) : (
+          leaderboardData.slice(0, 5).map((player) => (
+            <div
+              key={player.firebase_uid}
+              className={`flex items-center justify-between mb-4 ${
+                player.isCurrentUser ? "bg-[#221f2e] rounded-lg px-6 py-4" : ""
+              }`}
+            >
+              <div className="flex items-center">
+                {player.rank <= 3 ? (
+                  <img
+                    src={getMedal(player.rank)}
+                    alt={`Rank ${player.rank}`}
+                    className="w-8 h-8 mr-5"
+                  />
+                ) : (
+                  <p className="text-lg font-semibold ml-3 mr-7">
+                    {player.rank}
+                  </p>
+                )}
+                <img
+                  src={player.display_picture || defaultAvatar}
+                  alt="Avatar"
+                  className="w-12 h-12 rounded-[5px] object-cover mr-3"
+                />
+                <p
+                  className={`font-medium ${
+                    player.isCurrentUser ? "text-[#A38CE6]" : ""
+                  }`}
+                >
+                  {player.username}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-gray-400">{player.exp} XP</p>
+                <p className="text-sm text-gray-500">Level {player.level}</p>
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* View More Button */}
@@ -79,8 +211,12 @@ const Leaderboards = () => {
         className="flex justify-center bg-[#120F1C] py-6 px-4 border-t-[3px] rounded-b-[0.8rem] border-[#3B354C]"
       >
         <p
-          className="text-[#3B354D] hover:text-[#A38CE6] cursor-pointer transition-colors font-bold"
-          onClick={() => setIsModalOpen(true)}
+          className={`${
+            leaderboardData.length > 3
+              ? "text-[#3B354D] hover:text-[#A38CE6] cursor-pointer transition-colors font-bold"
+              : "text-[#232029] cursor-not-allowed font-bold"
+          }`}
+          onClick={() => leaderboardData.length > 5 && setIsModalOpen(true)}
         >
           VIEW MORE
         </p>
@@ -97,35 +233,48 @@ const Leaderboards = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl text-white font-semibold">
-              Top 10 Leaderboards
+              Friend Leaderboard
             </h2>
             <hr className="border-t-2 border-[#363D46] w-full mb-6" />
             <div className="overflow-y-auto w-full max-h-[40vh] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-4">
-              {covenHierarchy.map((member, index) => (
+              {leaderboardData.map((player) => (
                 <div
-                  key={member.id}
-                  className="flex items-center justify-between w-full px-6 mb-4"
+                  key={player.firebase_uid}
+                  className={`flex items-center justify-between w-full px-6 mb-4 ${
+                    player.isCurrentUser ? "bg-[#221f2e] rounded-lg p-2" : ""
+                  }`}
                 >
                   <div className="flex items-center">
-                    {index < 3 ? (
+                    {player.rank <= 3 ? (
                       <img
-                        src={getMedal(index + 1)}
-                        alt="Medal"
+                        src={getMedal(player.rank)}
+                        alt={`Rank ${player.rank}`}
                         className="w-8 h-8 mr-5"
                       />
                     ) : (
                       <p className="text-lg font-semibold ml-3 mr-7">
-                        {index + 1}
+                        {player.rank}
                       </p>
                     )}
                     <img
-                      src={member.avatar}
+                      src={player.display_picture || getDefaultAvatar()}
                       alt="Avatar"
                       className="w-12 h-12 rounded-[5px] object-cover mr-3"
                     />
-                    <p className="font-medium">{member.name}</p>
+                    <p
+                      className={`font-medium ${
+                        player.isCurrentUser ? "text-[#A38CE6]" : ""
+                      }`}
+                    >
+                      {player.username}
+                    </p>
                   </div>
-                  <p className="text-gray-400">{member.xp} XP</p>
+                  <div className="text-right">
+                    <p className="text-gray-400">{player.exp} XP</p>
+                    <p className="text-sm text-gray-500">
+                      Level {player.level}
+                    </p>
+                  </div>
                 </div>
               ))}
             </div>

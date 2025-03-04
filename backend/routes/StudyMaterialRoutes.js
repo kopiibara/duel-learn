@@ -5,6 +5,7 @@ const router = express.Router();
 
 // Use studyMaterialController.saveStudyMaterial instead of saveStudyMaterial directly
 router.post("/save", studyMaterialController.saveStudyMaterial);
+router.post("/update", studyMaterialController.editStudyMaterial);
 router.post('/increment-views/:studyMaterialId', studyMaterialController.incrementViews);
 
 router.get("/get-by-study-material-id/:studyMaterialId", studyMaterialController.getStudyMaterialById);

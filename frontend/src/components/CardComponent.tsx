@@ -10,6 +10,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { styled } from "@mui/system";
+import defaultCover from "../assets/study-material-cover/cardBackground.svg";
 
 interface Item {
   term: string;
@@ -206,7 +207,7 @@ const CardComponent: React.FC<CardComponentProps> = ({
             width: isXsScreen ? "9rem" : isSmScreen ? "10rem" : "12rem",
             height: "100%",
           }}
-          image="/cardBackground.svg"
+          image={defaultCover}
         />
       </CardContent>
     </ModeCard>

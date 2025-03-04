@@ -6,8 +6,9 @@ import PageTransition from "../../../styles/PageTransition";
 import ExploreCards from "./ExploreCards";
 import { useUser } from "../../../contexts/UserContext";
 import AutoHideSnackbar from "../../../components/ErrorsSnackbar";
-import { Item, StudyMaterial } from "../../../types/studyMaterial";
-import cauldronGif from "../../../assets/General/Cauldron.gif"; // Importing the gif animation for cauldron asset
+import { StudyMaterial } from "../../../types/studyMaterialObject";
+import cauldronGif from "../../../assets/General/Cauldron.gif";
+import noStudyMaterial from "../../../assets/images/NoStudyMaterial.svg";
 
 const ExplorePage = () => {
   const { user } = useUser();
@@ -42,12 +43,20 @@ const ExplorePage = () => {
     }
   };
 
-  // Fetch recommended cards
+  // Fix the fetchRecommendedCards function to be fully consistent
   const fetchRecommendedCards = async () => {
-    console.log("Fetching recommended cards for:", user?.username); // Debugging
-    if (!user?.username) return;
-    const encodedUser = encodeURIComponent(user?.username);
+    console.log("Fetching recommended cards for:", user?.username);
 
+    // Clear BOTH states immediately upon starting a new fetch
+    setCards([]);
+    setFilteredCards([]);
+
+    if (!user?.username) {
+      setIsLoading(false);
+      return;
+    }
+
+    const encodedUser = encodeURIComponent(user?.username);
     setIsLoading(true);
 
     try {
@@ -56,49 +65,66 @@ const ExplorePage = () => {
           import.meta.env.VITE_BACKEND_URL
         }/api/study-material/get-recommended-for-you/${encodedUser}`
       );
-      console.log("Response status:", response.status);
+
+      if (response.status === 404) {
+        console.log("No tags found for user. Showing empty results.");
+        return; // Both states already cleared above
+      }
 
       if (!response.ok) {
-        const errorText = await response.text(); // Get detailed error
+        const errorText = await response.text();
         throw new Error(`Failed to fetch recommended cards: ${errorText}`);
       }
 
       const data: StudyMaterial[] = await response.json();
       console.log("Fetched data:", data);
 
-      if (Array.isArray(data)) {
+      if (Array.isArray(data) && data.length > 0) {
+        setCards(data);
+        setFilteredCards(data);
+      }
+      // No need for else case - states are already cleared at the beginning
+    } catch (error) {
+      console.error("Error fetching recommended cards:", error);
+      // States already cleared at the beginning
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  // Fetch top picks
+  const fetchTopPicks = async () => {
+    // Clear both states immediately
+    setCards([]);
+    setFilteredCards([]);
+    setIsLoading(true);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/study-material/get-top-picks`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch top picks: ${response.status}`);
+      }
+
+      const data: StudyMaterial[] = await response.json();
+
+      if (Array.isArray(data) && data.length > 0) {
         setCards(data);
         setFilteredCards(data);
       }
     } catch (error) {
-      console.error("Error fetching recommended cards:", error);
+      console.error("Error fetching top picks:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Fetch top picks
-  const fetchTopPicks = async () => {
-    setIsLoading(true); // Set loading to true before fetch
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/study-material/get-top-picks`
-      );
-      const data: StudyMaterial[] = await response.json();
-
-      if (Array.isArray(data)) {
-        setFilteredCards(data);
-      } else {
-        console.error("Unexpected response format:", data);
-      }
-    } catch (error) {
-      console.error("Error fetching top picks:", error);
-    } finally {
-      setIsLoading(false); // Set loading to false after fetch
-    }
-  };
-
   const fetchMadeByFriends = async () => {
+    // Clear both states immediately
+    setCards([]);
+    setFilteredCards([]);
+
     if (!user?.firebase_uid) {
       console.error("Username is undefined");
       setIsLoading(false);
@@ -127,13 +153,16 @@ const ExplorePage = () => {
       console.log("Fetched study materials from friends:", data);
 
       if (Array.isArray(data)) {
+        setCards(data);
         setFilteredCards(data);
       } else {
         console.error("Unexpected response format:", data);
+        setCards([]);
         setFilteredCards([]);
       }
     } catch (error) {
       console.error("Error fetching study materials from friends:", error);
+      setCards([]);
       setFilteredCards([]);
       setSnackbarMessage(
         "Failed to load friend materials. Please try again later."
@@ -277,13 +306,19 @@ const ExplorePage = () => {
       key={index}
       sx={{
         textTransform: "none",
+        borderRadius: "0.8rem",
+        padding: "0.5rem 1rem",
         color: selected === index ? "#E2DDF3" : "#3B354D",
         transition: "all 0.3s ease",
-        "&:hover": { color: "inherit" },
+        "&:hover": {
+          color: "inherit",
+          transform: "scale(1.01)",
+          backgroundColor: "#3B354C",
+        },
       }}
       onClick={() => handleClick(index)}
     >
-      <Typography variant="h5">{label}</Typography>
+      <Typography variant="h6">{label}</Typography>
     </Button>
   ));
 
@@ -292,9 +327,7 @@ const ExplorePage = () => {
       <Box className="h-full w-auto">
         <DocumentHead title="Explore | Duel Learn" />
         <Stack className="px-5" spacing={2}>
-          <Stack direction="row" spacing={1} paddingX={0.5}>
-            {breadcrumbs}
-          </Stack>
+          <Stack direction="row">{breadcrumbs}</Stack>
           {isLoading ? (
             <Box
               display="flex"
@@ -307,6 +340,27 @@ const ExplorePage = () => {
                 alt="Loading..."
                 style={{ width: "8rem", height: "auto" }}
               />
+            </Box>
+          ) : filteredCards.length === 0 ? (
+            <Box
+              display="flex"
+              flexDirection="column"
+              justifyContent="center"
+              alignItems="center"
+              minHeight="60vh"
+            >
+              <img
+                src={noStudyMaterial}
+                alt="No Study Materials"
+                style={{ width: "20rem", height: "auto" }}
+              />
+              <p className="text-[#6F658D] font-bold text-[1rem] mt-4 pr-7 text-center">
+                {selected === 1
+                  ? "No recommended study materials found for you yet"
+                  : selected === 2
+                  ? "No study materials from your friends found"
+                  : "No study materials available"}
+              </p>
             </Box>
           ) : (
             <ExploreCards cards={filteredCards} />

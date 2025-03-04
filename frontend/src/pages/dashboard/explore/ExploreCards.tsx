@@ -15,7 +15,7 @@ interface StudyMaterial {
   created_by: string;
   total_views: number;
   visibility: number;
-  created_at: string;
+  updated_at: string;
   study_material_id: string;
   items: Item[]; // Expecting an array of terms and definitions
 }
@@ -38,7 +38,7 @@ const ExploreCards = ({ cards }: ExploreCardsProps) => {
         }
       );
 
-      navigate(`/dashboard/study-material/preview/${studyMaterialId}`, {
+      navigate(`/dashboard/study-material/view/${studyMaterialId}`, {
         state: { title },
       });
     } catch (error) {
@@ -58,7 +58,7 @@ const ExploreCards = ({ cards }: ExploreCardsProps) => {
               totalItems={item.total_items}
               createdBy={item.created_by}
               totalViews={item.total_views}
-              createdAt={item.created_at}
+              createdAt={item.updated_at}
               visibility={item.visibility} // Pass visibility as a number
               items={item.items}
               onClick={() =>

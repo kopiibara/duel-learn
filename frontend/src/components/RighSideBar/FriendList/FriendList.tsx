@@ -14,7 +14,7 @@ import {
   SnackbarState,
   FriendRequestData,
   Friend,
-} from "../../../types/friend.types";
+} from "../../../types/friendObject";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import noFriend from "../../../assets/images/NoFriend.svg";
@@ -195,7 +195,6 @@ const FriendList: React.FC = () => {
   return (
     <>
       <Box className="rounded-[1rem] shadow-md border-[0.2rem] border-[#3B354C]">
-
         <div className="px-8 pt-8 pb-5">
           <div className="flex flex-row items-center mb-5 gap-4">
             <img src="/bunny.png" className="w-[41px] h-[35px]" alt="icon" />

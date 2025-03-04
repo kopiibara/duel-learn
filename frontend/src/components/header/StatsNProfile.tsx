@@ -1,24 +1,50 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import CoinIcon from "../../assets/CoinIcon.png";
 import ManaIcon from "../../assets/ManaIcon.png";
-import Tooltip from "@mui/material/Tooltip"; // Import Tooltip from Material-UI
-import ProfilePopover from "./ProfilePopover"; // Import the ProfilePopover component
-import { Avatar, Box } from "@mui/material"; // Import Avatar from Material-UI
-import { useUser } from "../../contexts/UserContext"; // Import the useUser hook
-import sampleAvatarDeployment from "../../assets/profile-picture/bunny-picture.png"; // Import the sample avatar image
+import Tooltip from "@mui/material/Tooltip";
+import ProfilePopover from "./ProfilePopover";
+import { Avatar, Box, CircularProgress } from "@mui/material";
+import { useUser } from "../../contexts/UserContext";
+import sampleAvatarDeployment from "../../assets/profile-picture/bunny-picture.png";
+import axios from "axios";
+import { UserInfo } from "../../types/userInfoObject";
+
+// User info interface
 
 const StatsNProfile = () => {
   const { user } = useUser();
-  // State for dynamic data
-  const [stats] = useState({
-    xp: 500,
-    mana: 200,
-    hasNotifications: true, // Default notification status
-    profileImg: "", // Avatar image
-  });
+  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // State to control the popover visibility
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  // Fetch user info from the API
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      if (!user?.firebase_uid) return;
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/user-info/details/${
+            user.firebase_uid
+          }`
+        );
+        setUserInfo(response.data.user);
+      } catch (err) {
+        console.error("Error fetching user info:", err);
+        setError("Failed to load user data");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserInfo();
+  }, [user?.firebase_uid]);
 
   // Handle profile icon click to open/close popover
   const handleProfileClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -32,43 +58,51 @@ const StatsNProfile = () => {
 
   return (
     <Box className="flex items-center space-x-2 sm:space-x-6">
-      {/* Xp */}
-      <Tooltip
-        title="Coin"
-        arrow
-        sx={{
-          "& .MuiTooltip-tooltip": {
-            padding: "8px 12px",
-            fontSize: "16px",
-            fontWeight: "bold",
-            animation: "fadeInOut 0.3s ease-in-out",
-          },
-        }}
-      >
-        <div className="flex items-center space-x-2">
-          <img src={CoinIcon} alt="Coins" className="w-6 h-6" />
-          <span className="text-[#fff]">{stats.xp}</span>
-        </div>
-      </Tooltip>
+      {loading ? (
+        <CircularProgress size={24} color="inherit" />
+      ) : error ? (
+        <span className="text-red-500 text-sm">{error}</span>
+      ) : (
+        <>
+          {/* Coin */}
+          <Tooltip
+            title="Coin"
+            arrow
+            sx={{
+              "& .MuiTooltip-tooltip": {
+                padding: "8px 12px",
+                fontSize: "16px",
+                fontWeight: "bold",
+                animation: "fadeInOut 0.3s ease-in-out",
+              },
+            }}
+          >
+            <div className="flex items-center space-x-2">
+              <img src={CoinIcon} alt="Coins" className="w-6 h-6" />
+              <span className="text-[#fff]">{userInfo?.coin || 0}</span>
+            </div>
+          </Tooltip>
 
-      {/* Mana Icon */}
-      <Tooltip
-        title="Mana"
-        arrow
-        sx={{
-          "& .MuiTooltip-tooltip": {
-            padding: "8px 12px",
-            fontSize: "16px",
-            fontWeight: "bold",
-            animation: "fadeInOut 0.3s ease-in-out",
-          },
-        }}
-      >
-        <div className="flex items-center space-x-2">
-          <img src={ManaIcon} alt="Mana" className="w-6 h-6" />
-          <span className="text-[#fff]">{stats.mana}</span>
-        </div>
-      </Tooltip>
+          {/* Mana Icon */}
+          <Tooltip
+            title="Mana"
+            arrow
+            sx={{
+              "& .MuiTooltip-tooltip": {
+                padding: "8px 12px",
+                fontSize: "16px",
+                fontWeight: "bold",
+                animation: "fadeInOut 0.3s ease-in-out",
+              },
+            }}
+          >
+            <div className="flex items-center space-x-2">
+              <img src={ManaIcon} alt="Mana" className="w-6 h-6" />
+              <span className="text-[#fff]">{userInfo?.mana || 0}</span>
+            </div>
+          </Tooltip>
+        </>
+      )}
 
       {/* Profile Avatar */}
       <Tooltip
@@ -85,15 +119,19 @@ const StatsNProfile = () => {
       >
         <Avatar
           variant="rounded"
-          onClick={handleProfileClick} // Open popover on click
-          src={user?.display_picture || sampleAvatarDeployment} // Ensure null is converted to undefined
-          alt={user?.email || "User"} // Fallback if displayName is not available
+          onClick={handleProfileClick}
+          src={
+            user?.display_picture ||
+            userInfo?.display_picture ||
+            sampleAvatarDeployment
+          }
+          alt={user?.email || "User"}
           sx={{
-            cursor: "pointer", // Change cursor to pointer on hover
-            transition: "transform 0.3s ease, background-color 0.3s ease", // Smooth transition for hover effects
+            cursor: "pointer",
+            transition: "transform 0.3s ease, background-color 0.3s ease",
             "&:hover": {
-              transform: "scale(1.1)", // Slightly enlarge the avatar on hover
-              backgroundColor: "rgba(0, 0, 0, 0.08)", // Optional: add a subtle background color change on hover
+              transform: "scale(1.1)",
+              backgroundColor: "rgba(0, 0, 0, 0.08)",
             },
           }}
         />
@@ -101,9 +139,9 @@ const StatsNProfile = () => {
 
       {/* Profile Popover */}
       <ProfilePopover
-        anchorEl={anchorEl} // Pass the anchor element
-        open={Boolean(anchorEl)} // Open if anchorEl is not null
-        handleClose={handlePopoverClose} // Close the popover
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        handleClose={handlePopoverClose}
       />
     </Box>
   );
