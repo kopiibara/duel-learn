@@ -122,15 +122,19 @@ export default {
     try {
       const { firebase_uid, password_hash, updated_at } = req.body;
 
-      // Convert the updated_at to the desired format
-      const sqlTimestamp = moment(updated_at).format("YYYY-MM-DD HH:mm:ss");
+      if (!firebase_uid || !password_hash) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      // Convert the updated_at to the desired format, or use current timestamp if not provided
+      const sqlTimestamp = updated_at ? moment(updated_at).format("YYYY-MM-DD HH:mm:ss") : moment().format("YYYY-MM-DD HH:mm:ss");
 
       // Get a connection from the pool
       connection = await pool.getConnection();
 
       // Update the user's password hash and updated_at in the database
       await connection.execute(
-        `UPDATE users SET password_hash = ?, updated_at = ? WHERE firebase_uid = ?;`,
+        `UPDATE users SET password_hash = ?, updated_at = ? WHERE firebase_uid = ?`,
         [password_hash, sqlTimestamp, firebase_uid]
       );
 
@@ -140,7 +144,7 @@ export default {
       });
     } catch (error) {
       console.error("Error resetting password:", error);
-      res.status(500).json({ error: "Internal server error", details: error });
+      res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
       if (connection) connection.release();
     }
