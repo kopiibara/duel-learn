@@ -10,6 +10,7 @@ import { usePendingFriendRequests } from "../../../hooks/friends.hooks/usePendin
 interface FriendListActionsProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  pendingCount?: number;
 }
 
 const FriendListActions: React.FC<FriendListActionsProps> = ({
@@ -23,7 +24,8 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
     <Stack
       direction={"row"}
       spacing={1}
-      className="flex justify-between bg-[#120F1C] py-6 px-4 border-t-[3px] rounded-b-[0.8rem] border-[#3B354C]"
+      className="flex justify-between bg-[#120F1C] py-[1.25rem] px-[0.8rem] border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
+
     >
       <Tooltip title="Your Friends" placement="top" enterDelay={100} arrow>
         <button

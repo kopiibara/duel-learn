@@ -10,6 +10,7 @@ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   activeTab: string;
+  onFriendRequestHandled?: () => void; // New prop
   setActiveTab: (tab: string) => void; // Function to update active tab in the parent
   fromPVPLobby?: boolean; // New prop to indicate if opened from PVPLobby
 }
@@ -19,6 +20,7 @@ const FriendListModal: React.FC<ModalProps> = ({
   onClose,
   activeTab,
   setActiveTab,
+  onFriendRequestHandled,
   fromPVPLobby = false, // Default to false
 }) => {
   useEffect(() => {
@@ -65,7 +67,7 @@ const FriendListModal: React.FC<ModalProps> = ({
           </IconButton>
         </Tooltip>
 
-        <div className="w-full mb-7 flex justify-center">
+        <div className="w-full mb-8 flex justify-center">
           <img src={ModalIconFriendList} className="w-16" alt="Friend List" />
         </div>
 
@@ -73,6 +75,16 @@ const FriendListModal: React.FC<ModalProps> = ({
         <div className="flex justify-center border-gray-600 mb-5">
           <button
             onClick={() => setActiveTab("YOUR FRIENDS")}
+            className={`flex-1 py-2 text-[0.95rem] font-bold text-center  ${
+              activeTab === "YOUR FRIENDS"
+                ? "text-[#E2DDF3] border-b-2 border-[#E2DDF3] "
+                : "text-[#6F658D] hover:text-[#E2DDF3]"
+            }`}
+          >
+            YOUR FRIENDS
+          </button>
+          
+
             className={`flex-1 py-2 text-sm text-center ${activeTab === "YOUR FRIENDS"
               ? "text-white border-b-2 border-[#E2DDF3] font-semibold"
               : "text-gray-400 hover:text-white"
@@ -83,26 +95,29 @@ const FriendListModal: React.FC<ModalProps> = ({
 
           {fromPVPLobby ? null : (
             <>
-              <button
-                onClick={() => setActiveTab("FRIEND REQUESTS")}
-                className={`flex-1 py-2 text-sm text-center ${activeTab === "FRIEND REQUESTS"
-                  ? "text-white border-b-2 border-[#E2DDF3] font-semibold"
-                  : "text-gray-400 hover:text-white"
-                  }`}
-              >
-                FRIEND REQUESTS
-              </button>
-              <button
-                onClick={() => setActiveTab("FIND FRIENDS")}
-                className={`flex-1 py-2 text-sm text-center ${activeTab === "FIND FRIENDS"
-                  ? "text-white border-b-2 border-[#E2DDF3] font-semibold"
-                  : "text-gray-400 hover:text-white"
-                  }`}
-              >
-                FIND FRIENDS
-              </button>
+           <button
+            onClick={() => setActiveTab("FRIEND REQUESTS")}
+            className={`flex-1 py-2 text-[0.95rem] font-bold text-center ${
+              activeTab === "FRIEND REQUESTS"
+                ? "text-[#E2DDF3] border-b-2 border-[#E2DDF3] "
+                : "text-[#6F658D] hover:text-[#E2DDF3]"
+            }`}
+          >
+            FRIEND REQUESTS
+          </button>
+          <button
+            onClick={() => setActiveTab("FIND FRIENDS")}
+            className={`flex-1 py-2 text-[0.95rem] font-bold text-center ${
+              activeTab === "FIND FRIENDS"
+                ? "text-[#E2DDF3] border-b-2 border-[#E2DDF3] "
+                : "text-[#6F658D] hover:text-[#E2DDF3]"
+            }`}
+          >
+            FIND FRIENDS
+          </button>
             </>
           )}
+
         </div>
 
         {/* Content */}
@@ -110,7 +125,8 @@ const FriendListModal: React.FC<ModalProps> = ({
           {activeTab === "YOUR FRIENDS" && <YourFriends />}
           {fromPVPLobby ? null : (
             <>
-              {!fromPVPLobby && activeTab === "FRIEND REQUESTS" && <FriendRequests />}
+              {!fromPVPLobby && activeTab === "FRIEND REQUESTS" && (
+            <FriendRequests onFriendRequestHandled={onFriendRequestHandled} />}
               {!fromPVPLobby && activeTab === "FIND FRIENDS" && <FindFriends />}
             </>
           )}

@@ -59,13 +59,6 @@ const HomePage = ({
           </Stack>
 
           <Stack spacing={0}>
-            <Typography variant="h5" className="pl-2">
-              Recently Opened
-            </Typography>
-            <RecentlyOpened />
-          </Stack>
-
-          <Stack spacing={0}>
             <Stack direction={"row"} spacing={2} className="flex items-center">
               <Typography variant="h5" className="pl-2">
                 Discover more materials
@@ -89,6 +82,13 @@ const HomePage = ({
               </Button>
             </Stack>
             <DiscoverMore />
+          </Stack>
+
+          <Stack spacing={0}>
+            <Typography variant="h5" className="pl-2">
+              Recently Opened
+            </Typography>
+            <RecentlyOpened />
           </Stack>
         </Stack>
       </Box>

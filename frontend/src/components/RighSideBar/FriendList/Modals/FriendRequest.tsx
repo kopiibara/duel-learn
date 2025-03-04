@@ -5,10 +5,17 @@ import { usePendingFriendRequests } from "../../../../hooks/friends.hooks/usePen
 import { useFriendList } from "../../../../hooks/friends.hooks/useFriendList";
 import { useUser } from "../../../../contexts/UserContext";
 import cauldronGif from "../../../../assets/General/Cauldron.gif";
+import noFriend from "../../../../assets/images/NoFriend.svg";
 import ErrorSnackbar from "../../../ErrorsSnackbar";
-import { Box, Tooltip } from "@mui/material";
+import { Box, Tooltip, Stack } from "@mui/material";
 
-const FriendRequests: React.FC = () => {
+interface FriendRequestsProps {
+  onFriendRequestHandled?: () => void; // New prop to notify parent of changes
+}
+
+const FriendRequests: React.FC<FriendRequestsProps> = ({
+  onFriendRequestHandled,
+}) => {
   const { user } = useUser();
   const [successMessage, setSuccessMessage] = useState<string>("");
   const {
@@ -23,20 +30,46 @@ const FriendRequests: React.FC = () => {
 
   const onAcceptRequest = async (senderId: string, senderUsername: string) => {
     try {
+      console.log(
+        `Accepting friend request from ${senderUsername} (${senderId})`
+      );
+
+      // Accept the friend request
       await handleAcceptRequest(senderId, senderUsername);
+
+      // Refresh the friend list
       await fetchFriends();
+
+      // Notify the parent component so it can update the badge count
+      if (onFriendRequestHandled) {
+        onFriendRequestHandled();
+      }
+
+      // Show success message
       setSuccessMessage(`You are now friends with ${senderUsername}!`);
+
+      // Reset the message after a delay
       setTimeout(() => {
-        setSuccessMessage(" ");
+        setSuccessMessage("");
       }, 3000);
     } catch (err) {
       console.error("Error accepting friend request:", err);
+      setSuccessMessage(
+        `Failed to accept friend request from ${senderUsername}. Please try again.`
+      );
     }
   };
 
   const onRejectRequest = async (senderId: string, senderUsername: string) => {
     try {
+      // Reject the request
       await handleRejectRequest(senderId);
+
+      // Notify the parent component so it can update the badge count
+      if (onFriendRequestHandled) {
+        onFriendRequestHandled();
+      }
+
       setSuccessMessage(`Friend request from ${senderUsername} declined`);
       setTimeout(() => {
         setSuccessMessage("");
@@ -64,9 +97,24 @@ const FriendRequests: React.FC = () => {
 
   if (pendingRequests.length === 0) {
     return (
-      <div className="text-gray-400 text-center p-4">
-        No pending friend requests
-      </div>
+      <Stack
+        spacing={2}
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+      >
+        <Box display="flex" justifyContent="center" alignItems="center">
+          <img
+            src={noFriend}
+            alt="noFriend"
+            style={{ width: "12rem", height: "auto" }}
+          />
+        </Box>
+        <p className=" text-[#6F658D] font-bold text-[0.95rem] ">
+          {" "}
+          Nothing to see here yet!
+        </p>
+      </Stack>
     );
   }
 

@@ -26,8 +26,8 @@ const ExplorePage = () => {
   );
 
   // Fetch data based on current selection
-  const refreshData = async () => {
-    switch (selected) {
+  const refreshData = async (currentSelection = selected) => {
+    switch (currentSelection) {
       case 0:
         await fetchTopPicks();
         break;
@@ -99,10 +99,14 @@ const ExplorePage = () => {
   };
 
   const fetchMadeByFriends = async () => {
-    if (!user?.username) {
-      console.error("User username is undefined");
+    if (!user?.firebase_uid) {
+      console.error("Username is undefined");
+      setIsLoading(false);
+      setSnackbarMessage("User information missing. Please log in again.");
+      setSnackbarOpen(true);
       return;
     }
+
     setIsLoading(true);
 
     try {
@@ -110,58 +114,157 @@ const ExplorePage = () => {
         `${
           import.meta.env.VITE_BACKEND_URL
         }/api/study-material/get-made-by-friends/${encodeURIComponent(
-          user.username
+          user.firebase_uid
         )}`
       );
 
-      if (!response.ok)
-        throw new Error(`Failed to fetch: ${response.statusText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch: ${response.status} - ${errorText}`);
+      }
 
       const data: StudyMaterial[] = await response.json();
+      console.log("Fetched study materials from friends:", data);
 
       if (Array.isArray(data)) {
         setFilteredCards(data);
       } else {
         console.error("Unexpected response format:", data);
+        setFilteredCards([]);
       }
     } catch (error) {
-      console.error("Error fetching made by friends:", error);
+      console.error("Error fetching study materials from friends:", error);
+      setFilteredCards([]);
+      setSnackbarMessage(
+        "Failed to load friend materials. Please try again later."
+      );
+      setSnackbarOpen(true);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Update the isRelevantToCurrentView function
+  const isRelevantToCurrentView = async (material: StudyMaterial) => {
+    if (!user?.firebase_uid) return false;
+
+    // For "Top Picks" - always relevant
+    if (selected === 0) return true;
+
+    // For "Recommended for You" - check if tags match user's interests
+    if (selected === 1) {
+      // You can implement a more sophisticated check here
+      // For now, we'll just refresh the recommended data
+      return true;
+    }
+
+    // For "Made by Friends" - check if creator is a friend
+    if (selected === 2) {
+      try {
+        // Quick check if the material was created by a friend
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/study-material/get-made-by-friends/${
+            user.firebase_uid
+          }/${encodeURIComponent(material.created_by_id || "")}`
+        );
+
+        if (response.ok) {
+          const { isFriend } = await response.json();
+          return isFriend;
+        }
+        return false;
+      } catch (error) {
+        console.error("Error checking friendship:", error);
+        return false;
+      }
+    }
+
+    return false;
   };
 
   useEffect(() => {
     if (!user?.username) return;
 
     // Initial data fetch
-    fetchTopPicks();
+    refreshData(selected);
 
-    // Listen for real-time study material updates
+    // Set up socket connection properly
+    socket.emit("setup", user.firebase_uid);
+
+    // Listen for real-time study material updates with better debugging
     const handleNewMaterial = async (newMaterial: StudyMaterial) => {
       console.log("📡 Real-time update received:", newMaterial);
-      setSnackbarMessage("📚 New study material added!");
-      setSnackbarOpen(true);
 
-      // Update the cards state and then refresh filtered cards
-      setCards((prevCards) => {
-        const updatedCards = [newMaterial, ...prevCards];
-        setFilteredCards(updatedCards);
-        return updatedCards;
-      });
+      // Enhanced debugging
+      console.log(`Current selection: ${selected}`);
+      console.log(`Material creator ID: ${newMaterial.created_by_id}`);
+      console.log(`Current user ID: ${user.firebase_uid}`);
+
+      try {
+        // Check if this material is relevant to the current view
+        const isRelevant = await isRelevantToCurrentView(newMaterial);
+        console.log(`Is material relevant to current view? ${isRelevant}`);
+
+        if (isRelevant) {
+          console.log("Refreshing data for view:", selected);
+          // Refresh the current data view
+          refreshData(selected);
+        } else {
+          console.log(
+            "Material not relevant to current view. No refresh needed."
+          );
+        }
+      } catch (error) {
+        console.error("Error processing new study material:", error);
+        // Still refresh data to be safe
+        refreshData(selected);
+      }
     };
 
+    console.log("Setting up socket listener for broadcastStudyMaterial events");
     socket.on("broadcastStudyMaterial", handleNewMaterial);
 
     return () => {
+      console.log("Cleaning up socket listener");
       socket.off("broadcastStudyMaterial", handleNewMaterial);
     };
-  }, [user?.username]); // Remove selected from dependencies
+  }, [user?.username, user?.firebase_uid, selected, socket]); // Include all dependencies
+
+  // Add this useEffect for socket connection setup
+  useEffect(() => {
+    if (!user?.firebase_uid) return;
+
+    // Set up socket connection
+    console.log("Setting up socket connection for user:", user.firebase_uid);
+    socket.connect();
+    socket.emit("setup", user.firebase_uid);
+
+    // Handle connection events
+    socket.on("connect", () => {
+      console.log("Socket connected successfully");
+    });
+
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+      setSnackbarMessage("Connection error.");
+      setSnackbarOpen(true);
+    });
+
+    return () => {
+      socket.off("connect");
+      socket.off("connect_error");
+    };
+  }, [user?.firebase_uid, socket]);
 
   // Handle category selection
-  const handleClick = async (index: number) => {
-    setSelected(index);
-    await refreshData();
+  const handleClick = (index: number) => {
+    setSelected((prev) => {
+      const newSelected = index;
+      refreshData(newSelected); // Pass the updated value
+      return newSelected;
+    });
   };
 
   const breadcrumbLabels = [
