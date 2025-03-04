@@ -23,7 +23,7 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
     <Stack
       direction={"row"}
       spacing={1}
-      className="flex justify-between bg-[#120F1C] py-6 px-4 border-t-[0.25rem] rounded-b-[0.8rem] border-[#3B354C]"
+      className="flex justify-between bg-[#120F1C] py-6 px-4 border-t-[3px] rounded-b-[0.8rem] border-[#3B354C]"
     >
       <Tooltip title="Your Friends" placement="top" enterDelay={100} arrow>
         <button
@@ -35,7 +35,8 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
           <PeopleIcon />
         </button>
       </Tooltip>
-      <Divider orientation="vertical" variant="middle" flexItem />
+      <Divider orientation="vertical" flexItem sx={{ width: "2px" }} />
+
       <Tooltip title="Friend Requests" placement="top" enterDelay={100} arrow>
         <button
           onClick={() => onTabChange("FRIEND REQUESTS")}
@@ -64,7 +65,7 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
           )}
         </button>
       </Tooltip>
-      <Divider orientation="vertical" variant="middle" flexItem />
+      <Divider orientation="vertical" flexItem sx={{ width: "2px" }} />
       <Tooltip title="Find Friends" placement="top" enterDelay={100} arrow>
         <button
           onClick={() => onTabChange("FIND FRIENDS")}
