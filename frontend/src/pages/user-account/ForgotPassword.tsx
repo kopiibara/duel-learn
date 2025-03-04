@@ -5,9 +5,10 @@ import { CircularProgress, Modal } from "@mui/material";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../services/firebase";
 import PageTransition from "../../styles/PageTransition";
-import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
-import useHandleForgotPasswordError from "../../hooks/validation.hooks/useHandleForgotPasswordError"; // Updated import
-import useForgotPasswordValidation from "../../hooks/validation.hooks/useForgotPasswordValidation"; // Updated import
+import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
+import useHandleForgotPasswordError from "../../hooks/validation.hooks/useHandleForgotPasswordError";
+import useForgotPasswordValidation from "../../hooks/validation.hooks/useForgotPasswordValidation";
+import { auth, sendResetEmail } from "../../services/firebase";
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -16,10 +17,11 @@ const ForgotPassword = () => {
     email: "",
   });
 
-  const { errors, validate } = useForgotPasswordValidation(formData); // Updated hook
+  const { errors, validate } = useForgotPasswordValidation(formData);
   const [loading, setLoading] = useState(false);
   const [isSSOModalOpen, setIsSSOModalOpen] = useState(false);
-  const { error, handleForgotPasswordError, setError } = useHandleForgotPasswordError(); // Updated hook
+  const { error, handleForgotPasswordError, setError } =
+    useHandleForgotPasswordError();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -27,7 +29,7 @@ const ForgotPassword = () => {
     let formIsValid = true;
     let newErrors = { email: "" };
 
-    if (formIsValid && !errors.email) { // Check if there are no validation errors
+    if (formIsValid && !errors.email) {
       try {
         setLoading(true);
         const usersRef = collection(db, "users");
@@ -43,11 +45,16 @@ const ForgotPassword = () => {
           if (userData.isSSO) {
             setIsSSOModalOpen(true);
           } else {
-            navigate("/confirmation-account", { state: { email } });
+            navigate("/confirmation-account", { 
+              state: { 
+                email,
+                type: "reset"
+              } 
+            });
           }
         }
       } catch (error) {
-        handleForgotPasswordError(error); // Updated error handler
+        handleForgotPasswordError(error);
       } finally {
         setLoading(false);
       }
@@ -58,32 +65,22 @@ const ForgotPassword = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prevData) => ({ ...prevData, [field]: value }));
-    validate(field, value); // Validate on change
+    validate(field, value);
     setError("");
   };
 
   const handleExitClick = () => {
-    navigate("/");
+    navigate("/login");
   };
 
   return (
     <PageTransition>
       <div className="h-screen mt-[-30px] flex flex-col items-center justify-center">
         <header className="absolute top-20 left-20 right-20 flex justify-between items-center">
-          {/* Logo & Title */}
           <Link to="/" className="flex items-center space-x-4">
             <img src="/duel-learn-logo.svg" className="w-10 h-10" alt="icon" />
             <p className="text-white text-xl font-semibold">Duel Learn</p>
           </Link>
-
-          {/* Exit Button */}
-          <img
-            src={ExitIcon}
-            alt="Exit Icon"
-            style={{ width: "39px" }}
-            className="hover:scale-110 cursor-pointer"
-            onClick={handleExitClick}
-          />
         </header>
 
         <div className="w-full max-w-md rounded-lg p-8 shadow-md">
@@ -94,7 +91,7 @@ const ForgotPassword = () => {
             Please enter your email to search for your account.
           </p>
 
-          {(error) && (
+          {error && (
             <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-md border border-red-300">
               {error}
             </div>
@@ -110,13 +107,14 @@ const ForgotPassword = () => {
                 autoComplete="off"
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
-                  error||errors.email ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
+                  error || errors.email
+                    ? "border border-red-500 focus:ring-red-500"
+                    : "focus:ring-[#4D18E8]"
                 }`}
               />
-              {errors.email &&  (
+              {errors.email && (
                 <p className="text-red-500 mt-1 text-sm">{errors.email}</p>
               )}
-              
             </div>
             <button
               type="submit"
@@ -128,6 +126,13 @@ const ForgotPassword = () => {
               ) : (
                 "Submit"
               )}
+            </button>
+            <button
+              type="button"
+              className="w-full mt-2 text-[#3B354D] py-3 rounded-lg  justify-center "
+              onClick={handleExitClick}
+            >
+              <p className="hover:text-white transition-colors">Back</p>
             </button>
           </form>
         </div>
@@ -149,7 +154,8 @@ const ForgotPassword = () => {
           </div>
           <div className="w-full max-w-md rounded-lg p-8 shadow-md bg-black">
             <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
-              This account was created using Google. You cannot change the password.
+              This account was created using Google. You cannot change the
+              password.
             </p>
             <button
               type="button"

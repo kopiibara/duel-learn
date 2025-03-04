@@ -12,9 +12,9 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
   port: process.env.DB_PORT || 5000,
   waitForConnections: true,
-  connectionLimit: 10,
   queueLimit: 0,
-  connectTimeout: 10000, // Increase the connection timeout to 10 seconds
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0
 });
 
 const connectDB = async () => {

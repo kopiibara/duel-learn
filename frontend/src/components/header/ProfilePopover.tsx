@@ -60,6 +60,7 @@ export default function ProfilePopover({
         <Stack spacing={1}>
           <Button
             variant="text"
+            onClick={() => navigate("/account-settings")}
             sx={{
               justifyContent: "flex-start",
               textTransform: "none",
@@ -116,21 +117,6 @@ export default function ProfilePopover({
           </Button>
           {/* Divider with more space above */}
           <Divider sx={{ mt: 3, mb: 2, backgroundColor: "#444" }} />
-          <Button
-            variant="text"
-            sx={{
-              justifyContent: "flex-start",
-              textTransform: "none",
-              color: "inherit",
-              fontWeight: 400,
-              ":hover": {
-                fontWeight: 700, // Make text bold on hover
-              },
-            }}
-            onClick={() => navigate("/dashboard/verify-email")}
-          >
-            Verify Email
-          </Button>
           <Button
             variant="text"
             sx={{

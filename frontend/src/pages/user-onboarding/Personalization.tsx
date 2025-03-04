@@ -6,15 +6,15 @@ import PurpleGem from "../../assets/General/PurpleGem.png";
 import { useNavigate } from "react-router-dom";
 import { topics } from "./data/topics";
 import PageTransition from "../../styles/PageTransition";
+import { useAudio } from "../../contexts/AudioContext"; // Import the useAudio hook
 
 const Personalization: React.FC = () => {
   const [selectedSubjects, setSelectedSubjects] = useState<string[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
   const [imageLoaded, setImageLoaded] = useState(false);
-  const [visibleIndices, setVisibleIndices] = useState(
-    topics.map(() => 0)
-  );
+  const [visibleIndices, setVisibleIndices] = useState(topics.map(() => 0));
   const navigate = useNavigate();
+  const { playUserOnboardingAudio } = useAudio(); // Use the playUserOnboardingAudio function
   const subjectsPerView = 5; // Number of subjects to display at once
 
   useEffect(() => {
@@ -38,14 +38,23 @@ const Personalization: React.FC = () => {
     document.body.style.overflow = "hidden";
   }, []);
 
-  const handleClickDone = () => {
+  const handleClickDone = async () => {
     alert(`Selected topics: ${selectedSubjects.join(", ")}`);
+    await playUserOnboardingAudio();
+    navigate("/dashboard/tutorial/step-two");
+  };
+
+  const handleSkip = async () => {
+    setSelectedSubjects([]);
+    await playUserOnboardingAudio();
     navigate("/dashboard/tutorial/step-two");
   };
 
   const handleSubjectClick = (subject: string) => {
     setSelectedSubjects((prev) =>
-      prev.includes(subject) ? prev.filter((s) => s !== subject) : [...prev, subject]
+      prev.includes(subject)
+        ? prev.filter((s) => s !== subject)
+        : [...prev, subject]
     );
   };
 
@@ -74,25 +83,28 @@ const Personalization: React.FC = () => {
         </div>
       </PageTransition>
     );
-  };
+  }
 
-  const handleScrollAnimated = (topicIndex: number, direction: "left" | "right") => {
+  const handleScrollAnimated = (
+    topicIndex: number,
+    direction: "left" | "right"
+  ) => {
     setVisibleIndices((prev) => {
       const newIndices = [...prev];
       const totalSubjects = topics[topicIndex].subjects.length;
       const maxIndex = Math.max(0, totalSubjects - subjectsPerView);
-  
+
       if (direction === "left" && newIndices[topicIndex] > 0) {
         newIndices[topicIndex] = Math.max(newIndices[topicIndex] - 1, 0);
       }
       if (direction === "right" && newIndices[topicIndex] < maxIndex) {
         newIndices[topicIndex] = Math.min(newIndices[topicIndex] + 1, maxIndex);
       }
-  
+
       return newIndices;
     });
   };
-  
+
   return (
     <PageTransition>
       <div className="min-h-screen overflow-hidden text-white p-6 flex flex-col items-center relative">
@@ -117,10 +129,7 @@ const Personalization: React.FC = () => {
               padding: "10px 20px",
               "&:hover": { color: "white" },
             }}
-            onClick={() => {
-              setSelectedSubjects([]);
-              navigate("/dashboard/tutorial/step-two");
-            }}
+            onClick={handleSkip}
           >
             Skip
           </Button>
@@ -141,7 +150,9 @@ const Personalization: React.FC = () => {
         </div>
 
         {/* Title */}
-        <h1 className="text-3xl font-bold mb-5 mt-36">Your Magical Journey Starts Here!</h1>
+        <h1 className="text-3xl font-bold mb-5 mt-36">
+          Your Magical Journey Starts Here!
+        </h1>
         <p className="text-lg mb-20 text-center text-[#786d99]">
           Select topics to open the gates to a world of personalized discovery.
         </p>
@@ -153,7 +164,7 @@ const Personalization: React.FC = () => {
             const startIdx = visibleIndices[topicIndex];
             const maxIndex = Math.max(0, totalSubjects - subjectsPerView);
             const canScrollRight = startIdx < maxIndex;
-  
+
             return (
               <div key={topicIndex} className="mb-16 relative group w-full">
                 <h2 className="text-lg font-semibold mb-7">{category.topic}</h2>
@@ -175,7 +186,10 @@ const Personalization: React.FC = () => {
                         zIndex: 1,
                         backgroundColor: "transparent",
                         "& .MuiSvgIcon-root": { color: "#3B354D" },
-                        "&:hover": { backgroundColor: "#3B354D", "& .MuiSvgIcon-root": { color: "#E2DDF3" } },
+                        "&:hover": {
+                          backgroundColor: "#3B354D",
+                          "& .MuiSvgIcon-root": { color: "#E2DDF3" },
+                        },
                       }}
                       color="primary"
                       size="small"
@@ -183,7 +197,7 @@ const Personalization: React.FC = () => {
                       <ArrowBackIos fontSize="small" />
                     </Fab>
                   )}
-  
+
                   {/* Smooth Scrolling Container */}
                   <Box
                     sx={{
@@ -217,7 +231,7 @@ const Personalization: React.FC = () => {
                       </Box>
                     ))}
                   </Box>
-  
+
                   {canScrollRight && (
                     <Fab
                       onClick={() => handleScrollAnimated(topicIndex, "right")}
@@ -227,7 +241,10 @@ const Personalization: React.FC = () => {
                         zIndex: 1,
                         backgroundColor: "transparent",
                         "& .MuiSvgIcon-root": { color: "#3B354D" },
-                        "&:hover": { backgroundColor: "#3B354D", "& .MuiSvgIcon-root": { color: "#E2DDF3" } },
+                        "&:hover": {
+                          backgroundColor: "#3B354D",
+                          "& .MuiSvgIcon-root": { color: "#E2DDF3" },
+                        },
                       }}
                       color="primary"
                       size="small"
@@ -243,7 +260,6 @@ const Personalization: React.FC = () => {
       </div>
     </PageTransition>
   );
-  
 };
 
 export default Personalization;

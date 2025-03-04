@@ -7,8 +7,13 @@ const Footer = () => {
   const handleTermsCondition = () => {
     navigate("/terms-condition");
   };
+
+  const handlePrivacyPolicy = () => {
+    window.open("/privacy-policy", "_blank");
+  };
+
   return (
-    <footer className="mt-12 mb-12 flex justify-between text-gray-500 px-8">
+    <footer className="mt-12 mb-5 flex justify-between text-gray-500 px-8 items-baseline">
       <Stack spacing={1} direction="row" className="flex items-center w-full">
         <Button
           variant="text"
@@ -22,9 +27,10 @@ const Footer = () => {
               color: "#E2DDF3", // Darker shade on hover
             },
           }}
+          onClick={handlePrivacyPolicy}
         >
-          Privacy{" "}
-        </Button>{" "}
+          Privacy
+        </Button>
         <Button
           variant="text"
           sx={{

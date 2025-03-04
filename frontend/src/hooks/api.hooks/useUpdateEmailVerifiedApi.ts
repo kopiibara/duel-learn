@@ -5,7 +5,7 @@ const useUpdateEmailVerifiedApi = () => {
 
   const updateEmailVerifiedApi = async (firebase_uid: string, email_verified: boolean, updated_at: string) => {
     try {
-      const response = await fetch('http://localhost:5000/api/user/update-email-verified', {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/update-email-verified`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
