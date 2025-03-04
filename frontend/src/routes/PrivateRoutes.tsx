@@ -31,6 +31,7 @@ import PeacefulMode from "../pages/dashboard/play-battleground/modes/peaceful/Pe
 import TimePressuredMode from "../pages/dashboard/play-battleground/modes/time-pressured/TimePressuredMode";
 import GameModeWrapper from "../pages/dashboard/play-battleground/components/common/GameModeWrapper";
 import AccountSettings from "../pages/dashboard/settings/AccountSettings";
+import HostModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/HostModeSelection";
 
 const PrivateRoutes = () => {
   const { user } = useUser();
@@ -109,6 +110,7 @@ const PrivateRoutes = () => {
       />
       <Route path="/pvp-lobby" element={<PVPLobby />} />
       <Route path="/study/session-summary" element={<SessionReport />} />
+      <Route path="/select-difficulty/pvp" element={<HostModeSelection />} />
     </Routes>
   );
 };

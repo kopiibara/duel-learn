@@ -99,8 +99,9 @@ const PVPLobby: React.FC = () => {
   // Simulate fetching player data (replace with your actual API call)
   useEffect(() => {
     const fetchPlayerData = async () => {
+      console.log("User Data:", user); // Debug user data
       const fetchedPlayers: Player[] = [
-        { id: 1, name: user?.username || 'Player 1', level: user?.level || 1, profilePicture: user?.display_picture || 'default-avatar.png' }, // Set Player 1 to the logged-in user
+        { id: 1, name: user?.username || 'Player 1', level: user?.level || 1, profilePicture: user?.display_picture || 'default-avatar.png' },
       ];
       setPlayers(fetchedPlayers);
     };
@@ -178,7 +179,7 @@ const PVPLobby: React.FC = () => {
     setPlayers((prev) => [...prev, friend]); // Add the invited player to the players list
   };
 
-  const isHost = user?.username === players[0]?.name; // Determine if the current user is the host
+  const isHost = user?.username === players[1]?.name; // Determine if the current user is the host
   const isPlayer2Present = players.length > 1; // Check if Player 2 is present in the lobby
 
   // State to track readiness

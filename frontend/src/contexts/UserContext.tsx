@@ -9,7 +9,6 @@ interface User {
   username: string | null;
   email: string | null;
   display_picture: string | null;
-  level: number;
   full_name: string | null;
   email_verified: boolean;
   isSSO: boolean;
