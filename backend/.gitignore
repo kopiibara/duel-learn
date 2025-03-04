@@ -30,4 +30,5 @@ Thumbs.db
 package-lock.json
 package.json
 
-.vscode/*
+# Firebase admin SDK JSON file
+duel-learn-firebase-adminsdk-65lmy-22bd9929f6.json
