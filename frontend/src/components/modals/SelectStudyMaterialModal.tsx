@@ -115,7 +115,7 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
       handleClose();
       navigate("/dashboard/pvp-lobby", { state: { mode, material, selectedTypes } });
     } else {
-      const formattedMode = mode === "Peaceful Mode" ? "Peaceful" : mode;
+      const formattedMode = mode === "Peaceful Mode" ? "Peaceful" : mode === "PvP Mode" ? "PvP" : mode;
       navigate("/dashboard/welcome-game-mode", { state: { mode: formattedMode, material } });
     }
   };
