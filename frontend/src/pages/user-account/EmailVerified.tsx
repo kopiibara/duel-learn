@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 import useUpdateEmailVerifiedApi from "../../hooks/api.hooks/useUpdateEmailVerifiedApi";
 import { db, auth } from "../../services/firebase";
 import { setDoc, doc, serverTimestamp, getDoc } from "firebase/firestore";
+import { reload } from "firebase/auth";
 
 const EmailVerified = () => {
   const navigate = useNavigate();
@@ -36,33 +37,30 @@ const EmailVerified = () => {
             const isNew = Date.now() - userData.created_at.toMillis() < 300000;
             setIsNewUser(isNew);
 
-            // Only update verification status for new users
-            if (isNew) {
-              try {
-                // Update email verified status
-                await setDoc(userDocRef, {
-                  email_verified: true,
-                  updated_at: serverTimestamp(),
-                }, { merge: true });
+            // Update email verified status
+            if(isNew){
+              await setDoc(userDocRef, {
+                email_verified: true,
+                updated_at: serverTimestamp(),
+              }, { merge: true });
 
-                // Update backend
-                await updateEmailVerifiedApi(
-                  locationState.firebase_uid,
-                  true,
-                  new Date().toISOString()
-                );
+              // Update backend
+              await updateEmailVerifiedApi(
+                locationState.firebase_uid,
+                true,
+                new Date().toISOString()
+              );
 
-                // Set email verified status only once on success
-                setIsEmailVerified(true);
-              } catch (error: any) {
-                console.error("Error updating verification status:", error);
-                toast.error("Failed to update verification status. Please try again.");
+              // Reload the user to get the latest email verification state
+              if (auth.currentUser) {
+                await reload(auth.currentUser);
+                const userDocRef = doc(db, "users", locationState.firebase_uid);
+                const userDoc = await getDoc(userDocRef);
+                const userData = userDoc.data();
+                setIsEmailVerified(userData?.email_verified || false);
+                console.log("Email Verified:", userData?.email_verified);
               }
-            } else {
-              // For existing users, just set the verification status from their data
-              setIsEmailVerified(userData.email_verified || false);
             }
-
             // Log verification status
             console.log("Email Verified:", userData.email_verified);
             if (auth.currentUser) {
@@ -86,8 +84,6 @@ const EmailVerified = () => {
         navigate("/admin/admin-dashboard");
       } else if (isNewUser && isEmailVerified) {
         navigate("/dashboard/welcome");
-      } else if (!isEmailVerified) {
-        navigate("/dashboard/verify-email");
       } else {
         navigate("/dashboard/home");
       }

@@ -45,14 +45,12 @@ const ForgotPassword = () => {
           if (userData.isSSO) {
             setIsSSOModalOpen(true);
           } else {
-            const firebase_uid = userDoc.id;
-            const actionCodeSettings = {
-              url: `${import.meta.env.VITE_FRONTEND_URL}/email-action-handler?mode=resetPassword&firebase_uid=${firebase_uid}&email=${email}`,
-              handleCodeInApp: true,
-            };
-
-            await sendResetEmail(auth, email, actionCodeSettings);
-            navigate("/check-your-mail", { state: { email, firebase_uid, type: "reset" } });
+            navigate("/confirmation-account", { 
+              state: { 
+                email,
+                type: "reset"
+              } 
+            });
           }
         }
       } catch (error) {
