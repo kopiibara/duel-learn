@@ -1,83 +1,84 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
 import { toast } from "react-hot-toast";
 import useUpdateEmailVerifiedApi from "../../hooks/api.hooks/useUpdateEmailVerifiedApi";
-import { db } from "../../services/firebase";
+import { db, auth } from "../../services/firebase";
 import { setDoc, doc, serverTimestamp, getDoc } from "firebase/firestore";
 
 const EmailVerified = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { updateEmailVerifiedApi } = useUpdateEmailVerifiedApi();
+  const [email, setEmail] = useState("");
+  const [firebase_uid, setFirebaseUid] = useState("");
+  const [isNewUser, setIsNewUser] = useState(false);
+  const [accountType, setAccountType] = useState("");
+  const [isEmailVerified, setIsEmailVerified] = useState(false);
 
   useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
-    const firebase_uid = queryParams.get("firebase_uid") || "";
+    const fetchUserData = async () => {
+      const locationState = location.state || {};
+      setEmail(locationState.email || "");
+      setFirebaseUid(locationState.firebase_uid || "");
 
-    const updateEmailVerifiedStatus = async () => {
-      console.log("firebase_uid:", firebase_uid);
-      try {
-        const userDocRef = doc(db, "users", firebase_uid);
+      if (locationState.firebase_uid) {
+        try {
+          const userDocRef = doc(db, "users", locationState.firebase_uid);
+          const userDoc = await getDoc(userDocRef);
+          
+          if (userDoc.exists()) {
+            const userData = userDoc.data();
+            setAccountType(userData.account_type || "");
+            setIsEmailVerified(userData.email_verified || false);
+            
+            // Check if user is new (created within last 5 minutes)
+            const isNew = Date.now() - userData.created_at.toMillis() < 300000;
+            setIsNewUser(isNew);
 
-        // Update Firebase users collection
-        await setDoc(userDocRef, {
-          email_verified: true,
-          updated_at: serverTimestamp(),
-        }, { merge: true });
-        console.log('Updating Firebase users collection');
+            // Update email verified status
+            await setDoc(userDocRef, {
+              email_verified: true,
+              updated_at: serverTimestamp(),
+            }, { merge: true });
 
-        // Update users table in the backend
-        await updateEmailVerifiedApi(
-          firebase_uid,
-          true,
-          new Date().toISOString()
-        );
-        console.log('Updating TABLE users in the backend');
+            // Update backend
+            await updateEmailVerifiedApi(
+              locationState.firebase_uid,
+              true,
+              new Date().toISOString()
+            );
 
-        console.log('Email verified status updated');
-        const bc = new BroadcastChannel('email-verification');
-        bc.postMessage('email_verified_success');
-      } catch (error: any) {
-        console.error("Error updating email verified status:", error);
-        toast.error("Failed to update email verified status. Please try again.");
+            // Log verification status
+            console.log("Email Verified:", userData.email_verified);
+            if (auth.currentUser) {
+              console.log("Firebase Email Verified:", auth.currentUser.emailVerified);
+              console.log("Firebase Email:", email);
+            }
+          }
+        } catch (error: any) {
+          console.error("Error fetching user document:", error);
+          toast.error("Failed to fetch user information. Please try again.");
+        }
       }
     };
 
-    updateEmailVerifiedStatus();
-  }, [location.search, updateEmailVerifiedApi]);
+    fetchUserData();
+  }, [location.state, updateEmailVerifiedApi]);
 
   const handleBacktoLoginClick = async () => {
-    const queryParams = new URLSearchParams(location.search);
-    const firebase_uid = queryParams.get("firebase_uid") || "";
-
-    try {
-      const userDocRef = doc(db, "users", firebase_uid);
-      const userDoc = await getDoc(userDocRef);
-      const userData = JSON.parse(localStorage.getItem("userData") || "{}");
-      const isNewUser =
-        !userDoc.exists() ||
-        (userDoc.exists() &&
-          Date.now() - userDoc.data().created_at.toMillis() < 300000); // 5 minutes in milliseconds
-
-      setTimeout(() => {
-        if ((userDoc.exists() && userDoc.data()?.account_type === "admin") || userData.account_type === 'admin') {
-          navigate("/admin/admin-dashboard");
-        } else if (isNewUser && (userDoc.data()?.email_verified || userData.email_verified)) {
-          navigate("/dashboard/welcome");
-        } else if (isNewUser && !userDoc.data()?.email_verified) {
-          navigate("/dashboard/verify-email");
-        } else if (!userDoc.data()?.email_verified) {
-          navigate("/dashboard/verify-email");
-        } else {
-          navigate("/dashboard/home");
-        }
-      }, 2000);
-    } catch (error: any) {
-      console.error("Error fetching user document:", error);
-      toast.error("Failed to fetch user information. Please try again.");
-    }
+    setTimeout(() => {
+      if (accountType === "admin") {
+        navigate("/admin/admin-dashboard");
+      } else if (isNewUser && isEmailVerified) {
+        navigate("/dashboard/welcome");
+      } else if (!isEmailVerified) {
+        navigate("/dashboard/verify-email");
+      } else {
+        navigate("/dashboard/home");
+      }
+    }, 2000);
   };
 
   return (
