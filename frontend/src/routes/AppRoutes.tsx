@@ -9,7 +9,6 @@ import ForgotPassword from "../pages/user-account/ForgotPassword";
 import TermsAndConditions from "../components/TermsAndConditions";
 import VerifyEmail from "../pages/user-account/VerifyEmail";
 import PrivacyPolicy from "../components/PrivacyPolicy";
-import AccountSettings from "../pages/user-account/AccountSettings";
 import CheckYourMail from "../pages/user-account/CheckYourMail";
 import PasswordChangedSuccessfully from "../pages/user-account/PasswordChangedSuccessfully";
 import ConfirmationAccount from "../pages/user-account/ConfirmationAccount";
@@ -34,7 +33,6 @@ const AppRoutes: React.FC = () => {
         <Route path="/sign-up" element={<SignUp />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
-        <Route path="/account-settings" element={<AccountSettings />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
         <Route path="/check-your-mail" element={<CheckYourMail />} />
         <Route path="/loading-screen" element={<LoadingScreen />} />

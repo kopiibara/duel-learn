@@ -6,6 +6,8 @@ import {
   Card,
   CardContent,
   CardMedia,
+  useMediaQuery,
+  useTheme,
 } from "@mui/material";
 import { styled } from "@mui/system";
 
@@ -31,32 +33,39 @@ interface CardComponentProps {
 const CardComponent: React.FC<CardComponentProps> = ({
   title,
   tags,
-  images,
   totalItems,
   createdBy,
   totalViews,
-  createdAt,
-  visibility,
-  items,
   onClick, // Destructured onClick handler
 }) => {
   const safeTags = Array.isArray(tags) ? tags : []; // Ensure it's always an array
+  const theme = useTheme();
+  const isXsScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const isSmScreen = useMediaQuery(theme.breakpoints.between("sm", "md"));
 
   const ModeCard = styled(Card)(() => ({
     display: "flex",
     flexDirection: "column",
     justifyContent: "flex-end",
     alignItems: "flex-start",
-    borderRadius: "1rem",
-    height: "14rem",
+    borderRadius: isXsScreen ? "0.75rem" : "1rem",
+    height: isXsScreen ? "12rem" : "14rem",
+    width: "auto",
     cursor: "pointer",
     maxHeight: "100%",
     background: "#E2DDF3",
     position: "relative",
     transform: "scale(1)", // Initial transform state
-    transition: "all 0.3s ease", // Ensure smooth transition between hover and unhover states
+    transition: "all 0.3s ease-in-out", // Ensure smooth transition between hover and unhover states
+    "& .cardMedia": {
+      transform: "scale(1)", // Initial scale
+      transition: "transform 0.5s ease-in-out", // Always apply transition, not just on hover
+    },
     "&:hover": {
       transform: "scale(1.03)", // Scales slightly on hover
+      "& .cardMedia": {
+        transform: "scale(1.05)", // Scale the image on hover
+      },
     },
   }));
 
@@ -69,22 +78,32 @@ const CardComponent: React.FC<CardComponentProps> = ({
           display: "flex",
           flexDirection: "column",
           justifyContent: "flex-end",
+          padding: isXsScreen ? "12px" : "16px",
         }}
       >
         <Box
           sx={{
             position: "absolute",
-            bottom: 30,
-            left: 26,
+            bottom: isXsScreen ? 20 : 30,
+            left: isXsScreen ? 16 : 26,
             textAlign: "left",
+            maxWidth: "85%",
           }}
         >
           <Stack spacing={0} className="flex items-baseline justify-end">
-            <Stack direction="row" spacing={1} alignItems={"center"}>
+            <Stack
+              direction="row"
+              spacing={isXsScreen ? 0.5 : 1}
+              alignItems={"center"}
+            >
               <Typography
                 sx={{
                   color: "#000000",
-                  fontSize: "0.7rem",
+                  fontSize: isXsScreen
+                    ? "0.6rem"
+                    : isSmScreen
+                    ? "0.65rem"
+                    : "0.7rem",
                   fontWeight: "600",
                 }}
               >
@@ -93,7 +112,11 @@ const CardComponent: React.FC<CardComponentProps> = ({
               <Typography
                 sx={{
                   color: "#000000",
-                  fontSize: "0.7rem",
+                  fontSize: isXsScreen
+                    ? "0.6rem"
+                    : isSmScreen
+                    ? "0.65rem"
+                    : "0.7rem",
                   fontWeight: "600",
                 }}
               >
@@ -102,7 +125,11 @@ const CardComponent: React.FC<CardComponentProps> = ({
               <Typography
                 sx={{
                   color: "#000000",
-                  fontSize: "0.7rem",
+                  fontSize: isXsScreen
+                    ? "0.6rem"
+                    : isSmScreen
+                    ? "0.65rem"
+                    : "0.7rem",
                   fontWeight: "600",
                 }}
               >
@@ -110,13 +137,26 @@ const CardComponent: React.FC<CardComponentProps> = ({
               </Typography>
             </Stack>{" "}
             <Typography
-              variant="h6"
               className="text-[#080511] pb-[0.2rem]"
               fontWeight="bold"
+              sx={{
+                fontSize: isXsScreen ? "1rem" : isSmScreen ? "1rem" : "1.4rem",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+              }}
             >
               {title}
             </Typography>
-            <Stack direction="row" spacing={1} className="w-auto mb-3">
+            <Stack
+              direction="row"
+              spacing={0.5}
+              className="w-auto mb-3"
+              sx={{ flexWrap: "wrap" }}
+              gap={0.5}
+            >
               {safeTags.map((tag, index) => (
                 <Chip
                   key={index}
@@ -127,9 +167,14 @@ const CardComponent: React.FC<CardComponentProps> = ({
                     borderRadius: "0.3rem",
                     width: "fit-content",
                     height: "fit-content",
-                    py: "0.3rem",
-                    fontSize: "0.7rem",
+                    py: isXsScreen ? "0.2rem" : "0.3rem",
+                    fontSize: isXsScreen
+                      ? "0.6rem"
+                      : isSmScreen
+                      ? "0.65rem"
+                      : "0.7rem",
                     fontWeight: "600",
+                    mb: 0.5,
                   }}
                 />
               ))}
@@ -137,7 +182,11 @@ const CardComponent: React.FC<CardComponentProps> = ({
             <Typography
               sx={{
                 color: "#000000",
-                fontSize: "0.7rem",
+                fontSize: isXsScreen
+                  ? "0.6rem"
+                  : isSmScreen
+                  ? "0.65rem"
+                  : "0.7rem",
                 fontWeight: "600",
                 paddingLeft: "1px",
               }}
@@ -147,13 +196,14 @@ const CardComponent: React.FC<CardComponentProps> = ({
           </Stack>
         </Box>
         <CardMedia
-          component="img"
+          component="svg"
+          className="cardMedia"
           sx={{
             position: "absolute",
             top: 0,
             right: 0,
             zIndex: -1,
-            width: "12rem",
+            width: isXsScreen ? "9rem" : isSmScreen ? "10rem" : "12rem",
             height: "100%",
           }}
           image="/cardBackground.svg"

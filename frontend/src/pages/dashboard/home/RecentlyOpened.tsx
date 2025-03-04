@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Box, Fab } from "@mui/material";
+import { Box, Fab, Typography, useMediaQuery, useTheme } from "@mui/material";
 import CardComponent from "../../../components/CardComponent";
 import NextIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import PreviousIcon from "@mui/icons-material/ArrowBackIosNewRounded";
@@ -16,13 +16,6 @@ const RecentlyOpened = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const cardsToShow = 3; // Number of cards to display at once
   const cardWidth = 100 / cardsToShow; // Each card takes a fraction of the total width
-
-  useEffect(() => {
-    fetch("/mock-data/StudyMaterialDetails.json")
-      .then((response) => response.json())
-      .then((data: CardData[]) => setCards(data))
-      .catch((error) => console.error("Error fetching cards data:", error));
-  }, []);
 
   const handleNext = () => {
     if (currentIndex + cardsToShow < cards.length) {

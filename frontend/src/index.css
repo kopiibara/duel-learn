@@ -14,6 +14,8 @@ body {
   font-family: "Nunito", sans-serif;
   letter-spacing: normal;
   scrollbar-gutter: stable overlay;
+  user-select: none;
+  scroll-behavior: smooth; /* Add this line for smooth scrolling */
 }
 
 :root {
@@ -54,8 +56,8 @@ body {
 }
 /* Autofill styles */
 input:-webkit-autofill {
-  -webkit-box-shadow: 0 0 0 30px #3B354D inset !important; /* Autofill background color */
-  -webkit-text-fill-color: #D1C4E9 !important; /* Autofill text color */
+  -webkit-box-shadow: 0 0 0 30px #3b354d inset !important; /* Autofill background color */
+  -webkit-text-fill-color: #d1c4e9 !important; /* Autofill text color */
   transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
 }
 

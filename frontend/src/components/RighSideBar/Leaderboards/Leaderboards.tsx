@@ -6,8 +6,6 @@ import GoldMedal from "../../../assets/General/gold-medal.svg";
 import SilverMedal from "../../../assets/General/silver-medal.svg";
 import BronzeMedal from "../../../assets/General/bronze-medal.svg";
 
-const filters = ["Daily", "Weekly", "Monthly", "All Time"];
-
 const Leaderboards = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState("Daily");

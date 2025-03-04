@@ -309,8 +309,48 @@ const FriendRequestController = {
         finally {
             connection.release();
         }
-    }
+    },
 
+    getFriendsLeaderboard: async (req, res) => {
+        const { firebase_uid } = req.params;
+        const connection = await pool.getConnection();
+
+        try {
+            // Get the user and their friends' information sorted by level
+            const [leaderboard] = await connection.execute(
+                `SELECT u.firebase_uid, u.username, u.level, u.exp, u.profile_pic_url,
+                    CASE WHEN u.firebase_uid = ? THEN TRUE ELSE FALSE END as isCurrentUser
+                FROM user_info u
+                WHERE u.firebase_uid = ? 
+                OR u.firebase_uid IN (
+                    SELECT CASE 
+                        WHEN sender_id = ? THEN receiver_id
+                        WHEN receiver_id = ? THEN sender_id
+                    END
+                    FROM friend_requests
+                    WHERE (sender_id = ? OR receiver_id = ?)
+                    AND status = 'accepted'
+                )
+                ORDER BY u.level DESC, u.exp DESC`,
+                [firebase_uid, firebase_uid, firebase_uid, firebase_uid, firebase_uid, firebase_uid]
+            );
+
+            // Add rank information
+            const rankedLeaderboard = leaderboard.map((player, index) => ({
+                ...player,
+                rank: index + 1
+            }));
+
+            res.status(200).json(rankedLeaderboard);
+        }
+        catch (error) {
+            console.error("Error retrieving friends leaderboard:", error);
+            res.status(500).json({ message: "Error retrieving friends leaderboard" });
+        }
+        finally {
+            connection.release();
+        }
+    }
 
 };
 

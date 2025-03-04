@@ -34,7 +34,7 @@ export default function ProfilePopover({
   };
 
   const handleSettings = () => {
-    navigate("/account-settings");
+    navigate("/dashboard/account-settings");
   };
 
   return (
