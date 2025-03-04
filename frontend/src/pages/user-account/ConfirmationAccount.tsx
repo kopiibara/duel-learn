@@ -8,20 +8,25 @@ import {
   query,
   where,
   getDocs,
+  doc,
+  setDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 import PageTransition from "../../styles/PageTransition";
+import { auth, sendResetEmail } from "../../services/firebase";
+import useEmailTimestamp from "../../hooks/useEmailTimestamp";
 
 const ConfirmationAccount = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { email } = location.state || {};
+  const { email, type } = location.state || {};
   const [username, setUsername] = useState("");
   const [profilePic, setProfilePic] = useState("");
   const [loading, setLoading] = useState(true);
   const [buttonLoading, setButtonLoading] = useState(false);
   const [error, setError] = useState("");
   const [isPhone, setIsPhone] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+  const { timeRemaining, isButtonDisabled, checkTimestamp } = useEmailTimestamp(email);
 
   useEffect(() => {
     if (!email) {
@@ -84,6 +89,12 @@ const ConfirmationAccount = () => {
   const handleContinueClick = async () => {
     setButtonLoading(true);
     try {
+      const canSendEmail = await checkTimestamp();
+      if (!canSendEmail) {
+        setButtonLoading(false);
+        return;
+      }
+
       const db = getFirestore();
       const usersRef = collection(db, "users");
       const q = query(
@@ -96,12 +107,47 @@ const ConfirmationAccount = () => {
         const userDoc = querySnapshot.docs[0];
         const firebase_uid = userDoc.id;
 
-        navigate("/check-your-mail", { state: { email, firebase_uid } });
+        if (type === "reset") {
+          // For password reset flow
+          const actionCodeSettings = {
+            url: `${import.meta.env.VITE_FRONTEND_URL}/email-action-handler?mode=verifyEmail&firebase_uid=${firebase_uid}&email=${email}`,
+            handleCodeInApp: true,
+          };
+
+          await sendResetEmail(auth, email, actionCodeSettings);
+          
+          // Update email timestamp in Firestore
+          await setDoc(doc(db, "users", userDoc.id), {
+            emailTimestamp: serverTimestamp(),
+          }, { merge: true });
+
+          // Update local timestamp
+          const now = new Date();
+          localStorage.setItem("emailTimestamp", now.toISOString());
+
+          navigate("/check-your-mail", { 
+            state: { 
+              email, 
+              firebase_uid, 
+              type: "reset" 
+            } 
+          });
+        } else {
+          // For email verification flow
+          navigate("/check-your-mail", { 
+            state: { 
+              email, 
+              firebase_uid,
+              type: "verification"
+            } 
+          });
+        }
       } else {
         setError("User not found");
       }
     } catch (err) {
       console.error("Error navigating to check your mail:", err);
+      setError("Failed to process request");
     } finally {
       setButtonLoading(false);
     }
@@ -155,17 +201,16 @@ const ConfirmationAccount = () => {
             Is this you?
           </h1>
           <p className="text-lg text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
-            Confirm this is you and we’ll send a code to your{" "}
-            {isPhone ? "phone" : "email"} to recover your account.
+            {type === "reset" 
+              ? "Confirm this is you and we'll send a code to reset your password."
+              : "Confirm this is you and we'll send a code to recover your account."}
           </p>
 
           <button
             type="submit"
             className={`w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors flex justify-center items-center`}
             onClick={handleContinueClick}
-            disabled={
-              buttonLoading || (timeRemaining !== null && timeRemaining > 0)
-            }
+            disabled={buttonLoading || isButtonDisabled}
           >
             {buttonLoading ? (
               <div className="relative">

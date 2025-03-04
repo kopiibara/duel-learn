@@ -7,6 +7,7 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { auth, sendResetEmail, sendEmail } from "../../services/firebase";
 import useEmailTimestamp from "../../hooks/useEmailTimestamp";
 import firebaseEmailHandler from "../../services/firebaseEmailHandler";
+import { socket } from "../../services/socket";
 
 export default function CheckYourMail() {
   const navigate = useNavigate();
@@ -30,13 +31,16 @@ export default function CheckYourMail() {
       if (locationState.firebase_uid) {
         const db = getFirestore();
         const userDoc = await getDoc(doc(db, "users", locationState.firebase_uid));
-        if (userDoc.exists() && userDoc.data().email_verified) {
-          navigate("/email-verified", { 
-            state: { 
-              email: locationState.email, 
-              firebase_uid: locationState.firebase_uid 
-            } 
-          });
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          if (userData.email_verified && locationState.type === "verification") {
+            navigate("/email-verified", { 
+              state: { 
+                email: locationState.email, 
+                firebase_uid: locationState.firebase_uid 
+              } 
+            });
+          }
         }
       }
     };
@@ -65,33 +69,43 @@ export default function CheckYourMail() {
   }, [location.search]);
 
   useEffect(() => {
-    // Check for email action result in localStorage
-    const checkEmailActionResult = () => {
-      const result = localStorage.getItem('emailActionResult');
-      if (result) {
-        const { mode, firebase_uid, email, oobCode } = JSON.parse(result);
-        
-        if (mode === 'verifyEmail') {
-          navigate("/email-verified", { 
-            state: { 
-              email, 
-              firebase_uid 
-            } 
-          });
-        } else if (mode === 'resetPassword') {
-          navigate(`/reset-password?oobCode=${oobCode}&firebase_uid=${firebase_uid}`);
-        }
-        
-        // Clear the result after handling it
-        localStorage.removeItem('emailActionResult');
+    // Listen for email action results
+    const handleEmailActionResult = (result: any) => {
+      const { mode, firebase_uid, email, oobCode } = result;
+      
+      if (mode === 'verifyEmail') {
+        navigate("/email-verified", { 
+          state: { 
+            email, 
+            firebase_uid 
+          } 
+        });
+      } else if (mode === 'resetPassword') {
+        navigate(`/reset-password?oobCode=${oobCode}&firebase_uid=${firebase_uid}`);
       }
     };
 
-    // Check immediately and set up interval
-    checkEmailActionResult();
-    const interval = setInterval(checkEmailActionResult, 1000);
+    // Listen for password reset success
+    const handlePasswordResetSuccess = () => {
+      navigate("/password-changed-successfully");
+    };
 
-    return () => clearInterval(interval);
+    // Listen for email verification success
+    const handleEmailVerifiedSuccess = () => {
+      navigate("/email-verified");
+    };
+
+    // Set up socket event listeners
+    socket.on("emailActionResult", handleEmailActionResult);
+    socket.on("passwordResetSuccess", handlePasswordResetSuccess);
+    socket.on("emailVerifiedSuccess", handleEmailVerifiedSuccess);
+
+    // Cleanup listeners on unmount
+    return () => {
+      socket.off("emailActionResult", handleEmailActionResult);
+      socket.off("passwordResetSuccess", handlePasswordResetSuccess);
+      socket.off("emailVerifiedSuccess", handleEmailVerifiedSuccess);
+    };
   }, [navigate]);
 
   const handleSendPasswordResetEmail = async () => {
@@ -183,39 +197,6 @@ export default function CheckYourMail() {
       setButtonText("Send Email");
     }
   }, [timeRemaining]);
-  
-  useEffect(() => {
-    const bc = new BroadcastChannel('password-reset');
-  
-    const handleResetPasswordSuccess = (message: MessageEvent) => {
-      if (message.data === 'reset_password_success') {
-        navigate("/password-changed-successfully");
-      }
-    };
-  
-    bc.addEventListener('message', handleResetPasswordSuccess);
-  
-    return () => {
-      bc.removeEventListener('message', handleResetPasswordSuccess);
-      bc.close();
-    };
-  }, [navigate]);
-  useEffect(() => {
-    const bc = new BroadcastChannel('email-verification');
-  
-    const handleEmailVerifiedSuccess = (message: MessageEvent) => {
-      if (message.data === 'email_verified_success') {
-        navigate("/email-verified");
-      }
-    };
-  
-    bc.addEventListener('message', handleEmailVerifiedSuccess);
-  
-    return () => {
-      bc.removeEventListener('message', handleEmailVerifiedSuccess);
-      bc.close();
-    };
-  }, [navigate]);
 
   return (
     <PageTransition>
