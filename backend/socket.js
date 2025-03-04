@@ -31,6 +31,12 @@ const setupSocket = (server) => {
 
         // Add user to a room based on their firebase_uid
         socket.on("setup", (userId) => {
+
+            socket.userId = userId;
+
+            // Now you can log both
+            console.log("🔌 New client connected:", socket.id);
+
             if (!userId) {
                 console.error("Invalid userId in setup");
                 return;
@@ -41,7 +47,7 @@ const setupSocket = (server) => {
             socket.userId = userId; // Store uid in socket for easy access
 
             socket.join(userId);
-            console.log("👤 User joined room:", userId);
+            console.log("👤 Active user joined room:", userId);
         });
 
         // Update the sendFriendRequest event handler

@@ -82,7 +82,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
         </Box>
 
         {/* Terms and Definition */}
-        <Stack spacing={2} className="py-6 pr-4 w-full">
+        <Stack spacing={2} className="py-6 pr-8 pl-5 w-full">
           <Stack spacing={2} className="w-full">
             {/* Image */}
             {previewSrc && (
@@ -98,7 +98,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                     <img
                       src={previewSrc}
                       alt="Uploaded"
-                      className="rounded-md max-w-[12rem] h-auto"
+                      className="rounded-md max-w-full md:max-w-xs h-auto"
                     />
                     <Tooltip title="Delete Photo" arrow>
                       <Fab
@@ -122,27 +122,27 @@ const ItemComponent: FC<ItemComponentProps> = ({
               </AnimatePresence>
             )}
 
-            <Stack direction="row" spacing={2} className="flex items-center">
-              <Box flexGrow={1} />
+            <Stack
+              direction={{ xs: "column", sm: "row" }}
+              spacing={2}
+              className="flex items-center w-full"
+            >
               <textarea
                 id="term"
-                className="border-none outline-none bg-[#3B354D] text-[#E2DDF3] resize-none w-[20rem] text-[1rem] py-2 px-4 text-left rounded-[0.6rem] overflow-hidden"
+                className="border-none outline-none bg-[#3B354D] text-[#E2DDF3] resize-none w-full sm:w-1/3 text-[1rem] py-2 px-4 text-left rounded-[0.6rem] overflow-hidden"
                 rows={1}
                 placeholder="Enter Term"
                 value={item.term}
                 onChange={(e) => updateItem("term", e.target.value)}
               />
-              <Stack spacing={2}>
-                <textarea
-                  id="definition"
-                  className="border-none outline-none bg-[#3B354D] text-[#E2DDF3] resize-none w-[40rem] text-[1rem] py-2 px-4 text-left rounded-[0.6rem] overflow-hidden"
-                  rows={1}
-                  placeholder="Enter definition"
-                  value={item.definition}
-                  onChange={(e) => updateItem("definition", e.target.value)}
-                />
-              </Stack>
-              <Box flexGrow={1} />
+              <textarea
+                id="definition"
+                className="border-none outline-none bg-[#3B354D] text-[#E2DDF3] resize-none w-full sm:w-2/3 text-[1rem] py-2 px-4 text-left rounded-[0.6rem] overflow-hidden"
+                rows={1}
+                placeholder="Enter definition"
+                value={item.definition}
+                onChange={(e) => updateItem("definition", e.target.value)}
+              />
             </Stack>
           </Stack>
 

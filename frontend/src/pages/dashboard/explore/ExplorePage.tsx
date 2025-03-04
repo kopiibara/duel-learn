@@ -144,7 +144,7 @@ const ExplorePage = () => {
     }
   };
 
-  // Check if a study material is relevant to the current view
+  // Update the isRelevantToCurrentView function
   const isRelevantToCurrentView = async (material: StudyMaterial) => {
     if (!user?.firebase_uid) return false;
 
@@ -163,7 +163,9 @@ const ExplorePage = () => {
       try {
         // Quick check if the material was created by a friend
         const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/friends/check-friendship/${
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/study-material/get-made-by-friends/${
             user.firebase_uid
           }/${encodeURIComponent(material.created_by_id || "")}`
         );
@@ -246,7 +248,7 @@ const ExplorePage = () => {
 
     socket.on("connect_error", (error) => {
       console.error("Socket connection error:", error);
-      setSnackbarMessage("Connection error. Real-time updates may not work.");
+      setSnackbarMessage("Connection error.");
       setSnackbarOpen(true);
     });
 
