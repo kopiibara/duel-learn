@@ -195,6 +195,7 @@ const FriendList: React.FC = () => {
   return (
     <>
       <Box className="rounded-[1rem] shadow-md border-[0.2rem] border-[#3B354C]">
+
         <div className="px-8 pt-8 pb-5">
           <div className="flex flex-row items-center mb-5 gap-4">
             <img src="/bunny.png" className="w-[41px] h-[35px]" alt="icon" />
@@ -202,7 +203,7 @@ const FriendList: React.FC = () => {
               Friend List
             </h2>
           </div>
-          <hr className="border-t-1 border-[#3B354D] mb-7" />
+          <hr className="border-t-2 border-[#3B354D] mb-7" />
 
           {loading ? (
             <Box display="flex" justifyContent="center" alignItems="center">

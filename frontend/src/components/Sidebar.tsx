@@ -252,7 +252,7 @@ const Sidebar: React.FC<SidebarProps> = ({
             "outlined",
             handleModalOpen
           )}
-          <Divider />
+          <Divider sx={{ height: "2px", backgroundColor: "#3B354C" }} />
         </Stack>
 
         <nav aria-label="sidebar">

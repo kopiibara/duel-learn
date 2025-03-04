@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import GoldMedal from "../../../assets/General/gold-medal.svg";
 import SilverMedal from "../../../assets/General/silver-medal.svg";
@@ -45,10 +44,6 @@ const Leaderboards = () => {
   const openModal = () => setIsModalOpen(true);
   const closeModal = () => setIsModalOpen(false);
 
-  const [selectedFilter, setSelectedFilter] = useState("Daily");
-
-  const filters = ["Daily", "Weekly", "Monthly", "All Time"];
-
   return (
     <div className="mt-10">
       <h3 className="text-white text-2xl font-bold mb-5">Leaderboards</h3>
@@ -56,20 +51,6 @@ const Leaderboards = () => {
       {/* Show Leaderboard if numberOfFriends is greater than or equal to 5 */}
       {numberOfFriends >= 5 ? (
         <div className="rounded-md shadow-md border-2 border-[#6F658D]">
-          {/* Filter Buttons */}
-          <div className="flex flex-wrap justify-center my-5 sm:my-6 md:my-7 lg:my-7  responsive-gap">
-            {filters.map((filter) => (
-              <button
-                key={filter}
-                onClick={() => setSelectedFilter(filter)}
-                className={`responsive-gapINSIDE px-2 sm:px-2.5 md:px-3 lg:px-5 py-1 sm:py-1.5 md:py-2 lg:py-3 uppercase  text-white rounded transition-colors duration-200 w-20 sm:w-[76px] md:w-[90px] lg:w-[166px] ${selectedFilter === filter ? "bg-[#4D1EE3]" : "bg-[#1A1625]"
-                  }`}
-              >
-                {filter}
-              </button>
-            ))}
-          </div>
-
           {leaderboardData.map((entry, index) => (
             <div
               key={index}
@@ -82,7 +63,7 @@ const Leaderboards = () => {
                 {/* Medal */}
                 <div className="rank-icon">
                   {getMedal(entry.rank) ? (
-                    <img src={getMedal(entry.rank)} alt={`Rank ${entry.rank} Medal`} />
+                    <img src={getMedal(entry.rank)} alt={`Rank ${entry.rank} Medal`} className="medal-icon" />
                   ) : (
                     <span className="rank-number mr-4 ml-4">{entry.rank}</span>
                   )}
@@ -105,8 +86,6 @@ const Leaderboards = () => {
 
             </div>
           ))}
-
-
 
           <button
             className="w-full py-2 sm:py-2.5 md:py-3 lg:py-4 text-[#5b5277] text-md border rounded hover:bg-gray-600 hover:text-white"
@@ -149,30 +128,51 @@ const Leaderboards = () => {
 
       {/* Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-4" onClick={() => setIsModalOpen(false)}>
+        <div
+          className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-4"
+          onClick={() => setIsModalOpen(false)}
+        >
           <div
             className="bg-[#080511] px-6 py-8 border-[#3B354D] border rounded-lg w-full max-w-[689px] max-h-[90vh] shadow-lg flex flex-col space-y-6 items-center"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl text-white font-semibold">Top 10 Leaderboards</h2>
             <hr className="border-t-2 border-[#363D46] w-full mb-6" />
-
-            <div className="overflow-y-auto w-full max-h-[60vh] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-4">
+            <div className="overflow-y-auto w-full max-h-[40vh] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-4">
               {covenHierarchy.map((member, index) => (
-                <div key={member.id} className="flex items-center justify-between px-7">
-                  <div className="flex items-center space-x-4">
+                <div
+                  key={member.id}
+                  className="flex items-center justify-between w-full px-6 mb-4"
+                >
+                  <div className="flex items-center">
                     {index < 3 ? (
-                      <img src={getMedal(index + 1)} alt="Medal" className="w-8 h-8 mr-3" />
+                      <img
+                        src={getMedal(index + 1)}
+                        alt="Medal"
+                        className="w-8 h-8 mr-5"
+                      />
                     ) : (
-                      <p className="text-lg ml-3 mr-[22px] font-semibold text-white">{index + 1}</p>
+                      <p className="text-lg font-semibold ml-3 mr-7">
+                        {index + 1}
+                      </p>
                     )}
-                    <img src={member.avatar} alt="Avatar" className="w-12 h-12 rounded-[5px] object-cover" />
+                    <img
+                      src={member.avatar}
+                      alt="Avatar"
+                      className="w-12 h-12 rounded-[5px] object-cover mr-3"
+                    />
                     <p className="font-medium text-white">{member.name}</p>
                   </div>
                   <p className="text-gray-400">{member.xp} XP</p>
                 </div>
               ))}
             </div>
+            <button
+              className="mt-6 bg-[#4D1EE3] text-white px-6 py-2 rounded-md hover:bg-[#3B1BC9]"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

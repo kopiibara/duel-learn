@@ -110,8 +110,6 @@
   .rank-info,
   .xp-info {
     gap: 30px;
-    padding-left: 15px;
-    padding-right: 15px;
     padding-top: 20px;
     padding-bottom: 20px;
   }
@@ -134,8 +132,6 @@
   .rank-info,
   .xp-info {
     gap: 30px;
-    padding-left: 30px;
-    padding-right: 30px;
   }
   .profile-icon {
     width: 36px;
@@ -149,8 +145,6 @@
   .rank-info,
   .xp-info {
     gap: 12px;
-    padding-left: 70px;
-    padding-right: 70px;
   }
   .profile-icon {
     width: 36px;
@@ -160,8 +154,6 @@
     font-size: 14px;
   }
   .rank-entry{
-    padding-right: 10px;
-    padding-left: 10px;
     padding-top: 20px;
     padding-bottom: 20px;
   }
@@ -183,8 +175,6 @@
     font-size: 16px;
   }
   .rank-entry{
-    padding-right: 50px;
-    padding-left: 90px;
     padding-top: 20px;
     padding-bottom: 20px;
   }
@@ -197,8 +187,6 @@
   .rank-info,
   .xp-info {
     gap: 20px;
-    padding-right: 100px;
-    padding-left: 110px;
   }
   .profile-icon {
     width: 58px;
@@ -212,8 +200,6 @@
     font-size: 16px;
   }
   .rank-entry{
-    padding-right: 50px;
-    padding-left: 90px;
     padding-top: 20px;
     padding-bottom: 20px;
   }
