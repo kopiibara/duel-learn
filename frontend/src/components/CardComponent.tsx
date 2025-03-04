@@ -6,8 +6,6 @@ import {
   Card,
   CardContent,
   CardMedia,
-  useMediaQuery,
-  useTheme,
 } from "@mui/material";
 import { styled } from "@mui/system";
 
@@ -42,9 +40,7 @@ const CardComponent: React.FC<CardComponentProps> = ({
   items,
   onClick, // Destructured onClick handler
 }) => {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const safeTags = Array.isArray(tags) ? tags : [];
+  const safeTags = Array.isArray(tags) ? tags : []; // Ensure it's always an array
 
   const ModeCard = styled(Card)(() => ({
     display: "flex",
@@ -52,53 +48,43 @@ const CardComponent: React.FC<CardComponentProps> = ({
     justifyContent: "flex-end",
     alignItems: "flex-start",
     borderRadius: "1rem",
-    height: "auto",
-    minHeight: isMobile ? "10rem" : "14rem",
-    width: "100%",
+    height: "14rem",
     cursor: "pointer",
     maxHeight: "100%",
     background: "#E2DDF3",
     position: "relative",
-    transform: "scale(1)",
-    transition: "all 0.3s ease",
+    transform: "scale(1)", // Initial transform state
+    transition: "all 0.3s ease", // Ensure smooth transition between hover and unhover states
     "&:hover": {
-      transform: "scale(1.03)",
+      transform: "scale(1.03)", // Scales slightly on hover
     },
   }));
 
   return (
     <ModeCard onClick={onClick}>
+      {" "}
+      {/* Added onClick to the card */}
       <CardContent
         sx={{
           display: "flex",
           flexDirection: "column",
           justifyContent: "flex-end",
-          width: "100%",
-          height: "100%",
-          padding: { xs: "1rem", sm: "1.5rem" },
-          "&:last-child": { paddingBottom: { xs: "1rem", sm: "1.5rem" } },
         }}
       >
         <Box
           sx={{
-            position: "relative",
-            width: "100%",
-            maxWidth: { xs: "100%", sm: "70%" },
-            zIndex: 1,
+            position: "absolute",
+            bottom: 30,
+            left: 26,
+            textAlign: "left",
           }}
         >
-          <Stack spacing={0.5}>
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              flexWrap="wrap"
-              sx={{ mb: 0.5 }}
-            >
+          <Stack spacing={0} className="flex items-baseline justify-end">
+            <Stack direction="row" spacing={1} alignItems={"center"}>
               <Typography
                 sx={{
                   color: "#000000",
-                  fontSize: { xs: "0.65rem", sm: "0.7rem" },
+                  fontSize: "0.7rem",
                   fontWeight: "600",
                 }}
               >
@@ -107,7 +93,7 @@ const CardComponent: React.FC<CardComponentProps> = ({
               <Typography
                 sx={{
                   color: "#000000",
-                  fontSize: { xs: "0.65rem", sm: "0.7rem" },
+                  fontSize: "0.7rem",
                   fontWeight: "600",
                 }}
               >
@@ -116,37 +102,21 @@ const CardComponent: React.FC<CardComponentProps> = ({
               <Typography
                 sx={{
                   color: "#000000",
-                  fontSize: { xs: "0.65rem", sm: "0.7rem" },
+                  fontSize: "0.7rem",
                   fontWeight: "600",
                 }}
               >
                 {totalViews} Views
               </Typography>
-            </Stack>
+            </Stack>{" "}
             <Typography
               variant="h6"
-              sx={{
-                color: "#080511",
-                fontWeight: "bold",
-                fontSize: { xs: "1rem", sm: "1.25rem" },
-                pb: "0.2rem",
-                wordBreak: "break-word",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-              }}
+              className="text-[#080511] pb-[0.2rem]"
+              fontWeight="bold"
             >
               {title}
             </Typography>
-            <Stack
-              direction="row"
-              spacing={0.5}
-              sx={{ mb: 1.5 }}
-              flexWrap="wrap"
-              gap={0.5}
-            >
+            <Stack direction="row" spacing={1} className="w-auto mb-3">
               {safeTags.map((tag, index) => (
                 <Chip
                   key={index}
@@ -155,10 +125,10 @@ const CardComponent: React.FC<CardComponentProps> = ({
                     backgroundColor: "#4F4A64",
                     color: "#FFFFFF",
                     borderRadius: "0.3rem",
-                    height: "auto",
-                    py: "0.2rem",
-                    px: "0.4rem",
-                    fontSize: { xs: "0.6rem", sm: "0.7rem" },
+                    width: "fit-content",
+                    height: "fit-content",
+                    py: "0.3rem",
+                    fontSize: "0.7rem",
                     fontWeight: "600",
                   }}
                 />
@@ -167,8 +137,9 @@ const CardComponent: React.FC<CardComponentProps> = ({
             <Typography
               sx={{
                 color: "#000000",
-                fontSize: { xs: "0.65rem", sm: "0.7rem" },
+                fontSize: "0.7rem",
                 fontWeight: "600",
+                paddingLeft: "1px",
               }}
             >
               Made by <strong>{createdBy}</strong>
@@ -181,10 +152,9 @@ const CardComponent: React.FC<CardComponentProps> = ({
             position: "absolute",
             top: 0,
             right: 0,
-            zIndex: 0,
-            width: { xs: "50%", sm: "45%", md: "40%" },
+            zIndex: -1,
+            width: "12rem",
             height: "100%",
-            objectFit: "cover",
           }}
           image="/cardBackground.svg"
         />

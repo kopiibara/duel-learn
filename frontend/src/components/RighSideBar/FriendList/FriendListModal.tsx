@@ -83,41 +83,31 @@ const FriendListModal: React.FC<ModalProps> = ({
           >
             YOUR FRIENDS
           </button>
-          
-
-            className={`flex-1 py-2 text-sm text-center ${activeTab === "YOUR FRIENDS"
-              ? "text-white border-b-2 border-[#E2DDF3] font-semibold"
-              : "text-gray-400 hover:text-white"
-              }`}
-          >
-            YOUR FRIENDS
-          </button>
 
           {fromPVPLobby ? null : (
             <>
-           <button
-            onClick={() => setActiveTab("FRIEND REQUESTS")}
-            className={`flex-1 py-2 text-[0.95rem] font-bold text-center ${
-              activeTab === "FRIEND REQUESTS"
-                ? "text-[#E2DDF3] border-b-2 border-[#E2DDF3] "
-                : "text-[#6F658D] hover:text-[#E2DDF3]"
-            }`}
-          >
-            FRIEND REQUESTS
-          </button>
-          <button
-            onClick={() => setActiveTab("FIND FRIENDS")}
-            className={`flex-1 py-2 text-[0.95rem] font-bold text-center ${
-              activeTab === "FIND FRIENDS"
-                ? "text-[#E2DDF3] border-b-2 border-[#E2DDF3] "
-                : "text-[#6F658D] hover:text-[#E2DDF3]"
-            }`}
-          >
-            FIND FRIENDS
-          </button>
+              <button
+                onClick={() => setActiveTab("FRIEND REQUESTS")}
+                className={`flex-1 py-2 text-[0.95rem] font-bold text-center ${
+                  activeTab === "FRIEND REQUESTS"
+                    ? "text-[#E2DDF3] border-b-2 border-[#E2DDF3] "
+                    : "text-[#6F658D] hover:text-[#E2DDF3]"
+                }`}
+              >
+                FRIEND REQUESTS
+              </button>
+              <button
+                onClick={() => setActiveTab("FIND FRIENDS")}
+                className={`flex-1 py-2 text-[0.95rem] font-bold text-center ${
+                  activeTab === "FIND FRIENDS"
+                    ? "text-[#E2DDF3] border-b-2 border-[#E2DDF3] "
+                    : "text-[#6F658D] hover:text-[#E2DDF3]"
+                }`}
+              >
+                FIND FRIENDS
+              </button>
             </>
           )}
-
         </div>
 
         {/* Content */}
@@ -126,7 +116,10 @@ const FriendListModal: React.FC<ModalProps> = ({
           {fromPVPLobby ? null : (
             <>
               {!fromPVPLobby && activeTab === "FRIEND REQUESTS" && (
-            <FriendRequests onFriendRequestHandled={onFriendRequestHandled} />}
+                <FriendRequests
+                  onFriendRequestHandled={onFriendRequestHandled}
+                />
+              )}
               {!fromPVPLobby && activeTab === "FIND FRIENDS" && <FindFriends />}
             </>
           )}
