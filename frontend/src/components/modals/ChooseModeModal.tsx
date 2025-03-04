@@ -19,13 +19,23 @@ interface CustomModalProps {
     handleClose: () => void;
 }
 
+interface ButtonData {
+    label: string;
+    subtitle: string;
+    variant: string;
+    backgroundColor: string;
+    hoverBackground: string;
+    expanded?: boolean; // Optional property
+    subButtons?: { label: string; subtitle: string; }[]; // Optional property
+}
+
 const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
     const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
     const [modalOpen, setModalOpen] = useState<boolean>(false);
     const [selectedMode, setSelectedMode] = useState<string | null>(null);
     const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
 
-    const buttonData = [
+    const buttonData: ButtonData[] = [
         {
             label: "Peaceful Mode",
             subtitle: "Study your way, no rush, just flow!",
@@ -46,12 +56,6 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
             variant: "contained",
             backgroundColor: "#E2DBF8",
             hoverBackground: "#E8E2FE",
-            expanded: true, // Flag for special hover behavior
-            subButtons: [
-                { label: "Easy", subtitle: "20 secs" },
-                { label: "Average", subtitle: "15 secs" },
-                { label: "Hard", subtitle: "10 secs" },
-            ],
         },
     ];
 
@@ -180,7 +184,10 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
                                         textAlign: "center",
                                     }}
                                     onClick={() => {
-                                        if (button.label !== "PvP Mode") {
+                                        if (button.label === "PvP Mode") {
+                                            setSelectedMode(button.label); // Set the selected mode directly
+                                            setModalOpen(true); // Open the SelectStudyMaterialModal
+                                        } else {
                                             setSelectedMode(button.label); // Set the selected mode
                                             setModalOpen(true); // Open the SelectStudyMaterialModal
                                         }
