@@ -2,23 +2,102 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import EmailSent from "../../assets/General/EmailSent.png"; // Importing the big star image
 import PageTransition from "../../styles/PageTransition"; // Importing the PageTransition component
-import { getFirestore, doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { getFirestore, doc, setDoc, serverTimestamp, getDoc } from "firebase/firestore";
 import { collection, query, where, getDocs } from "firebase/firestore";
-import { auth, sendResetEmail, sendEmail} from "../../services/firebase";
+import { auth, sendResetEmail, sendEmail } from "../../services/firebase";
 import useEmailTimestamp from "../../hooks/useEmailTimestamp";
+import firebaseEmailHandler from "../../services/firebaseEmailHandler";
 
 export default function CheckYourMail() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { email, firebase_uid, type } = location.state || JSON.parse(localStorage.getItem("userData") || "{}");
+  const [email, setEmail] = useState("");
+  const [firebase_uid, setFirebaseUid] = useState("");
+  const [type, setType] = useState("");
   const [buttonLoading, setButtonLoading] = useState(false);
   const [error, setError] = useState("");
   const [buttonText, setButtonText] = useState("Send Email");
   const { timeRemaining, isButtonDisabled, checkTimestamp } = useEmailTimestamp(email);
+  const { handleEmailAction } = firebaseEmailHandler();
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const locationState = location.state || JSON.parse(localStorage.getItem("userData") || "{}");
+      setEmail(locationState.email || "");
+      setFirebaseUid(locationState.firebase_uid || "");
+      setType(locationState.type || "");
+
+      if (locationState.firebase_uid) {
+        const db = getFirestore();
+        const userDoc = await getDoc(doc(db, "users", locationState.firebase_uid));
+        if (userDoc.exists() && userDoc.data().email_verified) {
+          navigate("/email-verified", { 
+            state: { 
+              email: locationState.email, 
+              firebase_uid: locationState.firebase_uid 
+            } 
+          });
+        }
+      }
+    };
+
+    fetchUserData();
+  }, [location.state, navigate]);
+
+  useEffect(() => {
+    const queryParams = new URLSearchParams(location.search);
+    const mode = queryParams.get("mode");
+    const oobCode = queryParams.get("oobCode");
+    const continueUrl = queryParams.get("continueUrl");
+
+    if (mode && oobCode && continueUrl) {
+      handleEmailAction(mode, oobCode, continueUrl)
+        .then(() => {
+          if (mode === "verifyEmail") {
+            navigate("/email-verified", { state: { email, firebase_uid } });
+          }
+        })
+        .catch((err) => {
+          console.error("Error handling email action:", err);
+          setError("The spell has faded — your magic link has expired.");
+        });
+    }
+  }, [location.search]);
+
+  useEffect(() => {
+    // Check for email action result in localStorage
+    const checkEmailActionResult = () => {
+      const result = localStorage.getItem('emailActionResult');
+      if (result) {
+        const { mode, firebase_uid, email, oobCode } = JSON.parse(result);
+        
+        if (mode === 'verifyEmail') {
+          navigate("/email-verified", { 
+            state: { 
+              email, 
+              firebase_uid 
+            } 
+          });
+        } else if (mode === 'resetPassword') {
+          navigate(`/reset-password?oobCode=${oobCode}&firebase_uid=${firebase_uid}`);
+        }
+        
+        // Clear the result after handling it
+        localStorage.removeItem('emailActionResult');
+      }
+    };
+
+    // Check immediately and set up interval
+    checkEmailActionResult();
+    const interval = setInterval(checkEmailActionResult, 1000);
+
+    return () => clearInterval(interval);
+  }, [navigate]);
+
   const handleSendPasswordResetEmail = async () => {
     try {
       const actionCodeSettings = {
-        url: `${import.meta.env.VITE_FRONTEND_URL}/Reset-Password?mode=resetPassword&firebase_uid=${firebase_uid}`,
+        url: `${import.meta.env.VITE_FRONTEND_URL}/email-action-handler?mode=resetPassword&firebase_uid=${firebase_uid}&email=${email}`,
         handleCodeInApp: true,
       };
 
@@ -65,7 +144,7 @@ export default function CheckYourMail() {
   const handleSendVerificationEmail = async () => {
     try {
       const actionCodeSettings = {
-        url: `${import.meta.env.VITE_FRONTEND_URL}/email-verified?mode=verifyEmail&firebase_uid=${firebase_uid}`,
+        url: `${import.meta.env.VITE_FRONTEND_URL}/email-action-handler?mode=verifyEmail&firebase_uid=${firebase_uid}&email=${email}`,
         handleCodeInApp: true,
       };
 
