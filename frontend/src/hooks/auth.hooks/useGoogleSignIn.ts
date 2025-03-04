@@ -33,6 +33,7 @@ const useGoogleSignIn = () => {
         email_verified: result.user.emailVerified,
         isSSO: true,
         account_type: "free" as "free" | "premium" | "admin",
+        level: 1
       };
 
       const userDoc = await getDoc(doc(db, "users", userData.firebase_uid));
