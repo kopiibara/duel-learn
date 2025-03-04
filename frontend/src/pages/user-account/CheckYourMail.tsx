@@ -77,7 +77,8 @@ export default function CheckYourMail() {
         navigate("/email-verified", { 
           state: { 
             email, 
-            firebase_uid 
+            firebase_uid,
+            oobCode 
           } 
         });
       } else if (mode === 'resetPassword') {
@@ -87,11 +88,13 @@ export default function CheckYourMail() {
 
     // Listen for password reset success
     const handlePasswordResetSuccess = () => {
+      localStorage.removeItem('emailTimestamp');
       navigate("/password-changed-successfully");
     };
 
     // Listen for email verification success
     const handleEmailVerifiedSuccess = () => {
+      localStorage.removeItem('emailTimestamp');
       navigate("/email-verified");
     };
 

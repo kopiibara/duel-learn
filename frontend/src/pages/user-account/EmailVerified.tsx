@@ -6,8 +6,8 @@ import { toast } from "react-hot-toast";
 import useUpdateEmailVerifiedApi from "../../hooks/api.hooks/useUpdateEmailVerifiedApi";
 import { db, auth } from "../../services/firebase";
 import { setDoc, doc, serverTimestamp, getDoc } from "firebase/firestore";
-import { reload } from "firebase/auth";
-
+import { reload, applyActionCode } from "firebase/auth";
+import { useUser } from "../../contexts/UserContext";
 const EmailVerified = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -17,7 +17,7 @@ const EmailVerified = () => {
   const [isNewUser, setIsNewUser] = useState(false);
   const [accountType, setAccountType] = useState("");
   const [isEmailVerified, setIsEmailVerified] = useState(false);
-
+  const { setUser, user } = useUser(); // Get user from context
   useEffect(() => {
     const fetchUserData = async () => {
       const locationState = location.state || {};
@@ -26,9 +26,10 @@ const EmailVerified = () => {
 
       if (locationState.firebase_uid) {
         try {
+          setFirebaseUid(locationState.firebase_uid || "");
           const userDocRef = doc(db, "users", locationState.firebase_uid);
           const userDoc = await getDoc(userDocRef);
-          
+          console.log("User Document:", userDoc.data());
           if (userDoc.exists()) {
             const userData = userDoc.data();
             setAccountType(userData.account_type || "");
@@ -38,7 +39,13 @@ const EmailVerified = () => {
             setIsNewUser(isNew);
 
             // Update email verified status
-            if(isNew){
+            if(isNew && !isEmailVerified){
+              // Apply the email verification action code
+              if (locationState.oobCode) {
+                await applyActionCode(auth, locationState.oobCode);
+              setIsEmailVerified(true);
+              }
+
               await setDoc(userDocRef, {
                 email_verified: true,
                 updated_at: serverTimestamp(),
@@ -50,6 +57,9 @@ const EmailVerified = () => {
                 true,
                 new Date().toISOString()
               );
+
+              // Remove email timestamp from localStorage
+              localStorage.removeItem('emailTimestamp');
 
               // Reload the user to get the latest email verification state
               if (auth.currentUser) {
@@ -79,15 +89,39 @@ const EmailVerified = () => {
   }, [location.state, updateEmailVerifiedApi]);
 
   const handleBacktoLoginClick = async () => {
-    setTimeout(() => {
-      if (accountType === "admin") {
-        navigate("/admin/admin-dashboard");
-      } else if (isNewUser && isEmailVerified) {
-        navigate("/dashboard/welcome");
-      } else {
-        navigate("/dashboard/home");
-      }
-    }, 2000);
+    const userDoc = await getDoc(doc(db, "users", firebase_uid));
+
+    if (userDoc.exists()) {
+      const userData = {
+        firebase_uid: firebase_uid,
+        username: userDoc.data().username,
+        email: userDoc.data().email,
+        display_picture: userDoc.data().display_picture,
+        isNew: userDoc.data().isNewUser,
+        full_name: userDoc.data().full_name,
+        email_verified: userDoc.data().email_verified,
+        isSSO: userDoc.data().isSSO,
+        account_type: userDoc.data().account_type as "free" | "premium" | "admin", // Ensure the value is either 'free' or 'premium'
+      };
+      console.log("User Data:", userData);
+      const isNewUser =
+      !userDoc.exists() ||
+      (userDoc.exists() &&
+        Date.now() - userDoc.data().created_at.toMillis() < 5000);
+
+      // Store user data in context
+      setUser(userData);
+
+      setTimeout(() => {
+        if (accountType === "admin") {
+          navigate("/admin/admin-dashboard");
+        } else if (isNewUser && isEmailVerified) {
+          navigate("/dashboard/welcome");
+        } else {
+          navigate("/dashboard/home");
+        }
+      }, 2000);
+    }
   };
 
   return (

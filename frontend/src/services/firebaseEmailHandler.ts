@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { getAuth, applyActionCode, checkActionCode } from "firebase/auth";
+import { getAuth, checkActionCode } from "firebase/auth";
 
 const firebaseEmailHandler = () => {
   const navigate = useNavigate();
@@ -23,25 +23,9 @@ const firebaseEmailHandler = () => {
           await checkActionCode(auth, oobCode);
           return { success: true, mode: "resetPassword", firebase_uid, email };
         case "verifyEmail":
-          try {
-            // First verify the action code is valid
-            await checkActionCode(auth, oobCode);
-            // Then apply the action code
-            await applyActionCode(auth, oobCode);
-            console.log("Email verification successful");
-            return { success: true, mode: "verifyEmail", firebase_uid, email };
-          } catch (error: any) {
-            console.error("Detailed verification error:", {
-              code: error.code,
-              message: error.message,
-              stack: error.stack
-            });
-            
-            if (error.code === 'auth/invalid-action-code') {
-              throw new Error("This verification link has expired or has already been used. Please request a new verification email.");
-            }
-            throw error;
-          }
+          await checkActionCode(auth, oobCode);
+          console.log("Email verification successful");
+          return { success: true, mode: "verifyEmail", firebase_uid, email, oobCode };
         default:
           throw new Error("Invalid mode");
       }
