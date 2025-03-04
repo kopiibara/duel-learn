@@ -31,24 +31,37 @@ const EmailVerified = () => {
           if (userDoc.exists()) {
             const userData = userDoc.data();
             setAccountType(userData.account_type || "");
-            setIsEmailVerified(userData.email_verified || false);
             
             // Check if user is new (created within last 5 minutes)
             const isNew = Date.now() - userData.created_at.toMillis() < 300000;
             setIsNewUser(isNew);
 
-            // Update email verified status
-            await setDoc(userDocRef, {
-              email_verified: true,
-              updated_at: serverTimestamp(),
-            }, { merge: true });
+            // Only update verification status for new users
+            if (isNew) {
+              try {
+                // Update email verified status
+                await setDoc(userDocRef, {
+                  email_verified: true,
+                  updated_at: serverTimestamp(),
+                }, { merge: true });
 
-            // Update backend
-            await updateEmailVerifiedApi(
-              locationState.firebase_uid,
-              true,
-              new Date().toISOString()
-            );
+                // Update backend
+                await updateEmailVerifiedApi(
+                  locationState.firebase_uid,
+                  true,
+                  new Date().toISOString()
+                );
+
+                // Set email verified status only once on success
+                setIsEmailVerified(true);
+              } catch (error: any) {
+                console.error("Error updating verification status:", error);
+                toast.error("Failed to update verification status. Please try again.");
+              }
+            } else {
+              // For existing users, just set the verification status from their data
+              setIsEmailVerified(userData.email_verified || false);
+            }
 
             // Log verification status
             console.log("Email Verified:", userData.email_verified);
