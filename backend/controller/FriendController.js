@@ -128,7 +128,6 @@ const FriendRequestController = {
             }));
 
             res.status(200).json(formattedRequests);
-
         }
         catch (error) {
             console.error("Database Error:", error);
@@ -137,9 +136,6 @@ const FriendRequestController = {
         finally {
             connection.release();
         }
-
-
-
     },
 
     getFriendRequestsCount: async (req, res) => {
@@ -167,7 +163,7 @@ const FriendRequestController = {
     sendFriendRequest: async (req, res) => {
         console.log("Received Friend Request:", req.body);
 
-        const { sender_id, receiver_id } = req.body;
+        const { sender_id, sender_username, receiver_id, receiver_username } = req.body;
 
         if (!sender_id || !receiver_id) {
             return res.status(400).json({ message: "Missing sender_id or receiver_id" });
@@ -198,9 +194,9 @@ const FriendRequestController = {
 
             const friendrequest_id = nanoid();
             await connection.execute(
-                `INSERT INTO friend_requests (friendrequest_id, sender_id, receiver_id, status, created_at, updated_at)
-                VALUES (?, ?, ?, 'pending', ?, ?)`,
-                [friendrequest_id, sender_id, receiver_id, currentTimestamp, updatedTimestamp]
+                `INSERT INTO friend_requests (friendrequest_id, sender_id, sender_username, receiver_id, receiver_username, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`,
+                [friendrequest_id, sender_id, sender_username, receiver_id, receiver_username || "", currentTimestamp, updatedTimestamp]
             );
 
             res.status(201).json({
@@ -216,7 +212,7 @@ const FriendRequestController = {
 
 
     acceptFriendRequest: async (req, res) => {
-        const { sender_id, receiver_id } = req.body;
+        const { sender_id, sender_username, receiver_id, receiver_username } = req.body;
         if (!sender_id || !receiver_id) {
             return res.status(400).json({ message: "Missing sender_id or receiver_id" });
         }

@@ -11,6 +11,7 @@ interface UseFriendSocketProps {
   onFriendRequestSent?: (data: {
     success: boolean;
     receiver_id: string;
+    receiver_username?: string;
   }) => void;
 }
 
@@ -67,7 +68,7 @@ export const useFriendSocket = ({
     // Listen for incoming friend requests
     if (onFriendRequest) {
       socket.on("newFriendRequest", (data) => {
-        console.log("Received newFriendRequest event:", data);
+        console.log("Socket received newFriendRequest event:", data);
         onFriendRequest(data);
       });
     }
@@ -135,25 +136,34 @@ export const useFriendSocket = ({
     userId,
   ]);
 
+  // Update the sendFriendRequest function to ensure all required data is sent
   const sendFriendRequest = (requestData: {
     sender_id: string;
     receiver_id: string;
-    senderUsername: string;
+    sender_username: string;
+    receiver_username?: string;
   }) => {
     if (socket?.connected) {
       console.log("Sending friend request:", requestData);
-      socket.emit("sendFriendRequest", requestData);
+      socket.emit("sendFriendRequest", {
+        sender_id: requestData.sender_id,
+        receiver_id: requestData.receiver_id,
+        senderUsername: requestData.sender_username, // Key issue: Backend expects senderUsername, not sender_username
+        receiver_username: requestData.receiver_username,
+      });
     } else {
       console.error("Socket not connected when trying to send friend request");
     }
   };
 
-  // Enhance the acceptFriendRequest function with better logging
+  // Update the acceptFriendRequest function
   const acceptFriendRequest = (data: {
     sender_id: string;
+    sender_username: string;
     receiver_id: string;
-    senderInfo: any;
-    receiverInfo: any;
+    receiver_username: string;
+    senderInfo?: any;
+    receiverInfo?: any;
   }) => {
     if (socket?.connected) {
       console.log("Emitting acceptFriendRequest socket event:", data);

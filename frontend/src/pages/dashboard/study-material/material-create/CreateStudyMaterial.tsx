@@ -86,6 +86,11 @@ const CreateStudyMaterial = () => {
       return;
     }
 
+    if (!user.firebase_uid) {
+      handleShowSnackbar("User ID is not available.");
+      return;
+    }
+
     if (!title.trim() || items.length === 0) {
       handleShowSnackbar("Title and at least one item are required.");
       return;
@@ -106,6 +111,7 @@ const CreateStudyMaterial = () => {
         totalItems: items.length,
         visibility: 0,
         createdBy: user.username,
+        createdById: user.firebase_uid,
         items: transformedItems,
       };
 
@@ -131,22 +137,22 @@ const CreateStudyMaterial = () => {
         throw new Error("No data received from server");
       }
 
-      // Create broadcast data with fallback values
+      // Create broadcast data with consistent property naming
       const broadcastData = {
         study_material_id:
           savedData.studyMaterialId || studyMaterial.studyMaterialId,
         title: savedData.title || title,
         tags: savedData.tags || tags,
-        images: [], // Add if you have images
         total_items: savedData.totalItems || items.length,
         created_by: savedData.createdBy || user.username,
-        total_views: 1,
+        created_by_id: savedData.createdById || user.firebase_uid, // Important! Use the right field name
         visibility: savedData.visibility || 0,
         created_at: savedData.created_at || new Date().toISOString(),
         items: savedData.items || transformedItems,
       };
 
       // Emit the transformed data
+      console.log("Emitting new study material event:", broadcastData);
       socket.emit("newStudyMaterial", broadcastData);
 
       // Navigate to preview page

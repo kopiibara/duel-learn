@@ -44,10 +44,10 @@ const setupSocket = (server) => {
             console.log("👤 User joined room:", userId);
         });
 
-        // Handle friend requests with improved error handling and logging
+        // Update the sendFriendRequest event handler
         socket.on("sendFriendRequest", (data) => {
             try {
-                const { sender_id, receiver_id, senderUsername } = data;
+                const { sender_id, receiver_id, senderUsername, receiver_username } = data;
 
                 if (!sender_id || !receiver_id || !senderUsername) {
                     throw new Error("Missing required friend request data");
@@ -59,16 +59,19 @@ const setupSocket = (server) => {
                     to: receiver_id
                 });
 
-                // Emit to the receiver's room
+                // Emit to the receiver's room with all necessary data
                 io.to(receiver_id).emit("newFriendRequest", {
                     sender_id,
-                    senderUsername
+                    sender_username: senderUsername,  // Ensure this is properly named for the client
+                    receiver_id,
+                    receiver_username
                 });
 
                 // Confirm to sender that request was sent
                 socket.emit("friendRequestSent", {
                     success: true,
-                    receiver_id
+                    receiver_id,
+                    receiver_username
                 });
 
             } catch (error) {
@@ -194,15 +197,33 @@ const setupSocket = (server) => {
             }
         });
 
+        // Update the newStudyMaterial handler to properly format the data
+
         // Listen for new study material creation
         socket.on("newStudyMaterial", (data) => {
             try {
-                if (!data || !data.content) {
+                if (!data || !data.title) {
                     throw new Error("Invalid study material data");
                 }
 
                 console.log("📚 New study material received:", data);
-                io.emit("broadcastStudyMaterial", data);
+
+                // Ensure the data has the correct property names that frontend expects
+                const broadcastData = {
+                    study_material_id: data.studyMaterialId || data.study_material_id,
+                    title: data.title,
+                    tags: data.tags || [],
+                    images: data.images || [],
+                    total_items: data.totalItems || data.total_items || 0,
+                    created_by: data.createdBy || data.created_by,
+                    created_by_id: data.createdById || data.created_by_id,
+                    visibility: data.visibility || 0,
+                    created_at: data.created_at || new Date().toISOString(),
+                    items: data.items || []
+                };
+
+                // Broadcast to all connected clients
+                io.emit("broadcastStudyMaterial", broadcastData);
             } catch (error) {
                 console.error("Error broadcasting study material:", error);
                 socket.emit("error", {
@@ -212,7 +233,6 @@ const setupSocket = (server) => {
                 });
             }
         });
-
 
         // Handle disconnection
         socket.on("disconnect", (reason) => {

@@ -14,13 +14,17 @@ export interface SnackbarState {
 
 export interface FriendRequestData {
   sender_id: string;
-  senderUsername: string;
+  sender_username: string;
+  receiver_id?: string;
+  receiver_username?: string;
 }
 
 export interface PendingRequest {
   friendrequest_id: string;
   sender_id: string;
+  sender_username: string;
   receiver_id: string;
+  receiver_username: string;
   status: string;
   created_at: string;
   sender_info?: {

@@ -16,11 +16,13 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
       const newRequest: PendingRequest = {
         friendrequest_id: `${data.sender_id}_${Date.now()}`,
         sender_id: data.sender_id,
+        sender_username: data.sender_username,
         receiver_id: userId || "",
+        receiver_username: data.receiver_username || "",
         status: "pending",
         created_at: new Date().toISOString(),
         sender_info: {
-          username: data.senderUsername,
+          username: data.sender_username,
           level: 0,
         },
       };
@@ -31,8 +33,7 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
       console.log("Socket: Friend request accepted", data);
       if (data.newFriend) {
         removePendingRequest(data.newFriend.firebase_uid);
-        // Fix this line - should be decrementing the count when a request is accepted
-        setRequestsCount((prev) => Math.max(0, prev - 1));
+        setRequestsCount((prev) => Math.max(0, prev - 1)); // Fixed: subtract 1 instead of adding 1
       }
     },
     onFriendRequestRejected: (data) => {
@@ -148,7 +149,9 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
         `${import.meta.env.VITE_BACKEND_URL}/api/friend/accept`,
         {
           sender_id: senderId,
+          sender_username: senderUsername || senderInfo.data.username,
           receiver_id: userId,
+          receiver_username: receiverInfo.data.username,
         }
       );
 
@@ -160,14 +163,18 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
       if (socket && isConnected) {
         console.log("Emitting acceptFriendRequest event with user info:", {
           sender_id: senderId,
+          sender_username: senderUsername || senderInfo.data.username,
           receiver_id: userId,
+          receiver_username: receiverInfo.data.username,
           senderInfo: senderInfo.data,
           receiverInfo: receiverInfo.data,
         });
 
         socket.emit("acceptFriendRequest", {
           sender_id: senderId,
+          sender_username: senderUsername || senderInfo.data.username,
           receiver_id: userId,
+          receiver_username: receiverInfo.data.username,
           senderInfo: senderInfo.data,
           receiverInfo: receiverInfo.data,
         });

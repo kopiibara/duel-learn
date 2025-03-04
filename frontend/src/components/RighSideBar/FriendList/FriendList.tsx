@@ -57,7 +57,7 @@ const FriendList: React.FC = () => {
     onFriendRequest: (data: FriendRequestData) => {
       setSnackbar({
         open: true,
-        message: `${data.senderUsername} sent you a friend request!`,
+        message: `${data.sender_username} sent you a friend request!`,
         isSender: false,
         senderId: data.sender_id,
       });
@@ -76,7 +76,7 @@ const FriendList: React.FC = () => {
       setSnackbar({
         open: true,
         message: `You are now friends with ${
-          data.newFriend?.username || "a new user"
+          data.otherUser.username || "a new user"
         }!`,
         isSender: true,
         senderId: "",
@@ -122,7 +122,7 @@ const FriendList: React.FC = () => {
       sendFriendRequest({
         sender_id: user.firebase_uid,
         receiver_id: receiverId,
-        senderUsername: user.username,
+        sender_username: user.username,
       });
 
       setSnackbar({

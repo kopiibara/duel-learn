@@ -15,6 +15,7 @@ const studyMaterialController = {
         totalItems,
         visibility = 0,
         createdBy,
+        createdById,
         totalView = 1,
         items, // Receiving items with Base64 images
       } = req.body;
@@ -27,8 +28,8 @@ const studyMaterialController = {
       // Insert into study_material_info
       await connection.execute(
         `INSERT INTO study_material_info 
-                (study_material_id, title, tags, total_items, visibility, created_by, total_views, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?);`,
+                (study_material_id, title, tags, total_items, visibility, created_by, created_by_id, total_views, created_at)
+                VALUES (?, ?, ?, ?, ?, ?,?, ?, ?);`,
         [
           studyMaterialId,
           title,
@@ -36,6 +37,7 @@ const studyMaterialController = {
           totalItems,
           visibility,
           createdBy,
+          createdById,
           totalView,
           currentTimestamp,
         ]
@@ -371,85 +373,105 @@ const studyMaterialController = {
   getMadeByFriends: async (req, res) => {
     const connection = await pool.getConnection();
     try {
-      const { firebase_uid } = req.params;
-      console.log("Received userId:", firebase_uid);
+      const { userId } = req.params;
+      console.log("Looking for study materials for user with ID:", userId);
 
-      if (!firebase_uid) {
-        return res.status(400).json({ error: "User ID is required" });
-      }
-
-      // Get mutual friends where status is "accepted"
-      const [friends] = await connection.execute(
-        `SELECT CASE 
-                        WHEN sender_id = ? THEN receiver_id 
-                        WHEN receiver_id = ? THEN sender_id 
-                    END AS mutual_friend_id
-             FROM friend_requests
-             WHERE (sender_id = ? OR receiver_id = ?) AND status = 'accepted';`,
-        [firebase_uid, firebase_uid, firebase_uid, firebase_uid]
+      // Find all friends with accepted status (where user is either sender or receiver)
+      const [friendsQuery] = await connection.execute(
+        `SELECT 
+          CASE 
+            WHEN sender_id = ? THEN receiver_id 
+            WHEN receiver_id = ? THEN sender_id 
+          END AS friend_id
+        FROM friend_requests 
+        WHERE (sender_id = ? OR receiver_id = ?) 
+        AND status = 'accepted'`,
+        [userId, userId, userId, userId]
       );
 
-      if (friends.length === 0) {
-        console.log("No mutual friends found for user:", userId);
+      console.log(`Found ${friendsQuery.length} friends with accepted status`);
+      console.log("Friend IDs:", friendsQuery.map(row => row.friend_id));
+
+      if (friendsQuery.length === 0) {
         return res.status(200).json([]);
       }
 
-      const mutualFriendIds = friends.map(friend => friend.mutual_friend_id);
-      console.log("Mutual Friend IDs:", mutualFriendIds);
+      // Extract friend IDs
+      const friendIds = friendsQuery.map(row => row.friend_id);
 
-      if (mutualFriendIds.length === 0) {
-        return res.status(200).json([]);
-      }
+      // Use IN clause with prepared statement
+      const placeholders = friendIds.map(() => '?').join(',');
 
-      // Fetch study materials created by mutual friends
-      const [studyMaterials] = await connection.execute(
+      // Enhanced direct query for debugging
+      const [directCheckQuery] = await connection.execute(
+        `SELECT friend_id, COUNT(*) as study_count
+         FROM (
+           SELECT ? as friend_id, study_material_id
+           FROM study_material_info
+           WHERE created_by_id = ?
+         ) as subquery
+         GROUP BY friend_id`,
+        [friendIds[0], friendIds[0]]
+      );
+
+      console.log("Direct check results:", directCheckQuery);
+
+      // Log the query that will be executed
+      console.log(`Query to execute: SELECT * FROM study_material_info WHERE created_by IN (${placeholders})`);
+      console.log("With parameters:", friendIds);
+
+      // Fetch study materials created by friends
+      const [infoRows] = await connection.execute(
         `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
-             FROM study_material_info 
-             WHERE created_by IN (${mutualFriendIds.map(() => '?').join(', ')});`,
-        mutualFriendIds
+         FROM study_material_info 
+         WHERE created_by_id IN (${placeholders})
+         ORDER BY created_at DESC`,
+        [...friendIds]
       );
 
-      if (studyMaterials.length === 0) {
-        console.log("No study materials found from mutual friends.");
+      console.log(`Found ${infoRows.length} study materials from friends`);
+      console.log("Created_by values:", infoRows.map(row => row.created_by));
+
+      if (infoRows.length === 0) {
         return res.status(200).json([]);
       }
 
-      // Process each study material
-      const detailedMaterials = await Promise.all(
-        studyMaterials.map(async (material) => {
+      // Get content for each study material
+      const studyMaterials = await Promise.all(
+        infoRows.map(async (info) => {
           const [contentRows] = await connection.execute(
             `SELECT term, definition, image 
-                     FROM study_material_content 
-                     WHERE study_material_id = ?;`,
-            [material.study_material_id]
+             FROM study_material_content 
+             WHERE study_material_id = ?`,
+            [info.study_material_id]
           );
 
           return {
-            study_material_id: material.study_material_id,
-            title: material.title,
-            tags: JSON.parse(material.tags),
-            total_items: material.total_items,
-            created_by: material.created_by,
-            total_views: material.total_views,
-            created_at: material.created_at,
-            items: contentRows.map((item) => ({
+            study_material_id: info.study_material_id,
+            title: info.title,
+            tags: JSON.parse(info.tags),
+            total_items: info.total_items,
+            created_by: info.created_by,
+            total_views: info.total_views,
+            created_at: info.created_at,
+            items: contentRows.map(item => ({
               term: item.term,
               definition: item.definition,
-              image: item.image ? item.image.toString("base64") : null,
+              image: item.image ? item.image.toString('base64') : null,
             })),
           };
         })
       );
 
-      res.status(200).json(detailedMaterials);
+      res.status(200).json(studyMaterials);
+
     } catch (error) {
-      console.error("Error fetching study materials made by mutual friends:", error);
+      console.error("Error fetching study materials from friends:", error);
       res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
   },
-
 
   getNonMatchingTags: async (req, res) => {
     const connection = await pool.getConnection();
