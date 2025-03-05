@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import GoldMedal from "../../../assets/General/gold-medal.svg";
 import SilverMedal from "../../../assets/General/silver-medal.svg";
 import BronzeMedal from "../../../assets/General/bronze-medal.svg";
@@ -8,7 +8,7 @@ import "./media-queries/LeaderboardResponsive.css";
 
 const Leaderboards = () => {
   // State for leaderboard data
-  const [leaderboardData, setLeaderboardData] = useState([
+  const [leaderboardData, _setLeaderboardData] = useState([
     { rank: 1, name: "PeraltaMalakas", level: 24, xp: "1,500" },
     { rank: 2, name: "CJDMarunoeng", level: 24, xp: "1,200" },
     { rank: 3, name: "JingMakararig", level: 24, xp: "1,000" },
@@ -29,7 +29,7 @@ const Leaderboards = () => {
   ]);
 
   // State for the number of friends
-  const [numberOfFriends, setNumberOfFriends] = useState(6);
+  const [numberOfFriends, _setNumberOfFriends] = useState(6);
 
   // Medal assignment function
   const getMedal = (rank: number): string | undefined => {
@@ -42,7 +42,6 @@ const Leaderboards = () => {
   // Placeholder function for modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
 
   return (
     <div className="mt-10">
@@ -55,15 +54,21 @@ const Leaderboards = () => {
             <div
               key={index}
               className="rank-entry"
-              style={{ backgroundColor: entry.rank % 2 === 1 ? "#120F1C" : "transparent" }}
+              style={{
+                backgroundColor:
+                  entry.rank % 2 === 1 ? "#120F1C" : "transparent",
+              }}
             >
-
               {/* Medal + Profile Pic (Grouped) */}
               <div className="rank-profile">
                 {/* Medal */}
                 <div className="rank-icon">
                   {getMedal(entry.rank) ? (
-                    <img src={getMedal(entry.rank)} alt={`Rank ${entry.rank} Medal`} className="medal-icon" />
+                    <img
+                      src={getMedal(entry.rank)}
+                      alt={`Rank ${entry.rank} Medal`}
+                      className="medal-icon"
+                    />
                   ) : (
                     <span className="rank-number mr-4 ml-4">{entry.rank}</span>
                   )}
@@ -83,7 +88,6 @@ const Leaderboards = () => {
 
               {/* Level */}
               <span className="level-text">LVL {entry.level}</span>
-
             </div>
           ))}
 
@@ -99,7 +103,6 @@ const Leaderboards = () => {
             VIEW MORE
           </button>
         </div>
-
       ) : (
         // Show "No Friends More Than 5" section if numberOfFriends is less than 5
         <div
@@ -136,7 +139,9 @@ const Leaderboards = () => {
             className="bg-[#080511] px-6 py-8 border-[#3B354D] border rounded-lg w-full max-w-[689px] max-h-[90vh] shadow-lg flex flex-col space-y-6 items-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-xl text-white font-semibold">Top 10 Leaderboards</h2>
+            <h2 className="text-xl text-white font-semibold">
+              Top 10 Leaderboards
+            </h2>
             <hr className="border-t-2 border-[#363D46] w-full mb-6" />
             <div className="overflow-y-auto w-full max-h-[40vh] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-4">
               {covenHierarchy.map((member, index) => (
@@ -176,7 +181,6 @@ const Leaderboards = () => {
           </div>
         </div>
       )}
-
     </div>
   );
 };

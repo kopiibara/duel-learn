@@ -23,7 +23,7 @@ const SetUpTimeQuestion: React.FC = () => {
   // Add manaCost variable
   const manaCost = 10; // This can be changed later to fetch from DB or props
   const [timeLimit, setTimeLimit] = useState(10);
-  const [manaPoints, setManaPoints] = useState(10); // Example starting mana points
+  const [manaPoints, _setManaPoints] = useState(10); // Example starting mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana points alert
 
   const handleSliderChange = (_event: Event, newValue: number | number[]) => {
@@ -51,7 +51,7 @@ const SetUpTimeQuestion: React.FC = () => {
           mode: "Time Pressured",
           material,
           selectedTypes,
-          timeLimit: timeLimit
+          timeLimit: timeLimit,
         },
       });
     }

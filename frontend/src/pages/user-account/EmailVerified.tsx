@@ -1,5 +1,5 @@
 import { useNavigate, useLocation } from "react-router-dom";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
 import { toast } from "react-hot-toast";
@@ -14,10 +14,10 @@ const EmailVerified = () => {
   const { updateEmailVerifiedApi } = useUpdateEmailVerifiedApi();
   const [email, setEmail] = useState("");
   const [firebase_uid, setFirebaseUid] = useState("");
-  const [isNewUser, setIsNewUser] = useState(false);
+  const [_isNewUser, setIsNewUser] = useState(false);
   const [accountType, setAccountType] = useState("");
   const [isEmailVerified, setIsEmailVerified] = useState(false);
-  const { setUser, user } = useUser(); // Get user from context
+  const { setUser } = useUser(); // Get user from context
   useEffect(() => {
     const fetchUserData = async () => {
       const locationState = location.state || {};
@@ -108,6 +108,7 @@ const EmailVerified = () => {
         full_name: userDoc.data().full_name,
         email_verified: userDoc.data().email_verified,
         isSSO: userDoc.data().isSSO,
+        level: userDoc.data().level || 0, // Add required level property
         account_type: userDoc.data().account_type as
           | "free"
           | "premium"

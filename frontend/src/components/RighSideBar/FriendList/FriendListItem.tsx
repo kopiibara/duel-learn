@@ -27,6 +27,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({
       </div>
       <Button
         variant="contained"
+        onClick={() => onInvite(friend.firebase_uid)}
         sx={{
           borderRadius: "0.8rem",
           padding: "0.4rem 1.3rem",

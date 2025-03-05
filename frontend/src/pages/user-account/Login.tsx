@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
-import { toast } from "react-hot-toast";
 import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import {
   getFirestore,
@@ -18,13 +17,8 @@ import useGoogleSignIn from "../../hooks/auth.hooks/useGoogleSignIn";
 import LoadingScreen from "../../components/LoadingScreen";
 
 //import axios from "axios";
-import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
-import {
-  auth,
-  googleProvider,
-  getAdditionalInfo,
-  db,
-} from "../../services/firebase"; // Ensure you have this import for Firebase auth
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { auth, getAdditionalInfo, db } from "../../services/firebase"; // Ensure you have this import for Firebase auth
 // Icons
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
@@ -89,6 +83,7 @@ const Login = () => {
           full_name: userDoc.data().full_name,
           email_verified: userDoc.data().email_verified,
           isSSO: userDoc.data().isSSO,
+          level: userDoc.data().level || 0, // Add level with default value 0
           account_type: userDoc.data().account_type as
             | "free"
             | "premium"

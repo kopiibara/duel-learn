@@ -1,5 +1,11 @@
 import { useState } from "react";
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore"; // Import Firestore methods
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore"; // Import Firestore methods
 
 const usernameValidation = (value: string) => {
   if (!value) {
@@ -26,7 +32,7 @@ const checkUsernameUnique = async (username: string, currentUserId: string) => {
   return userDoc.id === currentUserId;
 };
 
-const useEditUsernameValidation = (formData: any, currentUserId: string) => {
+const useEditUsernameValidation = (currentUserId: string) => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const validate = async (field: string, value: string) => {

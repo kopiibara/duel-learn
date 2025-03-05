@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import CloseIcon from "@mui/icons-material/Close";
 import { useFriendList } from "../../../../hooks/friends.hooks/useFriendList";
 import { useFriendSocket } from "../../../../hooks/friends.hooks/useFriendSocket";
@@ -32,7 +32,7 @@ const YourFriends: React.FC = () => {
     fetchFriends();
   };
 
-  const handleFriendRemoved = (data: { removedFriendId: string }) => {
+  const handleFriendRemoved = (_data: { removedFriendId: string }) => {
     setSnackbar({
       open: true,
       message: "A friend was removed from your list.",

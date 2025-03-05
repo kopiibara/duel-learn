@@ -7,7 +7,7 @@ export const useFriendList = (userId: string | undefined) => {
   const [friendList, setFriendList] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [pendingRequests, setPendingRequests] = useState<{
+  const [_pendingRequests, setPendingRequests] = useState<{
     [key: string]: string;
   }>({});
 

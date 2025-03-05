@@ -1,8 +1,8 @@
-import React, { useState } from "react";
+import { useState } from "react";
 
 const Statictics = () => {
   // State for statistics data
-  const [statistics, setStatistics] = useState({
+  const [statistics, _setStatistics] = useState({
     totalPvPMatches: 16,
     totalPvPWins: 24,
     longestStreak: 5,

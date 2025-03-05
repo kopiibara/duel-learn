@@ -14,7 +14,7 @@ const FindFriends: React.FC = () => {
   const { user } = useUser();
   const [users, setUsers] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searching, setSearching] = useState(false);
+  const [_searching, setSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [snackbar, setSnackbar] = useState({ open: false, message: "" });
 

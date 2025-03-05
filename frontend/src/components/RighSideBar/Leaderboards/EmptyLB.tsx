@@ -1,5 +1,3 @@
-import React from "react";
-
 const EmptyLB = () => {
   return (
     <div
@@ -16,7 +14,8 @@ const EmptyLB = () => {
         <div className="flex flex-col items-center justify-center mb-6">
           <div className="w-20 h-20 bg-white rounded mt-4 mb-6"></div>
           <p className="text-[#6F658D] w-[390px] text-center mt-3 px-7">
-            Add more friends to unlock the Leaderboards and compete with them for the top spot!
+            Add more friends to unlock the Leaderboards and compete with them
+            for the top spot!
           </p>
         </div>
       </div>

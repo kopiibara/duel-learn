@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { auth, signOutUser, sendEmail, db } from "../../services/firebase";
+import { auth, sendEmail } from "../../services/firebase";
 import { signOut } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
@@ -14,7 +14,6 @@ import {
   setDoc,
   doc,
   serverTimestamp,
-  getDoc,
 } from "firebase/firestore";
 import useEmailTimestamp from "../../hooks/useEmailTimestamp";
 import firebaseEmailHandler from "../../services/firebaseEmailHandler";

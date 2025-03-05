@@ -1,15 +1,37 @@
-import React, { useEffect, useState } from "react";
-import { Box, Button, Table, TableBody, TableCell, TableHead, TableRow, Typography } from "@mui/material";
+import { useEffect, useState } from "react";
+import {
+  Box,
+  Button,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableRow,
+  Typography,
+} from "@mui/material";
 import Header from "../../components/header/Header"; // Import the Header component
 import "./AdminDashboard.css"; // Import the CSS file
 
+interface User {
+  firebase_uid: string;
+  username: string;
+  email: string;
+  existInSQL: boolean;
+  existInFirebaseAuth: boolean;
+  existInFirestore: boolean;
+}
+
 const AdminDashboard = () => {
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState<User[]>([]);
 
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/admin/admin-dashboard/fetch-users`);
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/user/admin/admin-dashboard/fetch-users`
+        );
         if (!response.ok) {
           throw new Error("Failed to fetch users");
         }
@@ -29,7 +51,10 @@ const AdminDashboard = () => {
 
   const handleDeleteAllUsers = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/$firebase_uid`, { method: 'DELETE' });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/user/$firebase_uid`,
+        { method: "DELETE" }
+      );
       if (!response.ok) {
         throw new Error("Failed to delete all users");
       }
@@ -41,19 +66,17 @@ const AdminDashboard = () => {
 
   const handleDeleteUser = async (firebase_uid: string) => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/user/`, { method: 'DELETE' });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/user/`,
+        { method: "DELETE" }
+      );
       if (!response.ok) {
         throw new Error("Failed to delete user");
       }
-      setUsers(users.filter(user => user.firebase_uid !== firebase_uid));
+      setUsers(users.filter((user) => user.firebase_uid !== firebase_uid));
     } catch (error) {
       console.error("Error deleting user:", error);
     }
-  };
-
-  const handleLogout = () => {
-    // Implement your logout logic here
-    console.log("User logged out");
   };
 
   return (
@@ -62,7 +85,7 @@ const AdminDashboard = () => {
       <Typography variant="h4" gutterBottom>
         Admin Dashboard
       </Typography>
-      <Box sx={{ maxHeight: 750, overflow: 'auto' }}>
+      <Box sx={{ maxHeight: 750, overflow: "auto" }}>
         <Table>
           <TableHead className="sticky-header">
             <TableRow>
@@ -87,7 +110,11 @@ const AdminDashboard = () => {
                 <TableCell>{user.existInFirebaseAuth ? "Yes" : "No"}</TableCell>
                 <TableCell>{user.existInFirestore ? "Yes" : "No"}</TableCell>
                 <TableCell>
-                  <Button variant="contained" color="secondary" onClick={() => handleDeleteUser(user.firebase_uid)}>
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => handleDeleteUser(user.firebase_uid)}
+                  >
                     Delete
                   </Button>
                 </TableCell>
@@ -97,7 +124,11 @@ const AdminDashboard = () => {
         </Table>
       </Box>
       <Box mt={2}>
-        <Button variant="contained" color="secondary" onClick={handleDeleteAllUsers}>
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={handleDeleteAllUsers}
+        >
           Delete All
         </Button>
       </Box>

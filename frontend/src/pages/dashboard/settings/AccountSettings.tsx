@@ -5,7 +5,7 @@ import useAccountSettings from "../../../hooks/useAccountSettings";
 import ProfilePictureModal from "../../../components/ProfilePictureModal";
 import useProfilePicture from "../../../hooks/useProfilePicture";
 import DeleteAccountModal from "../../../components/DeleteAccountModal";
-import { Divider, CircularProgress } from "@mui/material";
+import { CircularProgress } from "@mui/material";
 
 export default function AccountSettings() {
   const {

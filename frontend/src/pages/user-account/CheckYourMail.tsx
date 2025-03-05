@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import EmailSent from "../../assets/General/EmailSent.png"; // Importing the big star image
 import PageTransition from "../../styles/PageTransition"; // Importing the PageTransition component
@@ -22,7 +22,7 @@ export default function CheckYourMail() {
   const [firebase_uid, setFirebaseUid] = useState("");
   const [type, setType] = useState("");
   const [buttonLoading, setButtonLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [_error, setError] = useState("");
   const [buttonText, setButtonText] = useState("Send Email");
   const { timeRemaining, isButtonDisabled, checkTimestamp } =
     useEmailTimestamp(email);
@@ -214,10 +214,6 @@ export default function CheckYourMail() {
       setError("Failed to send verification email");
       setButtonLoading(false);
     }
-  };
-
-  const handleExitClick = () => {
-    navigate("/");
   };
 
   useEffect(() => {

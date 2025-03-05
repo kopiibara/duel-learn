@@ -4,7 +4,6 @@ import {
   Button,
   Fab,
   Tooltip,
-  IconButton,
   Typography,
   Stack,
   List,
@@ -66,7 +65,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   const location = useLocation();
   const [collapsed, setCollapsed] = React.useState(false);
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
-  const [fromCreate, setFromCreate] = React.useState(false);
   const [openModal, setOpenModal] = React.useState(false);
   const { setUser } = useUser();
 
@@ -96,11 +94,9 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const handleCreateStudyMaterial = () => {
     setSelectedIndex(null);
-    setFromCreate(true);
     setCollapsed(true);
     navigate("/dashboard/study-material/create");
   };
-
   const renderButton = (
     icon: React.ReactNode,
     text: string,
