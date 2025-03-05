@@ -1,8 +1,6 @@
-import { useNavigate } from "react-router-dom";
 import { getAuth, checkActionCode } from "firebase/auth";
 
 const firebaseEmailHandler = () => {
-  const navigate = useNavigate();
   const auth = getAuth();
 
   const handleEmailAction = async (

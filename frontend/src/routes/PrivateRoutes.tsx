@@ -35,7 +35,7 @@ import HostModeSelection from "../pages/dashboard/play-battleground/modes/multip
 
 const PrivateRoutes = () => {
   const { user } = useUser();
-  const [selectedIndex, setSelectedIndex] = useState<number | null>(1);
+  const [_selectedIndex, setSelectedIndex] = useState<number | null>(1);
 
   const token = localStorage.getItem("userToken");
 

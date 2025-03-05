@@ -1,22 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 
-import {
-  auth,
-  googleProvider,
-  getAdditionalInfo,
-  db,
-} from "../../services/firebase";
-import {
-  signInWithPopup,
-  createUserWithEmailAndPassword,
-  deleteUser,
-} from "firebase/auth";
-import { setDoc, doc, serverTimestamp, deleteDoc } from "firebase/firestore";
+import { auth, getAdditionalInfo, db } from "../../services/firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { setDoc, doc, serverTimestamp } from "firebase/firestore";
 import "../../index.css";
-import { useUser } from "../../contexts/UserContext";
 import useValidation from "../../hooks/validation.hooks/useValidation";
 import PageTransition from "../../styles/PageTransition";
 import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
@@ -26,7 +16,6 @@ import bcrypt from "bcryptjs";
 import useGoogleSignIn from "../../hooks/auth.hooks/useGoogleSignIn";
 
 const SignUp = () => {
-  // const { setUser, user } = useUser(); // Commented out or removed
   const { handleError, combinedError } = useCombinedErrorHandler();
   const [formData, setFormData] = useState({
     username: "",

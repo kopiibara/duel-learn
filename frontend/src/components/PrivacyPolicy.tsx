@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom"; // Importing the Link component from React Router
 import BunnyWithStar from "../assets/General/bunny-with-star.png"; // Importing the bunny with star image
-import BigStar from "../assets/General/BigStar.png"; // Importing the big star image
 import PageTransition from "../styles/PageTransition"; // Importing the PageTransition component
 import DocumentHead from "./DocumentHead"; // Importing the DocumentHead component
 

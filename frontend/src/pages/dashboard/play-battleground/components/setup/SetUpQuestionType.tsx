@@ -19,19 +19,19 @@ const SetUpQuestionType: React.FC = () => {
   const [questionTypes] = useState([
     {
       display: "Identification",
-      value: "identification"
+      value: "identification",
     },
     {
       display: "Multiple Choice",
-      value: "multiple-choice"
+      value: "multiple-choice",
     },
     {
       display: "True or False",
-      value: "true-false"
-    }
+      value: "true-false",
+    },
   ]);
   const [openAlert, setOpenAlert] = useState(false); // State to control alert visibility
-  const [manaPoints, setManaPoints] = useState(10); // State for dynamic mana points
+  const [manaPoints, _setManaPoints] = useState(10); // State for dynamic mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana alert
 
   // Signal when component is fully ready
@@ -41,7 +41,7 @@ const SetUpQuestionType: React.FC = () => {
         // Add any necessary initialization here
         setIsComponentReady(true);
       } catch (error) {
-        console.error('Error preparing component:', error);
+        console.error("Error preparing component:", error);
       }
     };
 
@@ -53,7 +53,7 @@ const SetUpQuestionType: React.FC = () => {
     if (!fromWelcome) {
       navigate("/dashboard/welcome", {
         state: { mode, material },
-        replace: true
+        replace: true,
       });
     }
   }, [fromWelcome, navigate, mode, material]);
@@ -108,7 +108,7 @@ const SetUpQuestionType: React.FC = () => {
           mode,
           material,
           selectedTypes,
-          timeLimit: null
+          timeLimit: null,
         },
       });
     }
@@ -248,25 +248,30 @@ const SetUpQuestionType: React.FC = () => {
                       {/* Toggle Button */}
                       <div
                         onClick={() => toggleSelection(type.value)}
-                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all ${selectedTypes.includes(type.value) ? "bg-black" : "bg-black"
-                          }`}
+                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all ${
+                          selectedTypes.includes(type.value)
+                            ? "bg-black"
+                            : "bg-black"
+                        }`}
                       >
                         {/* Check Icon */}
                         <div
-                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md transition-all ${selectedTypes.includes(type.value)
-                            ? "bg-black text-[#461ABD]"
-                            : "bg-white text-[#461ABD]"
-                            } `}
+                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md transition-all ${
+                            selectedTypes.includes(type.value)
+                              ? "bg-black text-[#461ABD]"
+                              : "bg-white text-[#461ABD]"
+                          } `}
                         >
                           <CloseIcon />
                         </div>
 
                         {/* Uncheck Icon */}
                         <div
-                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded transition-all ${selectedTypes.includes(type.value)
-                            ? "bg-white text-[#461ABD]"
-                            : "bg-black text-[#461ABD]"
-                            }`}
+                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded transition-all ${
+                            selectedTypes.includes(type.value)
+                              ? "bg-white text-[#461ABD]"
+                              : "bg-black text-[#461ABD]"
+                          }`}
                         >
                           <CheckIcon />
                         </div>
@@ -284,9 +289,7 @@ const SetUpQuestionType: React.FC = () => {
                     {mode === "Time Pressured" ? (
                       "Continue" // This will not check mana points
                     ) : (
-                      <>
-                        START LEARNING!
-                      </>
+                      <>START LEARNING!</>
                     )}
                   </button>
                 </div>

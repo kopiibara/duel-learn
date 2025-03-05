@@ -1,11 +1,10 @@
 // src/pages/Shop.tsx
 
-import React, { useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import PremiumAdsBG from "../../../assets/shop-picture/premium-ads-bg.png";
 import PremiumActivatedBG from "../../../assets/shop-picture/PremiumActivatedBG.png";
 import CoinIcon from "../../../assets/CoinIcon.png";
-import Footer from "../../../components/Footer";
 import ShopItemModal from "./Modals/ShopItemModal"; // Import the modal component
 import { items, ShopItem } from "./data/itemsData"; // Import items from the new data file
 import DocumentHead from "../../../components/DocumentHead";
@@ -18,7 +17,7 @@ const Shop = () => {
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
 
-  const [isPremium, setIsPremium] = useState(false);
+  const [isPremium, _setIsPremium] = useState(false);
 
   const openModal = (item: ShopItem) => {
     if (item.owned < 5) {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import ExitIcon from "../../assets/images/Exit.png";
 import sampleAvatarDeployment from "../../assets/images/sampleAvatar2.png";

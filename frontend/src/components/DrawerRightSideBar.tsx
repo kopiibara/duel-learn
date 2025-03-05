@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Drawer, Box } from "@mui/material";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 
 // Importing the necessary content components
 import Leaderboards from "./RighSideBar/Leaderboards/Leaderboards";
@@ -27,23 +27,44 @@ const DrawerRightSideBar: React.FC<DrawerProps> = ({ open, toggleDrawer }) => {
   const location = useLocation();
 
   // State to simulate the number of friends (replace with actual logic if dynamic)
-  const [friendCount, setFriendCount] = useState<number>(6); // Example: Change this to dynamically update based on data
+  const [friendCount] = useState<number>(6); // Example: Change this to dynamically update based on data
 
   // Determine whether to show EmptyLB or Leaderboards
   const leaderboardContent = friendCount >= 5 ? <Leaderboards /> : <EmptyLB />;
-  const friendListContent = friendCount >= 1 ? <FriendList /> : <EmptyFriendList />;
+  const friendListContent =
+    friendCount >= 1 ? <FriendList /> : <EmptyFriendList />;
 
   // Mapping route paths to content components
   const contentMap: Record<RoutePath, JSX.Element> = {
-    "/dashboard/home": <>{friendListContent}<div className="my-7"></div>{leaderboardContent}</>,
+    "/dashboard/home": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
     "/dashboard/explore": leaderboardContent,
-    "/dashboard/my-library": <>{friendListContent}<div className="my-7"></div>{leaderboardContent}</>,
+    "/dashboard/my-library": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
     "/dashboard/profile": friendListContent,
-    "/dashboard/shop": <>{friendListContent}<div className="my-7"></div>{leaderboardContent}</>
+    "/dashboard/shop": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
   };
 
   // Get the content based on the current route
-  const content = contentMap[location.pathname as RoutePath] || <div>No Content</div>;
+  const content = contentMap[location.pathname as RoutePath] || (
+    <div>No Content</div>
+  );
 
   return (
     <Drawer

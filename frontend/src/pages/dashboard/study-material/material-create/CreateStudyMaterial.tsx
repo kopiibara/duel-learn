@@ -27,7 +27,7 @@ const CreateStudyMaterial = () => {
   // Check if we're in edit mode
   const editMode = location.state?.editMode || false;
   const studyMaterialId = location.state?.studyMaterialId || null;
-  const [studyMaterial, setStudyMaterial] = useState(null);
+  const [_studyMaterial, setStudyMaterial] = useState(null);
 
   // Initialize state using data from location if in edit mode
   const [tags, setTags] = useState<string[]>(location.state?.tags || []);

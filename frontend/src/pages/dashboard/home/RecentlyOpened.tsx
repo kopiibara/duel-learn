@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Box, Fab, Typography, useMediaQuery, useTheme } from "@mui/material";
+import { useState } from "react";
+import { Box, Fab } from "@mui/material";
 import CardComponent from "../../../components/CardComponent";
 import NextIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import PreviousIcon from "@mui/icons-material/ArrowBackIosNewRounded";
@@ -12,7 +12,7 @@ type CardData = {
 };
 
 const RecentlyOpened = () => {
-  const [cards, setCards] = useState<CardData[]>([]);
+  const [cards, _setCards] = useState<CardData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const cardsToShow = 3; // Number of cards to display at once
   const cardWidth = 100 / cardsToShow; // Each card takes a fraction of the total width

@@ -46,7 +46,7 @@ const ViewStudyMaterial = () => {
         console.log("API Response:", data);
 
         if (data && typeof data === "object" && "title" in data) {
-          let items: Item[] = data.items || [];
+          const items: Item[] = data.items || [];
           let tags: string[] = [];
 
           try {
@@ -58,13 +58,20 @@ const ViewStudyMaterial = () => {
             tags = [];
           }
 
+          // Store the created_by_id from the API response
+          const createdById = data.created_by_id || "";
+
+          console.log("Created by ID:", createdById);
+          console.log("Current user ID:", user?.firebase_uid);
+          console.log("Is owner?", createdById === user?.firebase_uid);
+
           setStudyMaterial({
             title: data.title,
             tags,
             images: data.images || [],
             total_items: data.total_items || 0,
             created_by: data.created_by || "Unknown",
-            created_by_id: data.created_by_id || "",
+            created_by_id: createdById,
             total_views: data.total_views || 0,
             updated_at: data.updated_at || new Date().toISOString(),
             items,
@@ -82,7 +89,7 @@ const ViewStudyMaterial = () => {
     };
 
     fetchStudyMaterial();
-  }, [studyMaterialId]);
+  }, [studyMaterialId, user?.firebase_uid]);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -282,7 +289,7 @@ const ViewStudyMaterial = () => {
           open={open}
           onClose={handleClose}
           studyMaterialId={studyMaterialId || ""}
-          isOwner={studyMaterial?.created_by_id !== user?.firebase_uid}
+          isOwner={studyMaterial?.created_by_id === user?.firebase_uid}
         />
       </Box>
     </PageTransition>

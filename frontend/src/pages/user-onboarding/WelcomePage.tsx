@@ -33,7 +33,7 @@ const WelcomePage = () => {
 
     initAudio();
 
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const handleKeyDown = (_event: KeyboardEvent) => {
       handleNavigate();
     };
 
@@ -56,7 +56,10 @@ const WelcomePage = () => {
 
     return () => {
       if (startAudioRef.current) {
-        startAudioRef.current.removeEventListener("ended", handleStartAudioEnded);
+        startAudioRef.current.removeEventListener(
+          "ended",
+          handleStartAudioEnded
+        );
       }
     };
   }, [playLoopAudio]);

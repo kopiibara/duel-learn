@@ -5,7 +5,6 @@ import PageTransition from "../../../styles/PageTransition";
 
 import ChooseYourChallenge from "../../../components/ChooseYourChallenge";
 import DiscoverMore from "./DiscoverMore";
-import RecentlyOpened from "./RecentlyOpened";
 
 const HomePage = ({
   setSelectedIndex,

@@ -1,24 +1,7 @@
 import { Box, Grid } from "@mui/material";
 import CardComponent from "../../../components/CardComponent";
 import { useNavigate } from "react-router-dom";
-interface Item {
-  term: string;
-  definition: string;
-  image?: string | null; // Update to string for Base64 images
-}
-
-interface StudyMaterial {
-  title: string;
-  tags: string[];
-  images: string[];
-  total_items: number;
-  created_by: string;
-  total_views: number;
-  visibility: number;
-  updated_at: string;
-  study_material_id: string;
-  items: Item[]; // Expecting an array of terms and definitions
-}
+import { StudyMaterial } from "../../../types/studyMaterialObject";
 
 type ExploreCardsProps = {
   cards: StudyMaterial[]; // Receive filtered cards as prop
