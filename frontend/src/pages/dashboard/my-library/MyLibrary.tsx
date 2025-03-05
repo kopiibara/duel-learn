@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
-import { Box, Typography, Stack } from "@mui/material";
+import { Box, Typography, Stack, Skeleton } from "@mui/material";
 import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
 import MyLibraryCards from "./MyLibraryCards";
 import Filter from "./Filter";
 import { useUser } from "../../../contexts/UserContext";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
-import cauldronGif from "../../../assets/General/Cauldron.gif";
 import noStudyMaterial from "../../../assets/images/NoStudyMaterial.svg";
 
 const MyLibraryPage = () => {
@@ -18,12 +17,14 @@ const MyLibraryPage = () => {
   const [filter, setFilter] = useState<string | number>("all");
   const [sort, setSort] = useState<string | number>("most recent");
   const [isLoading, setIsLoading] = useState(true); // Add loading state
+  const [previousCardCount, setPreviousCardCount] = useState(3); // Default to 3 cards
 
   // Fetch study materials created by the user
   useEffect(() => {
     const fetchStudyMaterials = async () => {
       if (!created_by) return;
       setIsLoading(true); // Set loading to true before fetch
+      setPreviousCardCount(cards.length || 3); // Store current count before clearing
 
       try {
         const response = await fetch(
@@ -81,7 +82,7 @@ const MyLibraryPage = () => {
 
   return (
     <PageTransition>
-      <Box className="h-full min-h-screen w-full">
+      <Box className="h-full w-full">
         <DocumentHead title="My Library | Duel Learn" />
         <Stack spacing={2} className="px-8">
           <Stack
@@ -122,16 +123,24 @@ const MyLibraryPage = () => {
 
           {isLoading ? (
             <Box
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              minHeight="60vh"
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
+                gap: 2,
+                width: "100%",
+              }}
             >
-              <img
-                src={cauldronGif}
-                alt="Loading..."
-                style={{ width: "8rem", height: "auto" }}
-              />
+              {[...Array(previousCardCount)].map((_, index) => (
+                <Skeleton
+                  key={index}
+                  variant="rectangular"
+                  animation="wave"
+                  sx={{
+                    height: "14rem",
+                    borderRadius: "0.8rem",
+                  }}
+                />
+              ))}
             </Box>
           ) : filteredCards.length === 0 ? (
             <Box

@@ -1,4 +1,4 @@
-import { Box, Stack, Button, Typography } from "@mui/material";
+import { Box, Stack, Button, Typography, Skeleton } from "@mui/material";
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { io } from "socket.io-client";
 import DocumentHead from "../../../components/DocumentHead";
@@ -7,7 +7,6 @@ import ExploreCards from "./ExploreCards";
 import { useUser } from "../../../contexts/UserContext";
 import AutoHideSnackbar from "../../../components/ErrorsSnackbar";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
-import cauldronGif from "../../../assets/General/Cauldron.gif";
 import noStudyMaterial from "../../../assets/images/NoStudyMaterial.svg";
 
 const ExplorePage = () => {
@@ -120,7 +119,7 @@ const ExplorePage = () => {
 
   return (
     <PageTransition>
-      <Box className="min-h-screen h-full w-auto">
+      <Box className=" h-full w-auto">
         <DocumentHead title="Explore | Duel Learn" />
         <Stack className="px-5" spacing={2}>
           <Stack direction="row">
@@ -152,16 +151,23 @@ const ExplorePage = () => {
           </Stack>
           {isLoading ? (
             <Box
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              minHeight="60vh"
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
+                gap: 2,
+              }}
             >
-              <img
-                src={cauldronGif}
-                alt="Loading..."
-                style={{ width: "8rem", height: "auto" }}
-              />
+              {[...Array(Math.max(cards.length || 3))].map((_, index) => (
+                <Skeleton
+                  key={index}
+                  variant="rectangular"
+                  animation="wave"
+                  sx={{
+                    height: "14rem",
+                    borderRadius: "0.8rem",
+                  }}
+                />
+              ))}
             </Box>
           ) : filteredCards.length === 0 ? (
             <Box

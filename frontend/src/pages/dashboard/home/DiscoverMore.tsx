@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Box, Fab, useMediaQuery, useTheme } from "@mui/material";
+import { Box, Fab, useMediaQuery, useTheme, Skeleton } from "@mui/material";
 import CardComponent from "../../../components/CardComponent";
 import NextIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import PreviousIcon from "@mui/icons-material/ArrowBackIosNewRounded";
@@ -13,6 +13,7 @@ const DiscoverMore = () => {
   const theme = useTheme();
   const [cards, setCards] = useState<StudyMaterial[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Media query to detect small screens
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
@@ -32,6 +33,7 @@ const DiscoverMore = () => {
     : 100 / maxCardsToShow; // Default distribution
 
   useEffect(() => {
+    setIsLoading(true);
     if (user?.username) {
       const fetchData = async () => {
         try {
@@ -50,6 +52,8 @@ const DiscoverMore = () => {
           setCards(data);
         } catch (error) {
           console.error("Error fetching cards data:", error);
+        } finally {
+          setIsLoading(false);
         }
       };
 
@@ -106,40 +110,65 @@ const DiscoverMore = () => {
         paddingY: "1rem",
       }}
     >
-      <Box
-        sx={{
-          display: "flex",
-          transition: "transform 0.3s ease-in-out",
-          transform: `translateX(-${currentIndex * (100 / maxCardsToShow)}%)`,
-          width: `${cards.length * (100 / maxCardsToShow)}%`,
-          justifyContent: cards.length <= cardsToShow ? "center" : "flex-start",
-        }}
-      >
-        {cards.map((item, index) => (
-          <Box
-            key={index}
-            sx={{
-              flex: `0 0 ${cardWidth}%`,
-              padding: "0 0.5rem",
-            }}
-          >
-            <CardComponent
-              title={item.title}
-              tags={item.tags}
-              images={item.images}
-              totalItems={item.total_items}
-              createdBy={item.created_by}
-              totalViews={item.total_views}
-              createdAt={item.updated_at}
-              visibility={item.visibility}
-              items={item.items}
-              onClick={() =>
-                handleCardClick(item.study_material_id, item.title)
-              }
+      {isLoading ? (
+        <Box
+          sx={{
+            display: "flex",
+            gap: 2,
+            width: "100%",
+            justifyContent: "center",
+          }}
+        >
+          {[...Array(maxCardsToShow)].map((_, index) => (
+            <Skeleton
+              key={index}
+              variant="rectangular"
+              animation="wave"
+              sx={{
+                height: "14rem",
+                width: `${cardWidth}%`,
+                borderRadius: "0.8rem",
+              }}
             />
-          </Box>
-        ))}
-      </Box>
+          ))}
+        </Box>
+      ) : (
+        <Box
+          sx={{
+            display: "flex",
+            transition: "transform 0.3s ease-in-out",
+            transform: `translateX(-${currentIndex * (100 / maxCardsToShow)}%)`,
+            width: `${cards.length * (100 / maxCardsToShow)}%`,
+            justifyContent:
+              cards.length <= cardsToShow ? "center" : "flex-start",
+          }}
+        >
+          {cards.map((item, index) => (
+            <Box
+              key={index}
+              sx={{
+                flex: `0 0 ${cardWidth}%`,
+                padding: "0 0.5rem",
+              }}
+            >
+              <CardComponent
+                title={item.title}
+                tags={item.tags}
+                images={item.images}
+                totalItems={item.total_items}
+                createdBy={item.created_by}
+                totalViews={item.total_views}
+                createdAt={item.updated_at}
+                visibility={item.visibility}
+                items={item.items}
+                onClick={() =>
+                  handleCardClick(item.study_material_id, item.title)
+                }
+              />
+            </Box>
+          ))}
+        </Box>
+      )}
 
       {/* Show navigation buttons when we have more cards than we can display */}
       {showNavigation && (
