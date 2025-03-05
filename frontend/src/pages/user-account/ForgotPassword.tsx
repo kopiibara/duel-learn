@@ -1,5 +1,4 @@
 import { Link, useNavigate } from "react-router-dom";
-import ExitIcon from "../../assets/images/Exit.png";
 import React, { useState } from "react";
 import { CircularProgress, Modal } from "@mui/material";
 import { collection, query, where, getDocs } from "firebase/firestore";
@@ -8,7 +7,6 @@ import PageTransition from "../../styles/PageTransition";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import useHandleForgotPasswordError from "../../hooks/validation.hooks/useHandleForgotPasswordError";
 import useForgotPasswordValidation from "../../hooks/validation.hooks/useForgotPasswordValidation";
-import { auth, sendResetEmail } from "../../services/firebase";
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -17,7 +15,7 @@ const ForgotPassword = () => {
     email: "",
   });
 
-  const { errors, validate } = useForgotPasswordValidation(formData);
+  const { errors, validate } = useForgotPasswordValidation();
   const [loading, setLoading] = useState(false);
   const [isSSOModalOpen, setIsSSOModalOpen] = useState(false);
   const { error, handleForgotPasswordError, setError } =

@@ -111,20 +111,28 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   const handleMaterialSelect = (material: any) => {
     if (isLobby) {
       onMaterialSelect(material);
-      onModeSelect(mode || '');
+      onModeSelect(mode || "");
       handleClose();
-      navigate("/dashboard/pvp-lobby", { state: { mode, material, selectedTypes } });
+      navigate("/dashboard/pvp-lobby", {
+        state: { mode, material, selectedTypes },
+      });
     } else {
-      const formattedMode = mode === "Peaceful Mode" ? "Peaceful" : mode === "PvP Mode" ? "PvP" : mode;
-      navigate("/dashboard/welcome-game-mode", { state: { mode: formattedMode, material } });
+      const formattedMode =
+        mode === "Peaceful Mode"
+          ? "Peaceful"
+          : mode === "PvP Mode"
+          ? "PvP"
+          : mode;
+      navigate("/dashboard/welcome-game-mode", {
+        state: { mode: formattedMode, material },
+      });
     }
   };
-
 
   return (
     <Modal
       open={open}
-      onClose={(event, reason) => {
+      onClose={(_event, reason) => {
         if (reason !== "backdropClick") {
           handleClose();
         }

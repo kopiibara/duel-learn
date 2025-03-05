@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Box, Stack, CircularProgress } from "@mui/material";
 import GoldMedal from "../../../assets/General/gold-medal.svg";
 import SilverMedal from "../../../assets/General/silver-medal.svg";

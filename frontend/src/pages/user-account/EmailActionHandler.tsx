@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import firebaseEmailHandler from "../../services/firebaseEmailHandler";
 import LoadingScreen from "../../components/LoadingScreen";
 import PageTransition from "../../styles/PageTransition";
@@ -8,7 +8,6 @@ import { socket } from "../../services/socket";
 
 const EmailActionHandler: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const { handleEmailAction } = firebaseEmailHandler();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

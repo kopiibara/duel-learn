@@ -58,23 +58,6 @@ const Personalization: React.FC = () => {
     );
   };
 
-  const handleScroll = (topicIndex: number, direction: "left" | "right") => {
-    setVisibleIndices((prev) => {
-      const newIndices = [...prev];
-      const totalSubjects = topics[topicIndex].subjects.length;
-      const maxIndex = Math.max(0, totalSubjects - 5);
-
-      if (direction === "left" && newIndices[topicIndex] > 0) {
-        newIndices[topicIndex] -= 1;
-      }
-      if (direction === "right" && newIndices[topicIndex] < maxIndex) {
-        newIndices[topicIndex] += 1;
-      }
-
-      return newIndices;
-    });
-  };
-
   if (!isLoaded) {
     return (
       <PageTransition>

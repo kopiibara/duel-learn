@@ -15,7 +15,7 @@ const TutorialLast: React.FC = () => {
   useEffect(() => {
     const fadeInTimer = setTimeout(() => setFadeIn(true), 500); // Start fade-in after 500ms
 
-    const handleKeyDown = (event: KeyboardEvent) => {
+    const handleKeyDown = (_event: KeyboardEvent) => {
       pauseAudio();
       navigate("/dashboard/home");
     };

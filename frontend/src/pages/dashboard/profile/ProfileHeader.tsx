@@ -12,8 +12,8 @@ import {
 const ProfileHeader = () => {
   const { user } = useUser();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [_loading, setLoading] = useState(false);
+  const [_error, setError] = useState<string | null>(null);
   const [friendsCount, setFriendsCount] = useState(0);
   const [profileData, setProfileData] = useState({
     username: "Loading...",

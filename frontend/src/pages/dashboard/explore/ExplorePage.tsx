@@ -13,7 +13,7 @@ import noStudyMaterial from "../../../assets/images/NoStudyMaterial.svg";
 const ExplorePage = () => {
   const { user } = useUser();
   const [selected, setSelected] = useState<number>(0);
-  const [cards, setCards] = useState<StudyMaterial[]>([]);
+  const [_cards, setCards] = useState<StudyMaterial[]>([]);
   const [filteredCards, setFilteredCards] = useState<StudyMaterial[]>([]);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");

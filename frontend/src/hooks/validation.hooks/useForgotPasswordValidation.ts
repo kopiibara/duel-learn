@@ -9,7 +9,7 @@ const emailValidation = (value: string) => {
   return "";
 };
 
-const useForgotPasswordValidation = (formData: any) => {
+const useForgotPasswordValidation = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const validate = (field: string, value: string) => {

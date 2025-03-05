@@ -1,9 +1,6 @@
-import { useNavigate } from "react-router-dom";
 import { Button, Box, Stack } from "@mui/material";
 
 const Footer = () => {
-  const navigate = useNavigate();
-
   const handleTermsCondition = () => {
     window.open("/terms-and-conditions", "_blank");
   };

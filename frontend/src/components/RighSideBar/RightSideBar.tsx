@@ -21,7 +21,7 @@ const RightSideBar: React.FC = () => {
   const location = useLocation();
 
   // State to simulate the number of friends (replace with actual logic if dynamic)
-  const [friendCount, setFriendCount] = useState<number>(6); // Example: Change this to dynamically update based on data
+  const [friendCount, _setFriendCount] = useState<number>(6); // Example: Change this to dynamically update based on data
 
   // Determine whether to show EmptyLB or Leaderboards
   const leaderboardContent = friendCount >= 5 ? <Leaderboards /> : <EmptyLB />;
@@ -29,7 +29,8 @@ const RightSideBar: React.FC = () => {
     friendCount >= 1 ? <FriendList /> : <EmptyFriendList />;
 
   // Mapping route paths to content components
-  const contentMap: Record<string, JSX.Element> = {
+  const contentMap: Partial<Record<RoutePath, JSX.Element>> &
+    Record<string, JSX.Element> = {
     "/dashboard/home": (
       <>
         {friendListContent}

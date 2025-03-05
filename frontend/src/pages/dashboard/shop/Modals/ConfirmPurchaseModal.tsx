@@ -1,6 +1,5 @@
 import React from "react";
 import { Modal, Box } from "@mui/material";
-import CoinIcon from "../../../../assets/CoinIcon.png";
 
 interface ConfirmPurchaseModalProps {
   isOpen: boolean;
@@ -41,29 +40,28 @@ const ConfirmPurchaseModal: React.FC<ConfirmPurchaseModalProps> = ({
               Are you sure you want to buy [{quantity}x]{" "}
               <strong>{selectedItem.name}</strong> for
               <span className="text-[#8d80b3] font-bold ml-1">
-              {parseInt(selectedItem.buyLabel) * quantity} Coins?
+                {parseInt(selectedItem.buyLabel) * quantity} Coins?
               </span>
             </p>
 
             <div className="w-[84px] h-[84px] bg-white rounded-lg mb-8 mt-8 mx-auto"></div>
 
-
             <div className="flex justify-between mt-10">
               <button
-              className="bg-white text-black px-5 py-2 rounded-full font-bold flex-1 mr-2 hover:bg-gray-200 transition-all duration-200"
-              onClick={() => {
-                console.log("Purchase confirmed!", selectedItem, quantity);
-                closeModal();
-              }}
+                className="bg-white text-black px-5 py-2 rounded-full font-bold flex-1 mr-2 hover:bg-gray-200 transition-all duration-200"
+                onClick={() => {
+                  console.log("Purchase confirmed!", selectedItem, quantity);
+                  closeModal();
+                }}
               >
-              Confirm Purchase
+                Confirm Purchase
               </button>
 
               <button
-              className="text-white hover:text-gray-200 transition-all duration-200 flex-1 ml-2 border border-white rounded-full"
-              onClick={closeModal}
+                className="text-white hover:text-gray-200 transition-all duration-200 flex-1 ml-2 border border-white rounded-full"
+                onClick={closeModal}
               >
-              Cancel
+                Cancel
               </button>
             </div>
           </>

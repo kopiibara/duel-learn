@@ -9,7 +9,6 @@ import usePasswordValidation from "../../hooks/validation.hooks/usePasswordValid
 import PageTransition from "../../styles/PageTransition";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
 import useResetPasswordApi from "../../hooks/api.hooks/useResetPasswordApi";
-import moment from "moment"; // Add this import
 import { setDoc, doc, getDoc } from "firebase/firestore";
 import bcrypt from "bcryptjs"; // Add this import
 import { socket } from "../../services/socket";
@@ -150,10 +149,6 @@ const ResetPassword = () => {
 
     // Clear the general error when typing in either field
     setError({ general: "" });
-  };
-
-  const handleExitClick = () => {
-    navigate("/"); // Navigate to home when the exit icon is clicked
   };
 
   const handleBacktoLoginClick = () => {

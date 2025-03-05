@@ -5,7 +5,7 @@ import PageTransition from "../../../styles/PageTransition";
 import MyLibraryCards from "./MyLibraryCards";
 import Filter from "./Filter";
 import { useUser } from "../../../contexts/UserContext";
-import { Item, StudyMaterial } from "../../../types/studyMaterialObject";
+import { StudyMaterial } from "../../../types/studyMaterialObject";
 import cauldronGif from "../../../assets/General/Cauldron.gif";
 import noStudyMaterial from "../../../assets/images/NoStudyMaterial.svg";
 
