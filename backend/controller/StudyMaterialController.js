@@ -229,7 +229,7 @@ const studyMaterialController = {
       console.log("Requested studyMaterialId:", studyMaterialId);
 
       const [infoRows] = await connection.execute(
-        `SELECT title, tags, total_items, created_by, total_views, created_at 
+        `SELECT title, tags, total_items, created_by, created_by_id, total_views, created_at 
                 FROM study_material_info 
                 WHERE study_material_id = ?;`,
         [studyMaterialId]
@@ -258,6 +258,7 @@ const studyMaterialController = {
         tags: JSON.parse(infoRows[0].tags), // Parse stored JSON tags
         total_items: infoRows[0].total_items,
         created_by: infoRows[0].created_by,
+        created_by_id: infoRows[0].created_by_id,
         total_views: infoRows[0].total_views,
         created_at: infoRows[0].created_at,
         items: formattedContent, // Updated to match frontend structure
