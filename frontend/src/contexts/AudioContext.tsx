@@ -1,7 +1,12 @@
-"use client";
-
 import type React from "react";
-import { createContext, useContext, useRef, useState, useCallback, useEffect } from "react";
+import {
+  createContext,
+  useContext,
+  useRef,
+  useState,
+  useCallback,
+  useEffect,
+} from "react";
 import { useLocation } from "react-router-dom";
 
 interface AudioContextType {
@@ -23,7 +28,9 @@ export const useAudio = () => {
   return context;
 };
 
-export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const startAudioRef = useRef<HTMLAudioElement | null>(null);
   const loopAudioRef = useRef<HTMLAudioElement | null>(null);
   const peacefulModeAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -35,14 +42,18 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     startAudioRef.current = new Audio("/sounds-sfx/WELCOME_START.mp3");
     loopAudioRef.current = new Audio("/sounds-sfx/WELCOME_LOOP.mp3");
     peacefulModeAudioRef.current = new Audio("/sounds-sfx/peacefulMode.mp3");
-    userOnboardingAudioRef.current = new Audio("/sounds-sfx/user_onboarding.mp3");
+    userOnboardingAudioRef.current = new Audio(
+      "/sounds-sfx/user_onboarding.mp3"
+    );
     loopAudioRef.current.loop = true;
     peacefulModeAudioRef.current.loop = true;
     userOnboardingAudioRef.current.loop = true;
 
     const handleStartAudioEnded = () => {
       if (loopAudioRef.current) {
-        loopAudioRef.current.play().catch((error) => console.error("Error playing loop audio:", error));
+        loopAudioRef.current
+          .play()
+          .catch((error) => console.error("Error playing loop audio:", error));
       }
     };
 
@@ -52,7 +63,10 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return () => {
       if (startAudioRef.current) {
-        startAudioRef.current.removeEventListener("ended", handleStartAudioEnded);
+        startAudioRef.current.removeEventListener(
+          "ended",
+          handleStartAudioEnded
+        );
         startAudioRef.current.pause();
         startAudioRef.current = null;
       }
@@ -116,14 +130,21 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [isPlaying]);
 
-  const fadeOutAudio = (audioRef: React.MutableRefObject<HTMLAudioElement | null>, duration: number) => {
+  const fadeOutAudio = (
+    audioRef: React.MutableRefObject<HTMLAudioElement | null>,
+    duration: number
+  ) => {
     if (audioRef.current) {
       const fadeOutInterval = 50;
-      const fadeOutStep = audioRef.current.volume / (duration / fadeOutInterval);
+      const fadeOutStep =
+        audioRef.current.volume / (duration / fadeOutInterval);
 
       const fadeOut = setInterval(() => {
         if (audioRef.current && audioRef.current.volume > 0) {
-          audioRef.current.volume = Math.max(0, audioRef.current.volume - fadeOutStep);
+          audioRef.current.volume = Math.max(
+            0,
+            audioRef.current.volume - fadeOutStep
+          );
         } else {
           clearInterval(fadeOut);
           if (audioRef.current) {
@@ -157,7 +178,16 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [location.pathname, playStartAudio, playUserOnboardingAudio, pauseAudio]);
 
   return (
-    <AudioContext.Provider value={{ playStartAudio, playLoopAudio, playPeacefulModeAudio, playUserOnboardingAudio, pauseAudio, isPlaying }}>
+    <AudioContext.Provider
+      value={{
+        playStartAudio,
+        playLoopAudio,
+        playPeacefulModeAudio,
+        playUserOnboardingAudio,
+        pauseAudio,
+        isPlaying,
+      }}
+    >
       {children}
     </AudioContext.Provider>
   );

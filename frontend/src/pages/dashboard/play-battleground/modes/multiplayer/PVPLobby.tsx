@@ -20,6 +20,7 @@ import QuestionTypeSelectionModal from "../../components/modal/QuestionTypeSelec
 import InvitePlayerModal from "../../components/modal/InvitePlayerModal"; // Import the new modal
 import { useUser } from "../../../../../contexts/UserContext"; // Import the useUser hook
 import { generateCode } from "../../utils/codeGenerator"; // Import the utility function
+import defaultAvatar from "../../../../../assets/profile-picture/bunny-picture.png";
 
 interface Player {
   id: number;
@@ -104,7 +105,7 @@ const PVPLobby: React.FC = () => {
           id: 1,
           name: user?.username || "Player 1",
           level: user?.level || 1,
-          profilePicture: user?.display_picture || "default-avatar.png",
+          profilePicture: user?.display_picture || defaultAvatar,
         },
       ];
       setPlayers(fetchedPlayers);

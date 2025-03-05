@@ -446,7 +446,7 @@ const studyMaterialController = {
       const [infoRows] = await connection.execute(
         `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
                  FROM study_material_info 
-                 ORDER BY total_views DESC;`
+                 ORDER BY total_views DESC LIMIT 9;`
       );
 
       console.log(
