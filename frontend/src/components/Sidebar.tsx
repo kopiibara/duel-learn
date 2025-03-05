@@ -237,22 +237,19 @@ const Sidebar: React.FC<SidebarProps> = ({
           {renderButton(
             <AddIcon
               fontSize="small"
-              className={clsx({ "mr-2": !collapsed })}
+              className={clsx({ "mr-1": !collapsed })}
             />,
             "Create",
             "contained",
             handleCreateStudyMaterial
           )}
           {renderButton(
-            <PlayIcon
-              fontSize="small"
-              className={clsx({ "mr-2": !collapsed })}
-            />,
+            <PlayIcon className={clsx({ "mr-1": !collapsed })} />,
             "Play",
             "outlined",
             handleModalOpen
           )}
-          <Divider />
+          <Divider sx={{ height: "2px", backgroundColor: "#3B354C" }} />
         </Stack>
 
         <nav aria-label="sidebar">
@@ -282,7 +279,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         transform: "scale(1.05)",
                       },
                       "&.Mui-selected": {
-                        color: "#FFFFFF",
+                        color: "#4D18E8",
                         fontWeight: "bold",
                       },
                       transition: "all 0.3s ease",

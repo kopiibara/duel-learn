@@ -14,7 +14,8 @@ type RoutePath =
   | "/dashboard/my-library"
   | "/dashboard/profile"
   | "/dashboard/study-material/create"
-  | "/dashboard/shop";
+  | "/dashboard/shop"
+  | "/dashboard/account-settings"; // Add account-settings to the type
 
 const RightSideBar: React.FC = () => {
   const location = useLocation();
@@ -28,7 +29,7 @@ const RightSideBar: React.FC = () => {
     friendCount >= 1 ? <FriendList /> : <EmptyFriendList />;
 
   // Mapping route paths to content components
-  const contentMap: Record<RoutePath, JSX.Element> = {
+  const contentMap: Record<string, JSX.Element> = {
     "/dashboard/home": (
       <>
         {friendListContent}
@@ -59,12 +60,24 @@ const RightSideBar: React.FC = () => {
         {leaderboardContent}
       </>
     ),
+    // Return empty div for account-settings route
+    "/dashboard/account-settings": <div></div>,
+    "/dashboard/verify-email": <div></div>,
   };
 
   // Handle dynamic route `/dashboard/study-material/preview/:studyMaterialId`
   const isPreviewRoute = location.pathname.startsWith(
     "/dashboard/study-material/preview/"
   );
+
+  // Check if we should hide the sidebar completely
+  const shouldHideSidebar = location.pathname.includes(
+    "/dashboard/account-settings"
+  );
+
+  if (shouldHideSidebar) {
+    return null; // Return null to completely hide the sidebar
+  }
 
   // Get the content based on the current route
   let content: JSX.Element;
@@ -78,9 +91,7 @@ const RightSideBar: React.FC = () => {
       </>
     );
   } else {
-    content = contentMap[location.pathname as RoutePath] || (
-      <div>No Content</div>
-    );
+    content = contentMap[location.pathname] || <div></div>;
   }
 
   return (

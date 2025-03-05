@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { io } from "socket.io-client"; // Import socket.io-client
+import { io } from "socket.io-client";
+import { useNavigate, useLocation } from "react-router-dom"; // Add useLocation import
 import DocumentHead from "../../../../components/DocumentHead";
 import PageTransition from "../../../../styles/PageTransition";
 import {
@@ -14,16 +15,23 @@ import {
 import { nanoid } from "nanoid";
 import ItemComponent from "./ItemComponent";
 import { motion, AnimatePresence } from "framer-motion"; // Importing from Framer Motion
-import { useNavigate } from "react-router-dom";
 import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
 import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust the
 
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // Add this line
   const { user } = useUser();
-  const socket = io(import.meta.env.VITE_BACKEND_URL); // Connect to backend socket
-  const [tags, setTags] = useState<string[]>([]);
-  const [title, setTitle] = useState("");
+  const socket = io(import.meta.env.VITE_BACKEND_URL);
+
+  // Check if we're in edit mode
+  const editMode = location.state?.editMode || false;
+  const studyMaterialId = location.state?.studyMaterialId || null;
+  const [studyMaterial, setStudyMaterial] = useState(null);
+
+  // Initialize state using data from location if in edit mode
+  const [tags, setTags] = useState<string[]>(location.state?.tags || []);
+  const [title, setTitle] = useState(location.state?.title || "");
   const [currentTag, setCurrentTag] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -34,7 +42,14 @@ const CreateStudyMaterial = () => {
       definition: string;
       image?: File | null;
     }[]
-  >([]);
+  >(location.state?.items || []);
+
+  // Update document title based on mode
+  useEffect(() => {
+    if (editMode) {
+      document.title = `Edit ${title || "Study Material"}`;
+    }
+  }, [editMode, title]);
 
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && currentTag.trim()) {
@@ -80,9 +95,15 @@ const CreateStudyMaterial = () => {
     setSnackbarOpen(false);
   };
 
+  // Update the save button handler to handle both create and update
   const handleSaveButton = async () => {
     if (!user?.username) {
       handleShowSnackbar("User is not authenticated.");
+      return;
+    }
+
+    if (!user.firebase_uid) {
+      handleShowSnackbar("User ID is not available.");
       return;
     }
 
@@ -100,23 +121,26 @@ const CreateStudyMaterial = () => {
       }));
 
       const studyMaterial = {
-        studyMaterialId: nanoid(),
+        studyMaterialId: editMode ? studyMaterialId : nanoid(),
         title,
         tags,
         totalItems: items.length,
         visibility: 0,
         createdBy: user.username,
+        createdById: user.firebase_uid,
         items: transformedItems,
       };
 
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/study-material/save`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(studyMaterial),
-        }
-      );
+      // Determine the endpoint based on whether we're creating or updating
+      const endpoint = editMode
+        ? `${import.meta.env.VITE_BACKEND_URL}/api/study-material/update`
+        : `${import.meta.env.VITE_BACKEND_URL}/api/study-material/save`;
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(studyMaterial),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
@@ -131,35 +155,85 @@ const CreateStudyMaterial = () => {
         throw new Error("No data received from server");
       }
 
-      // Create broadcast data with fallback values
+      // Create broadcast data with consistent property naming
       const broadcastData = {
         study_material_id:
           savedData.studyMaterialId || studyMaterial.studyMaterialId,
         title: savedData.title || title,
         tags: savedData.tags || tags,
-        images: [], // Add if you have images
         total_items: savedData.totalItems || items.length,
         created_by: savedData.createdBy || user.username,
-        total_views: 1,
+        created_by_id: savedData.createdById || user.firebase_uid,
         visibility: savedData.visibility || 0,
         created_at: savedData.created_at || new Date().toISOString(),
         items: savedData.items || transformedItems,
       };
 
       // Emit the transformed data
+      console.log("Emitting new study material event:", broadcastData);
       socket.emit("newStudyMaterial", broadcastData);
 
       // Navigate to preview page
       navigate(
-        `/dashboard/study-material/preview/${broadcastData.study_material_id}`
+        `/dashboard/study-material/view/${broadcastData.study_material_id}`
       );
     } catch (error) {
-      console.error("Failed to save study material:", error);
+      console.error(
+        editMode
+          ? "Failed to update study material:"
+          : "Failed to save study material:",
+        error
+      );
       handleShowSnackbar(
         error instanceof Error
           ? error.message
           : "Failed to save study material. Please try again."
       );
+    }
+  };
+
+  useEffect(() => {
+    const fetchStudyMaterial = async () => {
+      if (editMode && studyMaterialId) {
+        try {
+          const response = await fetch(
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/study-material/${studyMaterialId}`
+          );
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch study material");
+          }
+
+          const data = await response.json();
+          setStudyMaterial(data);
+
+          // Check if current user is the creator
+          if (user && user.firebase_uid !== data.created_by_id) {
+            handleShowSnackbar(
+              "You don't have permission to edit this study material"
+            );
+            navigate(`/dashboard/study-material/view/${studyMaterialId}`);
+          }
+        } catch (error) {
+          console.error("Error fetching study material:", error);
+          handleShowSnackbar("Error loading study material");
+          navigate(-1);
+        }
+      }
+    };
+
+    fetchStudyMaterial();
+  }, [editMode, studyMaterialId, user]);
+
+  const handleDiscard = () => {
+    if (editMode && studyMaterialId) {
+      // If coming from edit mode, return to the view page for that specific material
+      navigate(`/dashboard/study-material/view/${studyMaterialId}`);
+    } else {
+      // Otherwise, just go back to the previous page
+      navigate(-1);
     }
   };
 
@@ -180,7 +254,13 @@ const CreateStudyMaterial = () => {
     <>
       <PageTransition>
         <Box className="h-full w-full px-8">
-          <DocumentHead title={title || "Create Study Material"} />
+          <DocumentHead
+            title={
+              editMode
+                ? `Editing ${title || "Study Material"}`
+                : title || "Create Study Material"
+            }
+          />
           <Stack spacing={2.5}>
             {/* Title Input */}
             <Box className="sticky top-4 z-10">
@@ -218,22 +298,49 @@ const CreateStudyMaterial = () => {
                 />
 
                 <Box flexGrow={1} />
-                <Button
-                  variant="contained"
-                  sx={{
-                    borderRadius: "0.8rem",
-                    padding: "0.4rem 2rem",
-                    display: "flex",
-                    width: "full",
+                <Stack direction={"row"} spacing={1}>
+                  <Button
+                    variant="outlined"
+                    onClick={handleDiscard}
+                    sx={{
+                      alignItems: "center",
+                      borderColor: "#E2DDF3",
+                      color: "#E2DDF3",
+                      height: "fit-content",
 
-                    borderColor: "#E2DDF3",
-                    color: "#E2DDF3",
-                    backgroundColor: "#4D18E8",
-                  }}
-                  onClick={handleSaveButton}
-                >
-                  Save
-                </Button>
+                      borderRadius: "0.8rem",
+                      padding: "0.4rem 2rem",
+                      fontSize: "0.8rem",
+                      transition: "all 0.3s ease",
+                      "&:hover": {
+                        transform: "scale(1.05)",
+                      },
+                    }}
+                  >
+                    Discard
+                  </Button>
+                  <Button
+                    variant="contained"
+                    sx={{
+                      borderRadius: "0.8rem",
+                      padding: "0.4rem 2rem",
+                      display: "flex",
+                      width: "full",
+                      height: "fit-content",
+                      borderColor: "#E2DDF3",
+                      color: "#E2DDF3",
+                      fontSize: "0.8rem",
+                      backgroundColor: "#4D18E8",
+                      transition: " all 0.3s ease",
+                      "&:hover": {
+                        transform: "scale(1.05)",
+                      },
+                    }}
+                    onClick={handleSaveButton}
+                  >
+                    {editMode ? "Update" : "Save"}
+                  </Button>
+                </Stack>
               </Stack>
             </Box>
 

@@ -11,7 +11,7 @@ interface StudyMaterial {
   total_items: number;
   created_by: string;
   total_views: number;
-  created_at: string;
+  updated_at: string;
   items: Item[];
 }
 interface SummaryPageProps {

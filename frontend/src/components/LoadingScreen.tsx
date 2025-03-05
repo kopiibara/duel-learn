@@ -2,7 +2,11 @@ import React, { useState } from "react";
 import cauldronGif from "../assets/General/Cauldron.gif";
 import PageTransition from "../styles/PageTransition";
 
-export const LoadingScreen: React.FC = () => {
+interface LoadingScreenProps {
+  text?: string;
+}
+
+export const LoadingScreen: React.FC<LoadingScreenProps> = ({ text }) => {
   const loadingLines = [
     "For relaxed practice and review. The best way to retain those lessons in your head, Magician.",
     "A true Magician never stops learning. Prepare your spells of knowledge!",
@@ -18,12 +22,12 @@ export const LoadingScreen: React.FC = () => {
   ];
 
   const [currentLine, setCurrentLine] = useState(
-    loadingLines[Math.floor(Math.random() * loadingLines.length)]
+    text || loadingLines[Math.floor(Math.random() * loadingLines.length)]
   );
 
   const changeLine = () => {
     setCurrentLine(
-      loadingLines[Math.floor(Math.random() * loadingLines.length)]
+      text || loadingLines[Math.floor(Math.random() * loadingLines.length)]
     );
   };
 

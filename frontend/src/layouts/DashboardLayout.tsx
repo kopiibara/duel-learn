@@ -22,7 +22,11 @@ const DashboardLayout = () => {
   };
 
   return (
-    <Box className="h-screen px-8 flex flex-col lg:flex-row w-screen overflow-x-hidden ">
+    <Box
+      className={`h-screen px-8 flex flex-col lg:flex-row w-screen overflow-x-hidden ${
+        useMediaQuery("(min-width:1400px)") ? "px-11" : "px-25"
+      }`}
+    >
       {/* Sidebar (hidden on small screens) */}
       <aside className="hidden lg:block pl-4 pr-4 h-screen sticky top-0">
         <Box>
@@ -43,7 +47,7 @@ const DashboardLayout = () => {
         <Box className="flex flex-1">
           <main
             className={`flex-1 pt-3 relative ${
-              useMediaQuery("(min-width:1400px)") ? "px-11" : ""
+              useMediaQuery("(min-width:1400px)") ? "px-11" : "px-25"
             }`}
           >
             <Outlet />

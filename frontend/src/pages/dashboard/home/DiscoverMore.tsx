@@ -1,37 +1,35 @@
 import { useState, useEffect } from "react";
-import { Box, Fab } from "@mui/material";
+import { Box, Fab, useMediaQuery, useTheme } from "@mui/material";
 import CardComponent from "../../../components/CardComponent";
 import NextIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import PreviousIcon from "@mui/icons-material/ArrowBackIosNewRounded";
 import { useUser } from "../../../contexts/UserContext";
 import { useNavigate } from "react-router-dom";
-
-interface Item {
-  term: string;
-  definition: string;
-  image?: string | null; // Update to string for Base64 images
-}
-
-interface StudyMaterial {
-  title: string;
-  tags: string[];
-  images: string[];
-  total_items: number;
-  created_by: string;
-  total_views: number;
-  visibility: number;
-  created_at: string;
-  study_material_id: string;
-  items: Item[]; // Expecting an array of terms and definitions
-}
+import { StudyMaterial } from "../../../types/studyMaterialObject";
 
 const DiscoverMore = () => {
   const { user } = useUser();
   const navigate = useNavigate();
+  const theme = useTheme();
   const [cards, setCards] = useState<StudyMaterial[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const cardsToShow = 3; // Number of cards to display at once
-  const cardWidth = 100 / cardsToShow; // Each card takes a fraction of the total width
+
+  // Media query to detect small screens
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const isMediumScreen = useMediaQuery(theme.breakpoints.down("md"));
+
+  // Adjust cards to show based on screen size
+  const maxCardsToShow = isSmallScreen ? 1 : isMediumScreen ? 2 : 3;
+  const cardsToShow = Math.min(maxCardsToShow, cards.length);
+
+  // Adjust card width based on number of cards to show
+  const cardWidth = isSmallScreen
+    ? 100 // Small screen: 100% (full width)
+    : cards.length === 1
+    ? 60 // Single card: 60%
+    : isMediumScreen && cardsToShow === 2
+    ? 50 // Medium screen with 2 cards: 50% each
+    : 100 / maxCardsToShow; // Default distribution
 
   useEffect(() => {
     if (user?.username) {
@@ -82,7 +80,7 @@ const DiscoverMore = () => {
         }
       );
 
-      navigate(`/dashboard/study-material/preview/${studyMaterialId}`, {
+      navigate(`/dashboard/study-material/view/${studyMaterialId}`, {
         state: { title },
       });
     } catch (error) {
@@ -92,6 +90,9 @@ const DiscoverMore = () => {
 
   const isNextDisabled = currentIndex + cardsToShow >= cards.length;
   const isPrevDisabled = currentIndex === 0;
+
+  // Show navigation when we have more cards than we can display at once
+  const showNavigation = cards.length > cardsToShow;
 
   return (
     <Box
@@ -109,14 +110,18 @@ const DiscoverMore = () => {
         sx={{
           display: "flex",
           transition: "transform 0.3s ease-in-out",
-          transform: `translateX(-${currentIndex * cardWidth}%)`,
-          width: `${cards.length * cardWidth}%`,
+          transform: `translateX(-${currentIndex * (100 / maxCardsToShow)}%)`,
+          width: `${cards.length * (100 / maxCardsToShow)}%`,
+          justifyContent: cards.length <= cardsToShow ? "center" : "flex-start",
         }}
       >
         {cards.map((item, index) => (
           <Box
             key={index}
-            sx={{ flex: `0 0 ${cardWidth}%`, padding: "0 0.5rem" }}
+            sx={{
+              flex: `0 0 ${cardWidth}%`,
+              padding: "0 0.5rem",
+            }}
           >
             <CardComponent
               title={item.title}
@@ -125,7 +130,7 @@ const DiscoverMore = () => {
               totalItems={item.total_items}
               createdBy={item.created_by}
               totalViews={item.total_views}
-              createdAt={item.created_at}
+              createdAt={item.updated_at}
               visibility={item.visibility}
               items={item.items}
               onClick={() =>
@@ -136,63 +141,74 @@ const DiscoverMore = () => {
         ))}
       </Box>
 
-      {/* Left FAB */}
-      <Fab
-        onClick={handlePrev}
-        sx={{
-          position: "absolute",
-          left: "1rem",
-          top: "50%",
-          transform: "translateY(-50%)",
-          opacity: isPrevDisabled ? 0 : 1, // Hide when disabled
-          pointerEvents: isPrevDisabled ? "none" : "auto", // Disable interactions when not visible
-          backgroundColor: "transparent",
-          "& .MuiSvgIcon-root": {
-            color: "#3B354D",
-          },
-          "&:hover": {
-            backgroundColor: "#3B354D",
-            "& .MuiSvgIcon-root": {
-              color: "#E2DDF3",
-            },
-          },
-        }}
-        className="navigation-button"
-        color="primary"
-        size="small"
-        disabled={isPrevDisabled}
-      >
-        <PreviousIcon />
-      </Fab>
+      {/* Show navigation buttons when we have more cards than we can display */}
+      {showNavigation && (
+        <>
+          {/* Left FAB */}
+          <Fab
+            onClick={handlePrev}
+            sx={{
+              position: "absolute",
+              left: isSmallScreen ? "0.5rem" : "1rem",
+              top: "50%",
+              transform: "translateY(-50%)",
+              opacity: isPrevDisabled ? 0 : 1,
+              pointerEvents: isPrevDisabled ? "none" : "auto",
+              backgroundColor: "transparent",
+              "& .MuiSvgIcon-root": {
+                color: "#3B354D",
+              },
+              "&:hover": {
+                backgroundColor: "#3B354D",
+                "& .MuiSvgIcon-root": {
+                  color: "#E2DDF3",
+                },
+              },
+              // Smaller size on mobile
+              width: isSmallScreen ? 40 : 48,
+              height: isSmallScreen ? 40 : 48,
+            }}
+            className="navigation-button"
+            color="primary"
+            size={isSmallScreen ? "small" : "medium"}
+            disabled={isPrevDisabled}
+          >
+            <PreviousIcon fontSize={isSmallScreen ? "small" : "medium"} />
+          </Fab>
 
-      {/* Right FAB */}
-      <Fab
-        onClick={handleNext}
-        sx={{
-          position: "absolute",
-          right: "1rem",
-          top: "50%",
-          transform: "translateY(-50%)",
-          opacity: isNextDisabled ? 0 : 1, // Hide when disabled
-          pointerEvents: isNextDisabled ? "none" : "auto", // Disable interactions when not visible
-          backgroundColor: "transparent",
-          "& .MuiSvgIcon-root": {
-            color: "#3B354D",
-          },
-          "&:hover": {
-            backgroundColor: "#3B354D",
-            "& .MuiSvgIcon-root": {
-              color: "#E2DDF3",
-            },
-          },
-        }}
-        className="navigation-button"
-        color="primary"
-        size="small"
-        disabled={isNextDisabled}
-      >
-        <NextIcon />
-      </Fab>
+          {/* Right FAB */}
+          <Fab
+            onClick={handleNext}
+            sx={{
+              position: "absolute",
+              right: isSmallScreen ? "0.5rem" : "1rem",
+              top: "50%",
+              transform: "translateY(-50%)",
+              opacity: isNextDisabled ? 0 : 1,
+              pointerEvents: isNextDisabled ? "none" : "auto",
+              backgroundColor: "transparent",
+              "& .MuiSvgIcon-root": {
+                color: "#3B354D",
+              },
+              "&:hover": {
+                backgroundColor: "#3B354D",
+                "& .MuiSvgIcon-root": {
+                  color: "#E2DDF3",
+                },
+              },
+              // Smaller size on mobile
+              width: isSmallScreen ? 40 : 48,
+              height: isSmallScreen ? 40 : 48,
+            }}
+            className="navigation-button"
+            color="primary"
+            size={isSmallScreen ? "small" : "medium"}
+            disabled={isNextDisabled}
+          >
+            <NextIcon fontSize={isSmallScreen ? "small" : "medium"} />
+          </Fab>
+        </>
+      )}
     </Box>
   );
 };

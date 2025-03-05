@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { Box, IconButton } from "@mui/material";
+import React, { useState, useEffect } from "react";
+import { Box, IconButton, Stack } from "@mui/material";
 import { useUser } from "../../../contexts/UserContext";
 import cauldronGif from "../../../assets/General/Cauldron.gif";
 import InviteSnackbar from "../../../components/InviteSnackbar";
@@ -7,21 +7,24 @@ import Modal from "./FriendListModal";
 import FriendListItem from "./FriendListItem";
 import FriendListActions from "./FriendListActions";
 import { useFriendList } from "../../../hooks/friends.hooks/useFriendList";
-
 import { useFriendSocket } from "../../../hooks/friends.hooks/useFriendSocket";
+import { usePendingFriendRequests } from "../../../hooks/friends.hooks/usePendingFriendRequests";
+import axios from "axios";
 import {
   SnackbarState,
   FriendRequestData,
   Friend,
-} from "../../../types/friend.types";
+} from "../../../types/friendObject";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
+import noFriend from "../../../assets/images/NoFriend.svg";
 
 const FriendList: React.FC = () => {
   const { user } = useUser();
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("");
   const [localFriendList, setLocalFriendList] = useState<Friend[]>([]);
+  const [pendingCount, setPendingCount] = useState(0);
   const [snackbar, setSnackbar] = useState<SnackbarState>({
     open: false,
     message: "",
@@ -29,69 +32,97 @@ const FriendList: React.FC = () => {
     senderId: "",
   });
 
-  const {
-    friendList,
-    loading,
-    error,
-    handleSendFriendRequest,
-    handleAcceptFriendRequest,
-  } = useFriendList(user?.firebase_uid);
+  // Get pending requests and handlers
+  const { requestsCount, handleAcceptRequest, handleRejectRequest } =
+    usePendingFriendRequests(user?.firebase_uid);
+
+  // Update local count whenever the requestsCount changes
+  useEffect(() => {
+    setPendingCount(requestsCount);
+  }, [requestsCount]);
+
+  const { friendList, loading, error, handleSendFriendRequest, fetchFriends } =
+    useFriendList(user?.firebase_uid);
 
   // Update local friend list when friendList changes
-  React.useEffect(() => {
+  useEffect(() => {
     if (friendList) {
       setLocalFriendList(friendList);
     }
   }, [friendList]);
 
+  // Setup socket handlers
   const { sendFriendRequest } = useFriendSocket({
     userId: user?.firebase_uid,
     onFriendRequest: (data: FriendRequestData) => {
       setSnackbar({
         open: true,
-        message: `${data.senderUsername} sent you a friend request!`,
+        message: `${data.sender_username} sent you a friend request!`,
         isSender: false,
         senderId: data.sender_id,
+      });
+
+      // Force an update of the pending count
+      fetchPendingRequestCount();
+    },
+    onFriendRequestAccepted: (data) => {
+      // Update UI to show the new friend
+      fetchFriends();
+
+      // Update the pending count
+      fetchPendingRequestCount();
+
+      // Show notification
+      setSnackbar({
+        open: true,
+        message: `You are now friends with ${
+          data.otherUser.username || "a new user"
+        }!`,
+        isSender: true,
+        senderId: "",
       });
     },
   });
 
-  const { socket } = useFriendSocket({
-    userId: user?.firebase_uid,
-    onFriendRequest: () => {},
-  });
+  // Function to fetch pending request count directly
+  const fetchPendingRequestCount = async () => {
+    if (!user?.firebase_uid) return;
 
-  React.useEffect(() => {
-    if (!socket) return;
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/friend/requests-count/${
+          user.firebase_uid
+        }`
+      );
 
-    socket.on("friendRequestAccepted", ({ newFriend }) => {
-      // Update the friend list with the new friend
-      setLocalFriendList((prevList) => {
-        if (
-          !prevList.some(
-            (friend) => friend.firebase_uid === newFriend.firebase_uid
-          )
-        ) {
-          return [...prevList, newFriend];
-        }
-        return prevList;
-      });
-    });
+      if (response.data && typeof response.data.count === "number") {
+        setPendingCount(response.data.count);
+      }
+    } catch (error) {
+      console.error("Error fetching pending request count:", error);
+    }
+  };
 
-    return () => {
-      socket.off("friendRequestAccepted");
-    };
-  }, [socket]);
+  // Fetch the pending count on mount
+  useEffect(() => {
+    if (user?.firebase_uid) {
+      fetchPendingRequestCount();
+    }
+  }, [user?.firebase_uid]);
 
   const handleInvite = async (receiverId: string) => {
     if (!user?.firebase_uid || !user?.username) return;
 
     try {
-      await handleSendFriendRequest(receiverId, user.firebase_uid);
+      await handleSendFriendRequest(
+        receiverId,
+        user.firebase_uid,
+        user.username
+      );
       sendFriendRequest({
         sender_id: user.firebase_uid,
         receiver_id: receiverId,
-        senderUsername: user.username,
+        sender_username: user.username,
       });
 
       setSnackbar({
@@ -113,14 +144,19 @@ const FriendList: React.FC = () => {
 
   const onAcceptFriendRequest = async (senderId: string) => {
     try {
-      await handleAcceptFriendRequest(senderId, user?.firebase_uid || "");
-      setSnackbar({
-        open: true,
-        message: "Friend request accepted!",
-        isSender: true,
-        senderId: "",
-      });
+      // Use handleAcceptRequest from usePendingFriendRequests
+      await handleAcceptRequest(senderId);
+
+      // Close the snackbar
+      setSnackbar({ ...snackbar, open: false });
+
+      // Refresh the friend list
+      fetchFriends();
+
+      // Update the pending count
+      fetchPendingRequestCount();
     } catch (error: any) {
+      console.error("Error accepting friend request:", error);
       setSnackbar({
         open: true,
         message:
@@ -131,14 +167,24 @@ const FriendList: React.FC = () => {
     }
   };
 
-  const handleDeclineFriendRequest = (senderId: string) => {
-    console.log("Declining friend request from:", senderId);
-    setSnackbar({ ...snackbar, open: false });
+  const handleDeclineFriendRequest = async (senderId: string) => {
+    try {
+      await handleRejectRequest(senderId);
+      setSnackbar({ ...snackbar, open: false });
+      fetchPendingRequestCount();
+    } catch (error) {
+      console.error("Error declining friend request:", error);
+    }
   };
 
   const openModal = (tab: string) => {
     setActiveTab(tab);
     setModalOpen(true);
+
+    // If opening the pending requests, refresh the count
+    if (tab === "pending") {
+      fetchPendingRequestCount();
+    }
   };
 
   const closeModal = () => {
@@ -148,7 +194,7 @@ const FriendList: React.FC = () => {
 
   return (
     <>
-      <Box className="rounded-[1rem] shadow-md border-[0.25rem] border-[#3B354C]">
+      <Box className="rounded-[1rem] shadow-md border-[0.2rem] border-[#3B354C]">
         <div className="px-8 pt-8 pb-5">
           <div className="flex flex-row items-center mb-5 gap-4">
             <img src="/bunny.png" className="w-[41px] h-[35px]" alt="icon" />
@@ -156,7 +202,7 @@ const FriendList: React.FC = () => {
               Friend List
             </h2>
           </div>
-          <hr className="border-t-1 border-[#3B354D] mb-7" />
+          <hr className="border-t-2 border-[#3B354D] mb-7" />
 
           {loading ? (
             <Box display="flex" justifyContent="center" alignItems="center">
@@ -168,6 +214,26 @@ const FriendList: React.FC = () => {
             </Box>
           ) : error ? (
             <div className="text-center text-red-500">{error}</div>
+          ) : localFriendList.length === 0 ? (
+            <Stack
+              spacing={2}
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              paddingY={2}
+            >
+              <Box display="flex" justifyContent="center" alignItems="center">
+                <img
+                  src={noFriend}
+                  alt="noFriend"
+                  style={{ width: "8rem", height: "auto", opacity: 0.75 }}
+                />
+              </Box>
+              <p className=" text-[#6F658D] font-semibold text-[0.85rem]">
+                {" "}
+                Add friends and share the magic!
+              </p>
+            </Stack>
           ) : (
             localFriendList.map((friend: Friend) => (
               <FriendListItem
@@ -179,7 +245,11 @@ const FriendList: React.FC = () => {
           )}
         </div>
 
-        <FriendListActions activeTab={activeTab} onTabChange={openModal} />
+        <FriendListActions
+          activeTab={activeTab}
+          onTabChange={openModal}
+          pendingCount={pendingCount}
+        />
       </Box>
 
       <Modal
@@ -187,6 +257,7 @@ const FriendList: React.FC = () => {
         onClose={closeModal}
         activeTab={activeTab}
         setActiveTab={setActiveTab}
+        onFriendRequestHandled={fetchPendingRequestCount}
       />
 
       <InviteSnackbar

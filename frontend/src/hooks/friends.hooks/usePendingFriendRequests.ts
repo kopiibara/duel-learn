@@ -1,18 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { useFriendSocket } from "./useFriendSocket";
-
-interface PendingRequest {
-  friendrequest_id: string;
-  sender_id: string;
-  receiver_id: string;
-  status: string;
-  created_at: string;
-  sender_info?: {
-    username: string;
-    level: number;
-  };
-}
+import { PendingRequest } from "../../types/friendObject";
 
 export const usePendingFriendRequests = (userId: string | undefined) => {
   const [pendingRequests, setPendingRequests] = useState<PendingRequest[]>([]);
@@ -27,11 +16,13 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
       const newRequest: PendingRequest = {
         friendrequest_id: `${data.sender_id}_${Date.now()}`,
         sender_id: data.sender_id,
+        sender_username: data.sender_username,
         receiver_id: userId || "",
+        receiver_username: data.receiver_username || "",
         status: "pending",
         created_at: new Date().toISOString(),
         sender_info: {
-          username: data.senderUsername,
+          username: data.sender_username,
           level: 0,
         },
       };
@@ -42,7 +33,7 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
       console.log("Socket: Friend request accepted", data);
       if (data.newFriend) {
         removePendingRequest(data.newFriend.firebase_uid);
-        setRequestsCount((prev) => Math.max(0, prev + 1));
+        setRequestsCount((prev) => Math.max(0, prev - 1)); // Fixed: subtract 1 instead of adding 1
       }
     },
     onFriendRequestRejected: (data) => {
@@ -141,11 +132,26 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
     if (!userId) return;
 
     try {
+      console.log("Accepting friend request from:", senderId);
+
+      // First get both users' information
+      const [senderInfo, receiverInfo] = await Promise.all([
+        axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/friend/user-info/${senderId}`
+        ),
+        axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/friend/user-info/${userId}`
+        ),
+      ]);
+
+      // Then accept the request
       const response = await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/friend/accept`,
         {
           sender_id: senderId,
+          sender_username: senderUsername || senderInfo.data.username,
           receiver_id: userId,
+          receiver_username: receiverInfo.data.username,
         }
       );
 
@@ -153,17 +159,29 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
       removePendingRequest(senderId);
       setRequestsCount((prev) => Math.max(0, prev - 1));
 
-      // Emit socket event for real-time update
+      // Emit socket event for real-time update with complete user info
       if (socket && isConnected) {
+        console.log("Emitting acceptFriendRequest event with user info:", {
+          sender_id: senderId,
+          sender_username: senderUsername || senderInfo.data.username,
+          receiver_id: userId,
+          receiver_username: receiverInfo.data.username,
+          senderInfo: senderInfo.data,
+          receiverInfo: receiverInfo.data,
+        });
+
         socket.emit("acceptFriendRequest", {
           sender_id: senderId,
+          sender_username: senderUsername || senderInfo.data.username,
           receiver_id: userId,
-          senderInfo: {
-            firebase_uid: senderId,
-            username: senderUsername,
-          },
-          receiverInfo: response.data.senderInfo,
+          receiver_username: receiverInfo.data.username,
+          senderInfo: senderInfo.data,
+          receiverInfo: receiverInfo.data,
         });
+      } else {
+        console.log(
+          "Socket not connected, couldn't emit acceptFriendRequest event"
+        );
       }
 
       return response.data;

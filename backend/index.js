@@ -3,9 +3,10 @@ import express from "express";
 import dotenv from "dotenv";
 import { connectDB } from "./config/db.js";
 import cors from "cors"; // Import CORS package
-import studyMaterialRoutes from "./routes/StudyMaterial.js";
+import studyMaterialRoutes from "./routes/StudyMaterialRoutes.js";
 import userRoutes from "./routes/UserAccount.js";
 import friendRoutes from "./routes/FriendRoutes.js";
+import userInfoRoutes from "./routes/UserInfoRoutes.js";
 // Load environment variables
 dotenv.config();
 
@@ -36,5 +37,6 @@ app.use(express.json());
 app.use("/api/study-material", studyMaterialRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/friend", friendRoutes);
+app.use("/api/user-info", userInfoRoutes);
 
 export default app;

@@ -7,15 +7,15 @@ const setupSocket = (server) => {
         cors: {
             origin: process.env.FRONTEND_URL,
             methods: ["GET", "POST"],
-            credentials: true
+            credentials: true,
         },
         pingTimeout: 60000,
         connectTimeout: 5000,
-        transports: ['websocket', 'polling'],
+        transports: ["websocket", "polling"],
         // Add error handling and reconnection logic
         reconnection: true,
         reconnectionAttempts: 5,
-        reconnectionDelay: 1000
+        reconnectionDelay: 1000,
     });
 
     // Store active user connections
@@ -26,11 +26,19 @@ const setupSocket = (server) => {
         console.log(`Connection error due to ${err.message}`);
     });
 
+    // Set max listeners to prevent warnings if needed
+    io.sockets.setMaxListeners(20);
+
     io.on("connection", (socket) => {
         console.log("🔌 New client connected:", socket.id);
 
+        // Set max listeners for this socket if needed
+        socket.setMaxListeners(15);
+
         // Add user to a room based on their firebase_uid
         socket.on("setup", (userId) => {
+            socket.userId = userId;
+
             if (!userId) {
                 console.error("Invalid userId in setup");
                 return;
@@ -41,13 +49,13 @@ const setupSocket = (server) => {
             socket.userId = userId; // Store uid in socket for easy access
 
             socket.join(userId);
-            console.log("👤 User joined room:", userId);
+            console.log("👤 Active user joined room:", userId);
         });
 
-        // Handle friend requests with improved error handling and logging
+        // Update the sendFriendRequest event handler
         socket.on("sendFriendRequest", (data) => {
             try {
-                const { sender_id, receiver_id, senderUsername } = data;
+                const { sender_id, receiver_id, senderUsername, receiver_username } = data;
 
                 if (!sender_id || !receiver_id || !senderUsername) {
                     throw new Error("Missing required friend request data");
@@ -59,16 +67,19 @@ const setupSocket = (server) => {
                     to: receiver_id
                 });
 
-                // Emit to the receiver's room
+                // Emit to the receiver's room with all necessary data
                 io.to(receiver_id).emit("newFriendRequest", {
                     sender_id,
-                    senderUsername
+                    sender_username: senderUsername,
+                    receiver_id,
+                    receiver_username
                 });
 
                 // Confirm to sender that request was sent
                 socket.emit("friendRequestSent", {
                     success: true,
-                    receiver_id
+                    receiver_id,
+                    receiver_username
                 });
 
             } catch (error) {
@@ -81,35 +92,50 @@ const setupSocket = (server) => {
             }
         });
 
-        // Handle friend request acceptance
+        // Update the acceptFriendRequest handler to include more detailed information
         socket.on("acceptFriendRequest", (data) => {
             try {
                 const { sender_id, receiver_id, senderInfo, receiverInfo } = data;
 
-                if (!sender_id || !receiver_id || !senderInfo || !receiverInfo) {
-                    throw new Error("Missing required friend acceptance data");
+                console.log("Socket: Processing friend request acceptance", {
+                    sender_id,
+                    receiver_id,
+                    senderInfo: senderInfo ? {
+                        username: senderInfo.username,
+                        uid: senderInfo.firebase_uid || senderInfo.uid
+                    } : 'missing',
+                    receiverInfo: receiverInfo ? {
+                        username: receiverInfo.username,
+                        uid: receiverInfo.firebase_uid || receiverInfo.uid
+                    } : 'missing'
+                });
+
+                if (!sender_id || !receiver_id) {
+                    throw new Error("Missing required sender or receiver ID");
                 }
 
-                console.log("✅ Friend request accepted:", {
-                    sender_id,
-                    receiver_id
-                });
+                // Notify sender - send receiver's info
+                if (activeUsers.has(sender_id)) {
+                    console.log(`Notifying sender ${sender_id} about accepted request`);
+                    io.to(sender_id).emit("friendRequestAccepted", {
+                        newFriend: receiverInfo || { firebase_uid: receiver_id }
+                    });
+                } else {
+                    console.log(`Sender ${sender_id} is not active, cannot notify`);
+                }
 
-                // Notify both users about the accepted friendship
-                io.to(sender_id).emit("friendRequestAccepted", {
-                    newFriend: receiverInfo
-                });
-                io.to(receiver_id).emit("friendRequestAccepted", {
-                    newFriend: senderInfo
-                });
-
+                // Notify receiver - send sender's info
+                if (activeUsers.has(receiver_id)) {
+                    console.log(`Notifying receiver ${receiver_id} about accepted request`);
+                    io.to(receiver_id).emit("friendRequestAccepted", {
+                        newFriend: senderInfo || { firebase_uid: sender_id }
+                    });
+                } else {
+                    console.log(`Receiver ${receiver_id} is not active, cannot notify`);
+                }
             } catch (error) {
-                console.error("Error processing friend acceptance:", error);
-                socket.emit("error", {
-                    type: "friendAcceptance",
-                    message: "Failed to process friend acceptance",
-                    details: error.message
-                });
+                console.error("Error handling friend request acceptance:", error);
+                socket.emit("error", { message: "Failed to process friend acceptance", details: error.message });
             }
         });
 
@@ -182,12 +208,28 @@ const setupSocket = (server) => {
         // Listen for new study material creation
         socket.on("newStudyMaterial", (data) => {
             try {
-                if (!data || !data.content) {
+                if (!data || !data.title) {
                     throw new Error("Invalid study material data");
                 }
 
                 console.log("📚 New study material received:", data);
-                io.emit("broadcastStudyMaterial", data);
+
+                // Ensure the data has the correct property names that frontend expects
+                const broadcastData = {
+                    study_material_id: data.studyMaterialId || data.study_material_id,
+                    title: data.title,
+                    tags: data.tags || [],
+                    images: data.images || [],
+                    total_items: data.totalItems || data.total_items || 0,
+                    created_by: data.createdBy || data.created_by,
+                    created_by_id: data.createdById || data.created_by_id,
+                    visibility: data.visibility || 0,
+                    created_at: data.created_at || new Date().toISOString(),
+                    items: data.items || []
+                };
+
+                // Broadcast to all connected clients
+                io.emit("broadcastStudyMaterial", broadcastData);
             } catch (error) {
                 console.error("Error broadcasting study material:", error);
                 socket.emit("error", {
@@ -198,6 +240,56 @@ const setupSocket = (server) => {
             }
         });
 
+        // Handle email action results
+        socket.on("emailActionResult", (data) => {
+            try {
+                if (!data || !data.mode) {
+                    throw new Error("Invalid email action result data");
+                }
+
+                console.log("📧 Email action result:", data);
+
+                // Broadcast to all connected clients
+                io.emit("emailActionResult", data);
+            } catch (error) {
+                console.error("Error handling email action result:", error);
+                socket.emit("error", {
+                    type: "emailAction",
+                    message: "Failed to process email action result",
+                    details: error.message,
+                });
+            }
+        });
+
+        // Handle password reset success
+        socket.on("passwordResetSuccess", () => {
+            try {
+                console.log("🔑 Password reset success");
+                io.emit("passwordResetSuccess");
+            } catch (error) {
+                console.error("Error handling password reset success:", error);
+                socket.emit("error", {
+                    type: "passwordReset",
+                    message: "Failed to process password reset success",
+                    details: error.message,
+                });
+            }
+        });
+
+        // Handle email verification success
+        socket.on("emailVerifiedSuccess", () => {
+            try {
+                console.log("✅ Email verification success");
+                io.emit("emailVerifiedSuccess");
+            } catch (error) {
+                console.error("Error handling email verification success:", error);
+                socket.emit("error", {
+                    type: "emailVerification",
+                    message: "Failed to process email verification success",
+                    details: error.message,
+                });
+            }
+        });
 
         // Handle disconnection
         socket.on("disconnect", (reason) => {
@@ -213,7 +305,7 @@ const setupSocket = (server) => {
             console.error("Socket error for user:", socket.userId, error);
             socket.emit("error", {
                 message: "An unexpected error occurred",
-                details: error.message
+                details: error.message,
             });
         });
     });
@@ -229,7 +321,7 @@ const setupSocket = (server) => {
 // Add this function to get the io instance
 export const getIO = () => {
     if (!io) {
-        throw new Error('Socket.io not initialized');
+        throw new Error("Socket.io not initialized");
     }
     return io;
 };

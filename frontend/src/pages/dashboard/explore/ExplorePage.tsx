@@ -1,13 +1,14 @@
 import { Box, Stack, Button, Typography } from "@mui/material";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { io } from "socket.io-client";
 import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
 import ExploreCards from "./ExploreCards";
 import { useUser } from "../../../contexts/UserContext";
 import AutoHideSnackbar from "../../../components/ErrorsSnackbar";
-import { Item, StudyMaterial } from "../../../types/studyMaterial";
-import cauldronGif from "../../../assets/General/Cauldron.gif"; // Importing the gif animation for cauldron asset
+import { StudyMaterial } from "../../../types/studyMaterialObject";
+import cauldronGif from "../../../assets/General/Cauldron.gif";
+import noStudyMaterial from "../../../assets/images/NoStudyMaterial.svg";
 
 const ExplorePage = () => {
   const { user } = useUser();
@@ -16,181 +17,132 @@ const ExplorePage = () => {
   const [filteredCards, setFilteredCards] = useState<StudyMaterial[]>([]);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true); // Add loading state
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Move socket initialization outside of the component or useEffect
-  const [socket] = useState(() =>
-    io(import.meta.env.VITE_BACKEND_URL, {
-      transports: ["websocket", "polling"],
-    })
+  // Memoize socket instance
+  const socket = useMemo(
+    () =>
+      io(import.meta.env.VITE_BACKEND_URL, {
+        transports: ["websocket", "polling"],
+        autoConnect: false, // Avoid auto-connection before setup
+      }),
+    []
   );
 
-  // Fetch data based on current selection
-  const refreshData = async () => {
-    switch (selected) {
-      case 0:
-        await fetchTopPicks();
-        break;
-      case 1:
-        await fetchRecommendedCards();
-        break;
-      case 2:
-        await fetchMadeByFriends();
-        break;
-      default:
-        setFilteredCards([...cards]);
-    }
-  };
-
-  // Fetch recommended cards
-  const fetchRecommendedCards = async () => {
-    console.log("Fetching recommended cards for:", user?.username); // Debugging
+  // Function to fetch study materials based on selected category
+  const fetchData = useCallback(async () => {
     if (!user?.username) return;
-    const encodedUser = encodeURIComponent(user?.username);
 
     setIsLoading(true);
+    setCards([]);
+    setFilteredCards([]);
 
     try {
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/study-material/get-recommended-for-you/${encodedUser}`
-      );
-      console.log("Response status:", response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text(); // Get detailed error
-        throw new Error(`Failed to fetch recommended cards: ${errorText}`);
+      let url = "";
+      switch (selected) {
+        case 0:
+          url = `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/study-material/get-top-picks`;
+          break;
+        case 1:
+          url = `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/study-material/get-recommended-for-you/${encodeURIComponent(
+            user.username
+          )}`;
+          break;
+        case 2:
+          url = `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/study-material/get-made-by-friends/${encodeURIComponent(
+            user.firebase_uid
+          )}`;
+          break;
+        default:
+          return;
       }
 
-      const data: StudyMaterial[] = await response.json();
-      console.log("Fetched data:", data);
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`);
 
+      const data: StudyMaterial[] = await response.json();
       if (Array.isArray(data)) {
         setCards(data);
         setFilteredCards(data);
       }
     } catch (error) {
-      console.error("Error fetching recommended cards:", error);
+      console.error("Error fetching data:", error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selected, user?.username, user?.firebase_uid]);
 
-  // Fetch top picks
-  const fetchTopPicks = async () => {
-    setIsLoading(true); // Set loading to true before fetch
-    try {
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/study-material/get-top-picks`
-      );
-      const data: StudyMaterial[] = await response.json();
-
-      if (Array.isArray(data)) {
-        setFilteredCards(data);
-      } else {
-        console.error("Unexpected response format:", data);
-      }
-    } catch (error) {
-      console.error("Error fetching top picks:", error);
-    } finally {
-      setIsLoading(false); // Set loading to false after fetch
-    }
-  };
-
-  const fetchMadeByFriends = async () => {
-    if (!user?.username) {
-      console.error("User username is undefined");
-      return;
-    }
-    setIsLoading(true);
-
-    try {
-      const response = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/study-material/get-made-by-friends/${encodeURIComponent(
-          user.username
-        )}`
-      );
-
-      if (!response.ok)
-        throw new Error(`Failed to fetch: ${response.statusText}`);
-
-      const data: StudyMaterial[] = await response.json();
-
-      if (Array.isArray(data)) {
-        setFilteredCards(data);
-      } else {
-        console.error("Unexpected response format:", data);
-      }
-    } catch (error) {
-      console.error("Error fetching made by friends:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // Initial data fetch when user or category changes
   useEffect(() => {
-    if (!user?.username) return;
+    fetchData();
+  }, [fetchData]);
 
-    // Initial data fetch
-    fetchTopPicks();
+  // Real-time updates listener
+  useEffect(() => {
+    if (!user?.firebase_uid) return;
 
-    // Listen for real-time study material updates
+    socket.connect();
+    socket.emit("setup", user.firebase_uid);
+
     const handleNewMaterial = async (newMaterial: StudyMaterial) => {
       console.log("📡 Real-time update received:", newMaterial);
-      setSnackbarMessage("📚 New study material added!");
-      setSnackbarOpen(true);
-
-      // Update the cards state and then refresh filtered cards
-      setCards((prevCards) => {
-        const updatedCards = [newMaterial, ...prevCards];
-        setFilteredCards(updatedCards);
-        return updatedCards;
-      });
+      if (
+        selected === 0 ||
+        selected === 1 ||
+        newMaterial.created_by_id === user.firebase_uid
+      ) {
+        fetchData();
+      }
     };
 
     socket.on("broadcastStudyMaterial", handleNewMaterial);
+    socket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+      setSnackbarMessage("Connection error.");
+      setSnackbarOpen(true);
+    });
 
     return () => {
       socket.off("broadcastStudyMaterial", handleNewMaterial);
+      socket.off("connect_error");
+      socket.disconnect();
     };
-  }, [user?.username]); // Remove selected from dependencies
-
-  // Handle category selection
-  const handleClick = async (index: number) => {
-    setSelected(index);
-    await refreshData();
-  };
-
-  const breadcrumbLabels = [
-    "Top picks",
-    "Recommended for you",
-    "Made by friends",
-  ];
-  const breadcrumbs = breadcrumbLabels.map((label, index) => (
-    <Button
-      key={index}
-      sx={{
-        textTransform: "none",
-        color: selected === index ? "#E2DDF3" : "#3B354D",
-        transition: "all 0.3s ease",
-        "&:hover": { color: "inherit" },
-      }}
-      onClick={() => handleClick(index)}
-    >
-      <Typography variant="h5">{label}</Typography>
-    </Button>
-  ));
+  }, [socket, user?.firebase_uid, selected, fetchData]);
 
   return (
     <PageTransition>
-      <Box className="h-full w-auto">
+      <Box className="min-h-screen h-full w-auto">
         <DocumentHead title="Explore | Duel Learn" />
         <Stack className="px-5" spacing={2}>
-          <Stack direction="row" spacing={1} paddingX={0.5}>
-            {breadcrumbs}
+          <Stack direction="row">
+            {["Top picks", "Recommended for you", "Made by friends"].map(
+              (label, index) => (
+                <Button
+                  key={index}
+                  sx={{
+                    textTransform: "none",
+                    borderRadius: "0.8rem",
+                    padding: "0.5rem 1rem",
+                    color: selected === index ? "#E2DDF3" : "#3B354D",
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      color: "inherit",
+                      transform: "scale(1.01)",
+                      backgroundColor: "#3B354C",
+                    },
+                  }}
+                  onClick={() => setSelected(index)}
+                >
+                  <Typography variant="h6">{label}</Typography>
+                </Button>
+              )
+            )}
           </Stack>
           {isLoading ? (
             <Box
@@ -204,6 +156,27 @@ const ExplorePage = () => {
                 alt="Loading..."
                 style={{ width: "8rem", height: "auto" }}
               />
+            </Box>
+          ) : filteredCards.length === 0 ? (
+            <Box
+              display="flex"
+              flexDirection="column"
+              justifyContent="center"
+              alignItems="center"
+              minHeight="60vh"
+            >
+              <img
+                src={noStudyMaterial}
+                alt="No Study Materials"
+                style={{ width: "20rem", height: "auto" }}
+              />
+              <p className="text-[#6F658D] font-bold text-[1rem] mt-4 pr-7 text-center">
+                {selected === 1
+                  ? "No recommended study materials found for you yet"
+                  : selected === 2
+                  ? "No study materials from your friends found"
+                  : "No study materials available"}
+              </p>
             </Box>
           ) : (
             <ExploreCards cards={filteredCards} />

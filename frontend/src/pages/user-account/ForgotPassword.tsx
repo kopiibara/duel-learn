@@ -5,9 +5,10 @@ import { CircularProgress, Modal } from "@mui/material";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../services/firebase";
 import PageTransition from "../../styles/PageTransition";
-import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
-import useHandleForgotPasswordError from "../../hooks/validation.hooks/useHandleForgotPasswordError"; // Updated import
-import useForgotPasswordValidation from "../../hooks/validation.hooks/useForgotPasswordValidation"; // Updated import
+import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
+import useHandleForgotPasswordError from "../../hooks/validation.hooks/useHandleForgotPasswordError";
+import useForgotPasswordValidation from "../../hooks/validation.hooks/useForgotPasswordValidation";
+import { auth, sendResetEmail } from "../../services/firebase";
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -16,11 +17,11 @@ const ForgotPassword = () => {
     email: "",
   });
 
-  const { errors, validate } = useForgotPasswordValidation(formData); // Updated hook
+  const { errors, validate } = useForgotPasswordValidation(formData);
   const [loading, setLoading] = useState(false);
   const [isSSOModalOpen, setIsSSOModalOpen] = useState(false);
   const { error, handleForgotPasswordError, setError } =
-    useHandleForgotPasswordError(); // Updated hook
+    useHandleForgotPasswordError();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -29,7 +30,6 @@ const ForgotPassword = () => {
     let newErrors = { email: "" };
 
     if (formIsValid && !errors.email) {
-      // Check if there are no validation errors
       try {
         setLoading(true);
         const usersRef = collection(db, "users");
@@ -45,11 +45,16 @@ const ForgotPassword = () => {
           if (userData.isSSO) {
             setIsSSOModalOpen(true);
           } else {
-            navigate("/confirmation-account", { state: { email } });
+            navigate("/confirmation-account", {
+              state: {
+                email,
+                type: "reset",
+              },
+            });
           }
         }
       } catch (error) {
-        handleForgotPasswordError(error); // Updated error handler
+        handleForgotPasswordError(error);
       } finally {
         setLoading(false);
       }
@@ -60,7 +65,7 @@ const ForgotPassword = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prevData) => ({ ...prevData, [field]: value }));
-    validate(field, value); // Validate on change
+    validate(field, value);
     setError("");
   };
 
@@ -72,7 +77,6 @@ const ForgotPassword = () => {
     <PageTransition>
       <div className="h-screen mt-[-30px] flex flex-col items-center justify-center">
         <header className="absolute top-20 left-20 right-20 flex justify-between items-center">
-          {/* Logo & Title */}
           <Link to="/" className="flex items-center space-x-4">
             <img src="/duel-learn-logo.svg" className="w-10 h-10" alt="icon" />
             <p className="text-white text-xl font-semibold">Duel Learn</p>
@@ -93,7 +97,7 @@ const ForgotPassword = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="justify-center items-center">
+          <form onSubmit={handleSubmit}>
             <div className="mt-0 mb-0">
               <input
                 id="email"

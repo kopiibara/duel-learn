@@ -24,12 +24,20 @@ interface SelectStudyMaterialModalProps {
   open: boolean;
   handleClose: () => void;
   mode: string | null;
+  isLobby?: boolean;
+  onMaterialSelect: (material: any) => void;
+  onModeSelect: (mode: string) => void;
+  selectedTypes: string[];
 }
 
 const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   open,
   handleClose,
   mode,
+  isLobby = false,
+  onMaterialSelect,
+  onModeSelect,
+  selectedTypes,
 }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState("Recent");
@@ -101,10 +109,17 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   }, [searchQuery, filter]);
 
   const handleMaterialSelect = (material: any) => {
-    const formattedMode = mode === "Peaceful Mode" ? "Peaceful" : mode;
-    navigate("/dashboard/welcome-game-mode", { state: { mode: formattedMode, material } });
+    if (isLobby) {
+      onMaterialSelect(material);
+      onModeSelect(mode || '');
+      handleClose();
+      navigate("/dashboard/pvp-lobby", { state: { mode, material, selectedTypes } });
+    } else {
+      const formattedMode = mode === "Peaceful Mode" ? "Peaceful" : mode === "PvP Mode" ? "PvP" : mode;
+      navigate("/dashboard/welcome-game-mode", { state: { mode: formattedMode, material } });
+    }
   };
-  
+
 
   return (
     <Modal

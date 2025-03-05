@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   Button,
@@ -6,13 +6,30 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import { motion } from "framer-motion"; // Import motion from framer-motion
 import "./../../styles/setupques.css";
 import ManaIcon from "../../../../../assets/ManaIcon.png";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { ContentCopy, CheckCircle } from "@mui/icons-material";
+import { ContentCopy, CheckCircle, Add } from "@mui/icons-material";
+import CachedIcon from '@mui/icons-material/Cached';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import SelectStudyMaterialModal from "../../../../../components/modals/SelectStudyMaterialModal"; // Import the modal
+import QuestionTypeSelectionModal from "../../components/modal/QuestionTypeSelectionModal";
+import FriendListModal from "../../../../../components/RighSideBar/FriendList/FriendListModal";
+import InvitePlayerModal from '../../components/modal/InvitePlayerModal'; // Import the new modal
+import { useUser } from '../../../../../contexts/UserContext'; // Import the useUser hook
+import { generateCode } from '../../utils/codeGenerator'; // Import the utility function
+
+interface Player {
+  id: number;
+  name: string;
+  level: number;
+  profilePicture: string;
+}
 
 const PVPLobby: React.FC = () => {
   const location = useLocation();
@@ -27,10 +44,70 @@ const PVPLobby: React.FC = () => {
     selectedTypes
   );
 
+  const questionTypes = [
+    { display: "Identification", value: "identification" },
+    { display: "Multiple Choice", value: "multiple-choice" },
+    { display: "True or False", value: "true-false" },
+  ];
+
+  const { user } = useUser(); // Get the user from UserContext
+
   const [manaPoints, setManaPoints] = useState(0); // Example starting mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana points alert
   const [openDialog, setOpenDialog] = useState(false); // State to control the modal
   const [copySuccess, setCopySuccess] = useState(false); // To track if the text was copied
+  const [modalOpenChangeModeMaterial, setModalOpenChangeModeMaterial] = useState(false); // State for the ChoosePvPModeModal
+  const [modalOpenChangeQuestionType, setModalOpenChangeQuestionType] = useState(false); // State for the ChoosePvPModeModal
+  const [selectedTypesFinal, setSelectedTypesFinal] = useState<string[]>(selectedTypes);
+
+  // State to manage selected material and mode
+  const [selectedMaterial, setSelectedMaterial] = useState<any>(material);
+  const [selectedMode, setSelectedMode] = useState<string | null>(mode);
+  const [openMaterialModal, setOpenMaterialModal] = useState(false);
+
+  // State to manage FriendListModal
+
+  // State for invite modal
+  const [inviteModalOpen, setInviteModalOpen] = useState(false); // State for the invite modal
+  const [selectedPlayer, setSelectedPlayer] = useState<string>(''); // State for the selected player name
+
+  const [players, setPlayers] = useState<Player[]>([]); // Initialize players state as an empty array
+  const [invitedPlayer, setInvitedPlayer] = useState<Player | null>(null); // State for the invited player
+
+  // State to hold the generated code
+  const [lobbyCode, setLobbyCode] = useState<string>("");
+
+  // useEffect to generate the code when the component mounts
+  useEffect(() => {
+    const code = generateCode(6); // Generate a 6-character code
+    setLobbyCode(code); // Set the generated code to state
+  }, []);
+
+  // Set the state variables
+  useEffect(() => {
+    if (mode) {
+      setSelectedMode(mode);
+    }
+    if (material) {
+      setSelectedMaterial(material);
+    }
+    if (selectedTypes) {
+      setSelectedTypesFinal(selectedTypes);
+    }
+  }, [mode, material, selectedTypes]);
+
+  // Simulate fetching player data (replace with your actual API call)
+  useEffect(() => {
+    const fetchPlayerData = async () => {
+      console.log("User Data:", user);
+      const fetchedPlayers: Player[] = [
+        { id: 1, name: user?.username || 'Player 1', level: user?.level || 1, profilePicture: user?.display_picture || 'default-avatar.png' },
+      ];
+      setPlayers(fetchedPlayers);
+    };
+
+    fetchPlayerData();
+  }, [user]);
 
   const handleCopy = () => {
     navigator.clipboard
@@ -72,6 +149,51 @@ const PVPLobby: React.FC = () => {
     }
   };
 
+  const handleChangeMaterial = () => {
+    setOpenMaterialModal(true); // Open the SelectStudyMaterialModal directly
+  };
+
+  const handleMaterialSelect = (material: any) => {
+    console.log("Material Selected:", material); // Debugging log
+    setSelectedMaterial(material); // Update selected material
+    setOpenMaterialModal(false); // Close the modal
+  };
+
+  const handleModeSelect = (mode: string) => {
+    console.log("Mode Selected:", mode); // Debugging log
+    setSelectedMode(mode); // Update selected mode
+  };
+
+  const handleChangeQuestionType = () => {
+    setModalOpenChangeQuestionType(true);
+  };
+
+  const toggleSelection = (type: string) => {
+    setSelectedTypesFinal((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+    );
+  };
+
+  const handleInvite = (friend: Player) => {
+    setInvitedPlayer(friend); // Set the invited player
+    setPlayers((prev) => [...prev, friend]); // Add the invited player to the players list
+  };
+
+  const isHost = user?.username === players[1]?.name; // Determine if the current user is the host
+  const isPlayer2Present = players.length > 1; // Check if Player 2 is present in the lobby
+
+  // State to track readiness
+  const [isHostReady, setIsHostReady] = useState(true); // Host is automatically ready
+  const [isPlayer2Ready, setIsPlayer2Ready] = useState(false); // Player 2 starts as not ready
+
+  const handleReadyToggle = () => {
+    if (!isHost) {
+      setIsPlayer2Ready((prev) => !prev); // Toggle readiness for Player 2
+    }
+  };
+
+  const bothReady = isHostReady && isPlayer2Ready; // Check if both players are ready
+
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-white px-6 py-8 overflow-hidden">
       {/* Full-Width Fixed Header */}
@@ -97,20 +219,60 @@ const PVPLobby: React.FC = () => {
 
           <div>
             <h2 className="text-[16px] sm:text-[18px] md:text-[20px] lg:text-[22px] font-semibold mb-1">
-              {mode} Mode
+              {selectedMode} LOBBY
             </h2>
-            <p className="text-[12px] sm:text-[14px] text-gray-400">
-              Chosen Study Material:{" "}
-              <span className="font-bold text-white">{material?.title}</span>
+            <h6>{selectedTypesFinal} QuestionTypes </h6>
+            <p className="text-[12px] sm:text-[14px] text-gray-400 flex items-center">
+              Chosen Study Material:&nbsp;
+              <span className="font-bold text-white">{selectedMaterial ? selectedMaterial.title : 'Choose Study Material'}</span>
+              <span className="transition-colors duration-200">
+                <CachedIcon
+                  sx={{
+                    color: '#6F658D',
+                    marginLeft: '8px',
+                    fontSize: '22px',
+                    cursor: isHost ? 'pointer' : 'not-allowed', // Change cursor based on host status
+                    '&:hover': isHost ? { color: '#4B17CD' } : {},
+                  }}
+                  onClick={isHost ? handleChangeMaterial : undefined} // Disable click for Player 2
+                />
+              </span>
+              <span className="transition-colors duration-200">
+                <VisibilityIcon
+                  sx={{
+                    color: '#6F658D',
+                    marginLeft: '6px',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    '&:hover': { color: '#4B17CD' }
+                  }}
+                />
+              </span>
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-1 sm:gap-2">
+          <Button
+            variant="contained"
+            className="bg-[#3d374d] text-white"
+            onClick={handleChangeQuestionType} // Only enabled for the host
+            sx={{
+              cursor: isHost ? 'pointer' : 'not-allowed', // Change cursor based on host status
+              backgroundColor: '#3d374d',
+              '&:hover': {
+                backgroundColor: '#4B17CD',
+              },
+            }}
+          >
+            CHANGE QUESTION TYPE
+          </Button>
+
+
           <img
             src={ManaIcon}
             alt="Mana"
-            className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mr-1"
+            className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mr-1 ml-6"
           />
           <span className="text-[14px] sm:text-[16px] text-gray-300 mr-2 sm:mr-3">
             {manaPoints}
@@ -132,16 +294,22 @@ const PVPLobby: React.FC = () => {
           {/* Players Section */}
           <div className="flex mt-24 w-full justify-between items-center">
             {/* Player 1 */}
-            <motion.div
-              className="flex flex-col ml-[-250px] mr-[210px] items-center"
-              initial={{ x: -1000 }}
-              animate={{ x: 0 }}
-              transition={{ type: "spring", stiffness: 100, damping: 20 }}
-            >
-              <div className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 bg-white rounded-md"></div>
-              <p className="text-sm sm:text-base font-semibold mt-5">JING009</p>
-              <p className="text-xs sm:text-sm text-gray-400">LVL 6</p>
-            </motion.div>
+            {players[0] && (
+              <motion.div
+                className="flex flex-col ml-[-250px] mr-[210px] items-center"
+                initial={{ x: -1000 }}
+                animate={{ x: 0 }}
+                transition={{ type: "spring", stiffness: 100, damping: 20 }}
+              >
+                <img
+                  src={user?.display_picture || 'default-avatar.png'} // Use a default image if display_picture is not available
+                  alt="Player Avatar"
+                  className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 rounded-md"
+                />
+                <p className="text-sm sm:text-base font-semibold mt-5">{user?.username || 'Player 1'}</p>
+                <p className="text-xs sm:text-sm text-gray-400">LVL {user?.level || 11}</p>
+              </motion.div>
+            )}
 
             {/* VS Text with Double Impact Animation */}
             <motion.span
@@ -163,59 +331,103 @@ const PVPLobby: React.FC = () => {
             {/* Player 2 */}
             <motion.div
               className="flex flex-col mr-[-250px] ml-[210px] items-center"
-              initial={{ x: 1000 }}
-              animate={{ x: 0 }}
+              initial={{ x: 1000, opacity: 0 }} // Start off-screen and transparent
+              animate={{ x: 0, opacity: 1 }} // Animate to on-screen and opaque
               transition={{ type: "spring", stiffness: 100, damping: 20 }}
-            >
-              <div className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 bg-white rounded-md flex items-center justify-center"></div>
-              <p className="text-sm sm:text-base font-semibold mt-5">
-                SamisPRO
-              </p>
-              <p className="text-xs sm:text-sm text-gray-400">LVL 10</p>
+              onClick={() => {
+                if (!players[1]) {
+                  setSelectedPlayer(''); // Set to empty or a default value
+                  setInviteModalOpen(true); // Open the invite modal
+                }
+              }}>
+              <div className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 bg-white rounded-md flex items-center justify-center">
+                {invitedPlayer ? (
+                  <motion.img
+                    src={invitedPlayer.profilePicture} // Show the invited player's profile picture
+                    alt="Invited Player"
+                    className="w-full h-full rounded-md"
+                    initial={{ scale: 0, opacity: 0, y: -20 }} // Start small, transparent, and above
+                    animate={{ scale: 1, opacity: 1, y: 0 }} // Animate to full size, opaque, and original position
+                    transition={{ duration: 0.5 }} // Duration of the animation
+                  />
+                ) : (
+                  <Add className="text-gray-500" />
+                )}
+              </div>
+              <div>
+                <motion.p
+                  className="text-sm sm:text-base font-semibold mt-5"
+                  initial={{ y: -20, opacity: 0 }} // Start above and transparent
+                  animate={{ y: 0, opacity: 1 }} // Animate to original position and opaque
+                  transition={{ duration: 0.5 }} // Duration of the animation
+                >
+                  {invitedPlayer ? invitedPlayer.name : (players[1] ? players[1].name : 'PLAYER 2')}
+                </motion.p>
+                <motion.p
+                  className="text-xs sm:text-sm text-gray-400"
+                  initial={{ y: -20, opacity: 0 }} // Start above and transparent
+                  animate={{ y: 0, opacity: 1 }} // Animate to original position and opaque
+                  transition={{ duration: 0.5 }} // Duration of the animation
+                >
+                  {invitedPlayer
+                    ? `LVL ${invitedPlayer.level}`
+                    : (players[1] && players[1].level ? `LVL ${players[1].level}` : 'LVL ???')}
+                </motion.p>
+                <motion.p
+                  className="text-xs sm:text-sm text-gray-400"
+                  initial={{ y: -20, opacity: 0 }} // Start above and transparent
+                  animate={{ y: 0, opacity: 1 }} // Animate to original position and opaque
+                  transition={{ duration: 0.5 }} // Duration of the animation
+                >
+                </motion.p>
+              </div>
             </motion.div>
           </div>
 
+
           {/* Lobby Code Section */}
-          <motion.div
-            className="flex flex-row mt-24 items-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            <p className="text-sm sm:text-base mr-6 text-white mb-1">
-              LOBBY CODE
-            </p>
-            <div className="bg-white text-black text-sm sm:text-base font-bold px-2 ps-4 py-1 rounded-md flex items-center">
-              641283
-              <IconButton
-                onClick={handleCopy}
-                className="text-gray-500"
-                style={{ fontSize: "16px" }}
-              >
-                {copySuccess ? (
-                  <CheckCircle fontSize="small" style={{ color: "gray" }} />
-                ) : (
-                  <ContentCopy fontSize="small" />
-                )}
-              </IconButton>
-            </div>
-          </motion.div>
+          {isHost && ( // Only show lobby code for the host
+            <motion.div
+              className="flex flex-row mt-24 items-center"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <p className="text-sm sm:text-base mr-6 text-white mb-1">
+                LOBBY CODE
+              </p>
+              <div className="bg-white text-black text-sm sm:text-base font-bold px-2 ps-4 py-1 rounded-md flex items-center">
+                {lobbyCode} {/* Display the generated lobby code */}
+                <IconButton
+                  onClick={handleCopy}
+                  className="text-gray-500"
+                  style={{ fontSize: "16px" }}
+                >
+                  {copySuccess ? (
+                    <CheckCircle fontSize="small" style={{ color: "gray" }} />
+                  ) : (
+                    <ContentCopy fontSize="small" />
+                  )}
+                </IconButton>
+              </div>
+            </motion.div>
+          )}
 
           {/* Battle Start Button */}
           <motion.button
-            onClick={handleBattleStart}
-            className="mt-6 sm:mt-11 w-full max-w-[250px] sm:max-w-[300px] md:max-w-[350px] py-2 sm:py-3 bg-[#4D1EE3] text-white rounded-lg text-md sm:text-lg shadow-lg hover:bg-purple-800 transition flex items-center justify-center"
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 150 }}
+            onClick={isHost ? (bothReady ? handleBattleStart : undefined) : handleReadyToggle} // Host starts battle if both are ready, Player 2 toggles readiness
+            className={`mt-6 sm:mt-11 w-full max-w-[250px] sm:max-w-[300px] md:max-w-[350px] py-2 sm:py-3 bg-[#4D1EE3] text-white rounded-lg text-md sm:text-lg shadow-lg transition flex items-center justify-center ${bothReady ? 'hover:bg-purple-800' : ''}`}
+            disabled={isHost ? !bothReady : false} // Disable for host if both are not ready
           >
-            BATTLE START! -10
+            {isHost ? (bothReady ? 'BATTLE START! -10' : 'START 1/2') : (isPlayer2Ready ? 'CANCEL 2/2' : 'START 1/2')}
             <img
               src={ManaIcon}
               alt="Mana"
               className="w-4 h-4 sm:w-3 sm:h-3 md:w-5 md:h-5 ml-2 filter invert brightness-0"
             />
           </motion.button>
+
+
         </motion.div>
       </div>
 
@@ -290,6 +502,37 @@ const PVPLobby: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Select Study Material Modal */}
+      <SelectStudyMaterialModal
+        open={openMaterialModal}
+        handleClose={() => setOpenMaterialModal(false)}
+        mode={selectedMode} // Pass the selected mode
+        isLobby={true} // Indicate that this is being used in the lobby
+        onMaterialSelect={handleMaterialSelect} // Pass the selection handler
+        onModeSelect={handleModeSelect} // Pass the mode selection handler
+        selectedTypes={selectedTypesFinal} // Pass selectedTypes to the modal
+      />
+
+      {/* Question Type Selection Modal */}
+      <QuestionTypeSelectionModal
+        open={modalOpenChangeQuestionType}
+        onClose={() => setModalOpenChangeQuestionType(false)}
+        selectedTypes={selectedTypesFinal}
+        questionTypes={questionTypes}
+        onConfirm={(selected: string[]) => {
+          setSelectedTypesFinal(selected);
+          setModalOpenChangeQuestionType(false);
+        }}
+      />
+
+      {/* Invite Player Modal */}
+      <InvitePlayerModal
+        open={inviteModalOpen}
+        handleClose={() => setInviteModalOpen(false)}
+        playerName={selectedPlayer}
+        onInvite={handleInvite} // Pass the invite handler
+      />
     </div>
   );
 };

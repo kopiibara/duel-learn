@@ -21,12 +21,14 @@ const HomePage = ({
 
   return (
     <PageTransition>
-      <Box className="h-full w-full">
+      <Box className="h-full w-auto">
         <DocumentHead title="Home | Duel Learn" />
         <Box
-          className="h-[232px] mx-8 rounded-[1rem] p-6 px-12 flex flex-col justify-center items-start text-left mb-10"
+          className="mx-4 sm:mx-8 rounded-[1rem] p-4 sm:p-6 sm:px-12 flex flex-col justify-center items-start text-left mb-8 sm:mb-10"
           style={{
             background: "linear-gradient(90deg, #9F87E5 0%, #6F58D9 100%)",
+            height: "auto", // Remove fixed height for better mobile display
+            minHeight: "180px", // Minimum height instead of fixed height
           }}
         >
           <h1
@@ -45,51 +47,71 @@ const HomePage = ({
             Learn More
           </button>
         </Box>
-        <Stack spacing={2} className="px-6">
+        <Stack spacing={2} className="px-4 sm:px-6">
           <Stack spacing={2} className="pb-6">
             <Stack
               direction={"row"}
               spacing={1.5}
               className="flex items-center justify-start pl-2"
             >
-              <img src="/book.png" className="w-9 h-7" alt="icon" />
-              <Typography variant="h5">Choose your Challenge</Typography>
+              <img src="/book.png" className="w-8 h-6" alt="icon" />
+              <Typography variant="h6">Choose your Challenge</Typography>
             </Stack>
             <ChooseYourChallenge />
           </Stack>
 
-          <Stack spacing={0}>
-            <Typography variant="h5" className="pl-2">
-              Recently Opened
-            </Typography>
-            <RecentlyOpened />
-          </Stack>
-
-          <Stack spacing={0}>
+          <Stack spacing={0} className="w-full overflow-hidden">
             <Stack direction={"row"} spacing={2} className="flex items-center">
-              <Typography variant="h5" className="pl-2">
-                Discover more materials
-              </Typography>
+              <Stack
+                direction={"row"}
+                spacing={1.5}
+                className="flex items-center justify-start pl-2"
+              >
+                <img src="/book.png" className="w-8 h-6" alt="icon" />
+                <Typography
+                  variant="h6"
+                  className="text-base sm:text-lg md:text-xl"
+                >
+                  Discover more materials
+                </Typography>
+              </Stack>
               <Box flexGrow={1} />
               <Button
                 variant="text"
                 onClick={handleSeeMore}
                 sx={{
                   color: "#3B354D",
-                  fontSize: "0.8rem",
-                  borderRadius: "0.5rem", // Optional: You can add a border radius for rounded corners
-                  transition: "color 0.3s ease", // Optional: You can add a transition effect
+                  fontSize: {
+                    xs: "0.7rem",
+                    sm: "0.8rem",
+                  },
+                  borderRadius: "0.5rem",
+                  transition: "color 0.3s ease",
                   "&:hover": {
-                    color: "#E2DDF3", // Change the text color on hover
-                    borderRadius: "0.5rem", // Optional: You can add a border radius for rounded corners
+                    color: "#E2DDF3",
+                    borderRadius: "0.5rem",
                   },
                 }}
               >
                 See More
               </Button>
             </Stack>
-            <DiscoverMore />
+            <Box className="w-full overflow-hidden">
+              <DiscoverMore />
+            </Box>
           </Stack>
+
+          {/* <Stack spacing={0}>
+            <Stack
+              direction={"row"}
+              spacing={1.5}
+              className="flex items-center justify-start pl-2"
+            >
+              <img src="/book.png" className="w-8 h-6" alt="icon" />
+              <Typography variant="h6">Recently Opened</Typography>
+            </Stack>
+            <RecentlyOpened />
+          </Stack> */}
         </Stack>
       </Box>
     </PageTransition>

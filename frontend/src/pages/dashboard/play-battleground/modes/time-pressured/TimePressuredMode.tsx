@@ -4,6 +4,8 @@ import FlashCard from '../../components/common/FlashCard';
 import Header from '../../components/common/Header';
 import Timer from '../../components/common/Timer';
 import { GameState } from '../../types';
+import { useNavigate } from 'react-router-dom';
+import "./../../styles/setupques.css";
 
 const TimePressuredMode: React.FC<GameState> = ({ mode, material, selectedTypes, timeLimit }) => {
     const {
@@ -20,10 +22,15 @@ const TimePressuredMode: React.FC<GameState> = ({ mode, material, selectedTypes,
         inputAnswer,
         setInputAnswer,
         questionTimer,
-        timerProgress
+        timerProgress,
+        currentStreak,
+        highestStreak,
+        masteredCount,
+        unmasteredCount
     } = useGameLogic({ mode, material, selectedTypes, timeLimit });
 
     const [startTime] = useState(new Date());
+    const navigate = useNavigate();
 
     const renderQuestionContent = () => {
         if (!currentQuestion) return null;
@@ -111,41 +118,68 @@ const TimePressuredMode: React.FC<GameState> = ({ mode, material, selectedTypes,
         return '';
     };
 
+    const getLowHealthEffects = () => {
+        if (questionTimer === null || questionTimer === 0) return '';
+        if (questionTimer <= (timeLimit ?? 30) / 2) {
+            return 'animate-screen-shake';
+        }
+        return '';
+    };
+
+    const renderVignette = () => {
+        if (questionTimer === null || questionTimer > (timeLimit ?? 30) / 2) return null;
+        return (
+            <div className="fixed inset-0 pointer-events-none z-50">
+                <div className="absolute inset-0 bg-gradient-radial from-transparent via-red-500/20 to-red-500/70 animate-pulse-vignette" />
+            </div>
+        );
+    };
+
+
     return (
         <div className={`min-h-screen relative ${getBorderClass()}`}>
-            <Header
-                material={material}
-                mode={mode}
-                correct={correctCount}
-                incorrect={incorrectCount}
-                startTime={startTime}
-            />
-            <main className="pt-24 px-4">
-                <div className="mx-auto max-w-[1200px] flex flex-col items-center gap-8 h-[calc(100vh-96px)] justify-center">
-                    <div className={`w-[1200px] flex flex-col items-center gap-8 ${getHeartbeatClass()}`}>
-                        <FlashCard
-                            question={currentQuestion?.question || ''}
-                            correctAnswer={currentQuestion?.correctAnswer || ''}
-                            isFlipped={isFlipped}
-                            onFlip={handleFlip}
-                        />
+            {renderVignette()}
+            <div className={`relative ${getLowHealthEffects()}`}>
+                <Header
+                    material={material}
+                    mode={mode}
+                    correct={correctCount}
+                    incorrect={incorrectCount}
+                    startTime={startTime}
+                    highestStreak={highestStreak}
+                    masteredCount={masteredCount}
+                    unmasteredCount={unmasteredCount}
+                />
+                <main className="pt-24 px-4">
+                    <div className="mx-auto max-w-[1200px] flex flex-col items-center gap-8 h-[calc(100vh-96px)] justify-center">
+                        <div className={`w-[1200px] flex flex-col items-center gap-8 ${getHeartbeatClass()}`}>
+                            <FlashCard
+                                question={currentQuestion?.question || ''}
+                                correctAnswer={currentQuestion?.correctAnswer || ''}
+                                isFlipped={isFlipped}
+                                onFlip={handleFlip}
+                                timeRemaining={questionTimer}
+                            />
+                        </div>
+                        {renderQuestionContent()}
+                        {showNextButton && (
+                            <button
+                                onClick={handleNextQuestion}
+                                className="mt-6 px-8 py-3 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
+                            >
+                                Next Question
+                            </button>
+                        )}
                     </div>
-                    {renderQuestionContent()}
-                    {showNextButton && (
-                        <button
-                            onClick={handleNextQuestion}
-                            className="mt-6 px-8 py-3 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
-                        >
-                            Next Question
-                        </button>
-                    )}
-                </div>
-            </main>
-            <Timer
-                timeRemaining={questionTimer}
-                progress={timerProgress}
-                timeLimit={timeLimit ?? 30}
-            />
+                </main>
+                <Timer
+                    timeRemaining={questionTimer}
+                    progress={timerProgress}
+                    timeLimit={timeLimit ?? 30}
+                    currentStreak={currentStreak}
+                    highestStreak={highestStreak}
+                />
+            </div>
         </div>
     );
 };

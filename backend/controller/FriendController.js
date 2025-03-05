@@ -128,7 +128,6 @@ const FriendRequestController = {
             }));
 
             res.status(200).json(formattedRequests);
-
         }
         catch (error) {
             console.error("Database Error:", error);
@@ -137,9 +136,6 @@ const FriendRequestController = {
         finally {
             connection.release();
         }
-
-
-
     },
 
     getFriendRequestsCount: async (req, res) => {
@@ -167,7 +163,8 @@ const FriendRequestController = {
     sendFriendRequest: async (req, res) => {
         console.log("Received Friend Request:", req.body);
 
-        const { sender_id, receiver_id } = req.body;
+        const { sender_id, sender_username, receiver_id, receiver_username } = req.body;
+
         if (!sender_id || !receiver_id) {
             return res.status(400).json({ message: "Missing sender_id or receiver_id" });
         }
@@ -177,6 +174,7 @@ const FriendRequestController = {
 
         const connection = await pool.getConnection();
         try {
+            // Check for existing requests that are not declined
             const [existingRequest] = await connection.execute(
                 `SELECT * FROM friend_requests 
                 WHERE sender_id = ? AND receiver_id = ? AND status != 'declined'`,
@@ -196,21 +194,13 @@ const FriendRequestController = {
 
             const friendrequest_id = nanoid();
             await connection.execute(
-                `INSERT INTO friend_requests (friendrequest_id, sender_id, receiver_id, status, created_at, updated_at)
-                VALUES (?, ?, ?, 'pending', ?, ?)`,
-                [friendrequest_id, sender_id, receiver_id, currentTimestamp, updatedTimestamp]
+                `INSERT INTO friend_requests (friendrequest_id, sender_id, sender_username, receiver_id, receiver_username, status, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, 'pending', ?, ?)`,
+                [friendrequest_id, sender_id, sender_username, receiver_id, receiver_username || "", currentTimestamp, updatedTimestamp]
             );
-
-            const [senderInfo] = await connection.execute(
-                'SELECT username FROM user_info WHERE firebase_uid = ?',
-                [sender_id]
-            );
-
-            console.log("Friend Request Sent Successfully");
 
             res.status(201).json({
                 message: "Friend request sent successfully",
-                senderUsername: senderInfo[0]?.username
             });
         } catch (error) {
             console.error("Database Error:", error);
@@ -220,8 +210,9 @@ const FriendRequestController = {
         }
     },
 
+
     acceptFriendRequest: async (req, res) => {
-        const { sender_id, receiver_id } = req.body;
+        const { sender_id, sender_username, receiver_id, receiver_username } = req.body;
         if (!sender_id || !receiver_id) {
             return res.status(400).json({ message: "Missing sender_id or receiver_id" });
         }
@@ -318,8 +309,86 @@ const FriendRequestController = {
         finally {
             connection.release();
         }
-    }
+    },
 
+    getFriendsLeaderboard: async (req, res) => {
+        const { firebase_uid } = req.params;
+        console.log("Fetching leaderboard for user:", firebase_uid);
+
+        const connection = await pool.getConnection();
+
+        try {
+            // Debug: First check if the friend relationship exists
+            const [friendCheck] = await connection.execute(
+                `SELECT * FROM friend_requests 
+                WHERE (sender_id = ? OR receiver_id = ?) AND status = 'accepted'`,
+                [firebase_uid, firebase_uid]
+            );
+
+            console.log("Friend relationships found:", friendCheck.length);
+            console.log("Friend data:", friendCheck);
+
+            // Continue with your regular query...
+            const [leaderboard] = await connection.execute(
+                `SELECT u.firebase_uid, u.username, u.level, u.exp, u.display_picture,
+                    CASE WHEN u.firebase_uid = ? THEN TRUE ELSE FALSE END as isCurrentUser
+                FROM user_info u
+                WHERE u.firebase_uid = ? 
+                OR u.firebase_uid IN (
+                    SELECT CASE 
+                        WHEN sender_id = ? THEN receiver_id
+                        WHEN receiver_id = ? THEN sender_id
+                    END
+                    FROM friend_requests
+                    WHERE (sender_id = ? OR receiver_id = ?)
+                    AND status = 'accepted'
+                )
+                ORDER BY u.level DESC, u.exp DESC`,
+                [firebase_uid, firebase_uid, firebase_uid, firebase_uid, firebase_uid, firebase_uid]
+            );
+
+            console.log("Leaderboard entries found:", leaderboard.length);
+
+            // Add rank information
+            const rankedLeaderboard = leaderboard.map((player, index) => ({
+                ...player,
+                rank: index + 1
+            }));
+
+            res.status(200).json(rankedLeaderboard);
+        }
+        catch (error) {
+            console.error("Error retrieving friends leaderboard:", error);
+            res.status(500).json({ message: "Error retrieving friends leaderboard" });
+        }
+        finally {
+            connection.release();
+        }
+    },
+
+    getFriendCount: async (req, res) => {
+
+        const { firebase_uid } = req.params;
+        const connection = await pool.getConnection();
+
+        try {
+            const [friendCount] = await connection.execute(
+                `SELECT COUNT(*) as count FROM friend_requests 
+                WHERE (sender_id = ? OR receiver_id = ?) AND status = 'accepted'`,
+                [firebase_uid, firebase_uid]
+            );
+
+            res.status(200).json(friendCount[0]);
+        }
+        catch (error) {
+            console.error("Error retrieving friend count:", error);
+            res.status(500).json({ message: "Error retrieving friend count" });
+        }
+        finally {
+            connection.release();
+        }
+
+    }
 
 };
 

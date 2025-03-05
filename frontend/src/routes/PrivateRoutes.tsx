@@ -30,6 +30,8 @@ import SessionReport from "../pages/dashboard/play-battleground/screens/SessionR
 import PeacefulMode from "../pages/dashboard/play-battleground/modes/peaceful/PeacefulMode";
 import TimePressuredMode from "../pages/dashboard/play-battleground/modes/time-pressured/TimePressuredMode";
 import GameModeWrapper from "../pages/dashboard/play-battleground/components/common/GameModeWrapper";
+import AccountSettings from "../pages/dashboard/settings/AccountSettings";
+import HostModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/HostModeSelection";
 
 const PrivateRoutes = () => {
   const { user } = useUser();
@@ -39,6 +41,10 @@ const PrivateRoutes = () => {
 
   if (!user || !token) {
     return <Navigate to="/landing-page" />;
+  }
+
+  if (user && token && !user.email_verified) {
+    return <Navigate to="/verify-email" />;
   }
 
   return (
@@ -66,9 +72,10 @@ const PrivateRoutes = () => {
         <Route path="shop" element={<Shop />} />
         <Route path="study-material/create" element={<CreateStudyMaterial />} />
         <Route
-          path="study-material/preview/:studyMaterialId"
+          path="study-material/view/:studyMaterialId"
           element={<ViewStudyMaterial />}
         />
+        <Route path="account-settings" element={<AccountSettings />} />
       </Route>
 
       {/* Authentication Routes */}
@@ -103,6 +110,7 @@ const PrivateRoutes = () => {
       />
       <Route path="/pvp-lobby" element={<PVPLobby />} />
       <Route path="/study/session-summary" element={<SessionReport />} />
+      <Route path="/select-difficulty/pvp" element={<HostModeSelection />} />
     </Routes>
   );
 };
