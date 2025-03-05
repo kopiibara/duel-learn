@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Drawer, Box } from "@mui/material";
-import { useLocation } from "react-router-dom";
+import { useLocation } from "react-router";
 
 // Importing the necessary content components
 import Leaderboards from "./RighSideBar/Leaderboards/Leaderboards";
@@ -27,7 +27,7 @@ const DrawerRightSideBar: React.FC<DrawerProps> = ({ open, toggleDrawer }) => {
   const location = useLocation();
 
   // State to simulate the number of friends (replace with actual logic if dynamic)
-  const [friendCount, _setFriendCount] = useState<number>(6); // Example: Change this to dynamically update based on data
+  const [friendCount] = useState<number>(6); // Example: Change this to dynamically update based on data
 
   // Determine whether to show EmptyLB or Leaderboards
   const leaderboardContent = friendCount >= 5 ? <Leaderboards /> : <EmptyLB />;

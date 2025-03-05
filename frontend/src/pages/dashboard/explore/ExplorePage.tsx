@@ -1,5 +1,5 @@
 import { Box, Stack, Button, Typography } from "@mui/material";
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { io } from "socket.io-client";
 import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
@@ -13,7 +13,7 @@ import noStudyMaterial from "../../../assets/images/NoStudyMaterial.svg";
 const ExplorePage = () => {
   const { user } = useUser();
   const [selected, setSelected] = useState<number>(0);
-  const [_cards, setCards] = useState<StudyMaterial[]>([]);
+  const [cards, setCards] = useState<StudyMaterial[]>([]);
   const [filteredCards, setFilteredCards] = useState<StudyMaterial[]>([]);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
@@ -33,6 +33,7 @@ const ExplorePage = () => {
   const fetchData = useCallback(async () => {
     if (!user?.username) return;
 
+    console.log(`Fetching data for tab: ${selected}`); // Debug which tab is being fetched
     setIsLoading(true);
     setCards([]);
     setFilteredCards([]);
@@ -44,6 +45,7 @@ const ExplorePage = () => {
           url = `${
             import.meta.env.VITE_BACKEND_URL
           }/api/study-material/get-top-picks`;
+          console.log("Fetching top picks from:", url);
           break;
         case 1:
           url = `${
@@ -51,6 +53,7 @@ const ExplorePage = () => {
           }/api/study-material/get-recommended-for-you/${encodeURIComponent(
             user.username
           )}`;
+          console.log("Fetching recommendations from:", url);
           break;
         case 2:
           url = `${
@@ -58,6 +61,7 @@ const ExplorePage = () => {
           }/api/study-material/get-made-by-friends/${encodeURIComponent(
             user.firebase_uid
           )}`;
+          console.log("Fetching friends' materials from:", url);
           break;
         default:
           return;
@@ -78,12 +82,19 @@ const ExplorePage = () => {
     }
   }, [selected, user?.username, user?.firebase_uid]);
 
-  // Initial data fetch when user or category changes
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  // Add a ref to track initial mount
+  const isInitialMount = useRef(true);
 
-  // Real-time updates listener
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return; // Prevents the initial double fetch
+    }
+    console.log(`Tab selected: ${selected}`);
+    fetchData();
+  }, [selected, fetchData]);
+
+  // Modify the socket effect
   useEffect(() => {
     if (!user?.firebase_uid) return;
 
@@ -91,29 +102,21 @@ const ExplorePage = () => {
     socket.emit("setup", user.firebase_uid);
 
     const handleNewMaterial = async (newMaterial: StudyMaterial) => {
-      console.log("📡 Real-time update received:", newMaterial);
-      if (
-        selected === 0 ||
-        selected === 1 ||
-        newMaterial.created_by_id === user.firebase_uid
-      ) {
+      if (!isInitialMount.current) {
+        console.log("📡 Real-time update received:", newMaterial);
         fetchData();
       }
     };
 
     socket.on("broadcastStudyMaterial", handleNewMaterial);
-    socket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-      setSnackbarMessage("Connection error.");
-      setSnackbarOpen(true);
-    });
 
     return () => {
       socket.off("broadcastStudyMaterial", handleNewMaterial);
-      socket.off("connect_error");
       socket.disconnect();
     };
   }, [socket, user?.firebase_uid, selected, fetchData]);
+
+  // Add a cleanup effect for the ref when component unmounts
 
   return (
     <PageTransition>
@@ -137,7 +140,10 @@ const ExplorePage = () => {
                       backgroundColor: "#3B354C",
                     },
                   }}
-                  onClick={() => setSelected(index)}
+                  onClick={() => {
+                    console.log(`Switching to tab: ${index} (${label})`);
+                    setSelected(index);
+                  }}
                 >
                   <Typography variant="h6">{label}</Typography>
                 </Button>

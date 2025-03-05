@@ -24,8 +24,8 @@ const ForgotPassword = () => {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const { email } = formData;
-    let formIsValid = true;
-    let newErrors = { email: "" };
+    const formIsValid = true;
+    const newErrors = { email: "" };
 
     if (formIsValid && !errors.email) {
       try {

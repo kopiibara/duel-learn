@@ -46,7 +46,7 @@ const ViewStudyMaterial = () => {
         console.log("API Response:", data);
 
         if (data && typeof data === "object" && "title" in data) {
-          let items: Item[] = data.items || [];
+          const items: Item[] = data.items || [];
           let tags: string[] = [];
 
           try {
