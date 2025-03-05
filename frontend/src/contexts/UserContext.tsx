@@ -14,6 +14,7 @@ interface User {
   email_verified: boolean;
   isSSO: boolean;
   account_type: "free" | "premium" | "admin";
+  isNew: boolean
 }
 
 interface UserContextProps {

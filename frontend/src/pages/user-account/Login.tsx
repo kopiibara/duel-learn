@@ -51,6 +51,11 @@ const Login = () => {
     setShowPassword(!showPassword); // Toggle password visibility
   };
 
+  const googleSubmit = async () => {
+    setLoading(true);
+    await handleGoogleSignIn();
+  };
+
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
@@ -72,7 +77,6 @@ const Login = () => {
           throw setError("Username not found");
         }
       }
-
       const result = await signInWithEmailAndPassword(auth, email, password);
       console.log("User Credential:", result);
       const token = await result.user.getIdToken();
@@ -93,12 +97,13 @@ const Login = () => {
             | "free"
             | "premium"
             | "admin", // Ensure the value is either 'free' or 'premium'
+          level: 1
         };
         console.log("User Data:", userData);
         const isNewUser =
           !userDoc.exists() ||
           (userDoc.exists() &&
-            Date.now() - userDoc.data().created_at.toMillis() < 5000);
+            Date.now() - userDoc.data().created_at.toMillis() < 300000);
 
         // Store user data in context
         setUser(userData);
@@ -241,7 +246,7 @@ const Login = () => {
           {/* Google Sign-In */}
           <button
             className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors"
-            onClick={handleGoogleSignIn}
+            onClick={googleSubmit}
           >
             <img
               src="/google-logo.png"
@@ -253,7 +258,7 @@ const Login = () => {
 
           {/* Footer */}
           <p className="text-center text-sm text-[#9F9BAE] mt-6">
-            Don’t have an account?{" "}
+            Don't have an account?{" "}
             <Link to="/sign-up" className="text-[#4D18E8] hover:underline">
               Sign up
             </Link>

@@ -74,7 +74,6 @@ const AdminSignUp = () => {
       const userData = {
         firebaseToken: token,
         firebase_uid: result.user.uid,
-
         username: username,
         email: email,
         display_picture: null,
@@ -83,6 +82,7 @@ const AdminSignUp = () => {
         email_verified: result.user.emailVerified,
         isSSO: false,
         account_type: "admin" as "free" | "premium" | "admin",
+        level: 1
       };
 
       await setDoc(doc(db, "users", userData.firebase_uid), {
@@ -154,11 +154,12 @@ const AdminSignUp = () => {
         username: result.user.displayName,
         email: result.user.email,
         display_picture: result.user.photoURL,
-        isNew: additionalUserInfo?.isNewUser,
+        isNew: additionalUserInfo?.isNewUser ?? false,
         full_name: "",
         email_verified: result.user.emailVerified,
         isSSO: true,
         account_type: "admin" as "free" | "premium"| "admin",
+        level: 1
       };
 
       await setDoc(doc(db, "users", userData.firebase_uid), {
@@ -173,6 +174,7 @@ const AdminSignUp = () => {
         email_verified: userData.email_verified,
         isSSO: userData.isSSO,
         account_type: userData.account_type,
+        isNew: userData.isNew
       });
 
       setUser(userData);

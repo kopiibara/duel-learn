@@ -26,7 +26,7 @@ import bcrypt from "bcryptjs";
 import useGoogleSignIn from "../../hooks/auth.hooks/useGoogleSignIn";
 
 const SignUp = () => {
-  const { setUser, user } = useUser();
+  // const { setUser, user } = useUser(); // Commented out or removed
   const { handleError, combinedError } = useCombinedErrorHandler();
   const [formData, setFormData] = useState({
     username: "",

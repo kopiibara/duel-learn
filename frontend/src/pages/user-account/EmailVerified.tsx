@@ -39,7 +39,7 @@ const EmailVerified = () => {
             setIsNewUser(isNew);
 
             // Update email verified status
-            if (isNew && !isEmailVerified) {
+            if (!isEmailVerified) {
               // Apply the email verification action code
               if (locationState.oobCode) {
                 await applyActionCode(auth, locationState.oobCode);
@@ -112,12 +112,13 @@ const EmailVerified = () => {
           | "free"
           | "premium"
           | "admin", // Ensure the value is either 'free' or 'premium'
+        level: 1
       };
       console.log("User Data:", userData);
       const isNewUser =
         !userDoc.exists() ||
         (userDoc.exists() &&
-          Date.now() - userDoc.data().created_at.toMillis() < 5000);
+          Date.now() - userDoc.data().created_at.toMillis() < 300000);
 
       // Store user data in context
       setUser(userData);
@@ -125,7 +126,7 @@ const EmailVerified = () => {
       setTimeout(() => {
         if (accountType === "admin") {
           navigate("/admin/admin-dashboard");
-        } else if (isNewUser && isEmailVerified) {
+        } else if (isNewUser) {
           navigate("/dashboard/welcome");
         } else {
           navigate("/dashboard/home");

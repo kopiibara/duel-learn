@@ -46,6 +46,9 @@ const PrivateRoutes = () => {
   if (user && token && !user.email_verified) {
     return <Navigate to="/verify-email" />;
   }
+  if (user && token && user.isNew && user.email_verified) {
+    <Navigate to="/dashboard/welcome" />;
+  }
 
   return (
     <Routes>
@@ -62,10 +65,7 @@ const PrivateRoutes = () => {
 
       {/* Routes for the main dashboard after onboarding */}
       <Route element={<DashboardLayout />}>
-        <Route
-          path="home"
-          element={<Home setSelectedIndex={setSelectedIndex} />}
-        />
+        <Route path="home"element={<Home setSelectedIndex={setSelectedIndex} />}/>
         <Route path="explore" element={<Explore />} />
         <Route path="my-library" element={<YourLibrary />} />
         <Route path="profile" element={<Profile />} />
