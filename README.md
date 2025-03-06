@@ -1,5 +1,3 @@
- make this more professional # Duel-Learn: A Gamified Learning Platform
-
 ## Overview
 
 **Duel-Learn** is an innovative web-based learning platform that combines Artificial Intelligence (AI) and Optical Character Recognition (OCR) to help students study more efficiently. By automatically generating quizzes, flashcards, and other study materials from handwritten or digital notes, Duel-Learn streamlines the study process, saving students valuable time.
