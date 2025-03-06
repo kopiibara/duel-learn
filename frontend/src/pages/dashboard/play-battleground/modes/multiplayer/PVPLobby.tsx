@@ -21,12 +21,15 @@ import InvitePlayerModal from "../../components/modal/InvitePlayerModal"; // Imp
 import { useUser } from "../../../../../contexts/UserContext"; // Import the useUser hook
 import { generateCode } from "../../utils/codeGenerator"; // Import the utility function
 import defaultAvatar from "../../../../../assets/profile-picture/bunny-picture.png";
+import { io, Socket } from "socket.io-client";
+import InvitationSnackbar from "../../../../../components/InvitationSnackbar";
+import axios from "axios";
 
 interface Player {
-  id: number;
-  name: string;
+  firebase_uid: string;
+  username: string;
   level: number;
-  profilePicture: string;
+  display_picture: string | null;
 }
 
 const PVPLobby: React.FC = () => {
@@ -77,6 +80,24 @@ const PVPLobby: React.FC = () => {
   // State to hold the generated code
   const [lobbyCode, setLobbyCode] = useState<string>("");
 
+  // Add these states
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [invitation, setInvitation] = useState<{
+    open: boolean;
+    inviterName: string;
+    senderId: string;
+    lobbyCode: string;
+    timestamp?: string;
+  }>({
+    open: false,
+    inviterName: "",
+    senderId: "",
+    lobbyCode: "",
+  });
+
+  // Add this near the top of your component
+  const [debug, setDebug] = useState(false);
+
   // useEffect to generate the code when the component mounts
   useEffect(() => {
     const code = generateCode(6); // Generate a 6-character code
@@ -102,10 +123,10 @@ const PVPLobby: React.FC = () => {
       console.log("User Data:", user);
       const fetchedPlayers: Player[] = [
         {
-          id: 1,
-          name: user?.username || "Player 1",
+          firebase_uid: user?.firebase_uid || "",
+          username: user?.username || "Player 1",
           level: user?.level || 1,
-          profilePicture: user?.display_picture || defaultAvatar,
+          display_picture: user?.display_picture || defaultAvatar,
         },
       ];
       setPlayers(fetchedPlayers);
@@ -113,6 +134,76 @@ const PVPLobby: React.FC = () => {
 
     fetchPlayerData();
   }, [user]);
+
+  // Update the socket initialization useEffect
+  useEffect(() => {
+    // Don't initialize socket if we don't have a user
+    if (!user?.firebase_uid) {
+      console.log("No user ID available, skipping socket setup");
+      return;
+    }
+
+    if (socket) {
+      console.log("Socket already exists:", socket.id);
+      return;
+    }
+
+    console.log("Initializing socket for user:", user.firebase_uid);
+
+    const newSocket = io(`${import.meta.env.VITE_BACKEND_URL}`, {
+      transports: ["websocket"],
+      reconnection: true,
+    });
+
+    newSocket.on("connect", () => {
+      console.log("Socket connected with ID:", newSocket.id);
+      setSocket(newSocket);
+
+      // Register user immediately after connection
+      console.log("Registering user on connect:", user.firebase_uid);
+      newSocket.emit("setup", user.firebase_uid);
+    });
+
+    newSocket.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+    });
+
+    // Enhanced battle invitation listener with better logging
+    newSocket.on("battle_invitation", (data) => {
+      console.log("Battle invitation received:", {
+        data,
+        currentUser: user.firebase_uid,
+        socketId: newSocket.id,
+        timestamp: new Date().toISOString(),
+      });
+
+      if (data.senderId !== user.firebase_uid) {
+        console.log("Setting invitation state for:", data.senderName);
+        setInvitation({
+          open: true,
+          inviterName: data.senderName || "Unknown",
+          senderId: data.senderId,
+          lobbyCode: data.lobbyCode,
+          timestamp: new Date().toISOString(),
+        });
+      } else {
+        console.log("Ignoring self-invitation");
+      }
+    });
+
+    // Add a debug event to verify socket is working
+    newSocket.on("debug", (msg) => {
+      console.log("Debug message received:", msg);
+    });
+
+    return () => {
+      if (newSocket) {
+        console.log("Cleaning up socket:", newSocket.id);
+        newSocket.disconnect();
+        setSocket(null);
+      }
+    };
+  }, [user?.firebase_uid]); // Only depend on user ID
 
   const handleCopy = () => {
     navigator.clipboard
@@ -173,12 +264,51 @@ const PVPLobby: React.FC = () => {
     setModalOpenChangeQuestionType(true);
   };
 
-  const handleInvite = (friend: Player) => {
-    setInvitedPlayer(friend); // Set the invited player
-    setPlayers((prev) => [...prev, friend]); // Add the invited player to the players list
+  const handleInvite = async (friend: Player) => {
+    if (!socket || !user?.firebase_uid || !user?.username) {
+      console.error("Missing required data for invitation:", {
+        socketConnected: !!socket,
+        userId: user?.firebase_uid,
+        username: user?.username,
+      });
+      return;
+    }
+
+    try {
+      console.log("Sending invitation to:", friend.username);
+
+      // Create the notification data
+      const notificationData = {
+        senderId: user.firebase_uid,
+        senderName: user.username,
+        receiverId: friend.firebase_uid,
+        lobbyCode: lobbyCode,
+        timestamp: new Date().toISOString(),
+      };
+
+      // First create database entry
+      await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/battle/pvp-invitation`,
+        {
+          senderId: user.firebase_uid,
+          receiverId: friend.firebase_uid,
+          lobbyCode: lobbyCode,
+        }
+      );
+
+      // Then emit socket event
+      console.log("Emitting battle invitation:", notificationData);
+      socket.emit("notify_battle_invitation", notificationData);
+
+      // Update local state to show invited player
+      setInvitedPlayer(friend);
+      setInviteModalOpen(false);
+    } catch (error) {
+      console.error("Error sending invitation:", error);
+    }
   };
 
-  const isHost = user?.username === players[1]?.name; // Determine if the current user is the host
+  const isHost = user?.username === players[0]?.username; // Changed from name to username
 
   // State to track readiness
   const [isHostReady, _setIsHostReady] = useState(true); // Host is automatically ready
@@ -191,6 +321,94 @@ const PVPLobby: React.FC = () => {
   };
 
   const bothReady = isHostReady && isPlayer2Ready; // Check if both players are ready
+
+  // Add these handlers
+  const handleAcceptInvitation = async () => {
+    if (socket) {
+      try {
+        // Update invitation status in database
+        await axios.put(
+          `${import.meta.env.VITE_BACKEND_URL}/api/battle/invite/status`,
+          {
+            senderId: invitation.senderId,
+            receiverId: user?.firebase_uid,
+            lobbyCode: invitation.lobbyCode,
+            status: "accepted",
+          }
+        );
+
+        // Emit socket event
+        socket.emit("accept_battle_invitation", {
+          senderId: invitation.senderId,
+          receiverId: user?.firebase_uid,
+          lobbyCode: invitation.lobbyCode,
+        });
+
+        setInvitation({
+          open: false,
+          inviterName: "",
+          senderId: "",
+          lobbyCode: "",
+        });
+
+        // Navigate to the lobby as Player 2
+        navigate(
+          `/dashboard/play-battleground/pvp-lobby/${invitation.lobbyCode}`
+        );
+      } catch (error) {
+        console.error("Error accepting invitation:", error);
+      }
+    }
+  };
+
+  const handleDeclineInvitation = async () => {
+    if (socket) {
+      try {
+        // Update invitation status in database
+        await axios.put(
+          `${import.meta.env.VITE_BACKEND_URL}/api/battle/invite/status`,
+          {
+            senderId: invitation.senderId,
+            receiverId: user?.firebase_uid,
+            lobbyCode: invitation.lobbyCode,
+            status: "declined",
+          }
+        );
+
+        // Emit socket event
+        socket.emit("decline_battle_invitation", {
+          senderId: invitation.senderId,
+          receiverId: user?.firebase_uid,
+          lobbyCode: invitation.lobbyCode,
+        });
+
+        setInvitation({
+          open: false,
+          inviterName: "",
+          senderId: "",
+          lobbyCode: "",
+        });
+      } catch (error) {
+        console.error("Error declining invitation:", error);
+      }
+    }
+  };
+
+  // Add this to your useEffect
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      if (e.key === "d" && e.ctrlKey) {
+        setDebug((prev) => !prev);
+      }
+    };
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, []);
+
+  // Add this debug effect to monitor invitation state changes
+  useEffect(() => {
+    console.log("Invitation state changed:", invitation);
+  }, [invitation]);
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-white px-6 py-8 overflow-hidden">
@@ -349,7 +567,7 @@ const PVPLobby: React.FC = () => {
               <div className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 bg-white rounded-md flex items-center justify-center">
                 {invitedPlayer ? (
                   <motion.img
-                    src={invitedPlayer.profilePicture} // Show the invited player's profile picture
+                    src={invitedPlayer.display_picture || "default-avatar.png"} // Show the invited player's profile picture
                     alt="Invited Player"
                     className="w-full h-full rounded-md"
                     initial={{ scale: 0, opacity: 0, y: -20 }} // Start small, transparent, and above
@@ -368,9 +586,9 @@ const PVPLobby: React.FC = () => {
                   transition={{ duration: 0.5 }} // Duration of the animation
                 >
                   {invitedPlayer
-                    ? invitedPlayer.name
+                    ? invitedPlayer.username
                     : players[1]
-                    ? players[1].name
+                    ? players[1].username
                     : "PLAYER 2"}
                 </motion.p>
                 <motion.p
@@ -552,9 +770,82 @@ const PVPLobby: React.FC = () => {
       <InvitePlayerModal
         open={inviteModalOpen}
         handleClose={() => setInviteModalOpen(false)}
-        playerName={selectedPlayer}
-        onInvite={handleInvite} // Pass the invite handler
+        onInvite={handleInvite}
       />
+
+      {/* Make sure InvitationSnackbar is rendered outside any conditional blocks */}
+      <InvitationSnackbar
+        open={invitation.open}
+        onClose={() => {
+          console.log("Closing invitation snackbar");
+          setInvitation((prev) => ({ ...prev, open: false }));
+        }}
+        inviterName={invitation.inviterName}
+        onAccept={handleAcceptInvitation}
+        onDecline={handleDeclineInvitation}
+      />
+
+      {/* Add this to your JSX */}
+      {debug && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 20,
+            right: 20,
+            background: "#000",
+            padding: 10,
+            borderRadius: 5,
+            zIndex: 9999,
+          }}
+        >
+          <pre>
+            {JSON.stringify(
+              {
+                invitation,
+                socketConnected: !!socket,
+                userId: user?.firebase_uid,
+              },
+              null,
+              2
+            )}
+          </pre>
+        </div>
+      )}
+
+      {/* Add this near your debug panel */}
+      {debug && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 80,
+            right: 20,
+            background: "#000",
+            padding: 10,
+            borderRadius: 5,
+            zIndex: 9999,
+          }}
+        >
+          <button
+            onClick={() => {
+              console.log("Debug: Manually triggering invitation");
+              setInvitation({
+                open: true,
+                inviterName: "Debug User",
+                senderId: "test-id",
+                lobbyCode: "TEST123",
+              });
+            }}
+            style={{
+              color: "white",
+              padding: "4px 8px",
+              border: "1px solid white",
+              borderRadius: "4px",
+            }}
+          >
+            Test Snackbar
+          </button>
+        </div>
+      )}
     </div>
   );
 };

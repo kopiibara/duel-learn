@@ -8,7 +8,6 @@ import PageTransition from "../../styles/PageTransition";
 import { useAudio } from "../../contexts/AudioContext"; // Import the useAudio hook
 
 const WelcomePage = () => {
-  
   const [fadeIn, setFadeIn] = useState(false);
   const navigate = useNavigate();
   const { user } = useUser();
