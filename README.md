@@ -1,85 +1,91 @@
-# Duel-Learn: A Gamified Learning Platform
+# Duel-Learn
+
+An AI-powered gamified learning platform that transforms study materials into engaging educational experiences.
 
 ## Overview
 
-**Duel-Learn** is an innovative web-based learning platform that combines Artificial Intelligence (AI) and Optical Character Recognition (OCR) to help students study more efficiently. By automatically generating quizzes, flashcards, and other study materials from handwritten or digital notes, Duel-Learn streamlines the study process, saving students valuable time.
+Duel-Learn leverages cutting-edge Artificial Intelligence (AI) and Optical Character Recognition (OCR) technology to revolutionize the learning experience. The platform automatically converts study materials into interactive content while incorporating gamification elements to maintain student engagement and motivation.
 
-In addition to automated content creation, Duel-Learn integrates gamification features like points, leaderboards, and challenges, making studying more engaging. The platform also offers various study modes—ranging from individual to group-based learning—allowing students to learn in a way that suits them best.
+## Core Features
 
-## Key Features
+### Content Generation
+- AI-powered conversion of handwritten and digital notes
+- Automated quiz and flashcard creation
+- Intelligent cross-referencing with verified academic sources
+- Text-to-Speech functionality for accessibility
 
-- **AI & OCR-Powered Content Creation**: Automatically generate quizzes and flashcards from your notes.
-- **Customizable Study Materials**: Create, upload, and adjust study materials according to your personal learning preferences.
-- **Multiple Study Modes**: Single-player, multiplayer, and AI-powered quizzes to cater to different learning styles.
-- **Gamification**: Points, leaderboards, badges, and achievements to motivate users and enhance their learning experience.
-- **AI Cross-Referencing**: Cross-references study materials with trusted online resources for improved accuracy.
-- **Text-to-Speech**: Converts written content into speech for auditory learners.
+### Learning Modes
+- Self-paced individual study
+- Competitive multiplayer challenges
+- AI-assisted practice sessions
+- Real-time collaborative learning
 
-## Goals
+### Gamification
+- Achievement-based progression system
+- Competitive leaderboards
+- Skill-based matchmaking
+- Customizable rewards and badges
 
-The main goal of **Duel-Learn** is to simplify and enhance the study process by:
+## Technical Architecture
 
-- Automating the creation of study materials using AI and OCR technology.
-- Creating an engaging study experience with gamified elements that motivate users.
-- Offering flexible learning options with multiple study modes to suit different preferences.
+### Technology Stack
+- Frontend: React.js with TypeScript
+- Backend: Node.js and Express
+- Database: PostgreSQL
+- AI/ML: TensorFlow, PyTorch
+- OCR: Tesseract.js
+- Cloud: AWS Infrastructure
 
-## Technology Stack
+## Getting Started
 
-- **OCR Technology**: Converts handwritten or digital notes into structured content.
-- **Artificial Intelligence (AI)**: Powers content generation, quiz creation, and cross-referencing to optimize learning.
-- **Cloud Infrastructure**: Ensures scalability and performance as the user base grows.
-- **Gamification Framework**: Implements features like leaderboards, points, and rewards to keep users motivated.
+Visit [duel-learn.com](https://duel-learn.com) to create your account and begin your enhanced learning journey.
+
+### Prerequisites
+- Modern web browser (Chrome, Firefox, Safari, or Edge)
+- Stable internet connection
+- Webcam (optional, for document scanning)
 
 ## Business Model
 
-**Duel-Learn** operates on a **freemium model**, providing core features for free and offering premium features via subscription. Revenue is generated through:
+### Free Tier
+- Basic study material conversion
+- Standard quiz generation
+- Limited multiplayer access
 
-- **Free Access**: Basic features and study tools.
-- **Premium Subscription**: Unlock advanced features, detailed analytics, and customizations.
-- **In-App Purchases**: Optional purchases for additional study tools or customizations.
-
-## Roadmap
-
-1. **Beta Testing**: Collect feedback from a select group of users to refine features.
-2. **Launch**: Public release after incorporating beta feedback.
-3. **Continuous Improvement**: Regular updates based on user feedback and performance data.
-
-## License
-
-This project is licensed under the **MIT License**. See the [LICENSE](LICENSE) file for more details.
-
-## Contact
-
-For any inquiries, support requests, or additional information, please reach out to us at:
-
-- **Email**: [duellearn.2024@gmail.com](mailto:duellearn.2024@gmail.com)
+### Premium Features
+- Advanced AI-powered content generation
+- Detailed analytics and progress tracking
+- Unlimited multiplayer access
+- Priority support
 
 ## Development Team
 
-The following developers contributed to the creation and development of **Duel-Learn**:
+- **Carl James Juliane**
+  - juliane.carljamesbscs2022@gmail.com
 
-- **Cj Juliane** - [juliane.carljamesbscs2022@gmail.com](mailto:juliane.carljamesbscs2022@gmail.com)
-- **Bea Lugtu** - [lugtu.beaalyssabscs2022@gmail.com](mailto:lugtu.beaalyssabscs2022@gmail.com)
-- **Justine Peralta** - [peralta.justinebryanbscs2022@gmail.com](mailto:peralta.justinebryanbscs2022@gmail.com)
-- **Laira Samis** - [samis.lairacoleenbscs2022@gmail.com](mailto:samis.lairacoleenbscs2022@gmail.com)
-- **Gwyneth Uy** - [uy.gwyneth2022@gmail.com](mailto:uy.gwynethbscs2022@gmail.com)
+- **Bea Alyssa Lugtu**
+  - lugtu.beaalyssabscs2022@gmail.com
 
-## About the Project
+- **Justine Bryan Peralta**
+  - peralta.justinebryanbscs2022@gmail.com
 
-**Duel-Learn** aims to modernize the study process by automating content creation and providing a dynamic, engaging environment for students. By combining AI, OCR, and gamification, the platform addresses common challenges such as time-consuming manual work and lack of motivation. The result is a more effective and enjoyable study experience.
+- **Laira Coleen Samis**
+  - samis.lairacoleenbscs2022@gmail.com
 
-## Features Summary
+- **Gwyneth Uy**
+  - uy.gwynethbscs2022@gmail.com
 
-- **Study Materials Creation**: Generate flashcards and quizzes from handwritten or digital notes.
-- **Multiple Study Modes**: Choose from single-player, multiplayer, or AI-powered quizzes.
-- **Gamified Experience**: Earn points, climb leaderboards, and unlock achievements as you learn.
-- **AI-Powered Accuracy**: Cross-reference materials with trusted sources to ensure reliability.
-- **Text-to-Speech**: Convert text-based content into audio for auditory learners.
+## Support
 
-## Deployment & Support
+### Contact Information
+- Technical Support: support@duel-learn.com
+- Business Inquiries: business@duel-learn.com
+- General Questions: info@duel-learn.com
 
-**Duel-Learn** is a web-based platform that works across modern browsers such as Google Chrome, Mozilla Firefox, and Microsoft Edge. A stable internet connection is required for multiplayer and real-time features.
+## License
 
-Post-deployment, users will have access to tutorials and guides to make the most of the platform's features. Support is available through the contact information listed above.
+Duel-Learn is released under the MIT License. See [LICENSE](LICENSE) for details.
 
 ---
+
+© 2024 Duel-Learn. All rights reserved.
