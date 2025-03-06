@@ -14,10 +14,7 @@ body {
   letter-spacing: normal;
   scrollbar-gutter: stable;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  -webkit-tap-highlight-color: transparent;
-  -webkit-overflow-scrolling: touch;
-  -webkit-user-select: none;
+
   user-select: none;
   scroll-behavior: smooth; /* Add this line for smooth scrolling */
 }

@@ -12,7 +12,6 @@ const Leaderboards = () => {
     { rank: 1, name: "PeraltaMalakas", level: 24, xp: "1,500" },
     { rank: 2, name: "CJDMarunoeng", level: 24, xp: "1,200" },
     { rank: 3, name: "JingMakararig", level: 24, xp: "1,000" },
-    { rank: 4, name: "SamiChan", level: 24, xp: "700" },
   ]);
 
   const [covenHierarchy] = useState([
@@ -49,7 +48,7 @@ const Leaderboards = () => {
 
       {/* Show Leaderboard if numberOfFriends is greater than or equal to 5 */}
       {numberOfFriends >= 5 ? (
-        <div className="rounded-md shadow-md border-2 border-[#6F658D]">
+        <div className=" rounded-[1rem]  shadow-md border-[0.2rem] border-[#3B354C]">
           {leaderboardData.map((entry, index) => (
             <div
               key={index}
@@ -57,6 +56,7 @@ const Leaderboards = () => {
               style={{
                 backgroundColor:
                   entry.rank % 2 === 1 ? "#120F1C" : "transparent",
+                borderRadius: "1rem",
               }}
             >
               {/* Medal + Profile Pic (Grouped) */}
@@ -92,12 +92,7 @@ const Leaderboards = () => {
           ))}
 
           <button
-            className="w-full py-2 sm:py-2.5 md:py-3 lg:py-4 text-[#5b5277] text-md border rounded hover:bg-gray-600 hover:text-white"
-            style={{
-              cursor: "pointer",
-              backgroundColor: "rgba(59, 53, 77, 0.25)",
-              borderColor: "#6F658D",
-            }}
+            className="w-full cursor-pointer py-2 sm:py-2.5 md:py-3 lg:py-4 rounded-b-[1rem] bg-[#120F1D] text-[#5b5277] text-md border-t-2 border-[#3B354C]  hover:text-white"
             onClick={openModal}
           >
             VIEW MORE
@@ -105,10 +100,7 @@ const Leaderboards = () => {
         </div>
       ) : (
         // Show "No Friends More Than 5" section if numberOfFriends is less than 5
-        <div
-          className="mt-10 flex flex-col items-center justify-center border rounded-sm"
-          style={{ border: "1px solid #6F658D" }}
-        >
+        <div className="mt-10 flex flex-col items-center justify-center border-[0.2rem] border-[#3B354C] rounded-sm">
           <div className="flex flex-col items-center justify-center px-10 py-14">
             <div className="bg-gray-300 w-24 h-24 rounded"></div>
             <p className="text-center w-[300px] text-gray-400 mt-8">

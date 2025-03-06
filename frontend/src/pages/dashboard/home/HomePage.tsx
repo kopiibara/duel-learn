@@ -5,6 +5,7 @@ import PageTransition from "../../../styles/PageTransition";
 
 import ChooseYourChallenge from "../../../components/ChooseYourChallenge";
 import DiscoverMore from "./DiscoverMore";
+import HomeBanner from "./HomeBanner";
 
 const HomePage = ({
   setSelectedIndex,
@@ -22,31 +23,9 @@ const HomePage = ({
     <PageTransition>
       <Box className="h-full w-auto">
         <DocumentHead title="Home | Duel Learn" />
-        <Box
-          className="mx-4 sm:mx-8 rounded-[1rem] p-4 sm:p-6 sm:px-12 flex flex-col justify-center items-start text-left mb-8 sm:mb-10"
-          style={{
-            background: "linear-gradient(90deg, #9F87E5 0%, #6F58D9 100%)",
-            height: "auto", // Remove fixed height for better mobile display
-            minHeight: "180px", // Minimum height instead of fixed height
-          }}
-        >
-          <h1
-            className="text-white text-xl md:text-[29px] font-medium mb-2"
-            style={{ letterSpacing: "0.01em", lineHeight: "1.1" }}
-          >
-            Those gaps in your <br /> materials? Let’s fill ‘em up!
-          </h1>
-          <p className="text-white text-sm md:text-[15px] mt-1 opacity-80">
-            AI cross-referencing available in Duel-Learn Premium!
-          </p>
-          <button
-            className="mt-4 px-6 py-2 text-sm md:text-base bg-white text-[#9F87E5] rounded-full font-bold"
-            onClick={() => navigate("/dashboard/shop")}
-          >
-            Learn More
-          </button>
-        </Box>
         <Stack spacing={2} className="px-4 sm:px-6">
+          <HomeBanner />
+
           <Stack spacing={2} className="pb-6">
             <Stack
               direction={"row"}
