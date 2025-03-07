@@ -14,12 +14,14 @@ interface User {
   email_verified: boolean;
   isSSO: boolean;
   account_type: "free" | "premium" | "admin";
-  isNew: boolean
+  isNew: boolean;
 }
 
 interface UserContextProps {
   user: User | null;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
+  loading: boolean;
+  updateUser: (updates: Partial<User>) => void; // Add this function
 }
 
 const UserContext = createContext<UserContextProps | undefined>(undefined);
@@ -31,6 +33,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     const userData = localStorage.getItem("userData");
     return userData ? JSON.parse(userData) : null;
   });
+
+  const [loading, setLoading] = useState(true);
+
+  const updateUser = (updates: Partial<User>) => {
+    setUser((prev) => (prev ? { ...prev, ...updates } : null));
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -48,13 +56,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         localStorage.removeItem("userToken"); // Remove token
         localStorage.removeItem("userData");
       }
+      setLoading(false);
     });
 
     return () => unsubscribe();
   }, []);
 
   return (
-    <UserContext.Provider value={{ user, setUser }}>
+    <UserContext.Provider value={{ user, setUser, loading, updateUser }}>
       {children}
     </UserContext.Provider>
   );
