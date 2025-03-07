@@ -1,5 +1,5 @@
 // import  React from "react";
-import { Popover, Button, Stack, Divider } from "@mui/material";
+import { Popover, Button, Stack, Divider, Box } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import coverPhoto from "../../../../assets/study-material-popover-icons/cover-photo.svg";
 import shareIcon from "../../../../assets/study-material-popover-icons/share-icon.svg";
@@ -181,28 +181,31 @@ export default function MoreOptionPopover({
         >
           Export
         </Button>
-        <Divider sx={{ height: "2px", backgroundColor: "#3B354C" }} />
+
         {isOwner && (
-          <Button
-            variant="text"
-            startIcon={<img src={archiveIcon} alt="archive-icon" />}
-            sx={{
-              justifyContent: "flex-start",
-              textTransform: "none",
-              color: "inherit",
-              fontWeight: 400,
-              borderRadius: "0.8rem",
-              padding: "0.6rem 1rem",
-              transition: "all 0.3s ease-in-out",
-              "&:hover": {
-                transform: "scale(1.05)",
-                backgroundColor: "#3B354C",
-              },
-            }}
-            onClick={handleArchive}
-          >
-            Archive
-          </Button>
+          <Box>
+            <Divider sx={{ height: "2px", backgroundColor: "#3B354C" }} />
+            <Button
+              variant="text"
+              startIcon={<img src={archiveIcon} alt="archive-icon" />}
+              sx={{
+                justifyContent: "flex-start",
+                textTransform: "none",
+                color: "inherit",
+                fontWeight: 400,
+                borderRadius: "0.8rem",
+                padding: "0.6rem 1rem",
+                transition: "all 0.3s ease-in-out",
+                "&:hover": {
+                  transform: "scale(1.05)",
+                  backgroundColor: "#3B354C",
+                },
+              }}
+              onClick={handleArchive}
+            >
+              Archive
+            </Button>
+          </Box>
         )}
       </Stack>
     </Popover>

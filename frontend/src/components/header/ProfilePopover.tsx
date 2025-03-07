@@ -53,11 +53,10 @@ export default function ProfilePopover({
       PaperProps={{
         sx: {
           backgroundColor: "#120F1B", // Dark background
-          color: "#ffffff", // White text
-          borderRadius: "8px", // Rounded corners
-          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)", // Subtle shadow
-          padding: 3, // Adjust padding inside the popover
-          mt: 2, // Space between the popover and profile button
+          borderRadius: "0.8rem",
+          width: "16rem", // Set width of the popover
+          padding: 2, // Adjust padding inside the popover
+          mt: 1, // Space between the popover and profile button
         },
       }}
     >
@@ -71,8 +70,12 @@ export default function ProfilePopover({
               textTransform: "none",
               color: "inherit",
               fontWeight: 400,
-              ":hover": {
-                fontWeight: 700, // Make text bold on hover
+              borderRadius: "0.8rem",
+              padding: "0.6rem 1rem",
+              transition: "all 0.3s ease-in-out",
+              "&:hover": {
+                transform: "scale(1.05)",
+                backgroundColor: "#3B354C",
               },
             }}
           >
@@ -85,8 +88,12 @@ export default function ProfilePopover({
               textTransform: "none",
               color: "inherit",
               fontWeight: 400,
-              ":hover": {
-                fontWeight: 700, // Make text bold on hover
+              borderRadius: "0.8rem",
+              padding: "0.6rem 1rem",
+              transition: "all 0.3s ease-in-out",
+              "&:hover": {
+                transform: "scale(1.05)",
+                backgroundColor: "#3B354C",
               },
             }}
           >
@@ -99,8 +106,12 @@ export default function ProfilePopover({
               textTransform: "none",
               color: "inherit",
               fontWeight: 400,
-              ":hover": {
-                fontWeight: 700, // Make text bold on hover
+              borderRadius: "0.8rem",
+              padding: "0.6rem 1rem",
+              transition: "all 0.3s ease-in-out",
+              "&:hover": {
+                transform: "scale(1.05)",
+                backgroundColor: "#3B354C",
               },
             }}
             onClick={() => window.open("/privacy-policy", "_blank")}
@@ -114,8 +125,12 @@ export default function ProfilePopover({
               textTransform: "none",
               color: "inherit",
               fontWeight: 400,
-              ":hover": {
-                fontWeight: 700, // Make text bold on hover
+              borderRadius: "0.8rem",
+              padding: "0.6rem 1rem",
+              transition: "all 0.3s ease-in-out",
+              "&:hover": {
+                transform: "scale(1.05)",
+                backgroundColor: "#3B354C",
               },
             }}
           >
@@ -130,8 +145,12 @@ export default function ProfilePopover({
               textTransform: "none",
               color: "inherit",
               fontWeight: 400,
-              ":hover": {
-                fontWeight: 700, // Make text bold on hover
+              borderRadius: "0.8rem",
+              padding: "0.6rem 1rem",
+              transition: "all 0.3s ease-in-out",
+              "&:hover": {
+                transform: "scale(1.05)",
+                backgroundColor: "#3B354C",
               },
             }}
             onClick={() => navigate("/dashboard/verify-email")}
@@ -145,8 +164,12 @@ export default function ProfilePopover({
               textTransform: "none",
               color: "inherit",
               fontWeight: 400,
-              ":hover": {
-                fontWeight: 700, // Make text bold on hover
+              borderRadius: "0.8rem",
+              padding: "0.6rem 1rem",
+              transition: "all 0.3s ease-in-out",
+              "&:hover": {
+                transform: "scale(1.05)",
+                backgroundColor: "#3B354C",
               },
             }}
             onClick={handleLogout}

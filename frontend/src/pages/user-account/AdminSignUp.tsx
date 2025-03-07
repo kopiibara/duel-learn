@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
@@ -9,8 +9,8 @@ import {
   getAdditionalInfo,
   db,
 } from "../../services/firebase";
-import { signInWithPopup, createUserWithEmailAndPassword } from "firebase/auth";
-import { setDoc, doc, serverTimestamp } from "firebase/firestore";
+import { signInWithPopup, createUserWithEmailAndPassword, deleteUser } from "firebase/auth";
+import { setDoc, doc, serverTimestamp, deleteDoc } from "firebase/firestore";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
 import useValidation from "../../hooks/validation.hooks/useValidation";
@@ -21,7 +21,7 @@ import LoadingScreen from "../../components/LoadingScreen";
 import bcrypt from "bcryptjs";
 
 const AdminSignUp = () => {
-  const { setUser } = useUser();
+  const { setUser, user } = useUser();
   const { handleError, combinedError } = useCombinedErrorHandler();
   const [formData, setFormData] = useState({
     username: "",
@@ -74,7 +74,6 @@ const AdminSignUp = () => {
       const userData = {
         firebaseToken: token,
         firebase_uid: result.user.uid,
-
         username: username,
         email: email,
         display_picture: null,
@@ -83,6 +82,7 @@ const AdminSignUp = () => {
         email_verified: result.user.emailVerified,
         isSSO: false,
         account_type: "admin" as "free" | "premium" | "admin",
+        level: 1
       };
 
       await setDoc(doc(db, "users", userData.firebase_uid), {
@@ -130,8 +130,9 @@ const AdminSignUp = () => {
       );
       setTimeout(() => {
         if (userData.account_type === "admin") {
-          navigate("/admin/admin-dashboard");
-        } else {
+            navigate("/admin/admin-dashboard");
+        }
+        else {
           navigate("/dashboard/home");
         }
       }, 2000);
@@ -153,12 +154,12 @@ const AdminSignUp = () => {
         username: result.user.displayName,
         email: result.user.email,
         display_picture: result.user.photoURL,
-        isNew: additionalUserInfo?.isNewUser,
-        full_name: null,
+        isNew: additionalUserInfo?.isNewUser ?? false,
+        full_name: "",
         email_verified: result.user.emailVerified,
         isSSO: true,
-        account_type: "admin" as "free" | "premium" | "admin",
-        level: 1, // Adding required level property
+        account_type: "admin" as "free" | "premium"| "admin",
+        level: 1
       };
 
       await setDoc(doc(db, "users", userData.firebase_uid), {
@@ -173,6 +174,7 @@ const AdminSignUp = () => {
         email_verified: userData.email_verified,
         isSSO: userData.isSSO,
         account_type: userData.account_type,
+        isNew: userData.isNew
       });
 
       setUser(userData);
@@ -191,11 +193,14 @@ const AdminSignUp = () => {
       setTimeout(() => {
         if (userData.isNew && userData.email_verified) {
           navigate("/dashboard/welcome");
-        } else if (userData.isNew && userData.email_verified === false) {
+        } 
+        else if(userData.isNew && userData.email_verified === false){
           navigate("/dashboard/verify-email");
-        } else if (userData.email_verified === false) {
+        }
+        else if(userData.email_verified === false){
           navigate("/dashboard/verify-email");
-        } else {
+        }
+        else {
           navigate("/dashboard/home");
         }
       }, 2000);

@@ -308,6 +308,7 @@ const setupSocket = (server) => {
                 details: error.message,
             });
         });
+
     });
 
     // Global error handler for the io server

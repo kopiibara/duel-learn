@@ -24,9 +24,12 @@ interface CardComponentProps {
   images: string[];
   totalItems: number;
   createdBy: string;
+  createdById: string;
   totalViews: number;
   createdAt: string;
+  updatedAt: string;
   visibility: number;
+  status: string;
   items: Item[];
   onClick?: () => void; // Optional onClick prop to handle card clicks
 }
@@ -206,6 +209,7 @@ const CardComponent: React.FC<CardComponentProps> = ({
             zIndex: -1,
             width: isXsScreen ? "9rem" : isSmScreen ? "10rem" : "12rem",
             height: "100%",
+            objectFit: "cover",
           }}
           image={defaultCover}
         />

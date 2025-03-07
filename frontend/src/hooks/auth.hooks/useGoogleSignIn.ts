@@ -10,14 +10,17 @@ import {
 } from "../../services/firebase";
 import useSignUpApi from "../api.hooks/useSignUpApi";
 import useHandleError from "../validation.hooks/useHandleError";
+import { useState } from "react";
 
 const useGoogleSignIn = () => {
   const { setUser } = useUser();
   const navigate = useNavigate();
   const { signUpApi } = useSignUpApi();
   const { handleLoginError } = useHandleError();
+  const [loading, setLoading] = useState(false);
 
   const handleGoogleSignIn = async () => {
+    setLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const token = await result.user.getIdToken();
@@ -28,7 +31,7 @@ const useGoogleSignIn = () => {
         username: result.user.displayName,
         email: result.user.email,
         display_picture: result.user.photoURL,
-        isNew: additionalUserInfo?.isNewUser,
+        isNew: additionalUserInfo?.isNewUser ?? false,
         full_name: "",
         email_verified: result.user.emailVerified,
         isSSO: true,
@@ -40,7 +43,7 @@ const useGoogleSignIn = () => {
       const isNewUser =
         !userDoc.exists() ||
         (userDoc.exists() &&
-          Date.now() - userDoc.data().created_at.toMillis() < 5000);
+          Date.now() - userDoc.data().created_at.toMillis() < 300000);
 
       if (isNewUser) {
         await setDoc(doc(db, "users", userData.firebase_uid), {
@@ -55,6 +58,7 @@ const useGoogleSignIn = () => {
           email_verified: userData.email_verified,
           isSSO: userData.isSSO,
           account_type: userData.account_type,
+          isNew: true
         });
 
         await signUpApi(
@@ -70,21 +74,25 @@ const useGoogleSignIn = () => {
       setUser(userData);
       localStorage.setItem("userToken", token);
 
-      setTimeout(() => {
-        if (userData.account_type === "admin") {
-          navigate("/admin/admin-dashboard");
-        } else if (isNewUser && userData.email_verified) {
-          navigate("/dashboard/welcome");
-        } else if (isNewUser && userData.email_verified === false) {
-          navigate("/dashboard/verify-email");
-        } else if (userData.email_verified === false) {
-          navigate("/dashboard/verify-email");
-        } else {
-          navigate("/dashboard/home");
-        }
-      }, 2000);
+      setLoading(true); // Set loading to true when starting the sign-in process
+
+setTimeout(() => {
+    if (userData.account_type === "admin") {
+        navigate("/admin/admin-dashboard");
+    } else if (isNewUser && userData.email_verified) {
+        navigate("/dashboard/welcome");
+    } else if (isNewUser && userData.email_verified === false) {
+        navigate("/dashboard/verify-email");
+    } else if (userData.email_verified === false) {
+        navigate("/dashboard/verify-email");
+    } else {
+        navigate("/dashboard/home");
+    }
+    setLoading(false); // Set loading to false after navigation
+}, 2000);
     } catch (error: any) {
       handleLoginError(error);
+      setLoading(false);
     }
   };
 

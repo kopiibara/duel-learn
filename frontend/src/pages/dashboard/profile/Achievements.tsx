@@ -75,10 +75,9 @@ const Achievements = () => {
         {achievements.map((achievement) => (
           <div
             key={achievement.id}
-            style={{ border: "1px solid #6F658D" }}
-            className="rounded-lg px-7 py-8 flex flex-col items-center"
+            className=" rounded-[1rem]  px-7 py-8 flex flex-col items-center border-[0.2rem] border-[#3B354C]"
           >
-            <div className="w-20 h-20 bg-[#D9D9D9] rounded mb-4"></div>
+            <div className="w-20 h-20 bg-[#D9D9D9] rounded-[1rem] mb-4"></div>
             <h4 className="text-md pt-3 pb-1 font-bold text-center">
               {achievement.name}
             </h4>

@@ -4,8 +4,10 @@ import useWandCursor from "./data/useWandCursor";
 import GateRabbit from "../../assets/UserOnboarding/Gate.gif";
 import PageTransition from "../../styles/PageTransition";
 import { useAudio } from "../../contexts/AudioContext"; // Import the useAudio hook
+import { useUser } from "../../contexts/UserContext";
 
 const TutorialLast: React.FC = () => {
+  const { user } = useUser();
   const [fadeIn, setFadeIn] = useState(false);
   const navigate = useNavigate();
   const { pauseAudio } = useAudio(); // Use the pauseAudio function
@@ -57,7 +59,7 @@ const TutorialLast: React.FC = () => {
           >
             <p className="text-xl whitespace-nowrap">
               Get ready to embark on your journey,{" "}
-              <span className="font-bold">Magician</span>.
+              <span className="font-bold">{user?.username}</span>.
             </p>
             <p
               className="text-[18px] text-[#9F9BAE] mt-5"

@@ -278,9 +278,9 @@ const studyMaterialController = {
       console.log("Fetching study materials for created_by:", created_by);
 
       const [infoRows] = await connection.execute(
-        `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
+        `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at ,updated_at, visibility, status
                 FROM study_material_info 
-                WHERE created_by = ? AND status != 'archived';`,
+                WHERE created_by = ? ;`,
         [created_by]
       );
 
@@ -307,6 +307,9 @@ const studyMaterialController = {
             created_by: info.created_by,
             total_views: info.total_views,
             created_at: info.created_at,
+            updated_at: info.updated_at,
+            visibility: info.visibility,
+            status: info.status,
             items: contentRows.map((item) => ({
               term: item.term,
               definition: item.definition,
@@ -693,6 +696,208 @@ const studyMaterialController = {
       connection.release();
     }
   },
+
+  bookmarkStudyMaterial: async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+      const { study_material_id, bookmarked_by_id } = req.body;
+
+      console.log("Received bookmark request:", { study_material_id, bookmarked_by_id });
+
+      if (!study_material_id || !bookmarked_by_id) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      // Get current timestamp - Make sure this is formatted correctly
+      const bookmarked_at = manilacurrentTimestamp;  // If this is a function, call it
+
+      // First check if this study material exists
+      const [studyMaterialRows] = await connection.execute(
+        `SELECT study_material_id, created_by, created_by_id 
+         FROM study_material_info 
+         WHERE study_material_id = ?`,
+        [study_material_id]
+      );
+
+      if (studyMaterialRows.length === 0) {
+        return res.status(404).json({ error: "Study material not found" });
+      }
+
+      const { created_by, created_by_id } = studyMaterialRows[0];
+
+      // Check if bookmark already exists
+      const [existingBookmark] = await connection.execute(
+        `SELECT * FROM bookmarked_study_material 
+         WHERE study_material_id = ? AND bookmarked_by_id = ?`,
+        [study_material_id, bookmarked_by_id]
+      );
+
+      // If bookmark exists, remove it (toggle functionality)
+      if (existingBookmark.length > 0) {
+        console.log("Removing existing bookmark");
+        await connection.execute(
+          `DELETE FROM bookmarked_study_material 
+           WHERE study_material_id = ? AND bookmarked_by_id = ?`,
+          [study_material_id, bookmarked_by_id]
+        );
+
+        return res.status(200).json({
+          message: "Bookmark removed successfully",
+          bookmarked: false
+        });
+      }
+
+      // Get bookmarked_by username from user table using bookmarked_by_id
+      const [userRows] = await connection.execute(
+        `SELECT username FROM users WHERE firebase_uid = ?`,
+        [bookmarked_by_id]
+      );
+
+      if (userRows.length === 0) {
+        return res.status(404).json({ error: "User not found" });
+      }
+
+      const bookmarked_by = userRows[0].username;
+      console.log("Adding new bookmark for user:", bookmarked_by);
+
+      // Insert new bookmark
+      await connection.execute(
+        `INSERT INTO bookmarked_study_material 
+         (study_material_id, created_by, created_by_id, bookmarked_by, bookmarked_by_id, bookmarked_at) 
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [study_material_id, created_by, created_by_id, bookmarked_by, bookmarked_by_id, bookmarked_at]
+      );
+
+      res.status(201).json({
+        message: "Study material bookmarked successfully",
+        bookmarked: true,
+        bookmark: {
+          study_material_id,
+          created_by,
+          created_by_id,
+          bookmarked_by,
+          bookmarked_by_id,
+          bookmarked_at
+        }
+      });
+    } catch (error) {
+      console.error("Error bookmarking study material:", error);
+      res.status(500).json({ error: "Internal server error", details: error.message });
+    } finally {
+      connection.release();
+    }
+  },
+
+  checkBookmarkStatus: async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+      const { study_material_id, bookmarked_by_id } = req.query;
+
+      if (!study_material_id || !bookmarked_by_id) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      // Check if bookmark exists
+      const [existingBookmark] = await connection.execute(
+        `SELECT * FROM bookmarked_study_material 
+       WHERE study_material_id = ? AND bookmarked_by_id = ?`,
+        [study_material_id, bookmarked_by_id]
+      );
+
+      res.status(200).json({
+        isBookmarked: existingBookmark.length > 0
+      });
+    } catch (error) {
+      console.error("Error checking bookmark status:", error);
+      res.status(500).json({ error: "Internal server error", details: error.message });
+    } finally {
+      connection.release();
+    }
+  },
+
+  getBookmarksByUser: async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+      const { bookmarked_by_id } = req.params;
+
+      // Get all study materials bookmarked by the user
+      const [bookmarks] = await connection.execute(
+        `SELECT b.study_material_id, b.created_by, b.created_by_id, 
+                b.bookmarked_by, b.bookmarked_by_id, b.bookmarked_at
+         FROM bookmarked_study_material b
+         WHERE b.bookmarked_by_id = ?`,
+        [bookmarked_by_id]
+      );
+
+      if (bookmarks.length === 0) {
+        return res.status(200).json([]);
+      }
+
+      // Get the complete study material data for each bookmarked item
+      const studyMaterials = await Promise.all(
+        bookmarks.map(async (bookmark) => {
+          // Get study material info
+          const [infoRows] = await connection.execute(
+            `SELECT title, tags, total_items, total_views, created_at
+             FROM study_material_info
+             WHERE study_material_id = ?`,
+            [bookmark.study_material_id]
+          );
+
+          if (infoRows.length === 0) {
+            return null; // Skip if study material doesn't exist anymore
+          }
+
+          // Get study material content
+          const [contentRows] = await connection.execute(
+            `SELECT term, definition, image
+             FROM study_material_content
+             WHERE study_material_id = ?`,
+            [bookmark.study_material_id]
+          );
+
+          return {
+            bookmark_info: {
+              study_material_id: bookmark.study_material_id,
+              created_by: bookmark.created_by,
+              created_by_id: bookmark.created_by_id,
+              bookmarked_by: bookmark.bookmarked_by,
+              bookmarked_by_id: bookmark.bookmarked_by_id,
+              bookmarked_at: bookmark.bookmarked_at
+            },
+            study_material_info: {
+              study_material_id: bookmark.study_material_id,
+              title: infoRows[0].title,
+              tags: JSON.parse(infoRows[0].tags),
+              total_items: infoRows[0].total_items,
+              total_views: infoRows[0].total_views,
+              created_at: infoRows[0].created_at,
+              visibility: infoRows[0].visibility,
+              status: infoRows[0].status,
+              created_by: bookmark.created_by,
+              created_by_id: bookmark.created_by_id,
+              items: contentRows.map(item => ({
+                term: item.term,
+                definition: item.definition,
+                image: item.image ? item.image.toString('base64') : null
+              }))
+            }
+          };
+        })
+      );
+
+      // Filter out any null entries (for deleted study materials)
+      const validStudyMaterials = studyMaterials.filter(material => material !== null);
+
+      res.status(200).json(validStudyMaterials);
+    } catch (error) {
+      console.error("Error fetching bookmarks by user:", error);
+      res.status(500).json({ error: "Internal server error", details: error.message });
+    } finally {
+      connection.release();
+    }
+  }
+
 };
 
 export default studyMaterialController;

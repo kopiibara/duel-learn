@@ -199,7 +199,7 @@ const CreateStudyMaterial = () => {
           const response = await fetch(
             `${
               import.meta.env.VITE_BACKEND_URL
-            }/api/study-material/${studyMaterialId}`
+            }/api/study-material/get-by-study-material-id/${studyMaterialId}`
           );
 
           if (!response.ok) {
