@@ -372,6 +372,11 @@ export default {
           [username, moment().format("YYYY-MM-DD HH:mm:ss"), firebase_uid]
         );
 
+        await connection.execute(
+          `UPDATE user_info SET username = ? WHERE firebase_uid = ?;`,
+          [username, firebase_uid]
+        );
+
         await admin.firestore().collection("users").doc(firebase_uid).update({
           username: username,
           updated_at: moment().format("YYYY-MM-DD HH:mm:ss"),
@@ -387,6 +392,11 @@ export default {
         await connection.execute(
           `UPDATE users SET display_picture = ?, updated_at = ? WHERE firebase_uid = ?;`,
           [display_picture, moment().format("YYYY-MM-DD HH:mm:ss"), firebase_uid]
+        );
+
+        await connection.execute(
+          `UPDATE user_info SET display_picture = ? WHERE firebase_uid = ?;`,
+          [display_picture, firebase_uid]
         );
 
         await admin.firestore().collection("users").doc(firebase_uid).update({

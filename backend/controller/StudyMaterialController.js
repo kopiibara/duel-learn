@@ -126,13 +126,13 @@ const studyMaterialController = {
       // Update study_material_info table with timestamp
       await connection.execute(
         `UPDATE study_material_info 
-         SET title = ?, tags = ?, total_items = ?, visibility = ?, updated_at = ?
+         SET title = ?, tags = ?, total_items = ?, visibility = ?, updated_at = ? 
          WHERE study_material_id = ?`,
         [
           title,
           JSON.stringify(tags), // Store tags as a JSON string
           totalItems,
-          visibility || 0,
+          visibility,
           updatedTimestamp, // Add the updated timestamp
           studyMaterialId,
         ]
@@ -892,6 +892,40 @@ const studyMaterialController = {
       res.status(200).json(validStudyMaterials);
     } catch (error) {
       console.error("Error fetching bookmarks by user:", error);
+      res.status(500).json({ error: "Internal server error", details: error.message });
+    } finally {
+      connection.release();
+    }
+  },
+
+  updateCreatedByUser: async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+      const { created_by, created_by_id } = req.body;
+
+      if (!created_by || !created_by_id) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      // Update study_material_info table for all materials by this user
+      await connection.execute(
+        `UPDATE study_material_info 
+         SET created_by = ?
+         WHERE created_by_id = ?`,
+        [created_by, created_by_id]
+      );
+
+      // Also update bookmarked_study_material table
+      await connection.execute(
+        `UPDATE bookmarked_study_material 
+         SET created_by = ?
+         WHERE created_by_id = ?`,
+        [created_by, created_by_id]
+      );
+
+      res.status(200).json({ message: "Study materials updated successfully" });
+    } catch (error) {
+      console.error("Error updating study materials:", error);
       res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();

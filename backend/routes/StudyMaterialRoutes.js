@@ -9,6 +9,7 @@ router.post("/update", studyMaterialController.editStudyMaterial);
 router.post("/archive/:studyMaterialId", studyMaterialController.archiveStudyMaterial);
 router.post('/increment-views/:studyMaterialId', studyMaterialController.incrementViews);
 router.post("/bookmark", studyMaterialController.bookmarkStudyMaterial);
+router.post("/update-creator", studyMaterialController.updateCreatedByUser);
 
 router.get("/get-by-study-material-id/:studyMaterialId", studyMaterialController.getStudyMaterialById);
 router.get("/get-by-user/:created_by", studyMaterialController.getStudyMaterialByUser);

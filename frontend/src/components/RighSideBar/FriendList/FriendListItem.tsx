@@ -16,7 +16,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center">
         <img
-          src={friend.display_profile || ProfileIcon}
+          src={friend.display_picture || ProfileIcon}
           alt="Avatar"
           className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
         />

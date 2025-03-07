@@ -3,7 +3,7 @@ import { Box, Typography, Stack, Skeleton } from "@mui/material";
 import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
 import MyLibraryCards from "./MyLibraryCards";
-import Filter from "./Filter";
+import Filter from "../../../components/Filter";
 import { useUser } from "../../../contexts/UserContext";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
 import noStudyMaterial from "../../../assets/images/NoStudyMaterial.svg";
@@ -170,7 +170,7 @@ const MyLibraryPage = () => {
             <Typography variant="subtitle2">•</Typography>
             <Typography variant="h6">{count}</Typography>
             <Box flexGrow={1} />
-            <Stack direction={"row"} spacing={2}>
+            <Stack direction={"row"} spacing={1}>
               <Filter
                 menuItems={[
                   { value: "all", label: "All" },
@@ -186,8 +186,8 @@ const MyLibraryPage = () => {
                 menuItems={[
                   { value: "most recent", label: "Most Recent" },
                   { value: "least recent", label: "Least Recent" },
-                  { value: "A-Z", label: "A-Z" },
-                  { value: "Z-A", label: "Z-A" },
+                  { value: "A-Z", label: "Alpabetical (A-Z)" },
+                  { value: "Z-A", label: "Alpabetical (Z-A)" },
                 ]}
                 value={sort}
                 onChange={setSort}

@@ -65,7 +65,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
   };
 
   return (
-    <Box className="bg-inherit rounded-[0.8rem] border-2 border-[#3B354D] w-full">
+    <Box className="bg-inherit rounded-[0.8rem] border-2 border-[#3B354D] w-full hover:border-[#E2DDF3] transition-colors duration-300 ease-in-out">
       <Stack spacing={1} direction={"row"} className="flex">
         {/* Drag Indicator */}
         <Box className="flex items-center rounded-tl-[0.7rem] rounded-bl-[0.7rem] border-[#211D2F] bg-[#211D2F] w-auto border">
@@ -129,7 +129,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
             >
               <textarea
                 id="term"
-                className="border-none outline-none bg-[#3B354D] text-[#E2DDF3] resize-none w-full sm:w-1/3 text-[1rem] py-2 px-4 text-left rounded-[0.6rem] overflow-hidden"
+                className="border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full sm:w-1/3 text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-all ease-in-out duration-200"
                 rows={1}
                 placeholder="Enter Term"
                 value={item.term}
@@ -137,7 +137,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
               />
               <textarea
                 id="definition"
-                className="border-none outline-none bg-[#3B354D] text-[#E2DDF3] resize-none w-full sm:w-2/3 text-[1rem] py-2 px-4 text-left rounded-[0.6rem] overflow-hidden"
+                className="border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full sm:w-2/3 text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-colors duration-200"
                 rows={1}
                 placeholder="Enter definition"
                 value={item.definition}
@@ -173,7 +173,10 @@ const ItemComponent: FC<ItemComponentProps> = ({
                 className="text-[#E2DDF3] text-[0.8rem]"
               />
               <Tooltip title="Add Photo" arrow>
-                <IconButton onClick={handleAddPhoto}>
+                <IconButton
+                  onClick={handleAddPhoto}
+                  className="transition-all duration-300 ease-in-out hover:scale-110"
+                >
                   <AddPhotoIcon className="text-[#3B354D]" />
                 </IconButton>
               </Tooltip>
@@ -185,7 +188,10 @@ const ItemComponent: FC<ItemComponentProps> = ({
                 className="bg-[#3B354D]"
               />
               <Tooltip title="Delete item" arrow>
-                <IconButton onClick={deleteItem}>
+                <IconButton
+                  onClick={deleteItem}
+                  className="transition-all duration-300 ease-in-out hover:scale-110"
+                >
                   <img src="/delete-icon.svg" alt="delete" className="w-4" />
                 </IconButton>
               </Tooltip>

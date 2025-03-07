@@ -17,6 +17,7 @@ import ItemComponent from "./ItemComponent";
 import { motion, AnimatePresence } from "framer-motion"; // Importing from Framer Motion
 import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
 import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust the
+import Filter from "../../../../components/Filter"; // Adjust the
 
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
@@ -43,6 +44,7 @@ const CreateStudyMaterial = () => {
       image?: File | null;
     }[]
   >(location.state?.items || []);
+  const [visibility, setVisibility] = useState<string>("0"); // Add this state for visibility
 
   // Update document title based on mode
   useEffect(() => {
@@ -125,7 +127,7 @@ const CreateStudyMaterial = () => {
         title,
         tags,
         totalItems: items.length,
-        visibility: 0,
+        visibility: parseInt(visibility), // Use the visibility state here
         createdBy: user.username,
         createdById: user.firebase_uid,
         items: transformedItems,
@@ -164,7 +166,7 @@ const CreateStudyMaterial = () => {
         total_items: savedData.totalItems || items.length,
         created_by: savedData.createdBy || user.username,
         created_by_id: savedData.createdById || user.firebase_uid,
-        visibility: savedData.visibility || 0,
+        visibility: savedData.visibility,
         created_at: savedData.created_at || new Date().toISOString(),
         items: savedData.items || transformedItems,
       };
@@ -250,6 +252,11 @@ const CreateStudyMaterial = () => {
     input.click();
   };
 
+  // Add a handler for the visibility change
+  const handleVisibilityChange = (value: string | number) => {
+    setVisibility(value.toString());
+  };
+
   return (
     <>
       <PageTransition>
@@ -277,7 +284,6 @@ const CreateStudyMaterial = () => {
                   onChange={(e) => setTitle(e.target.value)} // <-- Update state on change
                   sx={{
                     width: "32rem",
-
                     "& .MuiInputLabel-root": { color: "#3B354D" },
                     "& .MuiInputLabel-root.Mui-focused": { color: "#381898" },
                     "& .MuiInput-root": {
@@ -358,7 +364,7 @@ const CreateStudyMaterial = () => {
                     gap: 0.5,
                     padding: "0.6rem",
                     border: "1px solid #3B354D",
-                    borderRadius: "0.5rem",
+                    borderRadius: "0.8rem",
                     backgroundColor: "#3B354D",
                     transition: "all 0.3s ease", // Smooth transition for hover and active
                     minWidth: "200px", // Set the minimum width for the Box
@@ -424,27 +430,40 @@ const CreateStudyMaterial = () => {
 
             {/* Upload File */}
             <Box>
-              <Button
-                variant="outlined"
-                sx={{
-                  borderRadius: "0.5rem",
-                  padding: "0.4rem 2rem",
-                  display: "flex",
-                  width: "full",
-                  justifyContent: "center",
-                  color: "#3B354D",
-                  border: "0.15rem solid #3B354D",
-                  textTransform: "none",
-                  transition: "all 0.2s ease",
-                  "&:hover": {
-                    borderColor: "#E2DDF3",
-                    color: "#E2DDF3",
-                  },
-                }}
-                onClick={handleUploadFile}
-              >
-                Upload File
-              </Button>
+              <Stack direction={"row"} spacing={2} alignItems="center">
+                <Button
+                  variant="outlined"
+                  sx={{
+                    borderRadius: "0.8rem",
+                    paddingX: "2rem",
+                    display: "flex",
+                    width: "auto",
+                    justifyContent: "center",
+                    color: "#3B354D",
+                    height: "fit-content",
+                    border: "0.15rem solid #3B354D",
+                    textTransform: "none",
+                    transition: "all 0.3s ease-in-out",
+                    "&:hover": {
+                      transform: "scale(1.03)",
+                      borderColor: "#E2DDF3",
+                      color: "#E2DDF3",
+                    },
+                  }}
+                  onClick={handleUploadFile}
+                >
+                  Upload File
+                </Button>
+                <Box flex={1} />
+                <Filter
+                  menuItems={[
+                    { value: "0", label: "Private" },
+                    { value: "1", label: "Public" },
+                  ]}
+                  value={visibility}
+                  onChange={handleVisibilityChange}
+                />
+              </Stack>
             </Box>
 
             {/* Items */}
@@ -473,18 +492,20 @@ const CreateStudyMaterial = () => {
                 <Button
                   variant="outlined"
                   sx={{
-                    borderRadius: "0.6rem",
+                    borderRadius: "0.8rem",
                     padding: "0.6rem 2rem",
                     display: "flex",
                     width: "full",
                     fontSize: "1rem",
                     justifyContent: "center",
                     color: "#3B354D",
-                    border: "0.15rem solid #3B354D",
+                    border: "2px solid #3B354D",
                     textTransform: "none",
                     bottom: 0,
-                    transition: "all 0.2s ease",
+                    transform: "scale(1)",
+                    transition: "all 0.3s ease-in-out",
                     "&:hover": {
+                      transform: "scale(1.005)",
                       borderColor: "#E2DDF3",
                       color: "#E2DDF3",
                     },
