@@ -157,17 +157,19 @@ const ExplorePage = () => {
                 gap: 2,
               }}
             >
-              {[...Array(Math.max(cards.length || 3))].map((_, index) => (
-                <Skeleton
-                  key={index}
-                  variant="rectangular"
-                  animation="wave"
-                  sx={{
-                    height: "14rem",
-                    borderRadius: "0.8rem",
-                  }}
-                />
-              ))}
+              {[...Array(Math.max(filteredCards.length || 3))].map(
+                (_, index) => (
+                  <Skeleton
+                    key={index}
+                    variant="rectangular"
+                    animation="wave"
+                    sx={{
+                      height: "14rem",
+                      borderRadius: "0.8rem",
+                    }}
+                  />
+                )
+              )}
             </Box>
           ) : filteredCards.length === 0 ? (
             <Box

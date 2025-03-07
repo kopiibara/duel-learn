@@ -17,6 +17,19 @@ import ItemComponent from "./ItemComponent";
 import { motion, AnimatePresence } from "framer-motion"; // Importing from Framer Motion
 import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
 import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust the
+import Filter from "../../../../components/Filter"; // Adjust the
+
+// Add this constant for size limits
+const MAX_IMAGE_SIZE_MB = 10; // Maximum image size in MB
+const MAX_TOTAL_PAYLOAD_MB = 50; // Maximum total payload size in MB
+
+// Add this helper function to check file size
+const getFileSizeInMB = (base64String: string): number => {
+  // Base64 string length * 0.75 gives approximate size in bytes
+  // (base64 encoding increases size by ~33%)
+  const sizeInBytes = base64String.length * 0.75;
+  return sizeInBytes / (1024 * 1024); // Convert to MB
+};
 
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
@@ -43,6 +56,7 @@ const CreateStudyMaterial = () => {
       image?: File | null;
     }[]
   >(location.state?.items || []);
+  const [visibility, setVisibility] = useState<string>("0"); // Add this state for visibility
 
   // Update document title based on mode
   useEffect(() => {
@@ -76,11 +90,49 @@ const CreateStudyMaterial = () => {
     setItems(items.filter((item) => item.id !== id));
   };
 
+  // Update the handleUpdateItem function to validate image size
   const handleUpdateItem = (
     id: number,
     field: string,
     value: string | File | null
   ) => {
+    // Check if the field is an image and it's a base64 string
+    if (
+      field === "image" &&
+      typeof value === "string" &&
+      value.startsWith("data:")
+    ) {
+      const imageSizeMB = getFileSizeInMB(value);
+
+      if (imageSizeMB > MAX_IMAGE_SIZE_MB) {
+        handleShowSnackbar(
+          `Image too large (${imageSizeMB.toFixed(
+            2
+          )}MB). Maximum size is ${MAX_IMAGE_SIZE_MB}MB.`
+        );
+        return; // Don't update the item with this image
+      }
+
+      // Calculate total payload size after adding this image
+      let totalSize = 0;
+      items.forEach((item) => {
+        if (item.id !== id && item.image && typeof item.image === "string") {
+          totalSize += getFileSizeInMB(item.image);
+        }
+      });
+      totalSize += imageSizeMB;
+
+      if (totalSize > MAX_TOTAL_PAYLOAD_MB) {
+        handleShowSnackbar(
+          `Total images size (${totalSize.toFixed(
+            2
+          )}MB) exceeds maximum allowed (${MAX_TOTAL_PAYLOAD_MB}MB).`
+        );
+        return; // Don't update the item with this image
+      }
+    }
+
+    // Update the item if validation passes
     setItems(
       items.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
@@ -112,6 +164,23 @@ const CreateStudyMaterial = () => {
       return;
     }
 
+    // Check total payload size before sending
+    let totalImageSize = 0;
+    items.forEach((item) => {
+      if (item.image && typeof item.image === "string") {
+        totalImageSize += getFileSizeInMB(item.image);
+      }
+    });
+
+    if (totalImageSize > MAX_TOTAL_PAYLOAD_MB) {
+      handleShowSnackbar(
+        `Total images size (${totalImageSize.toFixed(
+          2
+        )}MB) exceeds maximum allowed (${MAX_TOTAL_PAYLOAD_MB}MB). Please reduce image sizes or remove some images.`
+      );
+      return;
+    }
+
     try {
       // Transform items to include base64 images
       const transformedItems = items.map((item) => ({
@@ -125,7 +194,7 @@ const CreateStudyMaterial = () => {
         title,
         tags,
         totalItems: items.length,
-        visibility: 0,
+        visibility: parseInt(visibility), // Use the visibility state here
         createdBy: user.username,
         createdById: user.firebase_uid,
         items: transformedItems,
@@ -164,7 +233,7 @@ const CreateStudyMaterial = () => {
         total_items: savedData.totalItems || items.length,
         created_by: savedData.createdBy || user.username,
         created_by_id: savedData.createdById || user.firebase_uid,
-        visibility: savedData.visibility || 0,
+        visibility: savedData.visibility,
         created_at: savedData.created_at || new Date().toISOString(),
         items: savedData.items || transformedItems,
       };
@@ -250,6 +319,11 @@ const CreateStudyMaterial = () => {
     input.click();
   };
 
+  // Add a handler for the visibility change
+  const handleVisibilityChange = (value: string | number) => {
+    setVisibility(value.toString());
+  };
+
   return (
     <>
       <PageTransition>
@@ -277,7 +351,6 @@ const CreateStudyMaterial = () => {
                   onChange={(e) => setTitle(e.target.value)} // <-- Update state on change
                   sx={{
                     width: "32rem",
-
                     "& .MuiInputLabel-root": { color: "#3B354D" },
                     "& .MuiInputLabel-root.Mui-focused": { color: "#381898" },
                     "& .MuiInput-root": {
@@ -358,7 +431,7 @@ const CreateStudyMaterial = () => {
                     gap: 0.5,
                     padding: "0.6rem",
                     border: "1px solid #3B354D",
-                    borderRadius: "0.5rem",
+                    borderRadius: "0.8rem",
                     backgroundColor: "#3B354D",
                     transition: "all 0.3s ease", // Smooth transition for hover and active
                     minWidth: "200px", // Set the minimum width for the Box
@@ -424,27 +497,40 @@ const CreateStudyMaterial = () => {
 
             {/* Upload File */}
             <Box>
-              <Button
-                variant="outlined"
-                sx={{
-                  borderRadius: "0.5rem",
-                  padding: "0.4rem 2rem",
-                  display: "flex",
-                  width: "full",
-                  justifyContent: "center",
-                  color: "#3B354D",
-                  border: "0.15rem solid #3B354D",
-                  textTransform: "none",
-                  transition: "all 0.2s ease",
-                  "&:hover": {
-                    borderColor: "#E2DDF3",
-                    color: "#E2DDF3",
-                  },
-                }}
-                onClick={handleUploadFile}
-              >
-                Upload File
-              </Button>
+              <Stack direction={"row"} spacing={2} alignItems="center">
+                <Button
+                  variant="outlined"
+                  sx={{
+                    borderRadius: "0.8rem",
+                    paddingX: "2rem",
+                    display: "flex",
+                    width: "auto",
+                    justifyContent: "center",
+                    color: "#3B354D",
+                    height: "fit-content",
+                    border: "0.15rem solid #3B354D",
+                    textTransform: "none",
+                    transition: "all 0.3s ease-in-out",
+                    "&:hover": {
+                      transform: "scale(1.03)",
+                      borderColor: "#E2DDF3",
+                      color: "#E2DDF3",
+                    },
+                  }}
+                  onClick={handleUploadFile}
+                >
+                  Upload File
+                </Button>
+                <Box flex={1} />
+                <Filter
+                  menuItems={[
+                    { value: "0", label: "Private" },
+                    { value: "1", label: "Public" },
+                  ]}
+                  value={visibility}
+                  onChange={handleVisibilityChange}
+                />
+              </Stack>
             </Box>
 
             {/* Items */}
@@ -473,18 +559,20 @@ const CreateStudyMaterial = () => {
                 <Button
                   variant="outlined"
                   sx={{
-                    borderRadius: "0.6rem",
+                    borderRadius: "0.8rem",
                     padding: "0.6rem 2rem",
                     display: "flex",
                     width: "full",
                     fontSize: "1rem",
                     justifyContent: "center",
                     color: "#3B354D",
-                    border: "0.15rem solid #3B354D",
+                    border: "2px solid #3B354D",
                     textTransform: "none",
                     bottom: 0,
-                    transition: "all 0.2s ease",
+                    transform: "scale(1)",
+                    transition: "all 0.3s ease-in-out",
                     "&:hover": {
+                      transform: "scale(1.005)",
                       borderColor: "#E2DDF3",
                       color: "#E2DDF3",
                     },

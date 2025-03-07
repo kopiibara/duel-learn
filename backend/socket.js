@@ -1,5 +1,4 @@
 import { Server } from "socket.io";
-import { setupBattleInvitationHandlers } from './socket/battleInvitationHandlers.js';
 
 let io;
 
@@ -310,8 +309,6 @@ const setupSocket = (server) => {
             });
         });
 
-        const battleHandlers = setupBattleInvitationHandlers(io, activeUsers);
-        battleHandlers(socket);
     });
 
     // Global error handler for the io server

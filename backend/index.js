@@ -30,6 +30,9 @@ app.use(cors({
     credentials: true,
 }));
 
+// Increase the JSON payload size limit (adjust the size as needed)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // Middleware
 app.use(express.json());

@@ -6,8 +6,10 @@ import bcrypt from "bcryptjs";
 import useEditUsernameValidation from "./validation.hooks/useEditUsernameValidation";
 import useChangePasswordValidation from "./validation.hooks/useChangePasswordValidation";
 import useUpdateUserDetailsApi from "./api.hooks/useUpdateUserDetailsApi";
+import { useUser } from "../contexts/UserContext";
 
 const useAccountSettings = () => {
+  const { updateUser } = useUser();
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [userData, setUserData] = useState<any>({});
   const [isEditing, setIsEditing] = useState<boolean>(false);
@@ -57,6 +59,10 @@ const useAccountSettings = () => {
 
     const hasProfilePictureChanged =
       originalProfilePicture !== userData.display_picture;
+    const originalUsername = JSON.parse(
+      localStorage.getItem("userData") || "{}"
+    ).username;
+    const hasUsernameChanged = originalUsername !== userData.username;
 
     try {
       const userDoc = await getDoc(doc(db, "users", userData.firebase_uid));
@@ -84,6 +90,45 @@ const useAccountSettings = () => {
             updated_at: new Date(),
           });
         }
+
+        // If username has changed, update study materials
+        if (hasUsernameChanged) {
+          console.log(
+            "Username changed from",
+            originalUsername,
+            "to",
+            userData.username
+          );
+          try {
+            const response = await fetch(
+              `${
+                import.meta.env.VITE_BACKEND_URL
+              }/api/study-material/update-creator`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  created_by: userData.username,
+                  created_by_id: userData.firebase_uid,
+                }),
+                credentials: "include",
+              }
+            );
+
+            if (!response.ok) {
+              console.error(
+                "Failed to update study material creator:",
+                await response.text()
+              );
+            } else {
+              console.log("Study material creator updated successfully");
+            }
+          } catch (error) {
+            console.error("Error updating study material creator:", error);
+          }
+        }
       }
 
       if (isCreatingPassword) {
@@ -108,6 +153,10 @@ const useAccountSettings = () => {
 
       localStorage.setItem("userData", JSON.stringify(userData));
       setOriginalProfilePicture(userData.display_picture || "");
+
+      if (userData.display_picture !== originalProfilePicture) {
+        updateUser({ display_picture: userData.display_picture });
+      }
 
       setIsEditing(false);
       setIsChangingPassword(false);

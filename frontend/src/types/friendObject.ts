@@ -1,7 +1,7 @@
 export interface Friend {
   firebase_uid: string;
   username: string;
-  display_profile: string;
+  display_picture: string; // Changed from display_profile
   level: number;
 }
 

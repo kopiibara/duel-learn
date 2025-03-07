@@ -120,11 +120,7 @@ const StatsNProfile = () => {
         <Avatar
           variant="rounded"
           onClick={handleProfileClick}
-          src={
-            user?.display_picture ||
-            userInfo?.display_picture ||
-            sampleAvatarDeployment
-          }
+          src={user?.display_picture || sampleAvatarDeployment}
           alt={user?.email || "User"}
           sx={{
             cursor: "pointer",

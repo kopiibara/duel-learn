@@ -189,7 +189,11 @@ const FindFriends: React.FC = () => {
                 className="flex items-center justify-between mb-4 border-b border-[#3B354C] pb-4 last:border-none"
               >
                 <div className="flex items-center">
-                  <div className="w-12 h-12 bg-white rounded-[5px] mr-4"></div>
+                  <img
+                    src={otherUser.display_picture}
+                    alt="Avatar"
+                    className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
+                  />{" "}
                   <div>
                     <p className="text-lg text-[#E2DDF3]">
                       {otherUser.username}

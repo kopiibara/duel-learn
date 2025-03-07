@@ -6,11 +6,12 @@ export const createInvitation = async (data) => {
     try {
         const query = `
             INSERT INTO battle_invitations 
-            (sender_id, receiver_id, lobby_code) 
-            VALUES (?, ?, ?)
+            (sender_id, sender_username, receiver_id, receiver_username, lobby_code) 
+            VALUES (?, ?, ?, ?, ?)
         `;
 
         await pool.query(query, [senderId, receiverId, lobbyCode]);
+        res.status(200).json({ message: "Invitation sent" });
         return true;
     } catch (error) {
         console.error("Error creating battle invitation:", error);

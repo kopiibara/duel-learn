@@ -97,7 +97,7 @@ const Login = () => {
             | "free"
             | "premium"
             | "admin", // Ensure the value is either 'free' or 'premium'
-          level: 1
+          level: 1,
         };
         console.log("User Data:", userData);
         const isNewUser =

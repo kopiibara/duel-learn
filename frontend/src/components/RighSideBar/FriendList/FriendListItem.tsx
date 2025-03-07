@@ -16,13 +16,13 @@ const FriendListItem: React.FC<FriendListItemProps> = ({
     <div className="flex items-center justify-between mb-6">
       <div className="flex items-center">
         <img
-          src={friend.display_profile || ProfileIcon}
+          src={friend.display_picture || ProfileIcon}
           alt="Avatar"
-          className="w-14 h-14 rounded-[5px] mr-6 hover:scale-110 transition-all duration-300"
+          className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
         />
         <div>
-          <p className="text-lg text-[#E2DDF3]">{friend.username}</p>
-          <p className="text-sm text-[#9F9BAE]">Level {friend.level}</p>
+          <p className="text-[16px] text-[#E2DDF3]">{friend.username}</p>
+          <p className="text-[13px] text-[#9F9BAE]">Level {friend.level}</p>
         </div>
       </div>
       <Button
@@ -33,6 +33,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({
           padding: "0.4rem 1.3rem",
           display: "flex",
           width: "full",
+          fontSize: "0.7rem",
           justifyContent: "center",
           alignItems: "center",
           transition: "all 0.3s ease",

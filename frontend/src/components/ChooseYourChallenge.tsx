@@ -9,16 +9,16 @@ const ModeCard = styled(Card)({
   width: "auto",
   cursor: "pointer",
   background: "#E2DDF3",
-  transform: "scale(1)", // Initial transform state
-  transition: "all 0.3s", // Ensure smooth transition between hover and unhover states
+  transform: "scale(1)",
+  transition: "all 0.3s",
   "& .cardMedia": {
-    transform: "scale(1)", // Initial scale
-    transition: "transform 0.5s ease-in-out", // Always apply transition, not just on hover
+    transform: "scale(1)",
+    transition: "transform 0.5s ease-in-out",
   },
   "&:hover": {
-    transform: "scale(1.03)", // Scale the card on hover
+    transform: "scale(1.03)",
     "& .cardMedia": {
-      transform: "scale(1.06)", // Scale the image on hover
+      transform: "scale(1.07)",
     },
   },
 });
@@ -51,6 +51,7 @@ const ChooseYourChallenge = () => {
             zIndex: -1,
             width: "100%",
             height: "100%",
+            objectFit: "contain",
           }}
           image="/game-mode-selection/peaceful-mode.svg"
         />
