@@ -33,6 +33,7 @@ import GameModeWrapper from "../pages/dashboard/play-battleground/components/com
 import AccountSettings from "../pages/dashboard/settings/AccountSettings";
 import HostModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/HostModeSelection";
 import Player2ModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/Player2ModeSelection";
+import PvpBattle from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/PvpBattle";
 
 const PrivateRoutes = () => {
   const { user } = useUser();
@@ -119,6 +120,7 @@ const PrivateRoutes = () => {
         path="/select-difficulty/pvp/player2"
         element={<Player2ModeSelection />}
       />
+      <Route path="/pvp-battle" element={<PvpBattle />} />
     </Routes>
   );
 };
