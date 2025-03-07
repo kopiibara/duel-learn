@@ -58,66 +58,182 @@ const archiveUser = async (connection, firebase_uid) => {
   }
 };
 
-export default {
-  signUpUser: async (req, res) => {
-    let connection;
+
+const signUpUser = async (req, res) => {
+  let connection;
+  console.log(req.headers.authorization);
+  let decodedToken;
+  try {
+    // Extract the token from the Authorization header
+    const token = req.get('Authorization')?.split(" ")[1];
+
     try {
-      const { firebase_uid, username, email, password, isSSO, emailVerified } =
-        req.body;
+      decodedToken = await admin.auth().verifyIdToken(token);
+      console.log('Token verified successfully:', decodedToken);
+    } catch (error) {
+      console.error('Token verification failed:', error);
+      return res.status(401).json({ error: "Unauthorized: Invalid token" });
+    }
 
-      // Hash the password if not SSO
-      const hashedPassword = isSSO ? null : await bcrypt.hash(password, 10);
+    const isSSO = false;
+    const { username, email, password, email_verified } = req.body;
+    const uid = decodedToken.uid;
+    const currentTimestamp = moment().format("YYYY-MM-DD HH:mm:ss");
+    connection = await pool.getConnection();
+    const password_hash = await bcrypt.hash(password, 10);
 
-      // Get the current timestamp
-      const currentTimestamp = moment().format("YYYY-MM-DD HH:mm:ss");
-      // Get a connection from the pool
-      connection = await pool.getConnection();
+    console.log("Received email_verified status:", email_verified);
 
-      // Insert the user details into the users table
-      await connection.execute(
+    // Parallelize SQL and Firestore operations
+    await Promise.all([
+      connection.execute(
         `INSERT INTO users (firebase_uid, username, email, password_hash, created_at, updated_at, display_picture, full_name, email_verified, isSSO)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
-          firebase_uid,
-          username,
-          email,
-          hashedPassword,
+          uid,
+          username || " ",
+          email || null,
+          password_hash,
           currentTimestamp,
           currentTimestamp,
           null,
           null,
-          emailVerified,
+          email_verified,
           isSSO,
         ]
-      );
-
-      // Insert the user details into the user_info table
-      await connection.execute(
+      ),
+      connection.execute(
         `INSERT INTO user_info (firebase_uid, username, display_picture, level, exp, coins, mana)
-         VALUES (?, ?, ?, ?, ?, ?,?);`,
-        [
-          firebase_uid,
-          username,
-          null,
-          1, // Default level
-          50, // Default experience points
-          10, // Default coins
-          100, // Default mana
-        ]
-      );
+         VALUES (?, ?, ?, ?, ?, ?, ?);`,
+        [uid, username || "Default Username", null, 1, 50, 10, 100]
+      ),
+      admin.firestore().collection("users").doc(uid).set({
+        username: username || "Default Username",
+        email: email || null,
+        email_verified: email_verified || false,
+        isSSO: isSSO,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        lastLogin: null,
+        session: {},
+      }),
+      admin.firestore().collection("activity_logs").add({
+        firebase_uid: uid,
+        action: "User Signed Up",
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      }),
+    ]);
 
-      // Send a success response
-      res.status(201).json({
-        message: "User signed up successfully",
-        firebase_uid,
-      });
-    } catch (error) {
-      console.error("Error signing up user:", error);
-      res.status(500).json({ error: "Internal server error", details: error });
-    } finally {
-      if (connection) connection.release();
+    res.status(201).json({
+      message: "User signed up successfully",
+      firebase_uid: uid,
+    });
+  } catch (error) {
+    console.error("Error signing up user:", error);
+    res.status(500).json({ error: "Internal server error", details: error.message });
+  } finally {
+    if (connection) connection.release();
+  }
+};
+
+const storeUser = async (req, res) => {
+  try {
+    console.log("Request headers:", req.headers);
+    const authHeader = req.headers.authorization;
+    console.log("Auth header:", authHeader);
+
+    // Check if Authorization header exists and has correct format
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: "No token provided or invalid format" });
     }
-  },
+
+    // Extract token
+    const token = authHeader.split(" ")[1];
+    console.log("Extracted token:", token);
+
+    // Verify token using Firebase Admin SDK
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    console.log("Decoded token:", decodedToken);
+
+    // Get firebase_uid from request params
+    const { firebase_uid } = req.params;
+    
+    // Check if the token UID matches the requested firebase_uid
+    if (decodedToken.uid !== firebase_uid) {
+      return res.status(403).json({ error: "Unauthorized: Token UID doesn't match request UID(store-user)"  });
+    }
+
+    const { username, email, password } = req.body;
+    console.log("Request body:", { username, email, password: '***' });
+    
+    // Store user data with UID as key
+    const userData = {
+      username,
+      email,
+      password,
+    };
+
+    // Store in Firestore temp_users collection
+    await admin.firestore().collection('temp_users').doc(firebase_uid).set(userData);
+
+    res.status(201).json({
+      success: true,
+      message: "User data stored successfully",
+      user: {
+        username,
+        email
+      }
+    });
+
+  } catch (error) {
+    console.error("Error in storeUser:", error);
+    res.status(500).json({ 
+      error: "Internal server error", 
+      details: error.message 
+    });
+  }
+};
+
+const getStoredUser = async (req, res) => {
+  try {
+    const { firebase_uid } = req.params;
+    const token = req.get('Authorization')?.split(" ")[1];
+
+    if (!token) {
+      return res.status(401).json({ error: "No token provided" });
+    }
+
+    // Verify the token
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    console.log("Decoded token for GET request:", decodedToken);
+
+    // Check if the requesting user matches the firebase_uid
+    if (decodedToken.uid !== firebase_uid) {
+      return res.status(403).json({ error: "Unauthorized access" });
+    }
+
+    // Get user from temporary storage or database
+    const userDoc = await admin.firestore().collection("temp_users").doc(firebase_uid).get();
+
+    if (!userDoc.exists) {
+      return res.status(404).json({ error: "User data not found" });
+    }
+
+    res.status(200).json({ 
+      success: true,
+      user: userDoc.data() 
+    });
+
+  } catch (error) {
+    console.error("Error fetching stored user data:", error);
+    res.status(500).json({ 
+      error: "Internal server error", 
+      details: error.message 
+    });
+  }
+};
+
+export default {
+  signUpUser,
 
   resetPassword: async (req, res) => {
     let connection;
@@ -425,6 +541,7 @@ export default {
     }
   },
 
-
+  storeUser,
+  getStoredUser,
 }
 
