@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
 import playerCharacter from "../../../../../../assets/pvp-battle/playerCharacter.png";
-import enemyCharacter from "../../../../../../assets/pvp-battle/enemyCharacter.png";
+import enemyCharacter from "../../../../../../assets/pvp-battle/enemyCharacter.gif";
 
 export default function PvpBattle() {
   const [timeLeft, setTimeLeft] = useState(25);
@@ -87,7 +87,7 @@ export default function PvpBattle() {
             <img
               src={enemyCharacter}
               alt="Enemy Character"
-              className="w-64 h-64 object-contain"
+              className="w-96 h-96 object-contain"
             />
           </div>
         </div>
