@@ -1,20 +1,21 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import { auth } from "../services/firebase";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../services/firebase";
+import { auth, } from "../services/firebase"; // Adjust your path if needed
+import { User as FirebaseUser } from "firebase/auth"; // Import Firebase User type
 
 interface User {
   firebase_uid: string;
   username: string | null;
   email: string | null;
   display_picture: string | null;
-  level: number;
   full_name: string | null;
   email_verified: boolean;
   isSSO: boolean;
   account_type: "free" | "premium" | "admin";
-  isNew: boolean
+  isNew: boolean;
+  level: number;
+  exp: number;
+  mana: number;
+  coins: number;
 }
 
 interface UserContextProps {
@@ -32,20 +33,33 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     return userData ? JSON.parse(userData) : null;
   });
 
+  // Listen for Firebase auth state changes
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = auth.onAuthStateChanged((firebaseUser: FirebaseUser | null) => {
       if (firebaseUser) {
-        const token = await firebaseUser.getIdToken();
-        const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-        if (userDoc.exists()) {
-          const userData = userDoc.data() as User;
-          setUser(userData);
-          localStorage.setItem("userToken", token); // Store token
-          localStorage.setItem("userData", JSON.stringify(userData));
-        }
+        console.log("User authenticated:", firebaseUser);
+
+        const updatedUser: User = {
+          firebase_uid: firebaseUser.uid,
+          username: firebaseUser.displayName || null,
+          email: firebaseUser.email || null,
+          display_picture: firebaseUser.photoURL || null,
+          full_name: null,
+          email_verified: firebaseUser.emailVerified,
+          isSSO: firebaseUser.providerData.some((p) => p?.providerId !== "password"),
+          account_type: "free", // You can fetch this from your DB
+          isNew: firebaseUser.metadata.creationTime === firebaseUser.metadata.lastSignInTime,
+          level: 1,           // Fetch from your backend if needed
+          exp: 0,
+          mana: 100,
+          coins: 0,
+        };
+
+        setUser(updatedUser);
+        localStorage.setItem("userData", JSON.stringify(updatedUser));
       } else {
+        console.log("No user is signed in");
         setUser(null);
-        localStorage.removeItem("userToken"); // Remove token
         localStorage.removeItem("userData");
       }
     });
