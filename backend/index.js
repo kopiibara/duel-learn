@@ -1,4 +1,3 @@
-
 import express from "express";
 import dotenv from "dotenv";
 import { connectDB } from "./config/db.js";
@@ -7,6 +6,8 @@ import studyMaterialRoutes from "./routes/StudyMaterialRoutes.js";
 import userRoutes from "./routes/UserAccount.js";
 import friendRoutes from "./routes/FriendRoutes.js";
 import userInfoRoutes from "./routes/UserInfoRoutes.js";
+import lobbyRoutes from "./routes/lobby.routes.js";
+import battleRoutes from './routes/battle.routes.js';
 // Load environment variables
 dotenv.config();
 
@@ -33,10 +34,19 @@ app.use(cors({
 // Middleware
 app.use(express.json());
 
+// Add this before your routes
+app.use((req, res, next) => {
+    console.log(`${req.method} ${req.url}`);
+    next();
+});
+
 // Routes
 app.use("/api/study-material", studyMaterialRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/friend", friendRoutes);
 app.use("/api/user-info", userInfoRoutes);
+app.use("/api/lobby", lobbyRoutes);
+console.log("Registering battle routes...");
+app.use("/api/battle", battleRoutes);
 
 export default app;
