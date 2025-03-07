@@ -147,7 +147,9 @@ const Leaderboards = () => {
             className="w-[37px] h-[35px]"
             alt="icon"
           />
-          <h2 className="text-xl text-[#FFFFFF] font-semibold">Leaderboards</h2>
+          <h2 className="text-[1.1rem] text-[#FFFFFF] font-semibold">
+            Leaderboards
+          </h2>
         </div>
 
         <hr className="border-t-2 border-[#3B354D] mb-7" />
@@ -163,7 +165,7 @@ const Leaderboards = () => {
             No friends found. Add friends to see your leaderboard!
           </div>
         ) : (
-          leaderboardData.slice(0, 5).map((player) => (
+          leaderboardData.slice(0, 3).map((player) => (
             <div
               key={player.firebase_uid}
               className={`flex items-center justify-between mb-4 ${
@@ -178,7 +180,7 @@ const Leaderboards = () => {
                     className="w-8 h-8 mr-5"
                   />
                 ) : (
-                  <p className="text-lg font-semibold ml-3 mr-7">
+                  <p className="text-[1rem] font-semibold ml-3 mr-7">
                     {player.rank}
                   </p>
                 )}
@@ -188,7 +190,7 @@ const Leaderboards = () => {
                   className="w-12 h-12 rounded-[5px] object-cover mr-3"
                 />
                 <p
-                  className={`font-medium ${
+                  className={`font-[0.6rem] ${
                     player.isCurrentUser ? "text-[#A38CE6]" : ""
                   }`}
                 >
@@ -196,8 +198,10 @@ const Leaderboards = () => {
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-gray-400">{player.exp} XP</p>
-                <p className="text-sm text-gray-500">Level {player.level}</p>
+                <p className="text-[#E2DDF3]">{player.exp} XP</p>
+                <p className="text-sm text-[#9F9BAE] w-full">
+                  Level {player.level}
+                </p>
               </div>
             </div>
           ))

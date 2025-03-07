@@ -278,9 +278,9 @@ const studyMaterialController = {
       console.log("Fetching study materials for created_by:", created_by);
 
       const [infoRows] = await connection.execute(
-        `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
+        `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at ,updated_at, visibility, status
                 FROM study_material_info 
-                WHERE created_by = ? AND status != 'archived';`,
+                WHERE created_by = ? ;`,
         [created_by]
       );
 
@@ -308,6 +308,7 @@ const studyMaterialController = {
             total_views: info.total_views,
             created_at: info.created_at,
             updated_at: info.updated_at,
+            visibility: info.visibility,
             status: info.status,
             items: contentRows.map((item) => ({
               term: item.term,

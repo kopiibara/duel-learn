@@ -116,7 +116,7 @@ const MyLibraryPage = () => {
             combinedCards.push(bookmarkedCard);
           }
         });
-        allCards = combinedCards;
+        allCards = combinedCards.filter((card) => card.status !== "archived");
       }
     }
 
