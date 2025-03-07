@@ -8,6 +8,7 @@ router.post("/save", studyMaterialController.saveStudyMaterial);
 router.post("/update", studyMaterialController.editStudyMaterial);
 router.post("/archive/:studyMaterialId", studyMaterialController.archiveStudyMaterial);
 router.post('/increment-views/:studyMaterialId', studyMaterialController.incrementViews);
+router.post("/bookmark", studyMaterialController.bookmarkStudyMaterial);
 
 router.get("/get-by-study-material-id/:studyMaterialId", studyMaterialController.getStudyMaterialById);
 router.get("/get-by-user/:created_by", studyMaterialController.getStudyMaterialByUser);
@@ -15,5 +16,8 @@ router.get("/get-recommended-for-you/:username", studyMaterialController.getReco
 router.get('/get-top-picks', studyMaterialController.getTopPicks);
 router.get("/get-made-by-friends/:userId", studyMaterialController.getMadeByFriends);
 router.get("/discover/:username", studyMaterialController.getNonMatchingTags);
+router.get('/check-bookmark-status', studyMaterialController.checkBookmarkStatus);
+router.get('/get-bookmarks-by-user/:bookmarked_by_id', studyMaterialController.getBookmarksByUser);
+
 
 export default router;
