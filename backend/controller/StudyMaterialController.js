@@ -2,6 +2,18 @@ import { pool } from "../config/db.js";
 import { nanoid } from "nanoid";
 import manilacurrentTimestamp from "../utils/CurrentTimestamp.js";
 
+// Utility function to handle image conversion properly
+const formatImageToBase64 = (imageBuffer) => {
+  if (!imageBuffer) return null;
+
+  // Convert buffer to Base64
+  const base64String = imageBuffer.toString('base64');
+
+  // Add proper data URL prefix for images
+  // We'll use image/jpeg as default, but in a production app
+  // you might want to store and use the actual mime type
+  return `data:image/jpeg;base64,${base64String}`;
+};
 
 const studyMaterialController = {
   saveStudyMaterial: async (req, res) => {
@@ -246,11 +258,11 @@ const studyMaterialController = {
         [studyMaterialId]
       );
 
-      // Ensure JSON-safe data
+      // Ensure JSON-safe data with proper Base64 image format
       const formattedContent = contentRows.map((item) => ({
         term: item.term,
         definition: item.definition,
-        image: item.image ? item.image.toString("base64") : null,
+        image: formatImageToBase64(item.image),
       }));
 
       res.status(200).json({
@@ -313,7 +325,7 @@ const studyMaterialController = {
             items: contentRows.map((item) => ({
               term: item.term,
               definition: item.definition,
-              image: item.image ? item.image.toString("base64") : null,
+              image: formatImageToBase64(item.image),
             })),
           };
         })
@@ -402,7 +414,7 @@ const studyMaterialController = {
             items: contentRows.map((item) => ({
               term: item.term,
               definition: item.definition,
-              image: item.image ? item.image.toString("base64") : null,
+              image: formatImageToBase64(item.image),
             })),
           };
         })
@@ -480,7 +492,7 @@ const studyMaterialController = {
             items: contentRows.map((item) => ({
               term: item.term,
               definition: item.definition,
-              image: item.image ? item.image.toString("base64") : null,
+              image: formatImageToBase64(item.image),
             })),
           };
         })
@@ -586,7 +598,7 @@ const studyMaterialController = {
             items: contentRows.map(item => ({
               term: item.term,
               definition: item.definition,
-              image: item.image ? item.image.toString('base64') : null,
+              image: formatImageToBase64(item.image),
             })),
           };
         })
@@ -669,7 +681,7 @@ const studyMaterialController = {
             items: contentRows.map(item => ({
               term: item.term,
               definition: item.definition,
-              image: item.image ? item.image.toString('base64') : null
+              image: formatImageToBase64(item.image),
             }))
           };
         })
@@ -879,7 +891,7 @@ const studyMaterialController = {
               items: contentRows.map(item => ({
                 term: item.term,
                 definition: item.definition,
-                image: item.image ? item.image.toString('base64') : null
+                image: formatImageToBase64(item.image),
               }))
             }
           };
@@ -933,5 +945,6 @@ const studyMaterialController = {
   }
 
 };
+
 
 export default studyMaterialController;
