@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
-import { toast } from "react-hot-toast";
 import useHandleError from "../../hooks/validation.hooks/useHandleError";
 import {
   getFirestore,
@@ -18,10 +17,9 @@ import useGoogleSignIn from "../../hooks/auth.hooks/useGoogleSignIn";
 import LoadingScreen from "../../components/LoadingScreen";
 
 //import axios from "axios";
-import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { signInWithEmailAndPassword} from "firebase/auth";
 import {
   auth,
-  googleProvider,
   getAdditionalInfo,
   db,
 } from "../../services/firebase"; // Ensure you have this import for Firebase auth
@@ -43,7 +41,16 @@ const Login = () => {
 
   useEffect(() => {
     if (user) {
-      navigate("/dashboard/home"); // Redirect if user is authenticated
+      const showLogoutModal = () => {
+        const confirmed = window.confirm("You are already logged in. Would you like to log out?");
+        if (confirmed) {
+          // Handle logout
+          auth.signOut();
+        } else {
+          navigate("/dashboard/home");
+        }
+      };
+      showLogoutModal();
     }
   }, [user, navigate]);
 
@@ -71,8 +78,7 @@ const Login = () => {
         const querySnapshot = await getDocs(q);
 
         if (!querySnapshot.empty) {
-          const userDoc = querySnapshot.docs[0];
-          email = userDoc.data().email;
+          email = email;
         } else {
           throw setError("Username not found");
         }
@@ -82,6 +88,20 @@ const Login = () => {
       const token = await result.user.getIdToken();
       const additionalUserInfo = getAdditionalInfo(result);
       const userDoc = await getDoc(doc(db, "users", result.user.uid));
+      const userInfoDoc = await getDoc(doc(db, "users", result.user.uid, "user_info", "level"));
+
+      let level = 1; // Default level
+      let exp = 0; // Default experience
+      let mana = 200; // Default mana
+      let coins = 500; // Default coins
+
+      if (userInfoDoc.exists()) {
+        const userInfoData = userInfoDoc.data();
+        level = userInfoData.level || level;
+        exp = userInfoData.exp || exp;
+        mana = userInfoData.mana || mana;
+        coins = userInfoData.coins || coins;
+      }
 
       if (userDoc.exists()) {
         const userData = {
@@ -97,7 +117,10 @@ const Login = () => {
             | "free"
             | "premium"
             | "admin", // Ensure the value is either 'free' or 'premium'
-          level: 1
+          level: level,
+          exp: exp,
+          mana: mana,
+          coins: coins
         };
         console.log("User Data:", userData);
         const isNewUser =

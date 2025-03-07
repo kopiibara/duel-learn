@@ -37,17 +37,8 @@ const PrivateRoutes = () => {
   const { user } = useUser();
   const [_selectedIndex, setSelectedIndex] = useState<number | null>(1);
 
-  const token = localStorage.getItem("userToken");
-
-  if (!user || !token) {
+  if (!user ) {
     return <Navigate to="/landing-page" />;
-  }
-
-  if (user && token && !user.email_verified) {
-    return <Navigate to="/verify-email" />;
-  }
-  if (user && token && user.isNew && user.email_verified) {
-    <Navigate to="/dashboard/welcome" />;
   }
 
   return (
