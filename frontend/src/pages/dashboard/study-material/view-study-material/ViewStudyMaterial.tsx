@@ -401,12 +401,14 @@ const ViewStudyMaterial = () => {
             </Box>
           </Stack>
         </Stack>
+
         <MoreOptionPopover
           anchorEl={anchorEl}
           open={open}
           onClose={handleClose}
           studyMaterialId={studyMaterialId || ""}
           isOwner={studyMaterial?.created_by_id === user?.firebase_uid}
+          status={studyMaterial?.status} // Pass the status to the popover
         />
       </Box>
     </PageTransition>

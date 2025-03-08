@@ -9,7 +9,8 @@ const HomeBanner = () => {
       className="rounded-[1rem] flex text-left sm:mb-10"
       style={{
         background: "linear-gradient(90deg, #9F87E5 0%, #6F58D9 100%)",
-        height: "auto", // Remove fixed height for better mobile display
+        height: "full", // Remove fixed height for better mobile display
+        maxHeight: "240px", // Maximum height instead of fixed height
         minHeight: "180px", // Minimum height instead of fixed height
         overflow: "hidden", // Added to clip CardMedia
       }}

@@ -33,7 +33,7 @@ export const setupSocket = (server) => {
                 allUsers: Array.from(connectedUsers.entries())
             });
 
-            // Join user's room
+            // Join user's room 
             socket.join(firebase_uid);
 
             // Verify room join
