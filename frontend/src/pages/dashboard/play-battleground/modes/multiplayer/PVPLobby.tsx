@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Button,
   Dialog,
@@ -36,7 +36,8 @@ interface Player {
 const PVPLobby: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { mode, material, selectedTypes } = location.state || {};
+  const { mode, material, selectedTypes, lobbyCode: stateLobbyCode } = location.state || {};
+  const { lobbyCode: urlLobbyCode } = useParams<{ lobbyCode?: string }>();
   console.log(
     "Mode:",
     mode,
@@ -52,7 +53,7 @@ const PVPLobby: React.FC = () => {
     { display: "True or False", value: "true-false" },
   ];
 
-  const { user } = useUser(); // Get the user from UserContext
+  const { user, loading } = useUser(); // Get the user and loading state from UserContext
 
   const [manaPoints, setManaPoints] = useState(0); // Example starting mana points
   const [_openManaAlert, setOpenManaAlert] = useState(false); // State for the mana points alert
@@ -78,32 +79,36 @@ const PVPLobby: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]); // Initialize players state as an empty array
   const [invitedPlayer, setInvitedPlayer] = useState<Player | null>(null); // State for the invited player
 
-  // State to hold the generated code
-  const [lobbyCode, setLobbyCode] = useState<string>("");
+  // Use URL param first, then state lobby code, then generate new one (only once)
+  const [lobbyCode, setLobbyCode] = useState<string>(() => {
+    const code = urlLobbyCode || stateLobbyCode || generateCode();
+    console.log("Using lobby code:", code, { urlLobbyCode, stateLobbyCode });
+    return code;
+  });
+
+  // Add this effect to handle lobby code changes
+  useEffect(() => {
+    if (urlLobbyCode && urlLobbyCode !== lobbyCode) {
+      setLobbyCode(urlLobbyCode);
+      console.log("Updated lobby code from URL:", urlLobbyCode);
+    } else if (stateLobbyCode && !urlLobbyCode && stateLobbyCode !== lobbyCode) {
+      setLobbyCode(stateLobbyCode);
+      console.log("Updated lobby code from state:", stateLobbyCode);
+    }
+  }, [urlLobbyCode, stateLobbyCode]);
 
   // Add these states
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [invitation, setInvitation] = useState<{
-    open: boolean;
-    inviterName: string;
-    senderId: string;
-    lobbyCode: string;
-    timestamp?: string;
-  }>({
-    open: false,
+  const [invitationOpen, setInvitationOpen] = useState(false);
+  const [invitationData, setInvitationData] = useState({
     inviterName: "",
     senderId: "",
     lobbyCode: "",
+    timestamp: ""
   });
 
   // Add this near the top of your component
   const [debug, setDebug] = useState(false);
-
-  // useEffect to generate the code when the component mounts
-  useEffect(() => {
-    const code = generateCode(6); // Generate a 6-character code
-    setLobbyCode(code); // Set the generated code to state
-  }, []);
 
   // Set the state variables
   useEffect(() => {
@@ -136,10 +141,10 @@ const PVPLobby: React.FC = () => {
     fetchPlayerData();
   }, [user]);
 
-  // Replace the socket initialization useEffect with this:
+  // Update the socket effect
   useEffect(() => {
-    if (!user?.firebase_uid) {
-      console.log("No user ID available, skipping socket setup");
+    if (loading || !user?.firebase_uid) {
+      console.log("User data not ready yet, waiting...");
       return;
     }
 
@@ -148,71 +153,89 @@ const PVPLobby: React.FC = () => {
     const newSocket = socketService.connect(user.firebase_uid);
     setSocket(newSocket);
 
-    // Set up event listeners
+    // IMPORTANT: Use the service's on method for better reliability
     const handleBattleInvitation = (data: any) => {
-      console.log("Battle invitation received:", {
-        data,
-        currentUser: user.firebase_uid,
-        timestamp: new Date().toISOString(),
+      console.group("🔔 PVPLobby - Battle Invitation Received");
+      console.log("Raw data:", JSON.stringify(data));
+
+      // Validate user
+      if (!user?.firebase_uid) {
+        console.log("User not logged in, ignoring invitation");
+        console.groupEnd();
+        return;
+      }
+
+      // Skip our own invitations
+      if (data.senderId === user.firebase_uid) {
+        console.log("This is our own invitation, ignoring");
+        console.groupEnd();
+        return;
+      }
+
+      // Validate the critical fields
+      if (!data.senderId) {
+        console.error("Missing senderId in invitation data");
+        console.groupEnd();
+        return;
+      }
+
+      if (!data.lobbyCode) {
+        console.error("Missing lobbyCode in invitation data");
+        console.groupEnd();
+        return;
+      }
+
+      // All checks passed, set the data
+      console.log("Setting invitation data with:", {
+        inviterName: data.senderName || "Unknown Player",
+        senderId: data.senderId,
+        lobbyCode: data.lobbyCode
       });
 
-      if (data.senderId !== user.firebase_uid) {
-        // Create a completely new object to ensure React detects state change
-        const newInvitation = {
-          open: true,
-          inviterName: data.senderName || "Unknown",
-          senderId: data.senderId,
-          lobbyCode: data.lobbyCode,
-          timestamp: new Date().toISOString(),
-        };
+      // First set the data
+      setInvitationData({
+        inviterName: data.senderName || "Unknown Player",
+        senderId: data.senderId,
+        lobbyCode: data.lobbyCode,
+        timestamp: data.timestamp || new Date().toISOString()
+      });
 
-        console.log("Setting invitation state:", newInvitation);
-        setInvitation(newInvitation);
+      // Then open the invitation dialog
+      setInvitationOpen(true);
 
-        // Double-check that state was updated
-        setTimeout(() => {
-          console.log("Current invitation state after update:", invitation);
-        }, 100);
-      } else {
-        console.log("Ignoring self-invitation");
-      }
+      console.log("Invitation dialog opened");
+      console.groupEnd();
     };
 
-    const handleInvitationAccepted = (data: any) => {
-      console.log("Battle invitation accepted:", data);
-    };
+    // Register the handler with proper cleanup
+    const removeListener = socketService.on("battle_invitation", handleBattleInvitation);
 
-    const handleInvitationDeclined = (data: any) => {
-      console.log("Battle invitation declined:", data);
-      setInvitedPlayer(null);
-    };
-
-    // Add event listeners
-    newSocket.on("battle_invitation", handleBattleInvitation);
-    newSocket.on("battle_invitation_accepted", handleInvitationAccepted);
-    newSocket.on("battle_invitation_declined", handleInvitationDeclined);
-
-    // Clean up
     return () => {
-      newSocket.off("battle_invitation", handleBattleInvitation);
-      newSocket.off("battle_invitation_accepted", handleInvitationAccepted);
-      newSocket.off("battle_invitation_declined", handleInvitationDeclined);
-      // Don't disconnect - let the service manage that
+      if (removeListener) removeListener();
+      console.log("Cleaned up battle_invitation listener");
     };
-  }, [user?.firebase_uid]);
+  }, [user?.firebase_uid, loading]);
+
+  // Add this effect to handle lobby code from URL
+  useEffect(() => {
+    if (urlLobbyCode) {
+      setLobbyCode(urlLobbyCode);
+      // Here you can add logic to fetch lobby data if needed
+      console.log("Joined lobby:", urlLobbyCode);
+    }
+  }, [urlLobbyCode]);
 
   const handleCopy = () => {
     navigator.clipboard
-      .writeText("641283") // Text to be copied
+      .writeText(lobbyCode) // Use the actual lobby code instead of hardcoded "641283"
       .then(() => {
-        setCopySuccess(true); // Set success to true
-        // Reset the icon back to ContentCopy after 5 seconds
+        setCopySuccess(true);
         setTimeout(() => {
-          setCopySuccess(false); // Reset state after 5 seconds
+          setCopySuccess(false);
         }, 5000);
       })
       .catch(() => {
-        setCopySuccess(false); // In case of error
+        setCopySuccess(false);
       });
   };
 
@@ -318,51 +341,85 @@ const PVPLobby: React.FC = () => {
 
   const bothReady = isHostReady && isPlayer2Ready; // Check if both players are ready
 
-  // Update your accept/decline handlers
+  // Update the handleAcceptInvitation function
   const handleAcceptInvitation = async () => {
-    if (!user?.firebase_uid || !invitation.senderId || !invitation.lobbyCode) {
+    if (!user?.firebase_uid || !invitationData.senderId || !invitationData.lobbyCode) {
       console.error("Missing required data for accepting invitation");
       return;
     }
 
-    console.log("Accepting invitation from:", invitation.inviterName);
+    console.log("Accepting invitation from:", invitationData.inviterName, "to lobby:", invitationData.lobbyCode);
 
     try {
-      // Update invitation status in database
+      // First emit the socket event
+      const socket = SocketService.getInstance().getSocket();
+      socket?.emit("accept_battle_invitation", {
+        senderId: invitationData.senderId,
+        receiverId: user.firebase_uid,
+        lobbyCode: invitationData.lobbyCode,
+      });
+
+      // Then update database
       await axios.put(
         `${import.meta.env.VITE_BACKEND_URL}/api/battle/invite/status`,
         {
-          senderId: invitation.senderId,
+          senderId: invitationData.senderId,
           receiverId: user.firebase_uid,
-          lobbyCode: invitation.lobbyCode,
+          lobbyCode: invitationData.lobbyCode,
           status: "accepted",
         }
       );
 
-      // Emit socket event
-      const socket = SocketService.getInstance().getSocket();
-      socket?.emit("accept_battle_invitation", {
-        senderId: invitation.senderId,
-        receiverId: user.firebase_uid,
-        lobbyCode: invitation.lobbyCode,
+      // Navigate immediately (don't wait for socket response)
+      console.log("Player 2 joining lobby:", invitationData.lobbyCode);
+      navigate(`/dashboard/pvp-lobby/${invitationData.lobbyCode}`, {
+        state: {
+          mode: selectedMode,
+          material: selectedMaterial,
+          selectedTypes: selectedTypesFinal,
+          lobbyCode: invitationData.lobbyCode,
+          isGuest: true,
+        },
       });
 
-      // Reset invitation state
-      setInvitation({
-        open: false,
+      // Reset invitation state after navigation
+      setInvitationData({
         inviterName: "",
         senderId: "",
         lobbyCode: "",
+        timestamp: ""
       });
+      setInvitationOpen(false);
 
-      // Navigate to the lobby
-      navigate(`/dashboard/play-battleground/pvp-lobby/${invitation.lobbyCode}`);
     } catch (error) {
       console.error("Error accepting invitation:", error);
     }
   };
 
-  // Similarly update decline handler...
+  // Update the socket effect to handle both host and guest
+  useEffect(() => {
+    if (!socket || !user?.firebase_uid) return;
+
+    const handleInvitationAccepted = (data: any) => {
+      console.log("Battle invitation accepted event received:", data);
+
+      if (data.receiverId === user.firebase_uid) {
+        // We're the guest (player 2)
+        console.log("Player 2 received acceptance confirmation");
+        // Navigation is already handled in handleAcceptInvitation
+      } else if (data.senderId === user.firebase_uid) {
+        // We're the host
+        console.log("Host received guest acceptance confirmation");
+        // Add any host-specific UI updates here
+      }
+    };
+
+    SocketService.getInstance().on("battle_invitation_accepted", handleInvitationAccepted);
+
+    return () => {
+      SocketService.getInstance().off("battle_invitation_accepted", handleInvitationAccepted);
+    };
+  }, [socket, user?.firebase_uid]);
 
   // Add this to your useEffect
   useEffect(() => {
@@ -377,8 +434,36 @@ const PVPLobby: React.FC = () => {
 
   // Add this debug effect to monitor invitation state changes
   useEffect(() => {
-    console.log("Invitation state changed:", invitation);
-  }, [invitation]);
+    console.log("Invitation state changed:", invitationData);
+  }, [invitationData]);
+
+  // Add this effect to handle invitation display
+  useEffect(() => {
+    // Every time invitation changes, log it for debugging
+    if (invitationOpen) {
+      console.log("🔔 Invitation is now OPEN with data:", {
+        inviterName: invitationData.inviterName,
+        senderId: invitationData.senderId,
+        lobbyCode: invitationData.lobbyCode
+      });
+    } else {
+      console.log("🔕 Invitation is CLOSED");
+    }
+  }, [invitationOpen, invitationData]);
+
+  // Correct the logging
+  console.group("Rendering InvitationSnackbar");
+  console.log("Current invitation state:", {
+    open: invitationOpen,
+    ...invitationData
+  });
+  console.log("Actual props being passed:", {
+    open: invitationOpen,
+    inviterName: invitationData.inviterName || "",
+    senderId: invitationData.senderId || "",
+    lobbyCode: invitationData.lobbyCode || "",
+  });
+  console.groupEnd();
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-white px-6 py-8 overflow-hidden">
@@ -739,30 +824,40 @@ const PVPLobby: React.FC = () => {
       <InvitePlayerModal
         open={inviteModalOpen}
         handleClose={() => setInviteModalOpen(false)}
-        onInviteSuccess={(friend) => {
+        onInviteSuccess={(friend, invitationInfo) => {
           // Update local state to show invited player
           setInvitedPlayer(friend);
+
+          // Show a sent invitation status to the sender
+          console.log("Invitation sent successfully:", invitationInfo);
+
+          // You could add a notification or status indicator here
+          // For example, you might want to show a "Pending" indicator next to the friend's name
         }}
         lobbyCode={lobbyCode}
       />
 
-      {/* Make sure InvitationSnackbar is rendered outside any conditional blocks */}
+      {/* Render InvitationSnackbar with all necessary props */}
       <InvitationSnackbar
-        open={invitation.open}
+        open={invitationOpen}
+        inviterName={invitationData.inviterName || ""}
+        lobbyCode={invitationData.lobbyCode || ""}
+        senderId={invitationData.senderId || ""}
         onClose={() => {
           console.log("Closing invitation snackbar");
-          setInvitation((prev) => ({ ...prev, open: false }));
+          setInvitationOpen(false);
         }}
-        inviterName={invitation.inviterName}
-        onAccept={handleAcceptInvitation}
+        onAccept={() => {
+          console.log("Invitation accepted callback");
+          setInvitationOpen(false);
+        }}
         onDecline={() => {
           console.log("Declining invitation");
-          setInvitedPlayer(null);
+          setInvitationOpen(false);
         }}
       />
 
-
-      {/* Add this to your JSX */}
+      {/* Debug panel */}
       {debug && (
         <div
           style={{
@@ -778,7 +873,7 @@ const PVPLobby: React.FC = () => {
           <pre>
             {JSON.stringify(
               {
-                invitation,
+                invitation: invitationData,
                 socketConnected: !!socket,
                 userId: user?.firebase_uid,
               },
@@ -786,40 +881,42 @@ const PVPLobby: React.FC = () => {
               2
             )}
           </pre>
-        </div>
-      )}
-
-      {/* Add this near your debug panel */}
-      {debug && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 80,
-            right: 20,
-            background: "#000",
-            padding: 10,
-            borderRadius: 5,
-            zIndex: 9999,
-          }}
-        >
           <button
             onClick={() => {
-              console.log("Debug: Manually triggering invitation");
-              setInvitation({
-                open: true,
-                inviterName: "Debug User",
-                senderId: "test-id",
-                lobbyCode: "TEST123",
+              if (!user?.firebase_uid) {
+                console.error("Cannot test invitation - user not loaded yet");
+                return;
+              }
+
+              // Set test data first
+              setInvitationData({
+                inviterName: "Test User",
+                senderId: "test-sender-fixed-id",
+                lobbyCode: "TEST-LOBBY-123",
+                timestamp: new Date().toISOString()
               });
+
+              // Then open the invitation
+              setTimeout(() => {
+                setInvitationOpen(true);
+                console.log("Test invitation opened with data:", {
+                  inviterName: "Test User",
+                  senderId: "test-sender-fixed-id",
+                  lobbyCode: "TEST-LOBBY-123"
+                });
+              }, 10);
             }}
             style={{
-              color: "white",
+              marginTop: "8px",
               padding: "4px 8px",
-              border: "1px solid white",
+              background: "#4D1EE3",
+              border: "none",
               borderRadius: "4px",
+              color: "white",
+              cursor: "pointer",
             }}
           >
-            Test Snackbar
+            Test Invitation
           </button>
         </div>
       )}

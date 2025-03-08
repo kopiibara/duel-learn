@@ -21,6 +21,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 import { useUser } from "../../contexts/UserContext";
+import { generateCode } from "../../pages/dashboard/play-battleground/utils/codeGenerator";
 
 interface StudyMaterial {
   title: string;
@@ -72,8 +73,7 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
 
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/study-material/get-by-user/${
-            user.username
+          `${import.meta.env.VITE_BACKEND_URL}/api/study-material/get-by-user/${user.username
           }`
         );
         if (!response.ok) {
@@ -125,19 +125,28 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
 
   const handleMaterialSelect = (material: StudyMaterial) => {
     if (isLobby) {
+      const generatedLobbyCode = generateCode(); // Generate a new lobby code
+      console.log("Generated lobby code:", generatedLobbyCode);
+
       onMaterialSelect(material);
       onModeSelect(mode || "");
       handleClose();
-      navigate("/dashboard/pvp-lobby", {
-        state: { mode, material, selectedTypes },
+
+      navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
+        state: {
+          mode,
+          material,
+          selectedTypes,
+          lobbyCode: generatedLobbyCode, // Add lobby code to state
+        },
       });
     } else {
       const formattedMode =
         mode === "Peaceful Mode"
           ? "Peaceful"
           : mode === "PvP Mode"
-          ? "PvP"
-          : mode;
+            ? "PvP"
+            : mode;
       navigate("/dashboard/welcome-game-mode", {
         state: {
           mode: formattedMode,

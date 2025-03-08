@@ -17,7 +17,7 @@ interface Player {
 interface InvitePlayerModalProps {
   open: boolean;
   handleClose: () => void;
-  onInviteSuccess: (friend: Player) => void;
+  onInviteSuccess: (friend: Player, invitationInfo: any) => void;
   lobbyCode: string;
 }
 
@@ -67,48 +67,45 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
     fetchFriends();
   }, [user?.firebase_uid, open]);
 
-  const handleInvite = async (friend: Player) => {
-    if (!user?.firebase_uid || !user?.username) {
-      setError("Cannot send invitation: Missing user data");
+  const handleInvite = async (friend: any) => {
+    if (!user) {
+      console.error("Cannot send invitation: User is not logged in");
       return;
     }
 
-    setInviting(true);
     try {
-      console.log("Sending invitation to:", friend.username);
-
-      // Create the notification data
-      const notificationData = {
+      // Create explicit invitation data
+      const invitationData = {
         senderId: user.firebase_uid,
-        senderName: user.username,
+        senderName: user.username || user.full_name || "Unknown User",
         receiverId: friend.firebase_uid,
-        lobbyCode: lobbyCode,
+        lobbyCode: lobbyCode
       };
 
-      // First create database entry
-      await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/battle/pvp-invitation`,
-        {
-          senderId: user.firebase_uid,
-          senderUsername: user.username,
-          receiverId: friend.firebase_uid,
-          receiverUsername: friend.username,
-          lobbyCode: lobbyCode,
-        }
-      );
+      console.log("Sending battle invitation with explicit data:", invitationData);
 
-      // Send via socket service (more reliable than HTTP)
-      console.log("Sending invitation via socket service");
-      SocketService.getInstance().sendBattleInvitation(notificationData);
+      // Get socket directly to ensure we're using the right instance
+      const socket = SocketService.getInstance().getSocket();
+      if (!socket) {
+        throw new Error("Socket not connected");
+      }
 
-      // Notify parent component
-      onInviteSuccess(friend);
+      // Emit with the explicit data object
+      socket.emit("notify_battle_invitation", invitationData);
+
+      // Close the modal and trigger success callback with complete invitation data
       handleClose();
+      onInviteSuccess(friend, {
+        senderId: user.firebase_uid,
+        senderName: user.username || user.full_name || "Unknown User",
+        receiverId: friend.firebase_uid,
+        receiverName: friend.username,
+        lobbyCode: lobbyCode,
+        status: "pending"
+      });
+
     } catch (error) {
-      console.error("Error sending invitation:", error);
-      setError("Failed to send invitation. Please try again.");
-    } finally {
-      setInviting(false);
+      console.error("Error inviting player:", error);
     }
   };
 

@@ -8,6 +8,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import PageTransition from "../../../../../styles/PageTransition";
+import { generateCode } from "../../utils/codeGenerator";
 
 const SetUpQuestionType: React.FC = () => {
   // Move all hooks to the top before any conditional logic
@@ -114,11 +115,16 @@ const SetUpQuestionType: React.FC = () => {
     }
     // If the mode is not "Time Pressured" and not "Peaceful Mode", navigate to PvP Lobby
     else if (mode !== "Time Pressured" && mode !== "Peaceful Mode") {
-      navigate("/dashboard/pvp-lobby", {
+      const generatedLobbyCode = generateCode(); // Generate a new lobby code
+      console.log("Generated lobby code:", generatedLobbyCode);
+
+      // Store the lobby code in state before navigating
+      navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
         state: {
           mode,
           material,
           selectedTypes,
+          lobbyCode: generatedLobbyCode, // Add lobby code to state
         },
       });
     }
@@ -248,30 +254,27 @@ const SetUpQuestionType: React.FC = () => {
                       {/* Toggle Button */}
                       <div
                         onClick={() => toggleSelection(type.value)}
-                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all ${
-                          selectedTypes.includes(type.value)
-                            ? "bg-black"
-                            : "bg-black"
-                        }`}
+                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all ${selectedTypes.includes(type.value)
+                          ? "bg-black"
+                          : "bg-black"
+                          }`}
                       >
                         {/* Check Icon */}
                         <div
-                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md transition-all ${
-                            selectedTypes.includes(type.value)
-                              ? "bg-black text-[#461ABD]"
-                              : "bg-white text-[#461ABD]"
-                          } `}
+                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md transition-all ${selectedTypes.includes(type.value)
+                            ? "bg-black text-[#461ABD]"
+                            : "bg-white text-[#461ABD]"
+                            } `}
                         >
                           <CloseIcon />
                         </div>
 
                         {/* Uncheck Icon */}
                         <div
-                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded transition-all ${
-                            selectedTypes.includes(type.value)
-                              ? "bg-white text-[#461ABD]"
-                              : "bg-black text-[#461ABD]"
-                          }`}
+                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded transition-all ${selectedTypes.includes(type.value)
+                            ? "bg-white text-[#461ABD]"
+                            : "bg-black text-[#461ABD]"
+                            }`}
                         >
                           <CheckIcon />
                         </div>

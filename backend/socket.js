@@ -37,19 +37,31 @@ const setupSocket = (server) => {
 
         // Add user to a room based on their firebase_uid
         socket.on("setup", (userId) => {
-            socket.userId = userId;
+            try {
+                if (!userId) {
+                    console.error("Missing user ID during setup");
+                    return;
+                }
 
-            if (!userId) {
-                console.error("Invalid userId in setup");
-                return;
+                // Store the userId in the socket object for later reference
+                socket.userId = userId;
+
+                // Join a room with the user's ID
+                socket.join(userId);
+
+                // Log for debugging
+                console.log(`🔗 User ${userId} connected and joined room. Socket ID: ${socket.id}`);
+                console.log(`👥 Current active rooms:`, Array.from(socket.rooms));
+
+                // Store in active users map
+                activeUsers.set(userId, socket.id);
+
+                // Send confirmation to user
+                socket.emit("connected", { success: true, socketId: socket.id });
+
+            } catch (error) {
+                console.error("Error in setup:", error);
             }
-
-            // Store the user's socket mapping
-            activeUsers.set(userId, socket.id);
-            socket.userId = userId; // Store uid in socket for easy access
-
-            socket.join(userId);
-            console.log("👤 Active user joined room:", userId);
         });
 
         // Update the sendFriendRequest event handler
@@ -314,39 +326,35 @@ const setupSocket = (server) => {
             try {
                 const { senderId, senderName, receiverId, lobbyCode } = data;
 
-                if (!senderId || !receiverId || !lobbyCode) {
-                    throw new Error("Missing required battle invitation data");
+                // Validate all required fields
+                if (!senderId || !senderName || !receiverId || !lobbyCode) {
+                    console.error("Missing required data for battle invitation:", {
+                        senderId, senderName, receiverId, lobbyCode
+                    });
+                    socket.emit("error", {
+                        type: "battleInvitation",
+                        message: "Missing required data for battle invitation"
+                    });
+                    return;
                 }
 
-                console.log("🎮 Battle invitation sent:", {
-                    from: senderName || senderId,
-                    to: receiverId,
+                console.log("🎮 Sending battle invitation:", {
+                    senderId,
+                    senderName,
+                    receiverId,
                     lobbyCode
                 });
 
-                // Send notification to the receiver
+                // Send ALL required fields to the receiver
                 io.to(receiverId).emit("battle_invitation", {
                     senderId,
-                    senderName,
+                    senderName: senderName,
                     receiverId,
                     lobbyCode,
                     timestamp: new Date().toISOString()
                 });
-
-                // Confirm to sender
-                socket.emit("battle_invitation_sent", {
-                    success: true,
-                    receiverId,
-                    lobbyCode
-                });
-
             } catch (error) {
-                console.error("Error processing battle invitation:", error);
-                socket.emit("error", {
-                    type: "battleInvitation",
-                    message: "Failed to send battle invitation",
-                    details: error.message
-                });
+                console.error("Error in notify_battle_invitation:", error);
             }
         });
 
@@ -354,25 +362,25 @@ const setupSocket = (server) => {
             try {
                 const { senderId, receiverId, lobbyCode } = data;
 
-                if (!senderId || !receiverId || !lobbyCode) {
-                    throw new Error("Missing required invitation acceptance data");
-                }
-
-                console.log("✅ Battle invitation accepted:", {
+                console.log("🎮 Battle invitation accepted:", {
                     senderId,
                     receiverId,
-                    lobbyCode
+                    lobbyCode,
+                    timestamp: new Date().toISOString()
                 });
 
-                // Notify the original sender that their invitation was accepted
-                io.to(senderId).emit("battle_invitation_accepted", {
-                    senderId,
-                    receiverId,
-                    lobbyCode
+                // Important: Emit to BOTH players
+                [senderId, receiverId].forEach(userId => {
+                    io.to(userId).emit("battle_invitation_accepted", {
+                        senderId,
+                        receiverId,
+                        lobbyCode,
+                        timestamp: new Date().toISOString()
+                    });
                 });
 
             } catch (error) {
-                console.error("Error processing invitation acceptance:", error);
+                console.error("Error in accept_battle_invitation:", error);
                 socket.emit("error", {
                     type: "battleAcceptance",
                     message: "Failed to process battle acceptance",

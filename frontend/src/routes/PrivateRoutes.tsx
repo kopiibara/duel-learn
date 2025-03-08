@@ -113,7 +113,7 @@ const PrivateRoutes = () => {
           </GameModeWrapper>
         }
       />
-      <Route path="/pvp-lobby" element={<PVPLobby />} />
+      <Route path="/pvp-lobby/:lobbyCode?" element={<PVPLobby />} />
       <Route path="/study/session-summary" element={<SessionReport />} />
       <Route path="/select-difficulty/pvp" element={<HostModeSelection />} />
       <Route
