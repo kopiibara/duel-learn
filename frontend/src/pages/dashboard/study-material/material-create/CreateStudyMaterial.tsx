@@ -19,9 +19,8 @@ import { useUser } from "../../../../contexts/UserContext"; // Import the useUse
 import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust the
 import Filter from "../../../../components/Filter"; // Adjust the
 
-// Add this constant for size limits
-const MAX_IMAGE_SIZE_MB = 10; // Maximum image size in MB
-const MAX_TOTAL_PAYLOAD_MB = 50; // Maximum total payload size in MB
+const MAX_IMAGE_SIZE_MB = 10;
+const MAX_TOTAL_PAYLOAD_MB = 50;
 
 // Add this helper function to check file size
 const getFileSizeInMB = (base64String: string): number => {

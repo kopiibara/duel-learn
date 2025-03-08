@@ -190,9 +190,8 @@ const preloadRecommendedContent = async () => {
   }
 };
 
-// Initialize preloading
 setTimeout(preloadTopPicks, 2000);
-setTimeout(preloadRecommendedContent, 2000); // Slightly delayed to not overload startup
+setTimeout(preloadRecommendedContent, 2000);
 
 const studyMaterialController = {
   saveStudyMaterial: async (req, res) => {
