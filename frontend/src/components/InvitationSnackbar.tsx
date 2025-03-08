@@ -1,5 +1,5 @@
-import React from "react";
-import { Snackbar, Button, Stack, Alert, AlertTitle, Box } from "@mui/material";
+import React, { useEffect, useRef } from "react";
+import { Snackbar, Button, Box, Alert, AlertTitle } from "@mui/material";
 
 interface InvitationSnackbarProps {
   open: boolean;
@@ -16,63 +16,77 @@ const InvitationSnackbar: React.FC<InvitationSnackbarProps> = ({
   onAccept,
   onDecline,
 }) => {
-  // More detailed logging for debugging
-  console.log("InvitationSnackbar render:", {
-    open,
-    inviterName,
-    hasInviter: Boolean(inviterName),
-    timestamp: new Date().toISOString(),
-  });
+  const snackbarRef = useRef<HTMLDivElement>(null);
 
-  // Guard clause for empty inviter name
-  if (open && !inviterName) {
-    console.warn("Warning: InvitationSnackbar opened with empty inviterName");
-  }
+  // Log whenever open status changes
+  useEffect(() => {
+    console.log("InvitationSnackbar open status changed:", open);
+
+    if (open) {
+      console.log("InvitationSnackbar should be visible now");
+      // Force focus on the snackbar for accessibility and to ensure it's in view
+      snackbarRef.current?.focus();
+    }
+  }, [open]);
+
+  // Don't render at all if not open
+  if (!open) return null;
+
+  console.log("Rendering InvitationSnackbar with:", { inviterName });
 
   return (
-    <Snackbar
-      open={open}
-      autoHideDuration={null}
-      onClose={onClose}
-      anchorOrigin={{ vertical: "top", horizontal: "center" }}
+    <div
+      ref={snackbarRef}
+      tabIndex={-1} // Make it focusable
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        zIndex: 9999,
+        pointerEvents: 'none' // Let clicks pass through the container
+      }}
     >
-      <Alert
-        severity="info"
-        onClose={onClose}
-        sx={{
-          width: "100%",
-          border: "1px solid #4D18E8",
-          boxShadow: "0 4px 12px rgba(77, 30, 227, 0.4)",
-        }}
-      >
-        <AlertTitle>Battle Invitation</AlertTitle>
-        <strong>{inviterName}</strong> has invited you to battle!
-        <Box sx={{ mt: 1, display: "flex", gap: 1 }}>
-          <Button
-            size="small"
-            variant="contained"
-            color="success"
-            onClick={(e) => {
-              e.stopPropagation();
-              onAccept();
-            }}
-          >
-            Accept
-          </Button>
-          <Button
-            size="small"
-            variant="contained"
-            color="error"
-            onClick={(e) => {
-              e.stopPropagation();
-              onDecline();
-            }}
-          >
-            Decline
-          </Button>
-        </Box>
-      </Alert>
-    </Snackbar>
+      <div style={{
+        width: 'fit-content',
+        margin: '16px auto',
+        pointerEvents: 'auto' // But make the actual snackbar clickable
+      }}>
+        <Alert
+          severity="info"
+          onClose={onClose}
+          sx={{
+            width: "100%",
+            minWidth: '300px',
+            boxShadow: "0 8px 32px rgba(0,0,0,0.8)",
+            border: '2px solid #4D1EE3'
+          }}
+        >
+          <AlertTitle>Battle Invitation</AlertTitle>
+          <strong>{inviterName}</strong> has invited you to battle!
+          <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
+            <Button
+              size="small"
+              variant="contained"
+              color="success"
+              onClick={onAccept}
+              sx={{ fontWeight: 'bold' }}
+            >
+              Accept
+            </Button>
+            <Button
+              size="small"
+              variant="contained"
+              color="error"
+              onClick={onDecline}
+              sx={{ fontWeight: 'bold' }}
+            >
+              Decline
+            </Button>
+          </Box>
+        </Alert>
+      </div>
+    </div>
   );
 };
 

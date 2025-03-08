@@ -24,6 +24,7 @@ import defaultAvatar from "../../../../../assets/profile-picture/bunny-picture.p
 import { io, Socket } from "socket.io-client";
 import InvitationSnackbar from "../../../../../components/InvitationSnackbar";
 import axios from "axios";
+import SocketService from "../../../../../services/socketService";
 
 interface Player {
   firebase_uid: string;
@@ -135,75 +136,70 @@ const PVPLobby: React.FC = () => {
     fetchPlayerData();
   }, [user]);
 
-  // Update the socket initialization useEffect
+  // Replace the socket initialization useEffect with this:
   useEffect(() => {
-    // Don't initialize socket if we don't have a user
     if (!user?.firebase_uid) {
       console.log("No user ID available, skipping socket setup");
       return;
     }
 
-    if (socket) {
-      console.log("Socket already exists:", socket.id);
-      return;
-    }
+    console.log("Setting up socket service for user:", user.firebase_uid);
+    const socketService = SocketService.getInstance();
+    const newSocket = socketService.connect(user.firebase_uid);
+    setSocket(newSocket);
 
-    console.log("Initializing socket for user:", user.firebase_uid);
-
-    const newSocket = io(`${import.meta.env.VITE_BACKEND_URL}`, {
-      transports: ["websocket"],
-      reconnection: true,
-    });
-
-    newSocket.on("connect", () => {
-      console.log("Socket connected with ID:", newSocket.id);
-      setSocket(newSocket);
-
-      // Register user immediately after connection
-      console.log("Registering user on connect:", user.firebase_uid);
-      newSocket.emit("setup", user.firebase_uid);
-    });
-
-    newSocket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-    });
-
-    // Enhanced battle invitation listener with better logging
-    newSocket.on("battle_invitation", (data) => {
+    // Set up event listeners
+    const handleBattleInvitation = (data: any) => {
       console.log("Battle invitation received:", {
         data,
         currentUser: user.firebase_uid,
-        socketId: newSocket.id,
         timestamp: new Date().toISOString(),
       });
 
       if (data.senderId !== user.firebase_uid) {
-        console.log("Setting invitation state for:", data.senderName);
-        setInvitation({
+        // Create a completely new object to ensure React detects state change
+        const newInvitation = {
           open: true,
           inviterName: data.senderName || "Unknown",
           senderId: data.senderId,
           lobbyCode: data.lobbyCode,
           timestamp: new Date().toISOString(),
-        });
+        };
+
+        console.log("Setting invitation state:", newInvitation);
+        setInvitation(newInvitation);
+
+        // Double-check that state was updated
+        setTimeout(() => {
+          console.log("Current invitation state after update:", invitation);
+        }, 100);
       } else {
         console.log("Ignoring self-invitation");
       }
-    });
-
-    // Add a debug event to verify socket is working
-    newSocket.on("debug", (msg) => {
-      console.log("Debug message received:", msg);
-    });
-
-    return () => {
-      if (newSocket) {
-        console.log("Cleaning up socket:", newSocket.id);
-        newSocket.disconnect();
-        setSocket(null);
-      }
     };
-  }, [user?.firebase_uid]); // Only depend on user ID
+
+    const handleInvitationAccepted = (data: any) => {
+      console.log("Battle invitation accepted:", data);
+    };
+
+    const handleInvitationDeclined = (data: any) => {
+      console.log("Battle invitation declined:", data);
+      setInvitedPlayer(null);
+    };
+
+    // Add event listeners
+    newSocket.on("battle_invitation", handleBattleInvitation);
+    newSocket.on("battle_invitation_accepted", handleInvitationAccepted);
+    newSocket.on("battle_invitation_declined", handleInvitationDeclined);
+
+    // Clean up
+    return () => {
+      newSocket.off("battle_invitation", handleBattleInvitation);
+      newSocket.off("battle_invitation_accepted", handleInvitationAccepted);
+      newSocket.off("battle_invitation_declined", handleInvitationDeclined);
+      // Don't disconnect - let the service manage that
+    };
+  }, [user?.firebase_uid]);
 
   const handleCopy = () => {
     navigator.clipboard
@@ -322,77 +318,51 @@ const PVPLobby: React.FC = () => {
 
   const bothReady = isHostReady && isPlayer2Ready; // Check if both players are ready
 
-  // Add these handlers
+  // Update your accept/decline handlers
   const handleAcceptInvitation = async () => {
-    if (socket) {
-      try {
-        // Update invitation status in database
-        await axios.put(
-          `${import.meta.env.VITE_BACKEND_URL}/api/battle/invite/status`,
-          {
-            senderId: invitation.senderId,
-            receiverId: user?.firebase_uid,
-            lobbyCode: invitation.lobbyCode,
-            status: "accepted",
-          }
-        );
+    if (!user?.firebase_uid || !invitation.senderId || !invitation.lobbyCode) {
+      console.error("Missing required data for accepting invitation");
+      return;
+    }
 
-        // Emit socket event
-        socket.emit("accept_battle_invitation", {
+    console.log("Accepting invitation from:", invitation.inviterName);
+
+    try {
+      // Update invitation status in database
+      await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/battle/invite/status`,
+        {
           senderId: invitation.senderId,
-          receiverId: user?.firebase_uid,
+          receiverId: user.firebase_uid,
           lobbyCode: invitation.lobbyCode,
-        });
+          status: "accepted",
+        }
+      );
 
-        setInvitation({
-          open: false,
-          inviterName: "",
-          senderId: "",
-          lobbyCode: "",
-        });
+      // Emit socket event
+      const socket = SocketService.getInstance().getSocket();
+      socket?.emit("accept_battle_invitation", {
+        senderId: invitation.senderId,
+        receiverId: user.firebase_uid,
+        lobbyCode: invitation.lobbyCode,
+      });
 
-        // Navigate to the lobby as Player 2
-        navigate(
-          `/dashboard/play-battleground/pvp-lobby/${invitation.lobbyCode}`
-        );
-      } catch (error) {
-        console.error("Error accepting invitation:", error);
-      }
+      // Reset invitation state
+      setInvitation({
+        open: false,
+        inviterName: "",
+        senderId: "",
+        lobbyCode: "",
+      });
+
+      // Navigate to the lobby
+      navigate(`/dashboard/play-battleground/pvp-lobby/${invitation.lobbyCode}`);
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
     }
   };
 
-  const handleDeclineInvitation = async () => {
-    if (socket) {
-      try {
-        // Update invitation status in database
-        await axios.put(
-          `${import.meta.env.VITE_BACKEND_URL}/api/battle/invite/status`,
-          {
-            senderId: invitation.senderId,
-            receiverId: user?.firebase_uid,
-            lobbyCode: invitation.lobbyCode,
-            status: "declined",
-          }
-        );
-
-        // Emit socket event
-        socket.emit("decline_battle_invitation", {
-          senderId: invitation.senderId,
-          receiverId: user?.firebase_uid,
-          lobbyCode: invitation.lobbyCode,
-        });
-
-        setInvitation({
-          open: false,
-          inviterName: "",
-          senderId: "",
-          lobbyCode: "",
-        });
-      } catch (error) {
-        console.error("Error declining invitation:", error);
-      }
-    }
-  };
+  // Similarly update decline handler...
 
   // Add this to your useEffect
   useEffect(() => {
@@ -588,8 +558,8 @@ const PVPLobby: React.FC = () => {
                   {invitedPlayer
                     ? invitedPlayer.username
                     : players[1]
-                    ? players[1].username
-                    : "PLAYER 2"}
+                      ? players[1].username
+                      : "PLAYER 2"}
                 </motion.p>
                 <motion.p
                   className="text-xs sm:text-sm text-gray-400"
@@ -600,8 +570,8 @@ const PVPLobby: React.FC = () => {
                   {invitedPlayer
                     ? `LVL ${invitedPlayer.level}`
                     : players[1] && players[1].level
-                    ? `LVL ${players[1].level}`
-                    : "LVL ???"}
+                      ? `LVL ${players[1].level}`
+                      : "LVL ???"}
                 </motion.p>
                 <motion.p
                   className="text-xs sm:text-sm text-gray-400"
@@ -650,9 +620,8 @@ const PVPLobby: React.FC = () => {
                   : undefined
                 : handleReadyToggle
             } // Host starts battle if both are ready, Player 2 toggles readiness
-            className={`mt-6 sm:mt-11 w-full max-w-[250px] sm:max-w-[300px] md:max-w-[350px] py-2 sm:py-3 bg-[#4D1EE3] text-white rounded-lg text-md sm:text-lg shadow-lg transition flex items-center justify-center ${
-              bothReady ? "hover:bg-purple-800" : ""
-            }`}
+            className={`mt-6 sm:mt-11 w-full max-w-[250px] sm:max-w-[300px] md:max-w-[350px] py-2 sm:py-3 bg-[#4D1EE3] text-white rounded-lg text-md sm:text-lg shadow-lg transition flex items-center justify-center ${bothReady ? "hover:bg-purple-800" : ""
+              }`}
             disabled={isHost ? !bothReady : false} // Disable for host if both are not ready
           >
             {isHost
@@ -660,8 +629,8 @@ const PVPLobby: React.FC = () => {
                 ? "BATTLE START! -10"
                 : "START 1/2"
               : isPlayer2Ready
-              ? "CANCEL 2/2"
-              : "START 1/2"}
+                ? "CANCEL 2/2"
+                : "START 1/2"}
             <img
               src={ManaIcon}
               alt="Mana"
@@ -770,7 +739,11 @@ const PVPLobby: React.FC = () => {
       <InvitePlayerModal
         open={inviteModalOpen}
         handleClose={() => setInviteModalOpen(false)}
-        onInvite={handleInvite}
+        onInviteSuccess={(friend) => {
+          // Update local state to show invited player
+          setInvitedPlayer(friend);
+        }}
+        lobbyCode={lobbyCode}
       />
 
       {/* Make sure InvitationSnackbar is rendered outside any conditional blocks */}
@@ -782,8 +755,12 @@ const PVPLobby: React.FC = () => {
         }}
         inviterName={invitation.inviterName}
         onAccept={handleAcceptInvitation}
-        onDecline={handleDeclineInvitation}
+        onDecline={() => {
+          console.log("Declining invitation");
+          setInvitedPlayer(null);
+        }}
       />
+
 
       {/* Add this to your JSX */}
       {debug && (

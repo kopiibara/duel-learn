@@ -5,6 +5,7 @@ import InviteFriendList from "../../../../../assets/General/ModalFriendList.png"
 import ProfileIcon from "../../../../../assets/profile-picture/kopibara-picture.png";
 import axios from "axios";
 import { useUser } from "../../../../../contexts/UserContext";
+import SocketService from "../../../../../services/socketService";
 
 interface Player {
   firebase_uid: string;
@@ -16,17 +17,20 @@ interface Player {
 interface InvitePlayerModalProps {
   open: boolean;
   handleClose: () => void;
-  onInvite: (friend: Player) => void;
+  onInviteSuccess: (friend: Player) => void;
+  lobbyCode: string;
 }
 
 const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
   open,
   handleClose,
-  onInvite,
+  onInviteSuccess,
+  lobbyCode,
 }) => {
   const [friends, setFriends] = useState<Player[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [inviting, setInviting] = useState(false);
   const { user } = useUser();
 
   useEffect(() => {
@@ -36,8 +40,7 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
       setLoading(true);
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/lobby/invite-friends/${
-            user.firebase_uid
+          `${import.meta.env.VITE_BACKEND_URL}/api/lobby/invite-friends/${user.firebase_uid
           }`
         );
 
@@ -64,10 +67,49 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
     fetchFriends();
   }, [user?.firebase_uid, open]);
 
-  const handleInviteClick = (friend: Player) => {
-    console.log("Modal: Inviting friend:", friend);
-    onInvite(friend);
-    handleClose();
+  const handleInvite = async (friend: Player) => {
+    if (!user?.firebase_uid || !user?.username) {
+      setError("Cannot send invitation: Missing user data");
+      return;
+    }
+
+    setInviting(true);
+    try {
+      console.log("Sending invitation to:", friend.username);
+
+      // Create the notification data
+      const notificationData = {
+        senderId: user.firebase_uid,
+        senderName: user.username,
+        receiverId: friend.firebase_uid,
+        lobbyCode: lobbyCode,
+      };
+
+      // First create database entry
+      await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/battle/pvp-invitation`,
+        {
+          senderId: user.firebase_uid,
+          senderUsername: user.username,
+          receiverId: friend.firebase_uid,
+          receiverUsername: friend.username,
+          lobbyCode: lobbyCode,
+        }
+      );
+
+      // Send via socket service (more reliable than HTTP)
+      console.log("Sending invitation via socket service");
+      SocketService.getInstance().sendBattleInvitation(notificationData);
+
+      // Notify parent component
+      onInviteSuccess(friend);
+      handleClose();
+    } catch (error) {
+      console.error("Error sending invitation:", error);
+      setError("Failed to send invitation. Please try again.");
+    } finally {
+      setInviting(false);
+    }
   };
 
   if (!open) return null;
@@ -100,6 +142,13 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
           Invite Friends
         </Typography>
 
+        {/* Error message */}
+        {error && (
+          <div className="text-red-500 text-center mb-4">
+            {error}
+          </div>
+        )}
+
         {/* Friend List */}
         <div
           className="flex flex-col items-center mt-5 mb-5"
@@ -107,8 +156,6 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
         >
           {loading ? (
             <div className="text-white">Loading...</div>
-          ) : error ? (
-            <div className="text-red-500">{error}</div>
           ) : friends.length === 0 ? (
             <div className="text-white">No friends found</div>
           ) : (
@@ -134,10 +181,17 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
                 </div>
                 <Button
                   variant="contained"
-                  sx={{ backgroundColor: "#57A64E" }}
-                  onClick={() => handleInviteClick(friend)}
+                  sx={{
+                    backgroundColor: "#57A64E",
+                    "&:disabled": {
+                      backgroundColor: "#2E5428",
+                      color: "#A0A0A0"
+                    }
+                  }}
+                  disabled={inviting}
+                  onClick={() => handleInvite(friend)}
                 >
-                  INVITE
+                  {inviting ? "SENDING..." : "INVITE"}
                 </Button>
               </div>
             ))

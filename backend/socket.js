@@ -309,6 +309,109 @@ const setupSocket = (server) => {
             });
         });
 
+        // Add these new event handlers for battle invitations
+        socket.on("notify_battle_invitation", (data) => {
+            try {
+                const { senderId, senderName, receiverId, lobbyCode } = data;
+
+                if (!senderId || !receiverId || !lobbyCode) {
+                    throw new Error("Missing required battle invitation data");
+                }
+
+                console.log("🎮 Battle invitation sent:", {
+                    from: senderName || senderId,
+                    to: receiverId,
+                    lobbyCode
+                });
+
+                // Send notification to the receiver
+                io.to(receiverId).emit("battle_invitation", {
+                    senderId,
+                    senderName,
+                    receiverId,
+                    lobbyCode,
+                    timestamp: new Date().toISOString()
+                });
+
+                // Confirm to sender
+                socket.emit("battle_invitation_sent", {
+                    success: true,
+                    receiverId,
+                    lobbyCode
+                });
+
+            } catch (error) {
+                console.error("Error processing battle invitation:", error);
+                socket.emit("error", {
+                    type: "battleInvitation",
+                    message: "Failed to send battle invitation",
+                    details: error.message
+                });
+            }
+        });
+
+        socket.on("accept_battle_invitation", (data) => {
+            try {
+                const { senderId, receiverId, lobbyCode } = data;
+
+                if (!senderId || !receiverId || !lobbyCode) {
+                    throw new Error("Missing required invitation acceptance data");
+                }
+
+                console.log("✅ Battle invitation accepted:", {
+                    senderId,
+                    receiverId,
+                    lobbyCode
+                });
+
+                // Notify the original sender that their invitation was accepted
+                io.to(senderId).emit("battle_invitation_accepted", {
+                    senderId,
+                    receiverId,
+                    lobbyCode
+                });
+
+            } catch (error) {
+                console.error("Error processing invitation acceptance:", error);
+                socket.emit("error", {
+                    type: "battleAcceptance",
+                    message: "Failed to process battle acceptance",
+                    details: error.message
+                });
+            }
+        });
+
+        socket.on("decline_battle_invitation", (data) => {
+            try {
+                const { senderId, receiverId, lobbyCode } = data;
+
+                if (!senderId || !receiverId) {
+                    throw new Error("Missing required invitation decline data");
+                }
+
+                console.log("❌ Battle invitation declined:", {
+                    senderId,
+                    receiverId,
+                    lobbyCode
+                });
+
+                // Notify the original sender that their invitation was declined
+                io.to(senderId).emit("battle_invitation_declined", {
+                    senderId,
+                    receiverId,
+                    lobbyCode
+                });
+
+            } catch (error) {
+                console.error("Error processing invitation decline:", error);
+                socket.emit("error", {
+                    type: "battleDecline",
+                    message: "Failed to process battle decline",
+                    details: error.message
+                });
+            }
+        });
+
     });
 
     // Global error handler for the io server
