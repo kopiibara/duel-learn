@@ -75,14 +75,20 @@ const signUpUser = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized: Invalid token" });
     }
 
-    const isSSO = false;
-    const { username, email, password, email_verified } = req.body;
+    const { username, email, password, email_verified, isSSO } = req.body;
     const uid = decodedToken.uid;
     const currentTimestamp = moment().format("YYYY-MM-DD HH:mm:ss");
     connection = await pool.getConnection();
     const password_hash = await bcrypt.hash(password, 10);
 
-    console.log("Received email_verified status:", email_verified);
+    console.log("Sign Up Request Data:", {
+      username,
+      email,
+      email_verified,
+      isSSO,
+      uid,
+      password: '[HIDDEN]'
+    });
 
     // Parallelize SQL and Firestore operations
     await Promise.all([
@@ -99,13 +105,13 @@ const signUpUser = async (req, res) => {
           null,
           null,
           email_verified,
-          isSSO,
+          isSSO === true,  // Ensure boolean value
         ]
       ),
       connection.execute(
         `INSERT INTO user_info (firebase_uid, username, display_picture, level, exp, coins, mana)
          VALUES (?, ?, ?, ?, ?, ?, ?);`,
-        [uid, username || "Default Username", null, 1, 50, 10, 100]
+        [uid, username || "Default Username", null, 1, 0, 500, 200]
       ),
       admin.firestore().collection("users").doc(uid).set({
         username: username || "Default Username",

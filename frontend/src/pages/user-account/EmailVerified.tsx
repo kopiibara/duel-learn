@@ -7,11 +7,13 @@ import { auth } from "../../services/firebase";
 import { reload, applyActionCode,} from "firebase/auth";
 import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
 import { useUser } from "../../contexts/UserContext";
+import useUserData from "../../hooks/api.hooks/useUserData";
 
 interface LocationState {
   email?: string;
   firebase_uid?: string;
   oobCode?: string;
+  token?: string;
 }
 
 const EmailVerified = () => {
@@ -19,6 +21,7 @@ const EmailVerified = () => {
   const location = useLocation();
   const { user, setUser } = useUser();
   const { signUpApi } = useSignUpApi();
+  const { fetchAndUpdateUserData } = useUserData();
   const [isVerifying, setIsVerifying] = useState(false);
 
   useEffect(() => {
@@ -78,6 +81,12 @@ const EmailVerified = () => {
 
         if (email_verified) {
           await signUpApi(state.firebase_uid, isNew, email_verified);
+          
+          // Get token after successful verification
+          const token = await auth.currentUser.getIdToken();
+          
+          // Fetch and update user data
+          await fetchAndUpdateUserData(state.firebase_uid, token);
         }
         // 6. Clear email verification related data
         localStorage.removeItem("emailTimestamp");

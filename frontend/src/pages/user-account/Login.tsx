@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
-import useHandleError from "../../hooks/validation.hooks/useHandleError";
+import useCombinedErrorHandler from "../../hooks/validation.hooks/useCombinedErrorHandler";
 import {
   getFirestore,
   collection,
@@ -13,8 +13,11 @@ import {
   doc,
 } from "firebase/firestore";
 import PageTransition from "../../styles/PageTransition";
-import useGoogleSignIn from "../../hooks/auth.hooks/useGoogleSignIn";
+import useGoogleAuth from "../../hooks/auth.hooks/useGoogleAuth";
+import useUserData from "../../hooks/api.hooks/useUserData";
 import LoadingScreen from "../../components/LoadingScreen";
+import { useFormik } from "formik";
+import * as Yup from "yup";
 
 //import axios from "axios";
 import { signInWithEmailAndPassword} from "firebase/auth";
@@ -29,143 +32,127 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 
 const Login = () => {
   const { setUser, user } = useUser(); // Get user from context
-  const [data, setData] = useState({
-    username: "",
-    password: "",
-  });
-  const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
-  const { error, handleLoginError, setError } = useHandleError();
+  const { handleError, combinedError } = useCombinedErrorHandler();
   const navigate = useNavigate();
-  const { handleGoogleSignIn } = useGoogleSignIn();
+  const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
+  const [successMessage, setSuccessMessage] = useState("");
+  const { handleGoogleAuth, loading: googleLoading } = useGoogleAuth();
+  const { fetchAndUpdateUserData, loading: userDataLoading } = useUserData();
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (user) {
-      const showLogoutModal = () => {
-        const confirmed = window.confirm("You are already logged in. Would you like to log out?");
-        if (confirmed) {
-          // Handle logout
-          auth.signOut();
-        } else {
-          navigate("/dashboard/home");
-        }
-      };
-      showLogoutModal();
+  // Check if user is already logged in
+  if (user) {
+    const confirmed = window.confirm("You are already logged in. Would you like to log out?");
+    if (confirmed) {
+      auth.signOut();
+    } else {
+      navigate("/dashboard/home");
+      return null; // Return early to prevent rendering the login form
     }
-  }, [user, navigate]);
+  }
 
   const togglePassword = () => {
     setShowPassword(!showPassword); // Toggle password visibility
   };
 
-  const googleSubmit = async () => {
-    setLoading(true);
-    await handleGoogleSignIn();
-  };
+  const validationSchema = Yup.object({
+    username: Yup.string()
+      .required("Username or email is required."),
+    password: Yup.string()
+      .required("Password is required.")
+  });
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setLoading(true);
-    const { username, password } = data;
-    let email = username;
+  const formik = useFormik({
+    initialValues: {
+      username: "",
+      password: "",
+    },
+    validationSchema,
+    onSubmit: async (values) => {
+      setLoading(true);
+      let email = values.username;
 
-    try {
-      if (!/\S+@\S+\.\S+/.test(username)) {
-        // If username is not an email, fetch email from user collection
-        const db = getFirestore();
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("username", "==", username));
-        const querySnapshot = await getDocs(q);
+      try {
+        if (!/\S+@\S+\.\S+/.test(values.username)) {
+          // If username is not an email, fetch email from user collection
+          const db = getFirestore();
+          const usersRef = collection(db, "users");
+          const q = query(usersRef, where("username", "==", values.username));
+          const querySnapshot = await getDocs(q);
 
-        if (!querySnapshot.empty) {
-          email = email;
-        } else {
-          throw setError("Username not found");
+          if (!querySnapshot.empty) {
+            email = email;
+          } else {
+            throw new Error("Username not found");
+          }
         }
-      }
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      console.log("User Credential:", result);
-      const token = await result.user.getIdToken();
-      const additionalUserInfo = getAdditionalInfo(result);
-      const userDoc = await getDoc(doc(db, "users", result.user.uid));
-      const userInfoDoc = await getDoc(doc(db, "users", result.user.uid, "user_info", "level"));
+        
+        const result = await signInWithEmailAndPassword(auth, email, values.password);
+        const token = await result.user.getIdToken();
 
-      let level = 1; // Default level
-      let exp = 0; // Default experience
-      let mana = 200; // Default mana
-      let coins = 500; // Default coins
+        // Fetch and update user data using the new hook
+        const userData = await fetchAndUpdateUserData(result.user.uid, token);
+        
+        if (userData.isNew) {
+          setSuccessMessage("Account created successfully!");
+        }
 
-      if (userInfoDoc.exists()) {
-        const userInfoData = userInfoDoc.data();
-        level = userInfoData.level || level;
-        exp = userInfoData.exp || exp;
-        mana = userInfoData.mana || mana;
-        coins = userInfoData.coins || coins;
-      }
-
-      if (userDoc.exists()) {
-        const userData = {
-          firebase_uid: result.user.uid,
-          username: userDoc.data().username,
-          email: userDoc.data().email,
-          display_picture: userDoc.data().display_picture,
-          isNew: additionalUserInfo?.isNewUser ?? false,
-          full_name: userDoc.data().full_name,
-          email_verified: userDoc.data().email_verified,
-          isSSO: userDoc.data().isSSO,
-          account_type: userDoc.data().account_type as
-            | "free"
-            | "premium"
-            | "admin", // Ensure the value is either 'free' or 'premium'
-          level: level,
-          exp: exp,
-          mana: mana,
-          coins: coins
-        };
-        console.log("User Data:", userData);
-        const isNewUser =
-          !userDoc.exists() ||
-          (userDoc.exists() &&
-            Date.now() - userDoc.data().created_at.toMillis() < 300000);
-
-        // Store user data in context
-        setUser(userData);
-
-        // Optionally, you can store the token in local storage or context
-        localStorage.setItem("userToken", token);
-
+        // Navigate based on user status
         setTimeout(() => {
           if (userData.account_type === "admin") {
             navigate("/admin/admin-dashboard");
-          } else if (isNewUser && userData.email_verified) {
+          } else if (userData.isNew && userData.email_verified) {
             navigate("/dashboard/welcome");
-          } else if (isNewUser && userData.email_verified === false) {
-            navigate("/dashboard/verify-email");
-          } else if (userData.email_verified === false) {
-            navigate("/dashboard/verify-email");
+          } else if (!userData.email_verified) {
+            navigate("/dashboard/verify-email", { state: { token } });
           } else {
             navigate("/dashboard/home");
           }
         }, 2000);
+      } catch (error) {
+        handleError(error);
+      } finally {
+        setLoading(false);
       }
+    }
+  });
+
+  const googleSubmit = async () => {
+    try {
+      const authResult = await handleGoogleAuth();
+      
+      // Fetch and update user data using the new hook
+      const userData = await fetchAndUpdateUserData(authResult.userData.uid, authResult.token);
+
+      if (userData.isNew) {
+        setSuccessMessage("Account created successfully!");
+      }
+
+      setTimeout(() => {
+        if (userData.isNew && userData.email_verified) {
+          navigate("/dashboard/welcome");
+        } else if (!userData.email_verified) {
+          navigate("/dashboard/verify-email", { state: { token: authResult.token } });
+        } else {
+          navigate("/dashboard/home");
+        }
+      }, 2000);
     } catch (error) {
-      handleLoginError(error); // Use the hook to handle login error
-    } finally {
-      setLoading(false);
+      handleError(error);
     }
   };
 
-  if (loading) {
+  if (loading || googleLoading || userDataLoading) {
     return (
       <PageTransition>
         <LoadingScreen />
       </PageTransition>
-    ); // Show the loading screen
+    );
   }
 
   return (
     <PageTransition>
-      <div className="h-screen flex items-center justify-center ">
+      <div className="font-aribau min-h-screen flex items-center justify-center">
         {/* Simple Header */}
         <header className="absolute top-20 left-20 flex items-center">
           <Link to="/" className="flex items-center space-x-4">
@@ -176,17 +163,26 @@ const Login = () => {
 
         <div className="w-full max-w-md  rounded-lg p-8 shadow-md">
           {/* Heading */}
-          <h1 className="text-3xl font-bold text-center text-white mb-2">
+          <h1 className="text-3xl font-bold text-center text-[#E2DDF3] mb-2">
             Login your Account
           </h1>
           <p className="text-lg text-center text-[#9F9BAE] mb-8">
             Please enter your details to login.
           </p>
-
+          {successMessage && (
+            <div className="bg-green-700 text-white text-center py-2 mb-4 rounded">
+              {successMessage}
+            </div>
+          )}
+          {combinedError && (
+            <div className="bg-red-700 text-white text-center py-2 mb-4 rounded">
+              {combinedError}
+            </div>
+          )}
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={formik.handleSubmit} className="space-y-4">
             {/* Username Input */}
-            <div>
+            <div className="relative mb-4">
               <label htmlFor="username" className="sr-only">
                 Username or Email
               </label>
@@ -194,20 +190,24 @@ const Login = () => {
                 type="text"
                 id="username"
                 name="username"
-                value={data.username}
-                onChange={(e) => setData({ ...data, username: e.target.value })}
+                value={formik.values.username}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 placeholder="Enter your username or email"
                 required
-                className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
-                  error
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                  formik.touched.username && formik.errors.username
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
                 }`}
               />
+              {formik.touched.username && formik.errors.username && (
+                <p className="text-red-500 mt-1 text-sm">{formik.errors.username}</p>
+              )}
             </div>
 
             {/* Password Input */}
-            <div className="relative">
+            <div className="relative mb-4">
               <label htmlFor="password" className="sr-only">
                 Password
               </label>
@@ -215,19 +215,20 @@ const Login = () => {
                 type={showPassword ? "text" : "password"}
                 id="password"
                 name="password"
-                value={data.password}
-                onChange={(e) => setData({ ...data, password: e.target.value })}
+                value={formik.values.password}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 placeholder="Enter your password"
                 required
-                className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
-                  error
+                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                  formik.touched.password && formik.errors.password
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
                 }`}
               />
               <span
                 onClick={togglePassword}
-                className="absolute right-3 top-3 text-[#9F9BAE] cursor-pointer"
+                className="absolute top-3 right-3 text-[#9F9BAE] cursor-pointer"
               >
                 {showPassword ? (
                   <VisibilityRoundedIcon />
@@ -235,10 +236,10 @@ const Login = () => {
                   <VisibilityOffRoundedIcon />
                 )}
               </span>
+              {formik.touched.password && formik.errors.password && (
+                <p className="text-red-500 mt-1 text-sm">{formik.errors.password}</p>
+              )}
             </div>
-
-            {/* Error Message */}
-            {error && <p className="text-red-500 text-center mt-2">{error}</p>}
 
             {/* Forgot Password */}
             <div className="text-right">
@@ -253,7 +254,7 @@ const Login = () => {
             {/* Login Button */}
             <button
               type="submit"
-              className="w-full bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
+              className="w-full py-3 text-white bg-[#4D18E8] rounded-lg hover:bg-[#3814b6] focus:outline-none focus:ring-4 focus:ring-[#4D18E8]"
             >
               Login
             </button>
@@ -261,9 +262,9 @@ const Login = () => {
 
           {/* Divider */}
           <div className="flex items-center my-6">
-            <div className="flex-grow border-t border-[#3B354D]"></div>
-            <span className="text-sm text-[#9F9BAE] mx-3">or</span>
-            <div className="flex-grow border-t border-[#3B354D]"></div>
+            <hr className="flex-grow border-t border-[#9F9BAE]" />
+            <span className="mx-2 text-[#9F9BAE]">or</span>
+            <hr className="flex-grow border-t border-[#9F9BAE]" />
           </div>
 
           {/* Google Sign-In */}
@@ -280,7 +281,7 @@ const Login = () => {
           </button>
 
           {/* Footer */}
-          <p className="text-center text-sm text-[#9F9BAE] mt-6">
+          <p className="mt-4 text-center text-sm text-[#9F9BAE]">
             Don't have an account?{" "}
             <Link to="/sign-up" className="text-[#4D18E8] hover:underline">
               Sign up

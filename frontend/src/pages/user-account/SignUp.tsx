@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
-import { auth} from "../../services/firebase";
+import { auth } from "../../services/firebase";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import "../../index.css";
 import PageTransition from "../../styles/PageTransition";
@@ -10,8 +10,9 @@ import useCombinedErrorHandler from "../../hooks/validation.hooks/useCombinedErr
 import LoadingScreen from "../../components/LoadingScreen";
 import { useFormik } from "formik";
 import * as Yup from "yup";
-import handleGoogleSignIn from "../../hooks/auth.hooks/useGoogleSignIn";
+import useGoogleAuth from "../../hooks/auth.hooks/useGoogleAuth";
 import { useStoreUser } from '../../hooks/api.hooks/useStoreUser';
+import useUserData from "../../hooks/api.hooks/useUserData";
 
 const SignUp = () => {
   const { handleError, combinedError } = useCombinedErrorHandler();
@@ -20,6 +21,8 @@ const SignUp = () => {
   const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const { storeUser } = useStoreUser();
+  const { handleGoogleAuth, loading: googleLoading } = useGoogleAuth();
+  const { fetchAndUpdateUserData, loading: userDataLoading } = useUserData();
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
@@ -40,7 +43,7 @@ const SignUp = () => {
       .matches(/[A-Z]/, "Password must contain at least one uppercase letter.")
       .matches(/[a-z]/, "Password must contain at least one lowercase letter.")
       .matches(/[0-9]/, "Password must contain at least one number.")
-      .matches(/[!@#$%^&*(),.?\":{}|<>]/, "Password must contain at least one special character."),
+      .matches(/[!@#$%^&*(),.?":{}|<>]/, "Password must contain at least one special character."),
     confirmPassword: Yup.string()
       .oneOf([Yup.ref('password')], "Passwords must match").required("Please confirm your password."),
     terms: Yup.boolean().oneOf([true], "You must agree to the terms and conditions."),
@@ -111,12 +114,41 @@ const SignUp = () => {
     }
   });
 
-  if (loading) {
+  const handleGoogleSubmit = async () => {
+    try {
+      const authResult = await handleGoogleAuth();
+      
+      // Fetch and update user data using the new hook
+      const userData = await fetchAndUpdateUserData(authResult.userData.uid, authResult.token);
+
+      // Show success message for new users
+      if (userData.isNew) {
+        setSuccessMessage("Account created successfully!");
+      }
+
+      // Navigate based on user status
+      setTimeout(() => {
+        if (userData.account_type === "admin") {
+          navigate("/admin/admin-dashboard");
+        } else if (userData.isNew && userData.email_verified) {
+          navigate("/dashboard/welcome");
+        } else if (!userData.email_verified) {
+          navigate("/dashboard/verify-email", { state: { token: authResult.token } });
+        } else {
+          navigate("/dashboard/home");
+        }
+      }, 2000);
+    } catch (error) {
+      handleError(error);
+    }
+  };
+
+  if (loading || googleLoading || userDataLoading) {
     return (
       <PageTransition>
         <LoadingScreen />
       </PageTransition>
-    ); // Show the loading screen
+    );
   }
 
   return (
@@ -178,7 +210,7 @@ const SignUp = () => {
                 value={formik.values.password}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                onCopy={(e) => e.preventDefault()} // Disable copy
+                onCopy={(e) => e.preventDefault()}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
                   formik.touched.password && formik.errors.password
                     ? "border border-red-500 focus:ring-red-500"
@@ -209,7 +241,7 @@ const SignUp = () => {
                 value={formik.values.confirmPassword}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                onPaste={(e) => e.preventDefault()} // Disable paste
+                onPaste={(e) => e.preventDefault()}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
                   formik.touched.confirmPassword && formik.errors.confirmPassword
                     ? "border border-red-500 focus:ring-red-500"
@@ -279,13 +311,13 @@ const SignUp = () => {
 
           <button
             className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors"
-            onClick={handleGoogleSignIn}
+            onClick={handleGoogleSubmit}
           >
             <img
               src="/google-logo.png"
               className="w-5 h-5 mr-3"
               alt="Google Icon"
-            ></img>
+            />
             Sign up with Google
           </button>
 
