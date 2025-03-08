@@ -6,37 +6,34 @@ import ProfilePictureModal from "../../../components/ProfilePictureModal";
 import useProfilePicture from "../../../hooks/useProfilePicture";
 import DeleteAccountModal from "../../../components/DeleteAccountModal";
 import { CircularProgress } from "@mui/material";
+import { useUser } from "../../../contexts/UserContext";
 
 export default function AccountSettings() {
+  const { user } = useUser();
   const {
-    userData,
+    formik,
     isEditing,
     isChangingPassword,
     isCreatingPassword,
     showPassword,
     showConfirmPassword,
-    errors,
-    passwordErrors,
     error,
     hasNoPassword,
     isLoading,
     handleEditClick,
-    handleSaveClick,
     handleDiscardClick,
-    handleInputChange,
     handlePasswordChangeClick,
     handleCreatePasswordClick,
     togglePassword,
     toggleConfirmPassword,
     hasChanges,
-    validate,
-    validatePassword,
     handleProfilePictureChange,
     isDeleteModalOpen,
     isDeletingAccount,
     openDeleteModal,
     closeDeleteModal,
     handleDeleteAccount,
+    handleUsernameChange,
   } = useAccountSettings();
 
   const {
@@ -47,7 +44,7 @@ export default function AccountSettings() {
     closeModal,
     handlePictureSelect,
     handleSave,
-  } = useProfilePicture(userData.display_picture || sampleAvatar);
+  } = useProfilePicture(formik.values.display_picture || sampleAvatar);
 
   const handleProfilePictureSave = () => {
     if (!isEditing) return;
@@ -57,19 +54,23 @@ export default function AccountSettings() {
 
   return (
     <div className="h-auto w-full">
-      {/* Main Content */}
       <main className="px-8">
         <h1 className="text-2xl font-semibold mb-6">Account Settings</h1>
         <div className="flex items-start">
-          <div className="bg-[#0D0A17] rounded-[1rem] p-12 space-y-8">
+          <form onSubmit={formik.handleSubmit} className="bg-[#0D0A17] rounded-[1rem] p-12 space-y-8">
             {/* Profile Image Section */}
+            {error.general && (
+                  <div className="w-[850px] px-4 py-2 bg-red-100 text-red-600 rounded-[0.8rem] border border-red-300">
+                    {error.general}
+                  </div>
+                )}  
             <div className="space-y-4">
-              <label className="block text-[1.05rem]  text-[#9F9BAE]">
+              <label className="block text-[1.05rem] text-[#9F9BAE]">
                 Profile Image
               </label>
               <div className="flex items-center gap-6">
                 <img
-                  src={userData.display_picture || sampleAvatar}
+                  src={formik.values.display_picture || sampleAvatar}
                   alt="Profile"
                   className={`w-[198px] h-[194.49px] rounded-lg ${
                     isEditing
@@ -92,15 +93,14 @@ export default function AccountSettings() {
               <input
                 id="username"
                 type="text"
-                value={userData.username || ""}
+                {...formik.getFieldProps("username")}
+                onChange={handleUsernameChange}
                 disabled={!isEditing}
-                onChange={handleInputChange}
-                onBlur={(e) => validate("username", e.target.value)}
                 className="w-[850px] h-[47px] px-4 py-5 bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] focus:border-[#4D18E8] transition-colors"
                 style={{ color: isEditing ? "white" : "#6F658D" }}
               />
-              {errors.username && (
-                <p className="text-red-500 text-sm mt-1">{errors.username}</p>
+              {formik.touched.username && formik.errors.username && (
+                <p className="text-red-500 text-sm mt-1">{formik.errors.username}</p>
               )}
             </div>
 
@@ -115,9 +115,9 @@ export default function AccountSettings() {
               <input
                 id="email"
                 type="email"
-                value={userData.email || ""}
+                value={user?.email || ""}
                 disabled
-                className="w-[850px] h-[47px] px-4 py-5 bg-[#3B354D] text-[#6F658D]  rounded-[0.8rem]  focus:outline-none focus:ring-2 focus:ring-[#4D18E8] focus:border-[#4D18E8] transition-colors"
+                className="w-[850px] h-[47px] px-4 py-5 bg-[#3B354D] text-[#6F658D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] focus:border-[#4D18E8] transition-colors"
               />
             </div>
 
@@ -133,6 +133,7 @@ export default function AccountSettings() {
                       Password
                     </label>
                     <button
+                      type="button"
                       onClick={handleCreatePasswordClick}
                       className="w-[850px] h-[47px] px-4 bg-[#2a2435] text-[#6F658D] rounded-[0.8rem] hover:bg-[#3b354d] transition-colors"
                     >
@@ -158,14 +159,7 @@ export default function AccountSettings() {
                       <input
                         type={showPassword ? "text" : "password"}
                         id="newpassword"
-                        onChange={handleInputChange}
-                        onBlur={(e) =>
-                          validatePassword(
-                            "newpassword",
-                            e.target.value,
-                            userData
-                          )
-                        }
+                        {...formik.getFieldProps("newpassword")}
                         className="w-[850px] h-[47px] px-4 py-5 bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] focus:border-[#4D18E8] transition-colors"
                         style={{ color: isEditing ? "white" : "#6F658D" }}
                       />
@@ -181,10 +175,8 @@ export default function AccountSettings() {
                         )}
                       </button>
                     </div>
-                    {passwordErrors.newpassword && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {passwordErrors.newpassword}
-                      </p>
+                    {formik.touched.newpassword && formik.errors.newpassword && (
+                      <p className="text-red-500 text-sm mt-1">{formik.errors.newpassword}</p>
                     )}
                   </div>
                   <div className="space-y-2">
@@ -198,15 +190,8 @@ export default function AccountSettings() {
                       <input
                         type={showConfirmPassword ? "text" : "password"}
                         id="confirmPassword"
-                        onChange={handleInputChange}
-                        onBlur={(e) =>
-                          validatePassword(
-                            "confirmPassword",
-                            e.target.value,
-                            userData
-                          )
-                        }
-                        className="w-[850px] h-[47px] px-4 pr-12 bg-[#2a2435]  border-[#3b354d] rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4D18E8]"
+                        {...formik.getFieldProps("confirmPassword")}
+                        className="w-[850px] h-[47px] px-4 py-5 bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] focus:border-[#4D18E8] transition-colors"
                         style={{ color: isEditing ? "white" : "#6F658D" }}
                       />
                       <button
@@ -221,10 +206,8 @@ export default function AccountSettings() {
                         )}
                       </button>
                     </div>
-                    {passwordErrors.confirmPassword && (
-                      <p className="text-red-500 text-sm mt-1">
-                        {passwordErrors.confirmPassword}
-                      </p>
+                    {formik.touched.confirmPassword && formik.errors.confirmPassword && (
+                      <p className="text-red-500 text-sm mt-1">{formik.errors.confirmPassword}</p>
                     )}
                   </div>
                 </>
@@ -239,6 +222,7 @@ export default function AccountSettings() {
                     Password
                   </label>
                   <button
+                    type="button"
                     onClick={handlePasswordChangeClick}
                     className="w-[850px] h-[47px] px-4 bg-[#2a2435] text-[#6F658D] rounded-[0.8rem] hover:bg-[#3b354d] transition-colors"
                   >
@@ -248,11 +232,7 @@ export default function AccountSettings() {
               )
             ) : (
               <>
-                {error.general && (
-                  <div className="w-[850px] px-4 py-2 bg-red-100 text-red-600  rounded-[0.8rem] border border-red-300">
-                    {error.general}
-                  </div>
-                )}
+                
                 <div className="space-y-2">
                   <label
                     htmlFor="newpassword"
@@ -264,14 +244,7 @@ export default function AccountSettings() {
                     <input
                       type={showPassword ? "text" : "password"}
                       id="newpassword"
-                      onChange={handleInputChange}
-                      onBlur={(e) =>
-                        validatePassword(
-                          "newpassword",
-                          e.target.value,
-                          userData
-                        )
-                      }
+                      {...formik.getFieldProps("newpassword")}
                       className="w-[850px] h-[47px] px-4 py-5 bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] focus:border-[#4D18E8] transition-colors"
                       style={{ color: isEditing ? "white" : "#6F658D" }}
                     />
@@ -287,10 +260,8 @@ export default function AccountSettings() {
                       )}
                     </button>
                   </div>
-                  {passwordErrors.newpassword && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {passwordErrors.newpassword}
-                    </p>
+                  {formik.touched.newpassword && formik.errors.newpassword && (
+                    <p className="text-red-500 text-sm mt-1">{formik.errors.newpassword}</p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -304,14 +275,7 @@ export default function AccountSettings() {
                     <input
                       type={showConfirmPassword ? "text" : "password"}
                       id="confirmPassword"
-                      onChange={handleInputChange}
-                      onBlur={(e) =>
-                        validatePassword(
-                          "confirmPassword",
-                          e.target.value,
-                          userData
-                        )
-                      }
+                      {...formik.getFieldProps("confirmPassword")}
                       className="w-[850px] h-[47px] px-4 py-5 bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] focus:border-[#4D18E8] transition-colors"
                       style={{ color: isEditing ? "white" : "#6F658D" }}
                     />
@@ -327,25 +291,25 @@ export default function AccountSettings() {
                       )}
                     </button>
                   </div>
-                  {passwordErrors.confirmPassword && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {passwordErrors.confirmPassword}
-                    </p>
+                  {formik.touched.confirmPassword && formik.errors.confirmPassword && (
+                    <p className="text-red-500 text-sm mt-1">{formik.errors.confirmPassword}</p>
                   )}
                 </div>
               </>
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-4 ">
+            <div className="flex gap-4">
               <button
+                type="button"
                 onClick={handleDiscardClick}
                 className="px-8 bg-[#2a2435] text-[#6F658D] rounded-[0.8rem] hover:bg-[#3B354D] transition-colors"
               >
                 Discard
               </button>
               <button
-                onClick={isEditing ? handleSaveClick : handleEditClick}
+                type={isEditing ? "submit" : "button"}
+                onClick={!isEditing ? handleEditClick : undefined}
                 className={`px-10 py-2 ${
                   isEditing ? "bg-[#381898]" : "bg-[#381898]"
                 } text-white rounded-[0.8rem] hover:bg-[#4D18E8] transition-colors`}
@@ -362,20 +326,20 @@ export default function AccountSettings() {
             </div>
 
             {/* Delete Account Section */}
-
             <div className="bg-[#1a1625]/50 rounded-lg p-8 mt-8">
               <h2 className="text-xl font-semibold mb-4">Delete Account</h2>
               <p className="text-gray-400 mb-6">
                 This will delete all your data and cannot be undone.
               </p>
               <button
+                type="button"
                 onClick={openDeleteModal}
                 className="w-[182.45px] h-[45px] bg-[#f13f42] text-white rounded-lg hover:bg-red-900 transition-colors"
               >
                 Delete
               </button>
             </div>
-          </div>
+          </form>
         </div>
       </main>
 
