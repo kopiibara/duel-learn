@@ -12,7 +12,6 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import useGoogleAuth from "../../hooks/auth.hooks/useGoogleAuth";
 import { useStoreUser } from '../../hooks/api.hooks/useStoreUser';
-import useUserData from "../../hooks/api.hooks/useUserData";
 
 const SignUp = () => {
   const { handleError, combinedError } = useCombinedErrorHandler();
@@ -22,7 +21,6 @@ const SignUp = () => {
   const [loading, setLoading] = useState(false);
   const { storeUser } = useStoreUser();
   const { handleGoogleAuth, loading: googleLoading } = useGoogleAuth();
-  const { fetchAndUpdateUserData, loading: userDataLoading } = useUserData();
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
@@ -118,21 +116,29 @@ const SignUp = () => {
     try {
       const authResult = await handleGoogleAuth();
       
-      // Fetch and update user data using the new hook
-      const userData = await fetchAndUpdateUserData(authResult.userData.uid, authResult.token);
+      // Store token
+      localStorage.setItem("userToken", authResult.token);
+
+      // Store minimal user data
+      const userData = {
+        email: authResult.userData.email,
+        username: authResult.userData.displayName,
+        email_verified: authResult.emailVerified,
+        firebase_uid: authResult.userData.uid,
+        isNew: authResult.isNewUser,
+      };
+      localStorage.setItem("userData", JSON.stringify(userData));
 
       // Show success message for new users
-      if (userData.isNew) {
+      if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
       }
 
       // Navigate based on user status
       setTimeout(() => {
-        if (userData.account_type === "admin") {
-          navigate("/admin/admin-dashboard");
-        } else if (userData.isNew && userData.email_verified) {
+        if (authResult.isNewUser && authResult.emailVerified) {
           navigate("/dashboard/welcome");
-        } else if (!userData.email_verified) {
+        } else if (!authResult.emailVerified) {
           navigate("/dashboard/verify-email", { state: { token: authResult.token } });
         } else {
           navigate("/dashboard/home");
@@ -143,7 +149,7 @@ const SignUp = () => {
     }
   };
 
-  if (loading || googleLoading || userDataLoading) {
+  if (loading || googleLoading) {
     return (
       <PageTransition>
         <LoadingScreen />
