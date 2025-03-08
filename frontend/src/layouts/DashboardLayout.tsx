@@ -39,7 +39,7 @@ const DashboardLayout = () => {
 
       {/* Main Section */}
       <Box className="flex-1 flex flex-col">
-        <header className="w-full pr-2 top-0 pb-2 sticky z-50 bg-[#080511] shadow-sm">
+        <header className="w-full pr-2 top-0 pb-2 sticky z-50 ">
           <Header />
         </header>
 

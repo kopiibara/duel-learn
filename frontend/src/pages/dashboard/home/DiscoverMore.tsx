@@ -27,7 +27,7 @@ const DiscoverMore = () => {
   const cardWidth = isSmallScreen
     ? 100 // Small screen: 100% (full width)
     : cards.length === 1
-    ? 60 // Single card: 60%
+    ? 100 // Single card: 60%
     : isMediumScreen && cardsToShow === 2
     ? 50 // Medium screen with 2 cards: 50% each
     : 100 / maxCardsToShow; // Default distribution
@@ -157,9 +157,12 @@ const DiscoverMore = () => {
                 images={item.images}
                 totalItems={item.total_items}
                 createdBy={item.created_by}
+                createdById={item.created_by_id}
                 totalViews={item.total_views}
                 createdAt={item.updated_at}
+                updatedAt={item.updated_at}
                 visibility={item.visibility}
+                status={item.status}
                 items={item.items}
                 onClick={() =>
                   handleCardClick(item.study_material_id, item.title)

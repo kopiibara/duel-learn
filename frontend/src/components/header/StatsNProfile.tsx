@@ -78,8 +78,10 @@ const StatsNProfile = () => {
             }}
           >
             <div className="flex items-center space-x-2">
-              <img src={CoinIcon} alt="Coins" className="w-6 h-6" />
-              <span className="text-[#fff]">{userInfo?.coin || 0}</span>
+              <img src={CoinIcon} alt="Coins" className="w-6 h-auto" />
+              <span className="text-[#9F9BAE] text-[0.9rem] hover:text-[#E2DDF3]">
+                {userInfo?.coin || 0}
+              </span>
             </div>
           </Tooltip>
 
@@ -97,8 +99,10 @@ const StatsNProfile = () => {
             }}
           >
             <div className="flex items-center space-x-2">
-              <img src={ManaIcon} alt="Mana" className="w-6 h-6" />
-              <span className="text-[#fff]">{userInfo?.mana || 0}</span>
+              <img src={ManaIcon} alt="Mana" className="w-5 h-auto" />
+              <span className="text-[#9F9BAE] text-[0.9rem] hover:text-[#E2DDF3] ">
+                {userInfo?.mana || 0}
+              </span>
             </div>
           </Tooltip>
         </>

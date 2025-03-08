@@ -25,7 +25,6 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
       direction={"row"}
       spacing={1}
       className="flex justify-between bg-[#120F1C] py-[1.25rem] px-[0.8rem] border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
-
     >
       <Tooltip title="Your Friends" placement="top" enterDelay={100} arrow>
         <button

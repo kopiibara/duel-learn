@@ -20,7 +20,7 @@ export default function Header() {
   const isMobile = useMediaQuery("(max-width:1022px)");
 
   return (
-    <Box className="w-full h-28 pt-6 text-white shadow flex ps-7 pe-3 items-center justify-between">
+    <Box className="w-full h-28 pt-6 text-white shadow flex ps-7 pe-3 items-center justify-between z-0 bg-[#080511]">
       {" "}
       {/* Mobile Menu Icon */}
       {isMobile && (
