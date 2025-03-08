@@ -220,7 +220,7 @@ const Leaderboards = () => {
               ? "text-[#3B354D] hover:text-[#A38CE6] cursor-pointer transition-colors font-bold"
               : "text-[#232029] cursor-not-allowed font-bold"
           }`}
-          onClick={() => leaderboardData.length > 5 && setIsModalOpen(true)}
+          onClick={() => leaderboardData.length > 3 && setIsModalOpen(true)}
         >
           VIEW MORE
         </p>
@@ -233,7 +233,7 @@ const Leaderboards = () => {
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-[#080511] px-6 py-8 border-[#3B354D] border rounded-lg w-full max-w-[689px] max-h-[90vh] shadow-lg flex flex-col space-y-6 items-center"
+            className="bg-[#080511] px-6 py-8 border-[#3B354D] border rounded-[0.8rem] w-full max-w-[689px] max-h-[90vh] shadow-lg flex flex-col space-y-6 items-center"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl text-white font-semibold">

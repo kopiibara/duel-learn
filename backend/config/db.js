@@ -11,11 +11,14 @@ const pool = mysql.createPool({
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   port: process.env.DB_PORT || 5000,
+  connectionLimit: 20, // Increase this based on your server capacity
   waitForConnections: true,
   queueLimit: 0,
   enableKeepAlive: true,
-  keepAliveInitialDelay: 0
+  keepAliveInitialDelay: 10000,
+  namedPlaceholders: true // Enables named parameters for better readability
 });
+
 
 const connectDB = async () => {
   try {

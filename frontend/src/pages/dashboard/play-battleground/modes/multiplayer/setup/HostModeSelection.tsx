@@ -4,7 +4,6 @@ import { useState } from "react";
 import "./styles/HostModeSelection.css";
 import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
 import "../../../../../user-onboarding/styles/EffectUserOnboarding.css";
-import Image from "./download.jpg";
 import CardBackImg from "../../../../../../assets/General/CardDesignBack.png";
 
 export default function HostModeSelection() {
@@ -117,12 +116,7 @@ export default function HostModeSelection() {
                     </div>
                     <div className="flip-card-back">
                       <div className="card-content p-0 w-full h-full">
-                        <img
-                          src={Image}
-                          alt="Card image"
-                          className="w-full h-full object-contain"
-                          style={{ borderRadius: "0.5rem" }}
-                        />
+                        <p>MSMSMSMS</p>
                       </div>
                     </div>
                   </div>
@@ -140,12 +134,7 @@ export default function HostModeSelection() {
                     </div>
                     <div className="flip-card-back">
                       <div className="card-content p-0 w-full h-full">
-                        <img
-                          src={Image}
-                          alt="Card image"
-                          className="w-full h-full object-contain"
-                          style={{ borderRadius: "0.5rem" }}
-                        />
+                        <p>MSMSMSMS</p>
                       </div>
                     </div>
                   </div>
@@ -164,12 +153,7 @@ export default function HostModeSelection() {
                     </div>
                     <div className="flip-card-back">
                       <div className="card-content p-0 w-full h-full">
-                        <img
-                          src={Image}
-                          alt="Card image"
-                          className="w-full h-full object-contain"
-                          style={{ borderRadius: "0.5rem" }}
-                        />
+                        <p>MSMSMSMS</p>
                       </div>
                     </div>
                   </div>
@@ -187,12 +171,7 @@ export default function HostModeSelection() {
                     </div>
                     <div className="flip-card-back">
                       <div className="card-content p-0 w-full h-full">
-                        <img
-                          src={Image}
-                          alt="Card image"
-                          className="w-full h-full object-contain"
-                          style={{ borderRadius: "0.5rem" }}
-                        />
+                        <p>MSMSMSMS</p>
                       </div>
                     </div>
                   </div>

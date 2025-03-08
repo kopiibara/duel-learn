@@ -183,7 +183,7 @@ export default function MoreOptionPopover({
         </Button>
 
         {isOwner && (
-          <Box>
+          <>
             <Divider sx={{ height: "2px", backgroundColor: "#3B354C" }} />
             <Button
               variant="text"
@@ -205,7 +205,7 @@ export default function MoreOptionPopover({
             >
               Archive
             </Button>
-          </Box>
+          </>
         )}
       </Stack>
     </Popover>

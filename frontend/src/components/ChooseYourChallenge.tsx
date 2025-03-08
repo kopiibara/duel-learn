@@ -67,15 +67,15 @@ const ChooseYourChallenge = () => {
           >
             <Typography
               variant="h6"
-              fontWeight="bold"
-              className="text-[#3C715B]"
+              fontWeight="700"
+              className="text-[#266349]"
             >
               Peaceful Mode
             </Typography>
             <Typography
               variant="body2"
-              fontWeight="medium"
-              className="text-[#3C715B]"
+              fontWeight="650"
+              className="text-[#266349]"
             >
               Study your way, no rush, just flow!
             </Typography>
@@ -111,12 +111,16 @@ const ChooseYourChallenge = () => {
           >
             <Typography
               variant="h6"
-              fontWeight="bold"
-              className="text-[#504D3A]"
+              fontWeight="700"
+              className="text-[#504c36]"
             >
               Time Pressured
             </Typography>
-            <Typography variant="body2" className="text-[#504D3A]">
+            <Typography
+              variant="body2"
+              fontWeight="650"
+              className="text-[#504c36]"
+            >
               Beat the clock, challenge your speed!
             </Typography>
           </Box>
@@ -151,12 +155,16 @@ const ChooseYourChallenge = () => {
           >
             <Typography
               variant="h6"
-              fontWeight="bold"
-              className="text-[#383D61]"
+              fontWeight="700"
+              className="text-[#303869]"
             >
               PvP Mode
             </Typography>
-            <Typography variant="body2" className="text-[#383D61]">
+            <Typography
+              variant="body2"
+              fontWeight="650"
+              className="text-[#303869]"
+            >
               Outsmart your opponent and win!
             </Typography>
           </Box>

@@ -19,6 +19,18 @@ import { useUser } from "../../../../contexts/UserContext"; // Import the useUse
 import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust the
 import Filter from "../../../../components/Filter"; // Adjust the
 
+// Add this constant for size limits
+const MAX_IMAGE_SIZE_MB = 10; // Maximum image size in MB
+const MAX_TOTAL_PAYLOAD_MB = 50; // Maximum total payload size in MB
+
+// Add this helper function to check file size
+const getFileSizeInMB = (base64String: string): number => {
+  // Base64 string length * 0.75 gives approximate size in bytes
+  // (base64 encoding increases size by ~33%)
+  const sizeInBytes = base64String.length * 0.75;
+  return sizeInBytes / (1024 * 1024); // Convert to MB
+};
+
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Add this line
@@ -78,11 +90,49 @@ const CreateStudyMaterial = () => {
     setItems(items.filter((item) => item.id !== id));
   };
 
+  // Update the handleUpdateItem function to validate image size
   const handleUpdateItem = (
     id: number,
     field: string,
     value: string | File | null
   ) => {
+    // Check if the field is an image and it's a base64 string
+    if (
+      field === "image" &&
+      typeof value === "string" &&
+      value.startsWith("data:")
+    ) {
+      const imageSizeMB = getFileSizeInMB(value);
+
+      if (imageSizeMB > MAX_IMAGE_SIZE_MB) {
+        handleShowSnackbar(
+          `Image too large (${imageSizeMB.toFixed(
+            2
+          )}MB). Maximum size is ${MAX_IMAGE_SIZE_MB}MB.`
+        );
+        return; // Don't update the item with this image
+      }
+
+      // Calculate total payload size after adding this image
+      let totalSize = 0;
+      items.forEach((item) => {
+        if (item.id !== id && item.image && typeof item.image === "string") {
+          totalSize += getFileSizeInMB(item.image);
+        }
+      });
+      totalSize += imageSizeMB;
+
+      if (totalSize > MAX_TOTAL_PAYLOAD_MB) {
+        handleShowSnackbar(
+          `Total images size (${totalSize.toFixed(
+            2
+          )}MB) exceeds maximum allowed (${MAX_TOTAL_PAYLOAD_MB}MB).`
+        );
+        return; // Don't update the item with this image
+      }
+    }
+
+    // Update the item if validation passes
     setItems(
       items.map((item) => (item.id === id ? { ...item, [field]: value } : item))
     );
@@ -111,6 +161,23 @@ const CreateStudyMaterial = () => {
 
     if (!title.trim() || items.length === 0) {
       handleShowSnackbar("Title and at least one item are required.");
+      return;
+    }
+
+    // Check total payload size before sending
+    let totalImageSize = 0;
+    items.forEach((item) => {
+      if (item.image && typeof item.image === "string") {
+        totalImageSize += getFileSizeInMB(item.image);
+      }
+    });
+
+    if (totalImageSize > MAX_TOTAL_PAYLOAD_MB) {
+      handleShowSnackbar(
+        `Total images size (${totalImageSize.toFixed(
+          2
+        )}MB) exceeds maximum allowed (${MAX_TOTAL_PAYLOAD_MB}MB). Please reduce image sizes or remove some images.`
+      );
       return;
     }
 

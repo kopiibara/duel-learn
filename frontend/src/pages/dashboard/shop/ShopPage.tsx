@@ -104,7 +104,7 @@ const Shop = () => {
           {items.map((item) => (
             <div
               key={item.id}
-              className="border-2 border-[#6F658D] rounded-lg shadow-lg py-7 px-7 flex flex-col items-center pb-4 aspect-w-1 aspect-h-1 relative"
+              className="border-[0.2rem] border-[#3B354C] rounded-[1rem] shadow-lg py-7 px-7 flex flex-col items-center pb-4 aspect-w-1 aspect-h-1 relative"
             >
               <div className="relative">
                 {item.owned > 0 && (
