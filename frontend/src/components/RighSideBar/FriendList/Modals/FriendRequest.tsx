@@ -107,7 +107,7 @@ const FriendRequests: React.FC<FriendRequestsProps> = ({
           <img
             src={noFriend}
             alt="noFriend"
-            style={{ width: "12rem", height: "auto" }}
+            style={{ width: "12rem", height: "auto", opacity: 0.75 }}
           />
         </Box>
         <p className=" text-[#6F658D] font-bold text-[0.95rem] ">

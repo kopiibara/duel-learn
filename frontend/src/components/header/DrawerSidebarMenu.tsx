@@ -1,12 +1,25 @@
 // DrawerMenu.tsx
-import { Box, Stack, Divider, List, ListItem, ListItemButton, ListItemIcon, ListItemText, Tooltip, IconButton, Typography, Button, Drawer } from "@mui/material";
-import { useNavigate } from "react-router-dom";
 import AddIcon from "@mui/icons-material/Add";
 import PlayIcon from "@mui/icons-material/PlayArrowRounded";
+import {
+  Box,
+  Button,
+  Divider,
+  Drawer,
+  IconButton,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Stack,
+  Tooltip,
+  Typography,
+} from "@mui/material";
 import clsx from "clsx";
-import ChooseModeModal from '../modals/ChooseModeModal'; // Adjust path accordingly
 import { useState } from "react";
-
+import { useNavigate } from "react-router-dom";
+import ChooseModeModal from "../modals/ChooseModeModal"; // Adjust path accordingly
 
 const menuItems = [
   {
@@ -160,7 +173,7 @@ export default function DrawerSidebarMenu({
               />,
               "Create",
               "contained",
-              () => { }
+              () => {}
             )}
             {renderButton(
               <PlayIcon

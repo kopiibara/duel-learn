@@ -1,5 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Box, Typography, Stack, Skeleton } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Stack,
+  Skeleton,
+  Badge,
+  CircularProgress,
+} from "@mui/material";
 import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
 import MyLibraryCards from "./MyLibraryCards";
@@ -7,6 +14,7 @@ import Filter from "../../../components/Filter";
 import { useUser } from "../../../contexts/UserContext";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
 import noStudyMaterial from "../../../assets/images/NoStudyMaterial.svg";
+import RefreshIcon from "@mui/icons-material/Refresh"; // Add this import
 
 const MyLibraryPage = () => {
   const { user } = useUser();
@@ -21,8 +29,9 @@ const MyLibraryPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [previousCardCount, setPreviousCardCount] = useState(3);
 
-  // Add state to track background refreshes
+  // Improved background refresh state
   const [isBackgroundRefreshing, setIsBackgroundRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Add refs to track when data was last fetched
   const lastUserMaterialsFetch = useRef<number>(0);
@@ -32,14 +41,19 @@ const MyLibraryPage = () => {
   const cachedUserMaterials = useRef<StudyMaterial[]>([]);
   const cachedBookmarks = useRef<StudyMaterial[]>([]);
 
+  // Add these two state variables inside your component
+  const [showUpdateLabel, setShowUpdateLabel] = useState(false);
+  const updateLabelTimer = useRef<NodeJS.Timeout | null>(null);
+
   // Create optimized fetch functions with caching
   const fetchStudyMaterials = useCallback(
     async (force = false) => {
       if (!created_by) return;
 
       const now = Date.now();
+      // Reduce cache invalidation time to better match backend's cache TTL (10 minutes)
       const needsRefresh =
-        force || now - lastUserMaterialsFetch.current > 120000; // 2 minutes
+        force || now - lastUserMaterialsFetch.current > 540000; // 9 minutes
 
       if (!needsRefresh && cachedUserMaterials.current.length > 0) {
         console.log("Using cached user materials");
@@ -49,12 +63,12 @@ const MyLibraryPage = () => {
 
       const fetchingUserMaterials = async () => {
         try {
-          // Add timestamp to prevent browser caching
-          const timestamp = now;
+          // Use the timestamp parameter to signal the backend to skip its cache when forced
+          const queryParam = force ? `?timestamp=${now}` : "";
           const response = await fetch(
             `${
               import.meta.env.VITE_BACKEND_URL
-            }/api/study-material/get-by-user/${created_by}?timestamp=${timestamp}`,
+            }/api/study-material/get-by-user/${created_by}${queryParam}`,
             {
               headers: {
                 "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -78,6 +92,8 @@ const MyLibraryPage = () => {
 
           // Update state
           setCards(data);
+          setLastUpdated(new Date());
+          showTemporaryUpdateLabel();
         } catch (error) {
           console.error("Error fetching study materials:", error);
         }
@@ -99,7 +115,7 @@ const MyLibraryPage = () => {
       if (!firebase_uid) return;
 
       const now = Date.now();
-      const needsRefresh = force || now - lastBookmarksFetch.current > 120000; // 2 minutes
+      const needsRefresh = force || now - lastBookmarksFetch.current > 540000; // 9 minutes
 
       if (!needsRefresh && cachedBookmarks.current.length > 0) {
         console.log("Using cached bookmarks");
@@ -109,11 +125,12 @@ const MyLibraryPage = () => {
 
       const fetchingBookmarks = async () => {
         try {
-          const timestamp = now;
+          // Only use timestamp parameter when forcing refresh
+          const queryParam = force ? `?timestamp=${now}` : "";
           const response = await fetch(
             `${
               import.meta.env.VITE_BACKEND_URL
-            }/api/study-material/get-bookmarks-by-user/${firebase_uid}?timestamp=${timestamp}`,
+            }/api/study-material/get-bookmarks-by-user/${firebase_uid}${queryParam}`,
             {
               headers: {
                 "Cache-Control": "no-cache, no-store, must-revalidate",
@@ -153,6 +170,8 @@ const MyLibraryPage = () => {
 
           // Update state
           setBookmarkedCards(formattedBookmarks);
+          setLastUpdated(new Date());
+          showTemporaryUpdateLabel();
         } catch (error) {
           console.error("Error fetching bookmarked study materials:", error);
         }
@@ -188,16 +207,18 @@ const MyLibraryPage = () => {
     setIsLoading(true);
     setPreviousCardCount(cards.length || 3);
 
-    // Fetch both types of data
+    // Fetch both types of data - don't force refresh on initial load
+    // to take advantage of backend preloaded cache
     Promise.all([
-      fetchStudyMaterials(),
-      fetchBookmarkedStudyMaterials(),
+      fetchStudyMaterials(false),
+      fetchBookmarkedStudyMaterials(false),
     ]).finally(() => {
       setIsLoading(false);
+      setLastUpdated(new Date());
     });
 
-    // Set up background refresh interval
-    const refreshInterval = setInterval(backgroundRefresh, 60000); // Every minute
+    // Set up background refresh interval - align with backend's cache TTL (10 minutes)
+    const refreshInterval = setInterval(backgroundRefresh, 300000); // Every 5 minutes
 
     return () => clearInterval(refreshInterval);
   }, [
@@ -206,10 +227,9 @@ const MyLibraryPage = () => {
     fetchStudyMaterials,
     fetchBookmarkedStudyMaterials,
     backgroundRefresh,
-    cards.length,
   ]);
 
-  // Handle refresh request from child components
+  // Handle manual refresh request from child components or refresh button
   const handleRefresh = useCallback(() => {
     console.log("Manual refresh requested");
     setIsLoading(true);
@@ -219,8 +239,52 @@ const MyLibraryPage = () => {
       fetchBookmarkedStudyMaterials(true),
     ]).finally(() => {
       setIsLoading(false);
+      setLastUpdated(new Date());
+      showTemporaryUpdateLabel();
     });
   }, [fetchStudyMaterials, fetchBookmarkedStudyMaterials]);
+
+  // Format last updated time for display
+  const formattedLastUpdated = useCallback(() => {
+    if (!lastUpdated) return "";
+
+    const now = new Date();
+    const diffMs = now.getTime() - lastUpdated.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1) return "Just now";
+    if (diffMins === 1) return "1 min ago";
+    if (diffMins < 60) return `${diffMins} mins ago`;
+
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours === 1) return "1 hour ago";
+    return `${diffHours} hrs ago`;
+  }, [lastUpdated]);
+
+  // Create a function to handle update notifications
+  const showTemporaryUpdateLabel = useCallback(() => {
+    // Clear any existing timer
+    if (updateLabelTimer.current) {
+      clearTimeout(updateLabelTimer.current);
+    }
+
+    // Show the label
+    setShowUpdateLabel(true);
+
+    // Set timer to hide it after 5 seconds
+    updateLabelTimer.current = setTimeout(() => {
+      setShowUpdateLabel(false);
+    }, 1000);
+  }, []);
+
+  // Make sure to clean up the timer in useEffect
+  useEffect(() => {
+    return () => {
+      if (updateLabelTimer.current) {
+        clearTimeout(updateLabelTimer.current);
+      }
+    };
+  }, []);
 
   // Apply filters and sorting
   useEffect(() => {
@@ -315,6 +379,44 @@ const MyLibraryPage = () => {
             <Typography variant="subtitle2">•</Typography>
             <Typography variant="h6">{count}</Typography>
             <Box flexGrow={1} />
+
+            {/* Add refresh button with indicator */}
+            <Box className="flex items-center pr-2">
+              <Typography
+                variant="caption"
+                sx={{
+                  mr: 1,
+                  color: "#6F658D",
+                  opacity: isBackgroundRefreshing || showUpdateLabel ? 1 : 0,
+                  transition: "opacity 0.5s ease-in-out",
+                }}
+              >
+                {isBackgroundRefreshing
+                  ? "Refreshing..."
+                  : `Updated ${formattedLastUpdated()}`}
+              </Typography>
+              {isBackgroundRefreshing ? (
+                <CircularProgress size={20} color="primary" sx={{ mr: 1 }} />
+              ) : (
+                <Badge
+                  color="primary"
+                  variant="dot"
+                  invisible={
+                    lastUserMaterialsFetch.current > Date.now() - 300000
+                  }
+                >
+                  <RefreshIcon
+                    onClick={handleRefresh}
+                    sx={{
+                      cursor: "pointer",
+                      fontSize: "1.2rem",
+                      color: "#6F658D",
+                    }}
+                  />
+                </Badge>
+              )}
+            </Box>
+
             <Stack direction={"row"} spacing={1}>
               <Filter
                 menuItems={[
@@ -372,7 +474,7 @@ const MyLibraryPage = () => {
               <img
                 src={noStudyMaterial}
                 alt="No Study Materials"
-                style={{ width: "22rem", height: "auto" }}
+                style={{ width: "22rem", height: "auto", opacity: 0.75 }}
               />
               <p className="text-[#6F658D] font-bold text-[1rem] mt-4 pr-4 text-center">
                 {filter === "bookmark"

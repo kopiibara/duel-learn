@@ -1,5 +1,5 @@
-import { pool } from "../config/db.js";
 import { nanoid } from "nanoid";
+import { pool } from "../config/db.js";
 import manilacurrentTimestamp from "../utils/CurrentTimestamp.js";
 // Add NodeCache for caching
 import NodeCache from "node-cache";
@@ -134,8 +134,280 @@ const preloadRecommendedContent = async () => {
   }
 };
 
+// Add these preloader functions below the existing ones
+const preloadMadeByFriends = async () => {
+  console.log("Preloading 'made by friends' data...");
+  const connection = await pool.getConnection();
+  try {
+    // Get a list of active users to preload their friends' content
+    const [activeUsers] = await connection.execute(
+      `SELECT firebase_uid FROM users ORDER BY created_at DESC LIMIT 10`
+    );
+
+    if (activeUsers.length === 0) return;
+
+    // Preload data for each active user
+    for (const userRow of activeUsers) {
+      const userId = userRow.firebase_uid;
+      const cacheKey = `made_by_friends_${userId}`;
+
+      // Skip if already cached
+      if (studyMaterialCache.has(cacheKey)) continue;
+
+      console.log(`Preloading 'made by friends' for user: ${userId}`);
+
+      // Find all friends with accepted status
+      const [friendsQuery] = await connection.execute(
+        `SELECT
+          CASE 
+            WHEN sender_id = ? THEN receiver_id 
+            WHEN receiver_id = ? THEN sender_id 
+          END AS friend_id
+        FROM friend_requests
+        WHERE (sender_id = ? OR receiver_id = ?) 
+        AND status = 'accepted'`,
+        [userId, userId, userId, userId]
+      );
+
+      if (friendsQuery.length === 0) {
+        // Cache empty array to avoid unnecessary queries
+        studyMaterialCache.set(cacheKey, [], 1800); // 30 minutes
+        continue;
+      }
+
+      // Extract friend IDs
+      const friendIds = friendsQuery.map(row => row.friend_id);
+      const placeholders = friendIds.map(() => '?').join(',');
+
+      // Fetch study materials created by friends
+      const [infoRows] = await connection.execute(
+        `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at, status
+         FROM study_material_info 
+         WHERE created_by_id IN(${placeholders}) AND status != 'archived'
+         ORDER BY created_at DESC
+         LIMIT 20`,  // Limit to most recent 20 for performance
+        [...friendIds]
+      );
+
+      if (infoRows.length === 0) {
+        studyMaterialCache.set(cacheKey, [], 1800); // 30 minutes
+        continue;
+      }
+
+      // Get content for each study material
+      const studyMaterials = await Promise.all(
+        infoRows.map(async (info) => {
+          const [contentRows] = await connection.execute(
+            `SELECT term, definition, image 
+             FROM study_material_content 
+             WHERE study_material_id = ?
+             LIMIT 10`,  // Limit items per material for performance
+            [info.study_material_id]
+          );
+
+          return {
+            study_material_id: info.study_material_id,
+            title: info.title,
+            tags: JSON.parse(info.tags),
+            total_items: info.total_items,
+            created_by: info.created_by,
+            total_views: info.total_views,
+            created_at: info.created_at,
+            items: contentRows.map(item => ({
+              term: item.term,
+              definition: item.definition,
+              image: formatImageToBase64(item.image),
+            })),
+          };
+        })
+      );
+
+      // Cache results
+      studyMaterialCache.set(cacheKey, studyMaterials, 1800); // 30 minutes
+    }
+    console.log("Made by friends preloaded successfully");
+  } catch (error) {
+    console.error("Error preloading made by friends data:", error);
+  } finally {
+    connection.release();
+  }
+};
+
+const preloadUserLibraries = async () => {
+  console.log("Preloading user libraries data...");
+  const connection = await pool.getConnection();
+  try {
+    // Get active users to preload their libraries
+    const [activeUsers] = await connection.execute(
+      `SELECT username, firebase_uid FROM users ORDER BY created_at DESC LIMIT 10`
+    );
+
+    if (activeUsers.length === 0) return;
+
+    // Preload library for each active user
+    for (const userRow of activeUsers) {
+      const username = userRow.username;
+      const firebase_uid = userRow.firebase_uid;
+
+      // Only preload if not already in cache
+      const userCacheKey = `study_materials_${username}`;
+      const bookmarksCacheKey = `bookmarks_${firebase_uid}`;
+
+      const preloadUserContent = !studyMaterialCache.has(userCacheKey);
+      const preloadBookmarks = !studyMaterialCache.has(bookmarksCacheKey);
+
+      if (!preloadUserContent && !preloadBookmarks) continue;
+
+      console.log(`Preloading library for user: ${username}`);
+
+      // Preload user's study materials
+      if (preloadUserContent) {
+        const [infoRows] = await connection.execute(
+          `SELECT study_material_id, title, tags, summary, total_items, created_by, created_by_id,
+            total_views, created_at, updated_at, visibility, status
+           FROM study_material_info 
+           WHERE created_by = ?
+           ORDER BY updated_at DESC, created_at DESC
+           LIMIT 30`,
+          [username]
+        );
+
+        if (infoRows.length > 0) {
+          const studyMaterials = await Promise.all(
+            infoRows.map(async (info) => {
+              const [contentRows] = await connection.execute(
+                `SELECT term, definition, image, item_number
+                 FROM study_material_content 
+                 WHERE study_material_id = ?
+                 ORDER BY item_number ASC
+                 LIMIT 10`,
+                [info.study_material_id]
+              );
+
+              return {
+                study_material_id: info.study_material_id,
+                title: info.title,
+                tags: JSON.parse(info.tags),
+                summary: info.summary,
+                total_items: info.total_items,
+                created_by: info.created_by,
+                created_by_id: info.created_by_id,
+                total_views: info.total_views,
+                created_at: info.created_at,
+                updated_at: info.updated_at,
+                visibility: info.visibility,
+                status: info.status,
+                items: contentRows.map((item) => ({
+                  term: item.term,
+                  definition: item.definition,
+                  image: formatImageToBase64(item.image),
+                })),
+              };
+            })
+          );
+
+          // Cache the results
+          studyMaterialCache.set(userCacheKey, studyMaterials, 1800); // 30 minutes
+        }
+      }
+
+      // Preload user's bookmarks
+      if (preloadBookmarks) {
+        // Get user's bookmarked materials (just IDs first for performance)
+        const [bookmarkIds] = await connection.execute(
+          `SELECT study_material_id, bookmarked_at FROM bookmarked_study_material
+           WHERE bookmarked_by_id = ?
+           ORDER BY bookmarked_at DESC
+           LIMIT 20`,
+          [firebase_uid]
+        );
+
+        if (bookmarkIds.length > 0) {
+          const validStudyMaterials = [];
+
+          // Process in batches
+          const batchSize = 5;
+          for (let i = 0; i < bookmarkIds.length; i += batchSize) {
+            const batchIds = bookmarkIds.slice(i, i + batchSize).map(item => item.study_material_id);
+            const placeholders = batchIds.map(() => '?').join(',');
+
+            // Fetch info for this batch
+            const [infoRows] = await connection.execute(
+              `SELECT
+                i.study_material_id, i.title, i.tags, i.total_items,
+                i.created_by, i.created_by_id, i.total_views,
+                i.created_at, i.visibility, i.status
+               FROM study_material_info i
+               WHERE i.study_material_id IN (${placeholders})`,
+              [...batchIds]
+            );
+
+            // For each study material, fetch its content
+            for (const info of infoRows) {
+              const [contentRows] = await connection.execute(
+                `SELECT term, definition, image 
+                 FROM study_material_content 
+                 WHERE study_material_id = ?
+                 ORDER BY item_number ASC
+                 LIMIT 10`,
+                [info.study_material_id]
+              );
+
+              // Find the bookmark info for this material
+              const bookmarkInfo = bookmarkIds.find(
+                b => b.study_material_id === info.study_material_id
+              );
+
+              if (bookmarkInfo) {
+                validStudyMaterials.push({
+                  bookmark_info: {
+                    study_material_id: info.study_material_id,
+                    created_by: info.created_by,
+                    created_by_id: info.created_by_id,
+                    bookmarked_by_id: firebase_uid,
+                    bookmarked_at: bookmarkInfo.bookmarked_at
+                  },
+                  study_material_info: {
+                    study_material_id: info.study_material_id,
+                    title: info.title,
+                    tags: JSON.parse(info.tags),
+                    total_items: info.total_items,
+                    created_by: info.created_by,
+                    created_by_id: info.created_by_id,
+                    total_views: info.total_views,
+                    created_at: info.created_at,
+                    visibility: info.visibility,
+                    status: info.status,
+                    items: contentRows.map(item => ({
+                      term: item.term,
+                      definition: item.definition,
+                      image: formatImageToBase64(item.image)
+                    }))
+                  }
+                });
+              }
+            }
+          }
+
+          // Cache the complete result
+          studyMaterialCache.set(bookmarksCacheKey, validStudyMaterials, 1800);
+        }
+      }
+    }
+
+    console.log("User libraries preloaded successfully");
+  } catch (error) {
+    console.error("Error preloading user libraries:", error);
+  } finally {
+    connection.release();
+  }
+};
+
+// Add these to the startup preloads
 setTimeout(preloadTopPicks, 2000);
 setTimeout(preloadRecommendedContent, 2000);
+setTimeout(preloadMadeByFriends, 2000);
+setTimeout(preloadUserLibraries, 2000);
 
 const studyMaterialController = {
   saveStudyMaterial: async (req, res) => {
@@ -146,6 +418,7 @@ const studyMaterialController = {
       const {
         title,
         tags,
+        summary,
         totalItems,
         visibility = 0,
         createdBy,
@@ -161,15 +434,16 @@ const studyMaterialController = {
 
       await connection.beginTransaction();
 
-      // Insert into study_material_info
+      // Insert into study_material_info with summary
       await connection.execute(
         `INSERT INTO study_material_info 
-                (study_material_id, title, tags, total_items, visibility, status,created_by, created_by_id, total_views, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?,?,?, ?, ?,?);`,
+                (study_material_id, title, tags, summary, total_items, visibility, status,created_by, created_by_id, total_views, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?,?,?, ?, ?, ?, ?);`,
         [
           studyMaterialId,
           title,
           JSON.stringify(tags), // Store tags as a JSON string
+          summary,
           totalItems,
           visibility,
           status,
@@ -180,6 +454,7 @@ const studyMaterialController = {
           updatedTimestamp,
         ]
       );
+
 
       // Insert items into study_material_content
       const insertItemPromises = items.map(async (item, index) => {
@@ -564,9 +839,9 @@ const studyMaterialController = {
       // Use a single JOIN query instead of two separate queries
       const [rows] = await connection.execute(
         `SELECT 
-        i.title, i.tags, i.total_items, i.created_by, i.created_by_id,
+        i.title, i.tags,i.summary, i.total_items, i.created_by, i.created_by_id,
         i.total_views, i.created_at, i.status, i.visibility,
-        c.term, c.definition, c.image 
+        c.term, c.definition, c.image, c.item_number
       FROM study_material_info i
       LEFT JOIN study_material_content c ON i.study_material_id = c.study_material_id
       WHERE i.study_material_id = ?; `,
@@ -581,6 +856,7 @@ const studyMaterialController = {
       const result = {
         title: rows[0].title,
         tags: JSON.parse(rows[0].tags),
+        summary: rows[0].summary,
         total_items: rows[0].total_items,
         created_by: rows[0].created_by,
         created_by_id: rows[0].created_by_id,
@@ -592,6 +868,7 @@ const studyMaterialController = {
           term: row.term,
           definition: row.definition,
           image: formatImageToBase64(row.image),
+          item_number: row.item_number
         }))
       };
 
@@ -626,7 +903,7 @@ const studyMaterialController = {
       }
 
       const [infoRows] = await connection.execute(
-        `SELECT study_material_id, title, tags, total_items, created_by, created_by_id,
+        `SELECT study_material_id, title, tags, summary, total_items, created_by, created_by_id,
         total_views, created_at, updated_at, visibility, status
          FROM study_material_info 
          WHERE created_by = ?
@@ -643,7 +920,7 @@ const studyMaterialController = {
       const studyMaterials = await Promise.all(
         infoRows.map(async (info) => {
           const [contentRows] = await connection.execute(
-            `SELECT term, definition, image 
+            `SELECT term, definition, image , item_number
              FROM study_material_content 
              WHERE study_material_id = ?
         ORDER BY item_number ASC; `,
@@ -654,6 +931,7 @@ const studyMaterialController = {
             study_material_id: info.study_material_id,
             title: info.title,
             tags: JSON.parse(info.tags),
+            summary: info.summary,
             total_items: info.total_items,
             created_by: info.created_by,
             created_by_id: info.created_by_id,
@@ -666,6 +944,7 @@ const studyMaterialController = {
               term: item.term,
               definition: item.definition,
               image: formatImageToBase64(item.image),
+
             })),
           };
         })

@@ -23,7 +23,7 @@ interface CardPageProps {
 
 const CardPage = ({ studyMaterial }: CardPageProps) => {
   return (
-    <Stack spacing={2}>
+    <Stack spacing={1}>
       {/* Check if study material is available and contains items */}
       {studyMaterial &&
       studyMaterial.items &&
@@ -31,7 +31,7 @@ const CardPage = ({ studyMaterial }: CardPageProps) => {
         studyMaterial.items.map((item, index) => (
           <Box
             key={index}
-            className="bg-[#E2DDF3] py-4 px-8 rounded-[0.8rem] shadow-lg"
+            className="bg-[#E2DDF3] py-6 px-8 rounded-[0.8rem] shadow-lg"
           >
             <Stack
               direction="row"

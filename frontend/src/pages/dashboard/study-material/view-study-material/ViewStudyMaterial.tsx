@@ -73,6 +73,7 @@ const ViewStudyMaterial = () => {
           setStudyMaterial({
             title: data.title,
             tags,
+            summary: data.summary || "",
             images: data.images || [],
             total_items: data.total_items || 0,
             created_by: data.created_by || "Unknown",
@@ -115,6 +116,7 @@ const ViewStudyMaterial = () => {
       term: item.term || "",
       definition: item.definition || "",
       image: item.image || null,
+      item_number: item.item_number || "",
     }));
 
     // Navigate to create page with study material data
@@ -125,6 +127,7 @@ const ViewStudyMaterial = () => {
         title: studyMaterial.title,
         tags: studyMaterial.tags,
         items: transformedItems,
+        visibility: studyMaterial.visibility,
       },
     });
   };
@@ -239,6 +242,16 @@ const ViewStudyMaterial = () => {
                     {loading ? "Loading..." : studyMaterial?.total_views} People
                   </strong>
                 </Typography>
+
+                {!loading &&
+                  studyMaterial?.status?.toLowerCase() === "archived" && (
+                    <>
+                      <Typography variant="subtitle2">•</Typography>
+                      <Typography variant="subtitle2">
+                        <strong>Archived</strong>
+                      </Typography>
+                    </>
+                  )}
               </Stack>
             </Stack>
             <Box flex={1} />
@@ -367,7 +380,7 @@ const ViewStudyMaterial = () => {
             </Typography>
             <Divider className="bg-[#3B354D] flex-1" />
           </Stack>
-          <Stack spacing={4}>
+          <Stack spacing={2}>
             <Stack direction="row" spacing={1} className="flex items-center">
               {["Summary", "Cards"].map((label) => (
                 <Button
@@ -392,7 +405,7 @@ const ViewStudyMaterial = () => {
                 </Button>
               ))}
             </Stack>
-            <Box mt={2}>
+            <Box>
               {selected === "Summary" ? (
                 <SummaryPage studyMaterial={studyMaterial} />
               ) : (
