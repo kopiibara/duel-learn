@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Button,
   Dialog,
@@ -22,8 +22,8 @@ import { useUser } from "../../../../../contexts/UserContext"; // Import the use
 import { generateCode } from "../../utils/codeGenerator"; // Import the utility function
 import defaultAvatar from "../../../../../assets/profile-picture/bunny-picture.png";
 import { io, Socket } from "socket.io-client";
-import InvitationSnackbar from "../../../../../components/InvitationSnackbar";
 import axios from "axios";
+import SocketService from "../../../../../services/socketService";
 
 interface Player {
   firebase_uid: string;
@@ -32,18 +32,33 @@ interface Player {
   display_picture: string | null;
 }
 
+interface PlayerJoinedData {
+  lobbyCode: string;
+  playerId: string;
+  playerName?: string;
+  playerLevel?: number;
+  playerPicture?: string | null;
+}
+
+interface PlayerReadyData {
+  lobbyCode: string;
+  playerId: string;
+  isReady: boolean;
+}
+
 const PVPLobby: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { mode, material, selectedTypes } = location.state || {};
-  console.log(
-    "Mode:",
-    mode,
-    "Material:",
-    material,
-    "Selected Types:",
-    selectedTypes
-  );
+  const { mode, material, selectedTypes, lobbyCode: stateLobbyCode, isGuest } = location.state || {};
+  const { lobbyCode: urlLobbyCode } = useParams<{ lobbyCode?: string }>();
+  // console.log(
+  //   "Mode:",
+  //   mode,
+  //   "Material:",
+  //   material,
+  //   "Selected Types:",
+  //   selectedTypes
+  // );
 
   const questionTypes = [
     { display: "Identification", value: "identification" },
@@ -51,7 +66,7 @@ const PVPLobby: React.FC = () => {
     { display: "True or False", value: "true-false" },
   ];
 
-  const { user } = useUser(); // Get the user from UserContext
+  const { user, loading } = useUser(); // Get the user and loading state from UserContext
 
   const [manaPoints, setManaPoints] = useState(0); // Example starting mana points
   const [_openManaAlert, setOpenManaAlert] = useState(false); // State for the mana points alert
@@ -60,8 +75,7 @@ const PVPLobby: React.FC = () => {
 
   const [modalOpenChangeQuestionType, setModalOpenChangeQuestionType] =
     useState(false); // State for the ChoosePvPModeModal
-  const [selectedTypesFinal, setSelectedTypesFinal] =
-    useState<string[]>(selectedTypes);
+  const [selectedTypesFinal, setSelectedTypesFinal] = useState<string[]>(selectedTypes || []);
 
   // State to manage selected material and mode
   const [selectedMaterial, setSelectedMaterial] = useState<any>(material);
@@ -77,32 +91,32 @@ const PVPLobby: React.FC = () => {
   const [players, setPlayers] = useState<Player[]>([]); // Initialize players state as an empty array
   const [invitedPlayer, setInvitedPlayer] = useState<Player | null>(null); // State for the invited player
 
-  // State to hold the generated code
-  const [lobbyCode, setLobbyCode] = useState<string>("");
+  // Use URL param first, then state lobby code, then generate new one (only once)
+  const [lobbyCode, setLobbyCode] = useState<string>(() => {
+    const code = urlLobbyCode || stateLobbyCode || generateCode();
+    console.log("Using lobby code:", code, { urlLobbyCode, stateLobbyCode });
+    return code;
+  });
+
+  // Add this effect to handle lobby code changes
+  useEffect(() => {
+    if (urlLobbyCode && urlLobbyCode !== lobbyCode) {
+      setLobbyCode(urlLobbyCode);
+      console.log("Updated lobby code from URL:", urlLobbyCode);
+    } else if (stateLobbyCode && !urlLobbyCode && stateLobbyCode !== lobbyCode) {
+      setLobbyCode(stateLobbyCode);
+      console.log("Updated lobby code from state:", stateLobbyCode);
+    }
+  }, [urlLobbyCode, stateLobbyCode]);
 
   // Add these states
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [invitation, setInvitation] = useState<{
-    open: boolean;
-    inviterName: string;
-    senderId: string;
-    lobbyCode: string;
-    timestamp?: string;
-  }>({
-    open: false,
-    inviterName: "",
-    senderId: "",
-    lobbyCode: "",
-  });
 
   // Add this near the top of your component
   const [debug, setDebug] = useState(false);
 
-  // useEffect to generate the code when the component mounts
-  useEffect(() => {
-    const code = generateCode(6); // Generate a 6-character code
-    setLobbyCode(code); // Set the generated code to state
-  }, []);
+  // Add this state to track if current user is a guest (invited player)
+  const [isCurrentUserGuest, setIsCurrentUserGuest] = useState<boolean>(isGuest || false);
 
   // Set the state variables
   useEffect(() => {
@@ -112,111 +126,118 @@ const PVPLobby: React.FC = () => {
     if (material) {
       setSelectedMaterial(material);
     }
+
+    // Add default question types if they're missing (for guests joining via invitation)
     if (selectedTypes) {
       setSelectedTypesFinal(selectedTypes);
+    } else if (location.state?.isGuest) {
+      // Guest joining via invitation - set defaults
+      setSelectedTypesFinal(['multiple-choice', 'true-false']);
     }
-  }, [mode, material, selectedTypes]);
+  }, [mode, material, selectedTypes, location.state?.isGuest]);
 
-  // Simulate fetching player data (replace with your actual API call)
+  // Update the socket effect
   useEffect(() => {
-    const fetchPlayerData = async () => {
-      console.log("User Data:", user);
-      const fetchedPlayers: Player[] = [
-        {
-          firebase_uid: user?.firebase_uid || "",
-          username: user?.username || "Player 1",
-          level: user?.level || 1,
-          display_picture: user?.display_picture || defaultAvatar,
-        },
-      ];
-      setPlayers(fetchedPlayers);
-    };
-
-    fetchPlayerData();
-  }, [user]);
-
-  // Update the socket initialization useEffect
-  useEffect(() => {
-    // Don't initialize socket if we don't have a user
-    if (!user?.firebase_uid) {
-      console.log("No user ID available, skipping socket setup");
+    if (loading || !user?.firebase_uid) {
+      console.log("User data not ready yet, waiting...");
       return;
     }
 
-    if (socket) {
-      console.log("Socket already exists:", socket.id);
-      return;
-    }
+    console.log("Setting up socket service for user:", user.firebase_uid);
+    const socketService = SocketService.getInstance();
+    const newSocket = socketService.connect(user.firebase_uid);
+    setSocket(newSocket);
 
-    console.log("Initializing socket for user:", user.firebase_uid);
+    // IMPORTANT: Use the service's on method for better reliability
+    const handleBattleInvitation = (data: any) => {
+      console.group("🔔 PVPLobby - Battle Invitation Received");
+      console.log("Raw data:", JSON.stringify(data));
 
-    const newSocket = io(`${import.meta.env.VITE_BACKEND_URL}`, {
-      transports: ["websocket"],
-      reconnection: true,
-    });
+      // Validate user
+      if (!user?.firebase_uid) {
+        console.log("User not logged in, ignoring invitation");
+        console.groupEnd();
+        return;
+      }
 
-    newSocket.on("connect", () => {
-      console.log("Socket connected with ID:", newSocket.id);
-      setSocket(newSocket);
+      // Skip our own invitations
+      if (data.senderId === user.firebase_uid) {
+        console.log("This is our own invitation, ignoring");
+        console.groupEnd();
+        return;
+      }
 
-      // Register user immediately after connection
-      console.log("Registering user on connect:", user.firebase_uid);
-      newSocket.emit("setup", user.firebase_uid);
-    });
+      // Validate the critical fields
+      if (!data.senderId) {
+        console.error("⚠️ Missing senderId in battle invitation data!");
+        console.groupEnd();
+        return;
+      }
 
-    newSocket.on("connect_error", (error) => {
-      console.error("Socket connection error:", error);
-    });
+      if (!data.lobbyCode) {
+        console.error("⚠️ Missing lobbyCode in battle invitation data!");
+        console.groupEnd();
+        return;
+      }
 
-    // Enhanced battle invitation listener with better logging
-    newSocket.on("battle_invitation", (data) => {
-      console.log("Battle invitation received:", {
-        data,
-        currentUser: user.firebase_uid,
-        socketId: newSocket.id,
-        timestamp: new Date().toISOString(),
+      // All checks passed, set the data
+      console.group("🔍 Setting invitation data");
+      console.log("Raw data from socket:", data);
+      console.log("Data structure:", Object.keys(data).join(", "));
+      console.log("senderId:", data.senderId, typeof data.senderId);
+      console.log("lobbyCode:", data.lobbyCode, typeof data.lobbyCode);
+
+      // First set the data with guaranteed values
+      setInvitedPlayer({
+        firebase_uid: String(data.senderId || "missing-sender"),
+        username: data.senderName || "Unknown Player",
+        level: 1, // Assuming a default level
+        display_picture: null, // Assuming no display_picture
       });
 
-      if (data.senderId !== user.firebase_uid) {
-        console.log("Setting invitation state for:", data.senderName);
-        setInvitation({
-          open: true,
-          inviterName: data.senderName || "Unknown",
-          senderId: data.senderId,
-          lobbyCode: data.lobbyCode,
-          timestamp: new Date().toISOString(),
-        });
-      } else {
-        console.log("Ignoring self-invitation");
-      }
-    });
+      console.log("State should be updated with:", {
+        senderId: String(data.senderId || "missing-sender"),
+        senderName: data.senderName || "Unknown Player",
+        lobbyCode: String(data.lobbyCode || "missing-lobby")
+      });
+      console.groupEnd();
 
-    // Add a debug event to verify socket is working
-    newSocket.on("debug", (msg) => {
-      console.log("Debug message received:", msg);
-    });
+      // Then open the invitation dialog
+      setInviteModalOpen(true);
+
+      console.log("Invitation dialog opened");
+      console.groupEnd();
+    };
+
+    // Register the handler with proper cleanup
+    const removeListener = socketService.on("battle_invitation", handleBattleInvitation);
 
     return () => {
-      if (newSocket) {
-        console.log("Cleaning up socket:", newSocket.id);
-        newSocket.disconnect();
-        setSocket(null);
-      }
+      if (removeListener) removeListener();
+      console.log("Cleaned up battle_invitation listener");
     };
-  }, [user?.firebase_uid]); // Only depend on user ID
+  }, [user?.firebase_uid, loading]);
+
+  // Add this effect to handle lobby code from URL
+  useEffect(() => {
+    if (urlLobbyCode) {
+      setLobbyCode(urlLobbyCode);
+      // Here you can add logic to fetch lobby data if needed
+      console.log("Joined lobby:", urlLobbyCode);
+    }
+  }, [urlLobbyCode]);
 
   const handleCopy = () => {
     navigator.clipboard
-      .writeText("641283") // Text to be copied
+      .writeText(lobbyCode) // Use the actual lobby code instead of hardcoded "641283"
       .then(() => {
-        setCopySuccess(true); // Set success to true
-        // Reset the icon back to ContentCopy after 5 seconds
+        setCopySuccess(true);
         setTimeout(() => {
-          setCopySuccess(false); // Reset state after 5 seconds
+          setCopySuccess(false);
         }, 5000);
       })
       .catch(() => {
-        setCopySuccess(false); // In case of error
+        setCopySuccess(false);
       });
   };
 
@@ -308,89 +329,79 @@ const PVPLobby: React.FC = () => {
     }
   };
 
-  const isHost = user?.username === players[0]?.username; // Changed from name to username
+  // Update this based on the new guest logic
+  const isHost = !isCurrentUserGuest;
 
-  // State to track readiness
-  const [isHostReady, _setIsHostReady] = useState(true); // Host is automatically ready
-  const [isPlayer2Ready, setIsPlayer2Ready] = useState(false); // Player 2 starts as not ready
+  // Update the ready state management
+  const [isHostReady, setIsHostReady] = useState(true); // Host is automatically ready
+  const [isPlayer2Ready, setIsPlayer2Ready] = useState(isCurrentUserGuest); // Guest starts as ready if they're player 2
 
   const handleReadyToggle = () => {
     if (!isHost) {
-      setIsPlayer2Ready((prev) => !prev); // Toggle readiness for Player 2
+      const newReadyState = !isPlayer2Ready;
+      setIsPlayer2Ready(newReadyState);
+
+      // Notify the host about ready status change
+      const socket = SocketService.getInstance().getSocket();
+      if (socket && lobbyCode) {
+        socket.emit("player_ready", {
+          lobbyCode,
+          playerId: user?.firebase_uid,
+          isReady: newReadyState
+        });
+      }
     }
   };
 
   const bothReady = isHostReady && isPlayer2Ready; // Check if both players are ready
 
-  // Add these handlers
+  // Update the handleAcceptInvitation function
   const handleAcceptInvitation = async () => {
-    if (socket) {
-      try {
-        // Update invitation status in database
-        await axios.put(
-          `${import.meta.env.VITE_BACKEND_URL}/api/battle/invite/status`,
-          {
-            senderId: invitation.senderId,
-            receiverId: user?.firebase_uid,
-            lobbyCode: invitation.lobbyCode,
-            status: "accepted",
-          }
-        );
-
-        // Emit socket event
-        socket.emit("accept_battle_invitation", {
-          senderId: invitation.senderId,
-          receiverId: user?.firebase_uid,
-          lobbyCode: invitation.lobbyCode,
-        });
-
-        setInvitation({
-          open: false,
-          inviterName: "",
-          senderId: "",
-          lobbyCode: "",
-        });
-
-        // Navigate to the lobby as Player 2
-        navigate(
-          `/dashboard/play-battleground/pvp-lobby/${invitation.lobbyCode}`
-        );
-      } catch (error) {
-        console.error("Error accepting invitation:", error);
-      }
+    if (!user?.firebase_uid || !invitedPlayer?.firebase_uid || !lobbyCode) {
+      console.error("Missing required data for accepting invitation");
+      return;
     }
-  };
 
-  const handleDeclineInvitation = async () => {
-    if (socket) {
-      try {
-        // Update invitation status in database
-        await axios.put(
-          `${import.meta.env.VITE_BACKEND_URL}/api/battle/invite/status`,
-          {
-            senderId: invitation.senderId,
-            receiverId: user?.firebase_uid,
-            lobbyCode: invitation.lobbyCode,
-            status: "declined",
-          }
-        );
+    console.log("Accepting invitation from:", invitedPlayer.username, "to lobby:", lobbyCode);
 
-        // Emit socket event
-        socket.emit("decline_battle_invitation", {
-          senderId: invitation.senderId,
-          receiverId: user?.firebase_uid,
-          lobbyCode: invitation.lobbyCode,
-        });
+    try {
+      // First emit the socket event
+      const socket = SocketService.getInstance().getSocket();
+      socket?.emit("accept_battle_invitation", {
+        senderId: user.firebase_uid,
+        receiverId: invitedPlayer.firebase_uid,
+        lobbyCode: lobbyCode,
+      });
 
-        setInvitation({
-          open: false,
-          inviterName: "",
-          senderId: "",
-          lobbyCode: "",
-        });
-      } catch (error) {
-        console.error("Error declining invitation:", error);
-      }
+      // Then update database
+      await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/battle/invite/status`,
+        {
+          senderId: user.firebase_uid,
+          receiverId: invitedPlayer.firebase_uid,
+          lobbyCode: lobbyCode,
+          status: "accepted",
+        }
+      );
+
+      // Navigate immediately (don't wait for socket response)
+      console.log("Player 2 joining lobby:", lobbyCode);
+      navigate(`/dashboard/pvp-lobby/${lobbyCode}`, {
+        state: {
+          mode: selectedMode,
+          material: selectedMaterial,
+          selectedTypes: selectedTypesFinal,
+          lobbyCode: lobbyCode,
+          isGuest: true,
+        },
+      });
+
+      // Reset invitation state after navigation
+      setInvitedPlayer(null);
+      setInviteModalOpen(false);
+
+    } catch (error) {
+      console.error("Error accepting invitation:", error);
     }
   };
 
@@ -407,8 +418,198 @@ const PVPLobby: React.FC = () => {
 
   // Add this debug effect to monitor invitation state changes
   useEffect(() => {
-    console.log("Invitation state changed:", invitation);
-  }, [invitation]);
+    console.log("Invitation state changed:", invitedPlayer);
+  }, [invitedPlayer]);
+
+  // Add this effect to handle invitation display
+  useEffect(() => {
+    // Every time invitation changes, log it for debugging
+    if (inviteModalOpen) {
+      console.log("🔔 Invitation is now OPEN with data:", {
+        senderId: user?.firebase_uid,
+        senderName: user?.username,
+        lobbyCode: lobbyCode
+      });
+    } else {
+      console.log("🔕 Invitation is CLOSED");
+    }
+  }, [inviteModalOpen, user?.firebase_uid, lobbyCode]);
+
+  // Update the useEffect that handles player data
+  useEffect(() => {
+    const fetchPlayerData = async () => {
+      console.log("User Data:", user);
+
+      if (isCurrentUserGuest) {
+        // If current user is a guest, they should be player 2
+        const fetchedPlayers: Player[] = [
+          // Empty slot for host (will be filled from invitation data)
+          {
+            firebase_uid: "host-placeholder",
+            username: "Host",
+            level: 1,
+            display_picture: defaultAvatar,
+          },
+          // Current user as player 2
+          {
+            firebase_uid: user?.firebase_uid || "",
+            username: user?.username || "Player 2",
+            level: user?.level || 1,
+            display_picture: user?.display_picture || defaultAvatar,
+          },
+        ];
+        setPlayers(fetchedPlayers);
+      } else {
+        // Original behavior for host - they are player 1
+        const fetchedPlayers: Player[] = [
+          {
+            firebase_uid: user?.firebase_uid || "",
+            username: user?.username || "Player 1",
+            level: user?.level || 1,
+            display_picture: user?.display_picture || defaultAvatar,
+          },
+        ];
+        setPlayers(fetchedPlayers);
+      }
+    };
+
+    fetchPlayerData();
+  }, [user, isCurrentUserGuest]);
+
+  // Add this effect to initialize the lobby and listen for player joining events
+  useEffect(() => {
+    if (loading || !user?.firebase_uid || !lobbyCode) return;
+
+    // Set up socket handlers for player joining
+    const socketService = SocketService.getInstance();
+    const socket = socketService.getSocket();
+
+    if (!socket) {
+      console.error("Socket not available for lobby events");
+      return;
+    }
+
+    // For host: listen for players joining the lobby
+    const handlePlayerJoined = (data: PlayerJoinedData) => {
+      console.log("Player joined lobby:", data);
+      if (data.lobbyCode === lobbyCode && !isCurrentUserGuest) {
+        // Add the player to our state
+        const joinedPlayer = {
+          firebase_uid: data.playerId,
+          username: data.playerName || "Player 2",
+          level: data.playerLevel || 1,
+          display_picture: data.playerPicture || defaultAvatar,
+        };
+
+        setInvitedPlayer(joinedPlayer);
+        setIsPlayer2Ready(true); // Player is ready when they join
+      }
+    };
+
+    // For guest: notify the host that we've joined and request lobby info
+    if (isCurrentUserGuest) {
+      console.log("Guest joining lobby:", lobbyCode);
+
+      // Send join event via socket
+      socket.emit("join_lobby", {
+        lobbyCode: lobbyCode,
+        playerId: user.firebase_uid,
+        playerName: user.username,
+        playerLevel: user.level || 1,
+        playerPicture: user.display_picture || null,
+        hostId: location.state?.invitedPlayer?.firebase_uid // Host ID from invitation
+      });
+
+      // Request lobby details from the host (study material, question types, etc.)
+      socket.emit("request_lobby_info", {
+        lobbyCode: lobbyCode,
+        requesterId: user.firebase_uid
+      });
+
+      // For the guest, set the host player from location state
+      if (location.state?.invitedPlayer) {
+        console.log("Setting host from invitation data:", location.state.invitedPlayer);
+        setInvitedPlayer(location.state.invitedPlayer);
+      }
+    }
+
+    // For host: respond to lobby info requests
+    const handleLobbyInfoRequest = (data: any) => {
+      if (data.lobbyCode === lobbyCode && !isCurrentUserGuest) {
+        console.log("Sending lobby info to guest:", data.requesterId);
+
+        // Send current lobby state to the requesting player
+        socket.emit("lobby_info_response", {
+          lobbyCode: lobbyCode,
+          requesterId: data.requesterId,
+          hostId: user.firebase_uid,
+          hostName: user.username,
+          material: selectedMaterial,
+          questionTypes: selectedTypesFinal,
+          mode: selectedMode
+        });
+      }
+    };
+
+    // For guest: receive lobby info from host
+    const handleLobbyInfoResponse = (data: any) => {
+      if (data.lobbyCode === lobbyCode && data.requesterId === user.firebase_uid) {
+        console.log("💡 Received lobby info from host:", data);
+
+        // Update local state with host's settings
+        if (data.material) {
+          console.log("Updating material to:", data.material);
+          setSelectedMaterial(data.material);
+        }
+
+        if (data.questionTypes && Array.isArray(data.questionTypes)) {
+          console.log("Updating question types to:", data.questionTypes);
+          setSelectedTypesFinal(data.questionTypes);
+        }
+
+        if (data.mode) {
+          console.log("Updating mode to:", data.mode);
+          setSelectedMode(data.mode);
+        }
+      }
+    };
+
+    // Add the missing handlePlayerReady function
+    const handlePlayerReady = (data: PlayerReadyData) => {
+      if (data.lobbyCode === lobbyCode) {
+        // Update ready status based on player ID
+        if (isCurrentUserGuest && data.playerId === location.state?.invitedPlayer?.firebase_uid) {
+          setIsHostReady(data.isReady);
+        } else if (!isCurrentUserGuest && data.playerId !== user.firebase_uid) {
+          setIsPlayer2Ready(data.isReady);
+        }
+      }
+    };
+
+    // Register event handlers
+    const removePlayerJoinedListener = socketService.on("player_joined_lobby", handlePlayerJoined);
+    const removePlayerReadyListener = socketService.on("player_ready_status", handlePlayerReady);
+    const removeLobbyInfoRequestListener = socketService.on("request_lobby_info", handleLobbyInfoRequest);
+    const removeLobbyInfoResponseListener = socketService.on("lobby_info_response", handleLobbyInfoResponse);
+
+    // Add these to existing cleanup
+    return () => {
+      if (removePlayerJoinedListener) removePlayerJoinedListener();
+      if (removePlayerReadyListener) removePlayerReadyListener();
+      if (removeLobbyInfoRequestListener) removeLobbyInfoRequestListener();
+      if (removeLobbyInfoResponseListener) removeLobbyInfoResponseListener();
+    };
+  }, [loading, user?.firebase_uid, lobbyCode, isCurrentUserGuest, selectedMaterial, selectedTypesFinal, selectedMode]);
+
+  // Add more debugging to check socket communication for lobby info
+  useEffect(() => {
+    console.log("Current lobby state:", {
+      selectedMode,
+      selectedMaterial: selectedMaterial?.title || "None",
+      selectedTypes: selectedTypesFinal,
+      isGuest: isCurrentUserGuest
+    });
+  }, [selectedMode, selectedMaterial, selectedTypesFinal, isCurrentUserGuest]);
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-white px-6 py-8 overflow-hidden">
@@ -435,39 +636,60 @@ const PVPLobby: React.FC = () => {
 
           <div>
             <h2 className="text-[16px] sm:text-[18px] md:text-[20px] lg:text-[22px] font-semibold mb-1">
-              {selectedMode} LOBBY
+              {isCurrentUserGuest ? "LOBBY" : "PVP LOBBY"}
             </h2>
-            <h6>{selectedTypesFinal} QuestionTypes </h6>
+            <h6 className="text-[14px] text-gray-300 mb-1">
+              {isCurrentUserGuest ? "Host selected: " : ""}
+              {selectedTypesFinal.map((type, index) => {
+                // Map question type values to display names
+                const displayType = questionTypes.find(qt => qt.value === type)?.display || type;
+                return (
+                  <span key={type}>
+                    {index > 0 ? ', ' : ''}
+                    {displayType}
+                  </span>
+                );
+              })}
+            </h6>
             <p className="text-[12px] sm:text-[14px] text-gray-400 flex items-center">
-              Chosen Study Material:&nbsp;
+              {isCurrentUserGuest ? "Host's Study Material: " : "Chosen Study Material: "}&nbsp;
               <span className="font-bold text-white">
                 {selectedMaterial
                   ? selectedMaterial.title
                   : "Choose Study Material"}
               </span>
-              <span className="transition-colors duration-200">
-                <CachedIcon
-                  sx={{
-                    color: "#6F658D",
-                    marginLeft: "8px",
-                    fontSize: "22px",
-                    cursor: isHost ? "pointer" : "not-allowed", // Change cursor based on host status
-                    "&:hover": isHost ? { color: "#4B17CD" } : {},
-                  }}
-                  onClick={isHost ? handleChangeMaterial : undefined} // Disable click for Player 2
-                />
-              </span>
-              <span className="transition-colors duration-200">
-                <VisibilityIcon
-                  sx={{
-                    color: "#6F658D",
-                    marginLeft: "6px",
-                    fontSize: "20px",
-                    cursor: "pointer",
-                    "&:hover": { color: "#4B17CD" },
-                  }}
-                />
-              </span>
+              {!isCurrentUserGuest && (
+                <>
+                  <span className="transition-colors duration-200">
+                    <CachedIcon
+                      sx={{
+                        color: "#6F658D",
+                        marginLeft: "8px",
+                        fontSize: "22px",
+                        cursor: "pointer",
+                        "&:hover": { color: "#4B17CD" },
+                      }}
+                      onClick={handleChangeMaterial}
+                    />
+                  </span>
+                  <span className="transition-colors duration-200">
+                    <VisibilityIcon
+                      sx={{
+                        color: "#6F658D",
+                        marginLeft: "6px",
+                        fontSize: "20px",
+                        cursor: "pointer",
+                        "&:hover": { color: "#4B17CD" },
+                      }}
+                    />
+                  </span>
+                </>
+              )}
+              {isCurrentUserGuest && (
+                <span className="ml-2 text-[12px] text-purple-300">
+                  (You cannot change these settings)
+                </span>
+              )}
             </p>
           </div>
         </div>
@@ -512,27 +734,45 @@ const PVPLobby: React.FC = () => {
         >
           {/* Players Section */}
           <div className="flex mt-24 w-full justify-between items-center">
-            {/* Player 1 */}
-            {players[0] && (
-              <motion.div
-                className="flex flex-col ml-[-250px] mr-[210px] items-center"
-                initial={{ x: -1000 }}
-                animate={{ x: 0 }}
-                transition={{ type: "spring", stiffness: 100, damping: 20 }}
-              >
-                <img
-                  src={user?.display_picture || "default-avatar.png"} // Use a default image if display_picture is not available
-                  alt="Player Avatar"
-                  className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 rounded-md"
-                />
-                <p className="text-sm sm:text-base font-semibold mt-5">
-                  {user?.username || "Player 1"}
-                </p>
-                <p className="text-xs sm:text-sm text-gray-400">
-                  LVL {user?.level || 11}
-                </p>
-              </motion.div>
-            )}
+            {/* Player 1 (Host) */}
+            <motion.div
+              className="flex flex-col ml-[-250px] mr-[210px] items-center"
+              initial={{ x: -1000 }}
+              animate={{ x: 0 }}
+              transition={{ type: "spring", stiffness: 100, damping: 20 }}
+            >
+              {isCurrentUserGuest ? (
+                // Show the host as Player 1 when current user is a guest
+                <>
+                  <img
+                    src={invitedPlayer?.display_picture || defaultAvatar}
+                    alt="Host Avatar"
+                    className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 rounded-md"
+                  />
+                  <p className="text-sm sm:text-base font-semibold mt-5">
+                    {invitedPlayer?.username || "Host"}
+                  </p>
+                  <p className="text-xs sm:text-sm text-gray-400">
+                    LVL {invitedPlayer?.level || "??"}
+                  </p>
+                </>
+              ) : (
+                // Show the current user as Player 1 when they are the host
+                <>
+                  <img
+                    src={user?.display_picture || defaultAvatar}
+                    alt="Player Avatar"
+                    className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 rounded-md"
+                  />
+                  <p className="text-sm sm:text-base font-semibold mt-5">
+                    {user?.username || "Player 1"}
+                  </p>
+                  <p className="text-xs sm:text-sm text-gray-400">
+                    LVL {user?.level || 1}
+                  </p>
+                </>
+              )}
+            </motion.div>
 
             {/* VS Text with Double Impact Animation */}
             <motion.span
@@ -558,63 +798,77 @@ const PVPLobby: React.FC = () => {
               animate={{ x: 0, opacity: 1 }} // Animate to on-screen and opaque
               transition={{ type: "spring", stiffness: 100, damping: 20 }}
               onClick={() => {
-                if (!players[1]) {
+                if (!isCurrentUserGuest && !players[1] && !invitedPlayer) {
                   setSelectedPlayer(""); // Set to empty or a default value
                   setInviteModalOpen(true); // Open the invite modal
                 }
               }}
             >
-              <div className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 bg-white rounded-md flex items-center justify-center">
-                {invitedPlayer ? (
-                  <motion.img
-                    src={invitedPlayer.display_picture || "default-avatar.png"} // Show the invited player's profile picture
-                    alt="Invited Player"
-                    className="w-full h-full rounded-md"
-                    initial={{ scale: 0, opacity: 0, y: -20 }} // Start small, transparent, and above
-                    animate={{ scale: 1, opacity: 1, y: 0 }} // Animate to full size, opaque, and original position
-                    transition={{ duration: 0.5 }} // Duration of the animation
+              {isCurrentUserGuest ? (
+                // When current user is a guest, show them as Player 2
+                <>
+                  <img
+                    src={user?.display_picture || defaultAvatar}
+                    alt="Player Avatar"
+                    className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 rounded-md"
                   />
-                ) : (
-                  <Add className="text-gray-500" />
-                )}
-              </div>
-              <div>
-                <motion.p
-                  className="text-sm sm:text-base font-semibold mt-5"
-                  initial={{ y: -20, opacity: 0 }} // Start above and transparent
-                  animate={{ y: 0, opacity: 1 }} // Animate to original position and opaque
-                  transition={{ duration: 0.5 }} // Duration of the animation
-                >
-                  {invitedPlayer
-                    ? invitedPlayer.username
-                    : players[1]
-                    ? players[1].username
-                    : "PLAYER 2"}
-                </motion.p>
-                <motion.p
-                  className="text-xs sm:text-sm text-gray-400"
-                  initial={{ y: -20, opacity: 0 }} // Start above and transparent
-                  animate={{ y: 0, opacity: 1 }} // Animate to original position and opaque
-                  transition={{ duration: 0.5 }} // Duration of the animation
-                >
-                  {invitedPlayer
-                    ? `LVL ${invitedPlayer.level}`
-                    : players[1] && players[1].level
-                    ? `LVL ${players[1].level}`
-                    : "LVL ???"}
-                </motion.p>
-                <motion.p
-                  className="text-xs sm:text-sm text-gray-400"
-                  initial={{ y: -20, opacity: 0 }} // Start above and transparent
-                  animate={{ y: 0, opacity: 1 }} // Animate to original position and opaque
-                  transition={{ duration: 0.5 }} // Duration of the animation
-                ></motion.p>
-              </div>
+                  <p className="text-sm sm:text-base font-semibold mt-5">
+                    {user?.username || "Player 2"}
+                  </p>
+                  <p className="text-xs sm:text-sm text-gray-400">
+                    LVL {user?.level || 1}
+                  </p>
+                </>
+              ) : (
+                // When current user is host, show invited player or plus icon
+                <div className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 bg-white rounded-md flex items-center justify-center">
+                  {invitedPlayer ? (
+                    <motion.img
+                      src={invitedPlayer.display_picture || defaultAvatar}
+                      alt="Invited Player"
+                      className="w-full h-full rounded-md"
+                      initial={{ scale: 0, opacity: 0, y: -20 }}
+                      animate={{ scale: 1, opacity: 1, y: 0 }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  ) : (
+                    <Add className="text-gray-500" />
+                  )}
+                </div>
+              )}
+              {!isCurrentUserGuest && (
+                <div>
+                  <motion.p
+                    className="text-sm sm:text-base font-semibold mt-5"
+                    initial={{ y: -20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    {invitedPlayer
+                      ? invitedPlayer.username
+                      : players[1]
+                        ? players[1].username
+                        : "PLAYER 2"}
+                  </motion.p>
+                  <motion.p
+                    className="text-xs sm:text-sm text-gray-400"
+                    initial={{ y: -20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ duration: 0.5 }}
+                  >
+                    {invitedPlayer
+                      ? `LVL ${invitedPlayer.level}`
+                      : players[1] && players[1].level
+                        ? `LVL ${players[1].level}`
+                        : "LVL ???"}
+                  </motion.p>
+                </div>
+              )}
             </motion.div>
           </div>
 
-          {/* Lobby Code Section */}
-          {isHost && ( // Only show lobby code for the host
+          {/* Lobby Code Section - only visible to host */}
+          {isHost && (
             <motion.div
               className="flex flex-row mt-24 items-center"
               initial={{ opacity: 0 }}
@@ -625,7 +879,7 @@ const PVPLobby: React.FC = () => {
                 LOBBY CODE
               </p>
               <div className="bg-white text-black text-sm sm:text-base font-bold px-2 ps-4 py-1 rounded-md flex items-center">
-                {lobbyCode} {/* Display the generated lobby code */}
+                {lobbyCode}
                 <IconButton
                   onClick={handleCopy}
                   className="text-gray-500"
@@ -650,9 +904,8 @@ const PVPLobby: React.FC = () => {
                   : undefined
                 : handleReadyToggle
             } // Host starts battle if both are ready, Player 2 toggles readiness
-            className={`mt-6 sm:mt-11 w-full max-w-[250px] sm:max-w-[300px] md:max-w-[350px] py-2 sm:py-3 bg-[#4D1EE3] text-white rounded-lg text-md sm:text-lg shadow-lg transition flex items-center justify-center ${
-              bothReady ? "hover:bg-purple-800" : ""
-            }`}
+            className={`mt-6 sm:mt-11 w-full max-w-[250px] sm:max-w-[300px] md:max-w-[350px] py-2 sm:py-3 bg-[#4D1EE3] text-white rounded-lg text-md sm:text-lg shadow-lg transition flex items-center justify-center ${bothReady ? "hover:bg-purple-800" : ""
+              }`}
             disabled={isHost ? !bothReady : false} // Disable for host if both are not ready
           >
             {isHost
@@ -660,8 +913,8 @@ const PVPLobby: React.FC = () => {
                 ? "BATTLE START! -10"
                 : "START 1/2"
               : isPlayer2Ready
-              ? "CANCEL 2/2"
-              : "START 1/2"}
+                ? "CANCEL 2/2"
+                : "START 1/2"}
             <img
               src={ManaIcon}
               alt="Mana"
@@ -755,38 +1008,33 @@ const PVPLobby: React.FC = () => {
       />
 
       {/* Question Type Selection Modal */}
-      <QuestionTypeSelectionModal
-        open={modalOpenChangeQuestionType}
-        onClose={() => setModalOpenChangeQuestionType(false)}
-        selectedTypes={selectedTypesFinal}
-        questionTypes={questionTypes}
-        onConfirm={(selected: string[]) => {
-          setSelectedTypesFinal(selected);
-          setModalOpenChangeQuestionType(false);
-        }}
-      />
+      {isHost && ( // Only render this for hosts
+        <QuestionTypeSelectionModal
+          open={modalOpenChangeQuestionType}
+          onClose={() => setModalOpenChangeQuestionType(false)}
+          selectedTypes={selectedTypesFinal || []} // Add fallback
+          questionTypes={questionTypes}
+          onConfirm={(selected: string[]) => {
+            setSelectedTypesFinal(selected);
+            setModalOpenChangeQuestionType(false);
+          }}
+        />
+      )}
 
       {/* Invite Player Modal */}
       <InvitePlayerModal
         open={inviteModalOpen}
         handleClose={() => setInviteModalOpen(false)}
-        onInvite={handleInvite}
-      />
-
-      {/* Make sure InvitationSnackbar is rendered outside any conditional blocks */}
-      <InvitationSnackbar
-        open={invitation.open}
-        onClose={() => {
-          console.log("Closing invitation snackbar");
-          setInvitation((prev) => ({ ...prev, open: false }));
+        onInviteSuccess={handleInvite}
+        onInvitationAccepted={(lobbyCode) => {
+          // Handle when someone accepts an invitation
+          console.log("Invitation accepted, preparing battle in lobby:", lobbyCode);
         }}
-        inviterName={invitation.inviterName}
-        onAccept={handleAcceptInvitation}
-        onDecline={handleDeclineInvitation}
+        lobbyCode={lobbyCode}
       />
 
-      {/* Add this to your JSX */}
-      {debug && (
+      {/* Debug panel */}
+      {/* {debug && (
         <div
           style={{
             position: "fixed",
@@ -801,7 +1049,7 @@ const PVPLobby: React.FC = () => {
           <pre>
             {JSON.stringify(
               {
-                invitation,
+                invitation: invitedPlayer,
                 socketConnected: !!socket,
                 userId: user?.firebase_uid,
               },
@@ -809,43 +1057,45 @@ const PVPLobby: React.FC = () => {
               2
             )}
           </pre>
-        </div>
-      )}
-
-      {/* Add this near your debug panel */}
-      {debug && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 80,
-            right: 20,
-            background: "#000",
-            padding: 10,
-            borderRadius: 5,
-            zIndex: 9999,
-          }}
-        >
           <button
             onClick={() => {
-              console.log("Debug: Manually triggering invitation");
-              setInvitation({
-                open: true,
-                inviterName: "Debug User",
-                senderId: "test-id",
-                lobbyCode: "TEST123",
+              if (!user?.firebase_uid) {
+                console.error("Cannot test invitation - user not loaded yet");
+                return;
+              }
+
+              // Set test data first
+              setInvitedPlayer({
+                firebase_uid: "test-sender-fixed-id",
+                username: "Test User",
+                level: 1,
+                display_picture: null,
               });
+
+              // Then open the invitation
+              setTimeout(() => {
+                setInviteModalOpen(true);
+                console.log("Test invitation opened with data:", {
+                  senderId: "test-sender-fixed-id",
+                  senderName: "Test User",
+                  lobbyCode: lobbyCode
+                });
+              }, 10);
             }}
             style={{
-              color: "white",
+              marginTop: "8px",
               padding: "4px 8px",
-              border: "1px solid white",
+              background: "#4D1EE3",
+              border: "none",
               borderRadius: "4px",
+              color: "white",
+              cursor: "pointer",
             }}
           >
-            Test Snackbar
+            Test Invitation
           </button>
         </div>
-      )}
+      )} */}
     </div>
   );
 };
