@@ -5,7 +5,7 @@ import Tooltip from "@mui/material/Tooltip";
 import ProfilePopover from "./ProfilePopover";
 import { Avatar, Box, CircularProgress } from "@mui/material";
 import { useUser } from "../../contexts/UserContext";
-import sampleAvatarDeployment from "../../assets/profile-picture/bunny-picture.png";
+import defaultPicture from "../../assets/profile-picture/default-picture.svg";
 import axios from "axios";
 import { UserInfo } from "../../types/userInfoObject";
 
@@ -124,7 +124,7 @@ const StatsNProfile = () => {
         <Avatar
           variant="rounded"
           onClick={handleProfileClick}
-          src={user?.display_picture || sampleAvatarDeployment}
+          src={user?.display_picture || defaultPicture}
           alt={user?.email || "User"}
           sx={{
             cursor: "pointer",

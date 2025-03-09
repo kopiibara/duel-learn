@@ -8,6 +8,7 @@ import cauldronGif from "../../../../assets/General/Cauldron.gif";
 import noFriend from "../../../../assets/images/NoFriend.svg";
 import ErrorSnackbar from "../../../ErrorsSnackbar";
 import { Box, Tooltip, Stack } from "@mui/material";
+import defaultPicture from "../../../../assets/profile-picture/default-picture.svg";
 
 interface FriendRequestsProps {
   onFriendRequestHandled?: () => void; // New prop to notify parent of changes
@@ -133,12 +134,24 @@ const FriendRequests: React.FC<FriendRequestsProps> = ({
           className="flex items-center justify-between mb-4 border-b border-[#3B354C] pb-4 last:border-none"
         >
           <div className="flex items-center">
-            <div className="w-12 h-12 bg-white rounded-[5px] mr-4"></div>
+            <img
+              src={
+                (
+                  request.sender_info as {
+                    username: string;
+                    level: number;
+                    display_picture?: string;
+                  }
+                )?.display_picture || defaultPicture
+              }
+              alt=""
+              className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
+            />
             <div>
-              <p className="text-white font-medium">
+              <p className=" font-medium">
                 {request.sender_info?.username || "Unknown User"}
               </p>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-[#9F9BAE]">
                 Level {request.sender_info?.level || 0}
               </p>
             </div>

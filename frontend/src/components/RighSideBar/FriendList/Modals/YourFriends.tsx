@@ -8,6 +8,7 @@ import ErrorSnackbar from "../../../ErrorsSnackbar";
 import cauldronGif from "../../../../assets/General/Cauldron.gif";
 import { Friend } from "../../../../types/friendObject";
 import noFriend from "../../../../assets/images/NoFriend.svg";
+import defaultPicture from "../../../../assets/profile-picture/default-picture.svg";
 
 const YourFriends: React.FC = () => {
   const { user } = useUser();
@@ -114,13 +115,13 @@ const YourFriends: React.FC = () => {
           >
             <div className="flex items-center cursor-pointer">
               <img
-                src={friend.display_picture}
+                src={friend.display_picture || defaultPicture}
                 alt="Avatar"
                 className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
               />
               <div>
-                <p className="text-white font-medium">{friend.username}</p>
-                <p className="text-sm text-gray-400">Level {friend.level}</p>
+                <p className=" font-medium">{friend.username}</p>
+                <p className="text-sm text-[#9F9BAE]">Level {friend.level}</p>
               </div>
             </div>
 

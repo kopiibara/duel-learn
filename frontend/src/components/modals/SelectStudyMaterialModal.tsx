@@ -73,7 +73,8 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
 
       try {
         const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/study-material/get-by-user/${user.username
+          `${import.meta.env.VITE_BACKEND_URL}/api/study-material/get-by-user/${
+            user.username
           }`
         );
         if (!response.ok) {
@@ -145,8 +146,8 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
         mode === "Peaceful Mode"
           ? "Peaceful"
           : mode === "PvP Mode"
-            ? "PvP"
-            : mode;
+          ? "PvP"
+          : mode;
       navigate("/dashboard/welcome-game-mode", {
         state: {
           mode: formattedMode,
@@ -185,8 +186,9 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
             transform: "translate(-50%, -50%)",
             width: { xs: "90%", sm: "1000px" },
             height: { xs: "auto", sm: "650px" },
-            bgcolor: "#080511",
-            borderRadius: "10px",
+            bgcolor: "#120F1B",
+            borderRadius: "0.8rem",
+            border: "2px solid #3B354D",
             boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.2)",
             display: "flex",
             flexDirection: "column",
@@ -365,11 +367,11 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
                       color: "#110C21",
                       display: "flex",
                       justifyContent: "space-between",
-                      borderRadius: "8px",
+                      borderRadius: "0.8rem",
                       px: 3,
                       py: 2,
                       "&:hover": {
-                        bgcolor: "#6c63ff",
+                        bgcolor: "#9F9BAE",
                       },
                     }}
                     onClick={() => handleMaterialSelect(material)}
@@ -396,7 +398,7 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
                               textAlign: "left",
                             }}
                           >
-                            Summary: {material.summary}
+                            Summary:
                           </Typography>
                           <Typography
                             variant="body2"

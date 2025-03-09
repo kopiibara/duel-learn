@@ -5,7 +5,7 @@ import SilverMedal from "../../../assets/General/silver-medal.svg";
 import BronzeMedal from "../../../assets/General/bronze-medal.svg";
 import axios from "axios";
 import { useUser } from "../../../contexts/UserContext"; // Import your auth context
-import defaultAvatar from "../../../assets/profile-picture/bunny-picture.png";
+import defaultPicture from "../../../assets/profile-picture/default-picture.svg";
 
 interface LeaderboardPlayer {
   firebase_uid: string;
@@ -185,7 +185,7 @@ const Leaderboards = () => {
                   </p>
                 )}
                 <img
-                  src={player.display_picture || defaultAvatar}
+                  src={player.display_picture || defaultPicture}
                   alt="Avatar"
                   className="w-12 h-12 rounded-[5px] object-cover mr-3"
                 />
