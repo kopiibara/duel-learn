@@ -8,6 +8,7 @@ interface ShopItem {
   name: string;
   buyLabel: string;
   owned: number;
+  image: string;
 }
 
 interface ShopItemModalProps {
@@ -60,12 +61,12 @@ const ShopItemModal: React.FC<ShopItemModalProps> = ({
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: 400,
+            width: 500,
             bgcolor: "#080511",
             boxShadow: 24,
             borderColor: "#3B354D",
             borderWidth: "1px",
-            borderRadius: "10px",
+            borderRadius: "16px",
             p: 4,
             textAlign: "center",
             color: "white",
@@ -75,12 +76,17 @@ const ShopItemModal: React.FC<ShopItemModalProps> = ({
             <>
               <h2 className="text-2xl font-bold mb-2">Buy this item</h2>
               <p className="mb-4 text-sm text-[#8d80b3]">
-                Select the amount of <strong>{selectedItem.name}</strong> you wish to buy.
+                Select the amount of <strong>{selectedItem.name}</strong> you
+                wish to buy.
               </p>
 
               <div className="flex justify-center items-center gap-6 mb-4">
                 <div className="flex items-center my-3 gap-4">
-                  <div className="w-[74px] h-[74px] bg-white rounded-lg mr-3"></div>
+                  <img
+                    src={selectedItem.image}
+                    alt={selectedItem.name}
+                    className="w-[74px] h-[74px] object-contain rounded-lg mr-3"
+                  />
                   <button
                     className="bg-[#6F658D] px-4 py-2 rounded text-white text-base font-bold"
                     onClick={handleDecrement}
@@ -100,10 +106,15 @@ const ShopItemModal: React.FC<ShopItemModalProps> = ({
               </div>
 
               <button
-                className="bg-white text-black px-5 py-2 rounded-full font-bold w-full flex justify-center items-center hover:bg-gray-200 transition-all duration-200"
-                onClick={handleOpenConfirmModal} // Open confirmation modal
+                className="bg-white text-black px-5 py-2 rounded-lg font-bold w-full flex justify-center items-center hover:bg-gray-200 transition-all duration-200"
+                onClick={handleOpenConfirmModal}
               >
-                Buy for <img src={CoinIcon} alt="Coin" className="w-5 h-5 inline-block ml-2" />
+                Buy for{" "}
+                <img
+                  src={CoinIcon}
+                  alt="Coin"
+                  className="w-5 h-5 inline-block ml-2"
+                />
                 <span className="text-[#9C8307] font-bold ml-2">
                   {parseInt(selectedItem.buyLabel) * quantity}
                 </span>

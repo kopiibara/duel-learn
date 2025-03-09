@@ -46,14 +46,14 @@ const Filter: React.FC<FilterProps> = ({ menuItems, value, onChange }) => {
               transition: "all 0.3s ease-in-out",
             },
             "&:hover .MuiOutlinedInput-notchedOutline": {
-              borderColor: "#6F658D",
+              borderColor: "#9F9BAE",
               borderWidth: "2px", // Consistent 2px border on hover
             },
             "&.Mui-focused": {
               backgroundColor: "rgba(59, 53, 76, 0.5)",
             },
             "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-              borderColor: "#6F658D",
+              borderColor: "#9F9BAE",
               borderWidth: "2px",
             },
             // Fix for the selected value text color

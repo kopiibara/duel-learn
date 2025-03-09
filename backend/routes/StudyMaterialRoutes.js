@@ -7,6 +7,8 @@ const router = express.Router();
 router.post("/save", studyMaterialController.saveStudyMaterial);
 router.post("/update", studyMaterialController.editStudyMaterial);
 router.post("/archive/:studyMaterialId", studyMaterialController.archiveStudyMaterial);
+router.post("/delete/:studyMaterialId", studyMaterialController.deleteStudyMaterial);
+router.post("/restore/:studyMaterialId", studyMaterialController.restoreStudyMaterial);
 router.post('/increment-views/:studyMaterialId', studyMaterialController.incrementViews);
 router.post("/bookmark", studyMaterialController.bookmarkStudyMaterial);
 router.post("/update-creator", studyMaterialController.updateCreatedByUser);

@@ -13,15 +13,31 @@ import {
   Chip,
 } from "@mui/material";
 import { nanoid } from "nanoid";
-import ItemComponent from "./ItemComponent";
 import { motion, AnimatePresence } from "framer-motion"; // Importing from Framer Motion
 import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
 import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust the
 import Filter from "../../../../components/Filter"; // Adjust the
 
-// Add this constant for size limits
-const MAX_IMAGE_SIZE_MB = 10; // Maximum image size in MB
-const MAX_TOTAL_PAYLOAD_MB = 50; // Maximum total payload size in MB
+// Add these imports near the top with your other imports
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { SortableItem } from "../types/SortableItem";
+
+const MAX_IMAGE_SIZE_MB = 10;
+const MAX_TOTAL_PAYLOAD_MB = 50;
 
 // Add this helper function to check file size
 const getFileSizeInMB = (base64String: string): number => {
@@ -29,6 +45,22 @@ const getFileSizeInMB = (base64String: string): number => {
   // (base64 encoding increases size by ~33%)
   const sizeInBytes = base64String.length * 0.75;
   return sizeInBytes / (1024 * 1024); // Convert to MB
+};
+
+// Add this function to recalculate item numbers after any change
+const recalculateItemNumbers = (
+  itemsArray: {
+    id: number;
+    term: string;
+    definition: string;
+    image?: File | null;
+    item_number: number;
+  }[]
+) => {
+  return itemsArray.map((item, index) => ({
+    ...item,
+    item_number: index + 1,
+  }));
 };
 
 const CreateStudyMaterial = () => {
@@ -54,9 +86,42 @@ const CreateStudyMaterial = () => {
       term: string;
       definition: string;
       image?: File | null;
+      item_number: number;
     }[]
   >(location.state?.items || []);
   const [visibility, setVisibility] = useState<string>("0"); // Add this state for visibility
+
+  // Configure sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag end and update item_numbers
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setItems((currentItems) => {
+        const oldIndex = currentItems.findIndex(
+          (item) => item.id === active.id
+        );
+        const newIndex = currentItems.findIndex((item) => item.id === over.id);
+
+        // First move the items around
+        const newItems = arrayMove(currentItems, oldIndex, newIndex);
+
+        // Then reassign item_number based on new positions using our helper function
+        return recalculateItemNumbers(newItems);
+      });
+    }
+  };
 
   // Update document title based on mode
   useEffect(() => {
@@ -82,12 +147,27 @@ const CreateStudyMaterial = () => {
   // Function to handle adding a new item
   const handleAddItem = () => {
     // Create a new item with empty fields for term and definition
-    setItems([...items, { id: Date.now(), term: "", definition: "" }]);
+    const newItems = [
+      ...items,
+      {
+        id: Date.now(),
+        term: "",
+        definition: "",
+        item_number: items.length + 1,
+      },
+    ];
+
+    // This is optional as adding to the end doesn't affect other item numbers
+    // but keeps our logic consistent
+    setItems(recalculateItemNumbers(newItems));
   };
 
   const handleDeleteItem = (id: number) => {
     // Filter out the deleted item
-    setItems(items.filter((item) => item.id !== id));
+    const updatedItems = items.filter((item) => item.id !== id);
+
+    // Recalculate item numbers for all remaining items
+    setItems(recalculateItemNumbers(updatedItems));
   };
 
   // Update the handleUpdateItem function to validate image size
@@ -147,7 +227,9 @@ const CreateStudyMaterial = () => {
     setSnackbarOpen(false);
   };
 
-  // Update the save button handler to handle both create and update
+  // Update the save button handler to preserve item_number values
+  // Update the handleSaveButton function
+
   const handleSaveButton = async () => {
     if (!user?.username) {
       handleShowSnackbar("User is not authenticated.");
@@ -164,100 +246,152 @@ const CreateStudyMaterial = () => {
       return;
     }
 
-    // Check total payload size before sending
-    let totalImageSize = 0;
-    items.forEach((item) => {
-      if (item.image && typeof item.image === "string") {
-        totalImageSize += getFileSizeInMB(item.image);
-      }
-    });
-
-    if (totalImageSize > MAX_TOTAL_PAYLOAD_MB) {
-      handleShowSnackbar(
-        `Total images size (${totalImageSize.toFixed(
-          2
-        )}MB) exceeds maximum allowed (${MAX_TOTAL_PAYLOAD_MB}MB). Please reduce image sizes or remove some images.`
-      );
-      return;
-    }
+    // Define summary variable outside try block so it's accessible in the main scope
+    let summary = "";
 
     try {
-      // Transform items to include base64 images
-      const transformedItems = items.map((item) => ({
-        term: item.term,
-        definition: item.definition,
-        image: item.image || null, // image is already base64 from ItemComponent
-      }));
-
-      const studyMaterial = {
-        studyMaterialId: editMode ? studyMaterialId : nanoid(),
-        title,
+      // Generate summary using OpenAI
+      const summaryPayload = {
         tags,
-        totalItems: items.length,
-        visibility: parseInt(visibility), // Use the visibility state here
-        createdBy: user.username,
-        createdById: user.firebase_uid,
-        items: transformedItems,
+        items: items.map((item) => ({
+          term: item.term,
+          definition: item.definition,
+        })),
       };
 
-      // Determine the endpoint based on whether we're creating or updating
-      const endpoint = editMode
-        ? `${import.meta.env.VITE_BACKEND_URL}/api/study-material/update`
-        : `${import.meta.env.VITE_BACKEND_URL}/api/study-material/save`;
+      console.log("Sending summary request with payload:", summaryPayload);
 
-      const response = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(studyMaterial),
-      });
+      try {
+        const summaryResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-summary`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(summaryPayload),
+          }
+        );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
-        throw new Error(
-          errorData?.message || `Server error: ${response.status}`
+        if (!summaryResponse.ok) {
+          const errorData = await summaryResponse.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to generate summary");
+        }
+
+        const summaryData = await summaryResponse.json();
+        summary = summaryData.summary;
+
+        console.log("Generated summary:", summary);
+      } catch (summaryError) {
+        console.error("Error generating summary:", summaryError);
+        // Create a fallback summary instead of failing the whole save process
+        summary = title;
+        handleShowSnackbar(
+          "Couldn't generate summary, using title as fallback."
         );
       }
 
-      const savedData = await response.json();
+      // Continue with saving the study material using the summary (or fallback)
 
-      if (!savedData) {
-        throw new Error("No data received from server");
+      // Check total payload size before sending
+      let totalImageSize = 0;
+      items.forEach((item) => {
+        if (item.image && typeof item.image === "string") {
+          totalImageSize += getFileSizeInMB(item.image);
+        }
+      });
+
+      if (totalImageSize > MAX_TOTAL_PAYLOAD_MB) {
+        handleShowSnackbar(
+          `Total images size (${totalImageSize.toFixed(
+            2
+          )}MB) exceeds maximum allowed (${MAX_TOTAL_PAYLOAD_MB}MB). Please reduce image sizes or remove some images.`
+        );
+        return;
       }
 
-      // Create broadcast data with consistent property naming
-      const broadcastData = {
-        study_material_id:
-          savedData.studyMaterialId || studyMaterial.studyMaterialId,
-        title: savedData.title || title,
-        tags: savedData.tags || tags,
-        total_items: savedData.totalItems || items.length,
-        created_by: savedData.createdBy || user.username,
-        created_by_id: savedData.createdById || user.firebase_uid,
-        visibility: savedData.visibility,
-        created_at: savedData.created_at || new Date().toISOString(),
-        items: savedData.items || transformedItems,
-      };
+      try {
+        // Transform items to include base64 images and preserve item_number
+        const transformedItems = items.map((item) => ({
+          term: item.term,
+          definition: item.definition,
+          image: item.image || null,
+          item_number: item.item_number, // Preserve the item number
+        }));
 
-      // Emit the transformed data
-      console.log("Emitting new study material event:", broadcastData);
-      socket.emit("newStudyMaterial", broadcastData);
+        const studyMaterial = {
+          studyMaterialId: editMode ? studyMaterialId : nanoid(),
+          title,
+          tags,
+          summary, // Use the generated or fallback summary
+          totalItems: items.length,
+          visibility: parseInt(visibility), // Use the visibility state here
+          createdBy: user.username,
+          createdById: user.firebase_uid,
+          items: transformedItems, // Now includes item_number
+        };
 
-      // Navigate to preview page
-      navigate(
-        `/dashboard/study-material/view/${broadcastData.study_material_id}`
-      );
+        // Determine the endpoint based on whether we're creating or updating
+        const endpoint = editMode
+          ? `${import.meta.env.VITE_BACKEND_URL}/api/study-material/update`
+          : `${import.meta.env.VITE_BACKEND_URL}/api/study-material/save`;
+
+        const response = await fetch(endpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(studyMaterial),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          throw new Error(
+            errorData?.message || `Server error: ${response.status}`
+          );
+        }
+
+        const savedData = await response.json();
+
+        if (!savedData) {
+          throw new Error("No data received from server");
+        }
+
+        // Create broadcast data with consistent property naming
+        const broadcastData = {
+          study_material_id:
+            savedData.studyMaterialId || studyMaterial.studyMaterialId,
+          title: savedData.title || title,
+          tags: savedData.tags || tags,
+          summary: savedData.summary || summary,
+          total_items: savedData.totalItems || items.length,
+          created_by: savedData.createdBy || user.username,
+          created_by_id: savedData.createdById || user.firebase_uid,
+          visibility: savedData.visibility,
+          created_at: savedData.created_at || new Date().toISOString(),
+          items: savedData.items || transformedItems,
+        };
+
+        // Emit the transformed data
+        console.log("Emitting new study material event:", broadcastData);
+        socket.emit("newStudyMaterial", broadcastData);
+
+        // Navigate to preview page
+        navigate(
+          `/dashboard/study-material/view/${broadcastData.study_material_id}`
+        );
+      } catch (error) {
+        console.error(
+          editMode
+            ? "Failed to update study material:"
+            : "Failed to save study material:",
+          error
+        );
+        handleShowSnackbar(
+          error instanceof Error
+            ? error.message
+            : "Failed to save study material. Please try again."
+        );
+      }
     } catch (error) {
-      console.error(
-        editMode
-          ? "Failed to update study material:"
-          : "Failed to save study material:",
-        error
-      );
-      handleShowSnackbar(
-        error instanceof Error
-          ? error.message
-          : "Failed to save study material. Please try again."
-      );
+      console.error("Error in handleSaveButton:", error);
+      handleShowSnackbar("An unexpected error occurred. Please try again.");
     }
   };
 
@@ -337,7 +471,7 @@ const CreateStudyMaterial = () => {
           />
           <Stack spacing={2.5}>
             {/* Title Input */}
-            <Box className="sticky top-4 z-10">
+            <Box className="sticky top-4">
               <Stack
                 direction={"row"}
                 spacing={2}
@@ -380,7 +514,6 @@ const CreateStudyMaterial = () => {
                       borderColor: "#E2DDF3",
                       color: "#E2DDF3",
                       height: "fit-content",
-
                       borderRadius: "0.8rem",
                       padding: "0.4rem 2rem",
                       fontSize: "0.8rem",
@@ -513,7 +646,7 @@ const CreateStudyMaterial = () => {
                     transition: "all 0.3s ease-in-out",
                     "&:hover": {
                       transform: "scale(1.03)",
-                      borderColor: "#E2DDF3",
+                      borderColor: "#9F9BAE",
                       color: "#E2DDF3",
                     },
                   }}
@@ -536,25 +669,37 @@ const CreateStudyMaterial = () => {
             {/* Items */}
             <Box className="pb-6">
               <Stack spacing={2}>
-                <AnimatePresence>
-                  {items.map((item) => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.5 }}
-                    >
-                      <ItemComponent
-                        item={item}
-                        deleteItem={() => handleDeleteItem(item.id)}
-                        updateItem={(field, value) =>
-                          handleUpdateItem(item.id, field, value)
-                        }
-                      />
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={items.map((item) => item.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <AnimatePresence>
+                      {items.map((item) => (
+                        <motion.div
+                          key={item.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.5 }}
+                        >
+                          <SortableItem
+                            id={item.id}
+                            item={item}
+                            deleteItem={() => handleDeleteItem(item.id)}
+                            updateItem={(field, value) =>
+                              handleUpdateItem(item.id, field, value)
+                            }
+                          />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
+                  </SortableContext>
+                </DndContext>
 
                 <Button
                   variant="outlined"
@@ -573,7 +718,7 @@ const CreateStudyMaterial = () => {
                     transition: "all 0.3s ease-in-out",
                     "&:hover": {
                       transform: "scale(1.005)",
-                      borderColor: "#E2DDF3",
+                      borderColor: "#9F9BAE",
                       color: "#E2DDF3",
                     },
                   }}

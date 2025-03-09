@@ -1,49 +1,28 @@
-import { Box, Stack, Typography } from "@mui/material";
+import { Box, Stack, Typography, Paper } from "@mui/material";
+import { StudyMaterial } from "../../../../types/studyMaterialObject";
 
-interface Item {
-  term: string;
-  definition: string;
-}
-interface StudyMaterial {
-  title: string;
-  tags: string[];
-  images: string[];
-  total_items: number;
-  created_by: string;
-  total_views: number;
-  updated_at: string;
-  items: Item[];
-}
 interface SummaryPageProps {
   studyMaterial: StudyMaterial | null;
 }
 
 const SummaryPage = ({ studyMaterial }: SummaryPageProps) => {
   return (
-    <Box className="h-full w-full px-8 py-4 rounded-[0.8rem] bg-[#E2DDF3]">
+    <Box className="h-full w-full px-4 py-4 rounded-[0.8rem] bg-[#E2DDF3]">
       <Stack spacing={2}>
         {studyMaterial ? (
-          Array.isArray(studyMaterial.items) &&
-          studyMaterial.items.length > 0 ? ( // Ensure items is an array and not empty
-            studyMaterial.items.map((item, index) => (
-              <Stack key={index}>
-                <Typography
-                  variant="h6"
-                  fontWeight="bold"
-                  className="text-[#120F1D]"
-                >
-                  {item.term}
-                </Typography>
-                <Typography variant="body1" className="text-[#120F1D]">
-                  {item.definition}
-                </Typography>
-              </Stack>
-            ))
-          ) : (
-            <Typography variant="body1" className="text-[#120F1D]">
-              No items available
+          <Paper elevation={0} sx={{ bgcolor: "transparent", p: 2 }}>
+            <Typography
+              variant="h6"
+              fontWeight="bold"
+              className="text-[#120F1D] mb-4"
+            >
+              {studyMaterial.title}
             </Typography>
-          )
+            <Typography variant="body1" className="text-[#120F1D] text-lg">
+              {studyMaterial.summary ||
+                "No summary available for this study material."}
+            </Typography>
+          </Paper>
         ) : (
           <Typography variant="body1" className="text-[#120F1D]">
             Loading...

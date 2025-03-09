@@ -90,8 +90,9 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
               transform: "translate(-50%, -50%)",
               width: { xs: "90%", sm: "880px" },
               height: { xs: "auto", sm: "600px" },
-              bgcolor: "#080511",
-              borderRadius: "10px",
+              bgcolor: "#120F1B",
+              borderRadius: "0.8rem",
+              border: "2px solid #3B354D",
               boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.2)",
               display: "flex",
               flexDirection: "column",
@@ -166,7 +167,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
                   sx={{
                     width: { xs: "100%", sm: "231px" },
                     height: { xs: "auto", sm: "272px" },
-                    borderRadius: "8px",
+                    borderRadius: "0.8rem",
                     backgroundColor:
                       hoveredIndex === index
                         ? button.hoverBackground

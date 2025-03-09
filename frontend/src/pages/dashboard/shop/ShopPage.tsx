@@ -46,6 +46,25 @@ const Shop = () => {
     }
   };
 
+  const getImagePaddingClass = (itemId: number) => {
+    switch (itemId) {
+      case 1: // Mana Regen Band
+        return "pt-3";
+      case 2: // Tech Pass
+        return "pt-4 scale-110";
+      case 3: // Rewards Multiplier Badge
+        return "pt-3";
+      case 4: // Fortune Coin
+        return "pt-3";
+      case 5: // Insightful Token
+        return "pt-3";
+      case 6: // Study Starter Pack
+        return "pt-3 scale-150 pl-2";
+      default:
+        return "";
+    }
+  };
+
   return (
     <PageTransition>
       <DocumentHead title="Shop | Duel Learn" />
@@ -107,12 +126,21 @@ const Shop = () => {
               className="border-[0.2rem] border-[#3B354C] rounded-[1rem] shadow-lg py-7 px-7 flex flex-col items-center pb-4 aspect-w-1 aspect-h-1 relative"
             >
               <div className="relative">
+                {/* Remove or comment out this block to hide owned status */}
+                {/*
                 {item.owned > 0 && (
                   <div className="absolute top-0 left-8 w-[91px] rounded-lg bg-white text-black px-2 py-1 text-xs">
                     OWNED {item.owned} / 5
                   </div>
                 )}
-                <div className="w-24 h-24 bg-[#6F658D] rounded mb-4"></div>
+                */}
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className={`w-24 h-24 object-contain mb-4 rounded ${getImagePaddingClass(
+                    item.id
+                  )}`}
+                />
               </div>
               <h2 className="text-lg font-bold mb-2">{item.name}</h2>
               <p className="text-sm text-gray-400 mb-4 text-center">

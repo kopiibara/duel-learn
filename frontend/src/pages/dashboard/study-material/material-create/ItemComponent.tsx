@@ -9,29 +9,24 @@ import {
   IconButton,
   Divider,
   Fab,
+  Typography,
 } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicatorRounded";
 import AddPhotoIcon from "@mui/icons-material/AddPhotoAlternateRounded";
 import DeleteIcon from "@mui/icons-material/DeleteRounded";
 import { motion, AnimatePresence } from "framer-motion";
-
-// Define props interface for ItemComponent
-interface ItemComponentProps {
-  item: {
-    id: number;
-    term: string;
-    definition: string;
-    image?: string | File | null;
-  };
-  deleteItem: () => void;
-  updateItem: (field: string, value: string | File | null) => void;
-}
+import { ItemComponentProps } from "../types/itemComponent";
 
 const ItemComponent: FC<ItemComponentProps> = ({
   item,
   deleteItem,
   updateItem,
+  dragHandleProps,
+  isDragging,
 }) => {
+  // Add a state to track grabbing state
+  const [isGrabbing, setIsGrabbing] = useState(false);
+
   const [previewSrc, setPreviewSrc] = useState<string | null>(
     typeof item.image === "string"
       ? item.image
@@ -64,20 +59,49 @@ const ItemComponent: FC<ItemComponentProps> = ({
     updateItem("image", null); // Remove image from state
   };
 
+  // Add functions to handle grab and release
+  const handleGrabStart = () => setIsGrabbing(true);
+  const handleGrabEnd = () => setIsGrabbing(false);
+
+  // Determine the border class based on the current state
+  const getBorderClass = () => {
+    if (isDragging) return "ring-[0.1rem] ring-[#A38CE6] border-[#A38CE6]";
+    if (isGrabbing) return "border-[#A38CE6]"; // New color when grabbing
+    return "border-[#3B354D] hover:border-[#9F9BAE]";
+  };
+
   return (
-    <Box className="bg-inherit rounded-[0.8rem] border-2 border-[#3B354D] w-full hover:border-[#E2DDF3] transition-colors duration-300 ease-in-out">
+    <Box
+      className={`bg-inherit rounded-[0.8rem] border-2 ${getBorderClass()} w-full transition-colors duration-300 ease-in-out`}
+    >
       <Stack spacing={1} direction={"row"} className="flex">
-        {/* Drag Indicator */}
-        <Box className="flex items-center rounded-tl-[0.7rem] rounded-bl-[0.7rem] border-[#211D2F] bg-[#211D2F] w-auto border">
+        {/* Drag Indicator with Item Number */}
+        <Box
+          className={`flex items-center rounded-tl-[0.7rem] rounded-bl-[0.7rem] border-[#211D2F] ${
+            isGrabbing ? "bg-[#3B354D]" : "bg-[#211D2F]"
+          } w-auto border transition-colors duration-200`}
+          {...dragHandleProps?.attributes}
+        >
           <Button
             className="h-full"
             sx={{
-              "&:hover": { color: "#6C63FF", cursor: "grab" },
-              "&:active": { color: "#FF6F61", cursor: "grabbing" },
+              cursor: isGrabbing ? "grabbing" : "grab",
+              color: isGrabbing ? "#3B354D" : "inherit",
+              "&:active": { cursor: "grabbing", color: "#3B354D" },
+              "&:hover": { color: "#6C63FF" },
               "& .MuiTouchRipple-root": { color: "#3B354D" },
+              transition: "all 0.2s ease",
             }}
+            {...dragHandleProps?.listeners}
+            onMouseDown={handleGrabStart}
+            onMouseUp={handleGrabEnd}
+            onMouseLeave={handleGrabEnd} // In case the user drags out of the button
+            onTouchStart={handleGrabStart}
+            onTouchEnd={handleGrabEnd}
           >
-            <DragIndicatorIcon className="text-[#3B354D]" />
+            <DragIndicatorIcon
+              className={isGrabbing ? "text-[#A38CE6]" : "text-[#3B354D]"}
+            />
           </Button>
         </Box>
 
@@ -152,6 +176,9 @@ const ItemComponent: FC<ItemComponentProps> = ({
             spacing={1}
             className="flex items-center justify-between w-full pr-6"
           >
+            <p className="text-[#9F9BAE] font-bold text-[0.9rem] pl-1">
+              No. {item.item_number}
+            </p>
             <Box flexGrow={1} />
             <Stack direction="row" spacing={1} className="flex items-center">
               <FormControlLabel
@@ -170,7 +197,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                   />
                 }
                 label="AI Cross-Referencing"
-                className="text-[#E2DDF3] text-[0.8rem]"
+                className="text-[#9F9BAE] text-[0.8rem]"
               />
               <Tooltip title="Add Photo" arrow>
                 <IconButton

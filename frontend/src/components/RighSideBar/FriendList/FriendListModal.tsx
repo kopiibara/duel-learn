@@ -38,7 +38,7 @@ const FriendListModal: React.FC<ModalProps> = ({
 
       {/* Modal */}
       <div
-        className="bg-[#080511] border-[#3B354D] border rounded-[1rem] w-[689px] h-[639px] max-w-full p-5 sm:p-5 md:p-9 relative flex flex-col"
+        className="bg-[#120F1B] border-[#3B354D] border-2 rounded-[0.8rem] w-[689px] h-[639px] max-w-full p-5 sm:p-5 md:p-9 relative flex flex-col"
         onClick={(e) => e.stopPropagation()} // Prevent clicks inside modal from closing it
       >
         {/* Close Button */}

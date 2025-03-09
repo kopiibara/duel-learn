@@ -6,6 +6,7 @@ import { UserProvider } from "./contexts/UserContext";
 import { AudioProvider } from "./contexts/AudioContext";
 import theme from "../../frontend/src/contexts/ThemeContext";
 import "./index.css";
+import InvitationLobbySnackbar from './components/InvitationLobbySnackbar';
 
 function App() {
   return (
@@ -16,6 +17,7 @@ function App() {
             <ThemeProvider theme={theme}>
               <CssBaseline />
               <AppRoutes />
+              <InvitationLobbySnackbar />
             </ThemeProvider>
           </HelmetProvider>
         </AudioProvider>

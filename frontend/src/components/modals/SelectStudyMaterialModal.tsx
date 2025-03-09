@@ -21,6 +21,7 @@ import SearchIcon from "@mui/icons-material/Search";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 import { useUser } from "../../contexts/UserContext";
+import { generateCode } from "../../pages/dashboard/play-battleground/utils/codeGenerator";
 
 interface StudyMaterial {
   title: string;
@@ -125,11 +126,20 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
 
   const handleMaterialSelect = (material: StudyMaterial) => {
     if (isLobby) {
+      const generatedLobbyCode = generateCode(); // Generate a new lobby code
+      console.log("Generated lobby code:", generatedLobbyCode);
+
       onMaterialSelect(material);
       onModeSelect(mode || "");
       handleClose();
-      navigate("/dashboard/pvp-lobby", {
-        state: { mode, material, selectedTypes },
+
+      navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
+        state: {
+          mode,
+          material,
+          selectedTypes,
+          lobbyCode: generatedLobbyCode, // Add lobby code to state
+        },
       });
     } else {
       const formattedMode =
@@ -176,8 +186,9 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
             transform: "translate(-50%, -50%)",
             width: { xs: "90%", sm: "1000px" },
             height: { xs: "auto", sm: "650px" },
-            bgcolor: "#080511",
-            borderRadius: "10px",
+            bgcolor: "#120F1B",
+            borderRadius: "0.8rem",
+            border: "2px solid #3B354D",
             boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.2)",
             display: "flex",
             flexDirection: "column",
@@ -356,11 +367,11 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
                       color: "#110C21",
                       display: "flex",
                       justifyContent: "space-between",
-                      borderRadius: "8px",
+                      borderRadius: "0.8rem",
                       px: 3,
                       py: 2,
                       "&:hover": {
-                        bgcolor: "#6c63ff",
+                        bgcolor: "#9F9BAE",
                       },
                     }}
                     onClick={() => handleMaterialSelect(material)}
@@ -387,7 +398,7 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
                               textAlign: "left",
                             }}
                           >
-                            Summary: {material.summary}
+                            Summary:
                           </Typography>
                           <Typography
                             variant="body2"

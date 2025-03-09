@@ -37,19 +37,31 @@ const setupSocket = (server) => {
 
         // Add user to a room based on their firebase_uid
         socket.on("setup", (userId) => {
-            socket.userId = userId;
+            try {
+                if (!userId) {
+                    console.error("Missing user ID during setup");
+                    return;
+                }
 
-            if (!userId) {
-                console.error("Invalid userId in setup");
-                return;
+                // Store the userId in the socket object for later reference
+                socket.userId = userId;
+
+                // Join a room with the user's ID
+                socket.join(userId);
+
+                // Log for debugging
+                console.log(`🔗 User ${userId} connected and joined room. Socket ID: ${socket.id}`);
+                console.log(`👥 Current active rooms:`, Array.from(socket.rooms));
+
+                // Store in active users map
+                activeUsers.set(userId, socket.id);
+
+                // Send confirmation to user
+                socket.emit("connected", { success: true, socketId: socket.id });
+
+            } catch (error) {
+                console.error("Error in setup:", error);
             }
-
-            // Store the user's socket mapping
-            activeUsers.set(userId, socket.id);
-            socket.userId = userId; // Store uid in socket for easy access
-
-            socket.join(userId);
-            console.log("👤 Active user joined room:", userId);
         });
 
         // Update the sendFriendRequest event handler
@@ -92,7 +104,7 @@ const setupSocket = (server) => {
             }
         });
 
-        // Update the acceptFriendRequest handler to include more detailed information
+        // Update the acceptFriendRequest handler to include more detailed          information
         socket.on("acceptFriendRequest", (data) => {
             try {
                 const { sender_id, receiver_id, senderInfo, receiverInfo } = data;
@@ -307,6 +319,262 @@ const setupSocket = (server) => {
                 message: "An unexpected error occurred",
                 details: error.message,
             });
+        });
+
+        // Add these new event handlers for battle invitations
+        socket.on("notify_battle_invitation", (data) => {
+            try {
+                const { senderId, senderName, receiverId, lobbyCode } = data;
+
+                // Validate all required fields
+                if (!senderId || !senderName || !receiverId || !lobbyCode) {
+                    console.error("Missing required data for battle invitation:", {
+                        senderId, senderName, receiverId, lobbyCode
+                    });
+                    socket.emit("error", {
+                        type: "battleInvitation",
+                        message: "Missing required data for battle invitation"
+                    });
+                    return;
+                }
+
+                console.log("🎮 Sending battle invitation:", {
+                    senderId,
+                    senderName,
+                    receiverId,
+                    lobbyCode
+                });
+
+                // Send ALL required fields to the receiver
+                io.to(receiverId).emit("battle_invitation", {
+                    senderId,
+                    senderName: senderName,
+                    receiverId,
+                    lobbyCode,
+                    timestamp: new Date().toISOString()
+                });
+            } catch (error) {
+                console.error("Error in notify_battle_invitation:", error);
+            }
+        });
+
+        socket.on("accept_battle_invitation", (data) => {
+            try {
+                const { senderId, receiverId, lobbyCode } = data;
+
+                console.log("🎮 Battle invitation accepted:", {
+                    senderId,
+                    receiverId,
+                    lobbyCode,
+                    timestamp: new Date().toISOString()
+                });
+
+                // Important: Emit to BOTH players
+                [senderId, receiverId].forEach(userId => {
+                    io.to(userId).emit("battle_invitation_accepted", {
+                        senderId,
+                        receiverId,
+                        lobbyCode,
+                        timestamp: new Date().toISOString()
+                    });
+                });
+
+            } catch (error) {
+                console.error("Error in accept_battle_invitation:", error);
+                socket.emit("error", {
+                    type: "battleAcceptance",
+                    message: "Failed to process battle acceptance",
+                    details: error.message
+                });
+            }
+        });
+
+        socket.on("decline_battle_invitation", (data) => {
+            try {
+                const { senderId, receiverId, lobbyCode } = data;
+
+                if (!senderId || !receiverId) {
+                    throw new Error("Missing required invitation decline data");
+                }
+
+                console.log("❌ Battle invitation declined:", {
+                    senderId,
+                    receiverId,
+                    lobbyCode
+                });
+
+                // Notify the original sender that their invitation was declined
+                io.to(senderId).emit("battle_invitation_declined", {
+                    senderId,
+                    receiverId,
+                    lobbyCode
+                });
+
+            } catch (error) {
+                console.error("Error processing invitation decline:", error);
+                socket.emit("error", {
+                    type: "battleDecline",
+                    message: "Failed to process battle decline",
+                    details: error.message
+                });
+            }
+        });
+
+        socket.on("join_lobby", (data) => {
+            try {
+                const { lobbyCode, playerId, playerName, playerLevel, playerPicture, hostId } = data;
+
+                if (!lobbyCode || !playerId) {
+                    console.error("Missing required lobby data:", data);
+                    return;
+                }
+
+                console.log(`🎮 Player ${playerName || playerId} joining lobby ${lobbyCode}`);
+
+                // Add player to the lobby room
+                socket.join(lobbyCode);
+
+                // Notify the host specifically
+                if (hostId) {
+                    console.log(`Notifying host ${hostId} about player ${playerName || playerId} joining`);
+                    io.to(hostId).emit("player_joined_lobby", {
+                        lobbyCode,
+                        playerId,
+                        playerName,
+                        playerLevel,
+                        playerPicture
+                    });
+                }
+
+                // Also broadcast to everyone in the lobby
+                socket.to(lobbyCode).emit("player_joined_lobby", {
+                    lobbyCode,
+                    playerId,
+                    playerName,
+                    playerLevel,
+                    playerPicture
+                });
+
+                // Send confirmation to the joining player
+                socket.emit("lobby_joined", {
+                    success: true,
+                    lobbyCode,
+                    message: "Successfully joined lobby"
+                });
+            } catch (error) {
+                console.error("Error in join_lobby handler:", error);
+                socket.emit("error", {
+                    type: "lobbyJoin",
+                    message: "Failed to join lobby",
+                    details: error.message
+                });
+            }
+        });
+
+        socket.on("player_ready", (data) => {
+            try {
+                const { lobbyCode, playerId, isReady } = data;
+
+                if (!lobbyCode || !playerId) {
+                    console.error("Missing required ready status data:", data);
+                    return;
+                }
+
+                console.log(`🎮 Player ${playerId} is ${isReady ? 'ready' : 'not ready'} in lobby ${lobbyCode}`);
+
+                // Broadcast to everyone in the lobby including the sender
+                io.to(lobbyCode).emit("player_ready_status", {
+                    lobbyCode,
+                    playerId,
+                    isReady
+                });
+            } catch (error) {
+                console.error("Error in player_ready handler:", error);
+            }
+        });
+
+        socket.on("request_lobby_info", (data) => {
+            try {
+                const { lobbyCode, requesterId } = data;
+
+                if (!lobbyCode || !requesterId) {
+                    console.error("Missing required lobby info request data");
+                    return;
+                }
+
+                console.log(`🔍 Player ${requesterId} requesting lobby info for lobby ${lobbyCode}`);
+
+                // Forward the request to the host (we don't know who the host is, so broadcast to the lobby)
+                socket.to(lobbyCode).emit("request_lobby_info", {
+                    lobbyCode,
+                    requesterId
+                });
+            } catch (error) {
+                console.error("Error handling lobby info request:", error);
+            }
+        });
+
+        socket.on("lobby_info_response", (data) => {
+            try {
+                const { lobbyCode, requesterId, hostId, hostName, material, questionTypes, mode } = data;
+
+                if (!lobbyCode || !requesterId) {
+                    console.error("Missing required lobby info response data");
+                    return;
+                }
+
+                // Add more detailed logging to diagnose material format issues
+                console.log(`📡 Host ${hostId} sending lobby info to ${requesterId} for lobby ${lobbyCode}`, {
+                    lobbyCode,
+                    material: material?.title
+                        ? { title: material.title, id: material.id || 'unknown' }
+                        : "No material or invalid format",
+                    questionTypes: questionTypes || [],
+                    mode
+                });
+
+                // Send the lobby info to the specific requesting player
+                io.to(requesterId).emit("lobby_info_response", {
+                    lobbyCode,
+                    requesterId,
+                    hostId,
+                    hostName,
+                    hostLevel: user.level,
+                    hostPicture: user.display_picture,
+                    material: selectedMaterial,
+                    questionTypes: selectedTypesFinal,
+                    mode: selectedMode
+                });
+            } catch (error) {
+                console.error("Error handling lobby info response:", error);
+            }
+        });
+
+        socket.on("lobby_material_update", (data) => {
+            try {
+                const { lobbyCode, material, questionTypes, mode } = data;
+
+                if (!lobbyCode) {
+                    console.error("Missing lobby code for material update");
+                    return;
+                }
+
+                console.log(`📚 Updating lobby ${lobbyCode} material:`, {
+                    material: material?.title,
+                    questionTypes,
+                    mode
+                });
+
+                // Broadcast to everyone in the lobby except the sender
+                socket.to(lobbyCode).emit("lobby_material_update", {
+                    lobbyCode,
+                    material,
+                    questionTypes,
+                    mode
+                });
+            } catch (error) {
+                console.error("Error handling lobby material update:", error);
+            }
         });
 
     });

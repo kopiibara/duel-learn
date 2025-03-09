@@ -58,16 +58,15 @@ const HomePage = ({
                 variant="text"
                 onClick={handleSeeMore}
                 sx={{
+                  textTransform: "none",
+                  borderRadius: "0.8rem",
+                  padding: "0.5rem 1rem",
                   color: "#3B354D",
-                  fontSize: {
-                    xs: "0.7rem",
-                    sm: "0.8rem",
-                  },
-                  borderRadius: "0.5rem",
-                  transition: "color 0.3s ease",
+                  transition: "all 0.3s ease",
                   "&:hover": {
-                    color: "#E2DDF3",
-                    borderRadius: "0.5rem",
+                    color: "inherit",
+                    transform: "scale(1.01)",
+                    backgroundColor: "#3B354C",
                   },
                 }}
               >

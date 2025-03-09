@@ -40,9 +40,12 @@ const ExploreCards = ({ cards }: ExploreCardsProps) => {
               images={item.images}
               totalItems={item.total_items}
               createdBy={item.created_by}
+              createdById={item.created_by_id}
               totalViews={item.total_views}
               createdAt={item.updated_at}
-              visibility={item.visibility} // Pass visibility as a number
+              updatedAt={item.updated_at}
+              visibility={item.visibility}
+              status={item.status}
               items={item.items}
               onClick={() =>
                 handleCardClick(item.study_material_id, item.title)
