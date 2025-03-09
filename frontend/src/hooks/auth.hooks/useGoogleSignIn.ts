@@ -2,8 +2,8 @@ import { useNavigate } from "react-router-dom";
 import { signInWithPopup } from "firebase/auth";
 import {
   auth,
-  googleProvider,
   getAdditionalInfo,
+  googleProvider,
 } from "../../services/firebase";
 import useGoogleSignUpApi, { GoogleSignUpError } from "../api.hooks/useGoogleSignUpApi";
 import useHandleError from "../validation.hooks/useHandleError";
@@ -23,9 +23,11 @@ const useGoogleSignIn = () => {
       const additionalUserInfo = getAdditionalInfo(result);
       const isNewUser = additionalUserInfo?.isNewUser ?? false;
 
+      console.log("New User Status:", isNewUser);
+      console.log("User Email Verified:", result.user.emailVerified);
+
       localStorage.setItem("userToken", token);
 
-      // Call signUpApi with the required parameters for new users
       if (isNewUser) {
         try {
           await googleSignUpApi(
@@ -39,9 +41,9 @@ const useGoogleSignIn = () => {
             }
           );
         } catch (error) {
+          console.error("Error during Google Sign Up:", error);
           if (error instanceof GoogleSignUpError) {
             if (error.code === 'EMAIL_IN_USE') {
-              // If email is already in use, sign out the user and redirect to login
               await auth.signOut();
               localStorage.removeItem("userToken");
               handleLoginError(new Error(error.message));
@@ -49,12 +51,15 @@ const useGoogleSignIn = () => {
               return;
             }
           }
-          throw error; // Re-throw other errors to be caught by the outer catch block
+          throw error;
         }
       }
 
       setTimeout(() => {
+        console.log("isNewUser:", isNewUser);
+        console.log("result.user.emailVerified:", result.user.emailVerified); 
         if (isNewUser && result.user.emailVerified) {
+          console.log("New user, redirecting to welcome page");
           navigate("/dashboard/welcome");
         } else if (!result.user.emailVerified) {
           navigate("/dashboard/verify-email");

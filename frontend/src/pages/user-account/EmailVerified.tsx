@@ -12,91 +12,103 @@ interface LocationState {
   email?: string;
   firebase_uid?: string;
   oobCode?: string;
+  token?: string;
 }
 
 const EmailVerified = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, setUser } = useUser();
+  const { user, setUser, loginAndSetUserData } = useUser();
   const { signUpApi } = useSignUpApi();
   const [isVerifying, setIsVerifying] = useState(false);
+  const[okayNaTo, isOkayNaTo] = useState(false);
+  const [isNew, setIsNew] = useState(false);
+  const verifyEmail = async () => {
+    const state = location.state as LocationState;
+
+    if (!state?.oobCode || !state.firebase_uid) {
+      toast.error("Invalid verification link");
+      return;
+    }
+  
+    try {
+      setIsVerifying(true);
+      if(!okayNaTo){
+      await applyActionCode(auth, state.oobCode);
+      console.log("applyActionCode successful");
+      isOkayNaTo(true);
+      }
+      // 2. Reload user to get updated status
+      if (!auth.currentUser) {
+        throw new Error("No user is currently signed in");
+      }
+
+      await reload(auth.currentUser);
+      console.log("User reloaded");
+
+      // 3. Verify email is actually verified
+      if (!auth.currentUser.emailVerified) {
+        throw new Error("Email verification failed");
+      }
+
+      // 4. Update user context with verified status
+      if (user) {
+        const updatedUser = {
+          ...user,
+          email_verified: true,
+        };
+        setUser(updatedUser);
+      }
+      await reload(auth.currentUser);
+
+      // 5. Call signup API with verified status
+      const metadata = auth.currentUser.metadata;
+      const isNew = metadata.creationTime === metadata.lastSignInTime;
+      const email_verified = auth.currentUser.emailVerified || false;
+      setIsNew(isNew);
+
+      // Force email_verified to true since we just verified it
+
+      console.log("Before API call:", {
+        firebase_uid: state.firebase_uid,
+        isNew,
+        email_verified: auth.currentUser.emailVerified,
+      });
+
+      if (email_verified) {
+        await signUpApi(state.firebase_uid, isNew, email_verified);
+        
+        // Get token after successful verification
+        const token = await auth.currentUser.getIdToken();
+        
+        // Fetch and update user data
+        await loginAndSetUserData(state.firebase_uid, token);
+      }
+      // 6. Clear email verification related data
+      localStorage.removeItem("emailTimestamp");
+    } catch (error) {
+      console.error("Error verifying email:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to verify email"
+      );
+      return;
+    } finally {
+      setIsVerifying(false);
+    }
+  };
 
   useEffect(() => {
-    const verifyEmail = async () => {
-      const state = location.state as LocationState;
-
-      if (!state?.oobCode || !state.firebase_uid) {
-        toast.error("Invalid verification link");
-        return;
-      }
-
-      // Prevent double verification
-      if (isVerifying) {
-        return;
-      }
-
-      try {
-        setIsVerifying(true);
-        await applyActionCode(auth, state.oobCode);
-        console.log("applyActionCode successful");
-
-        // 2. Reload user to get updated status
-        if (!auth.currentUser) {
-          throw new Error("No user is currently signed in");
-        }
-
-        await reload(auth.currentUser);
-        console.log("User reloaded");
-
-        // 3. Verify email is actually verified
-        if (!auth.currentUser.emailVerified) {
-          throw new Error("Email verification failed");
-        }
-
-        // 4. Update user context with verified status
-        if (user) {
-          const updatedUser = {
-            ...user,
-            email_verified: true,
-          };
-          setUser(updatedUser);
-        }
-        await reload(auth.currentUser);
-
-        // 5. Call signup API with verified status
-        const metadata = auth.currentUser.metadata;
-        const isNew = metadata.creationTime === metadata.lastSignInTime;
-        const email_verified = auth.currentUser.emailVerified || false;
-
-        // Force email_verified to true since we just verified it
-
-        console.log("Before API call:", {
-          firebase_uid: state.firebase_uid,
-          isNew,
-          email_verified: auth.currentUser.emailVerified,
-        });
-
-        if (email_verified) {
-          await signUpApi(state.firebase_uid, isNew, email_verified);
-        }
-        // 6. Clear email verification related data
-        localStorage.removeItem("emailTimestamp");
-      } catch (error) {
-        console.error("Error verifying email:", error);
-        toast.error(
-          error instanceof Error ? error.message : "Failed to verify email"
-        );
-        navigate("/verify-email");
-        return;
-      } finally {
-        setIsVerifying(false);
-      }
-    };
-
+// Prevent double verification
+if (isVerifying) {
+  return;
+}
     verifyEmail();
+
   }, [location.state]);
 
   const handleContinue = () => {
+    console.log("handleContinue called");
+    console.log("user:", user);
     if (!user) {
       toast.error("User data not found");
       navigate("/login");
@@ -109,7 +121,7 @@ const EmailVerified = () => {
     // Navigate based on user type and status
     if (user.account_type === "admin") {
       navigate("/admin/admin-dashboard");
-    } else if (user.isNew) {
+    } else if (isNew) {
       navigate("/dashboard/welcome");
     } else {
       navigate("/dashboard/home");

@@ -17,16 +17,24 @@ const archiveUser = async (connection, firebase_uid) => {
       throw new Error('User not found');
     }
 
+    // Get user_info data before deletion
+    const [userInfoData] = await connection.execute(
+      'SELECT * FROM user_info WHERE firebase_uid = ?',
+      [firebase_uid]
+    );
+
     const user = userData[0];
+    const userInfo = userInfoData[0] || {};
     const archiveTimestamp = moment().format("YYYY-MM-DD HH:mm:ss");
 
     // Insert into archive_users table
     await connection.execute(
       `INSERT INTO archive_users 
-       (firebase_uid, username, email, password_hash, created_at, updated_at, 
+       (id, firebase_uid, username, email, password_hash, created_at, updated_at, 
         display_picture, full_name, email_verified, isSSO, archived_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
+        uuidv4(), // Generate unique archive ID
         user.firebase_uid,
         user.username,
         user.email,
@@ -41,12 +49,37 @@ const archiveUser = async (connection, firebase_uid) => {
       ]
     );
 
+    // Insert into archive_user_info table
+    await connection.execute(
+      `INSERT INTO archive_user_info 
+       (firebase_uid, level, exp, coins, mana, archived_at)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        user.firebase_uid,
+        userInfo.level || 1,
+        userInfo.exp || 0,
+        userInfo.coins || 500,
+        userInfo.mana || 200,
+        archiveTimestamp
+      ]
+    );
+
     // Archive in Firestore
     const userDoc = await admin.firestore().collection('users').doc(firebase_uid).get();
     if (userDoc.exists) {
-      const userData = userDoc.data();
+      const firestoreUserData = userDoc.data();
       await admin.firestore().collection('archive_users').doc(firebase_uid).set({
-        ...userData,
+        ...firestoreUserData,
+        archived_at: new Date()
+      });
+
+      // Create separate archive document for user_info in Firestore
+      await admin.firestore().collection('archive_user_info').doc(firebase_uid).set({
+        firebase_uid: user.firebase_uid,
+        level: userInfo.level || 1,
+        exp: userInfo.exp || 0,
+        coins: userInfo.coins || 500,
+        mana: userInfo.mana || 200,
         archived_at: new Date()
       });
     }
@@ -75,7 +108,7 @@ const signUpUser = async (req, res) => {
       return res.status(401).json({ error: "Unauthorized: Invalid token" });
     }
 
-    const { username, email, password, email_verified, isSSO } = req.body;
+    const { username, email, password, email_verified, isSSO, account_type } = req.body;
     const uid = decodedToken.uid;
     const currentTimestamp = moment().format("YYYY-MM-DD HH:mm:ss");
     connection = await pool.getConnection();
@@ -93,8 +126,8 @@ const signUpUser = async (req, res) => {
     // Parallelize SQL and Firestore operations
     await Promise.all([
       connection.execute(
-        `INSERT INTO users (firebase_uid, username, email, password_hash, created_at, updated_at, display_picture, full_name, email_verified, isSSO)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        `INSERT INTO users (firebase_uid, username, email, password_hash, created_at, updated_at, display_picture, full_name, email_verified, isSSO, account_type)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`,
         [
           uid,
           username || " ",
@@ -106,6 +139,7 @@ const signUpUser = async (req, res) => {
           null,
           email_verified,
           isSSO === true,  // Ensure boolean value
+          account_type || "free"
         ]
       ),
       connection.execute(
@@ -114,11 +148,17 @@ const signUpUser = async (req, res) => {
         [uid, username || "Default Username", null, 1, 0, 500, 200]
       ),
       admin.firestore().collection("users").doc(uid).set({
+        firebase_uid: uid,
         username: username || "Default Username",
         email: email || null,
+        password_hash: password_hash,
         email_verified: email_verified || false,
         isSSO: isSSO,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        account_type: account_type || "free", // Use validated account type
+        created_at: admin.firestore.FieldValue.serverTimestamp(),
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+        display_picture: null,
+        full_name: null,
         lastLogin: null,
         session: {},
       }),
@@ -127,6 +167,7 @@ const signUpUser = async (req, res) => {
         action: "User Signed Up",
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
       }),
+      admin.firestore().collection("temp_users").doc(uid).delete(),
     ]);
 
     res.status(201).json({
@@ -136,6 +177,14 @@ const signUpUser = async (req, res) => {
   } catch (error) {
     console.error("Error signing up user:", error);
     res.status(500).json({ error: "Internal server error", details: error.message });
+    // Delete Firebase Authentication account if it exists
+    try {
+      await admin.auth().deleteUser(uid);
+      console.log("Successfully deleted Firebase auth account for uid:", uid);
+    } catch (deleteError) {
+      console.error("Error deleting Firebase auth account:", deleteError);
+      // Don't throw error since we want to continue cleanup of other resources
+    }
   } finally {
     if (connection) connection.release();
   }
@@ -168,14 +217,15 @@ const storeUser = async (req, res) => {
       return res.status(403).json({ error: "Unauthorized: Token UID doesn't match request UID(store-user)"  });
     }
 
-    const { username, email, password } = req.body;
-    console.log("Request body:", { username, email, password: '***' });
+    const { username, email, password, account_type } = req.body;
+    console.log("Request body:", { username, email, password: '***', account_type });
     
     // Store user data with UID as key
     const userData = {
       username,
       email,
       password,
+      account_type,
     };
 
     // Store in Firestore temp_users collection
@@ -240,7 +290,51 @@ const getStoredUser = async (req, res) => {
 
 export default {
   signUpUser,
+  getUserInfo: async (req, res) => {
+    let connection;
+    try {
+        const { firebase_uid } = req.params;
 
+        // Get a connection from the pool
+        connection = await pool.getConnection();
+
+        // Fetch combined user data from both tables
+        const [userData] = await connection.execute(
+            `SELECT 
+                u.firebase_uid,
+                u.username,
+                u.email,
+                u.display_picture,
+                u.full_name,
+                u.email_verified,
+                u.isSSO,
+                u.account_type,
+                ui.level,
+                ui.exp,
+                ui.mana,
+                ui.coins
+            FROM users u
+            LEFT JOIN user_info ui ON u.firebase_uid = ui.firebase_uid
+            WHERE u.firebase_uid = ?`,
+            [firebase_uid]
+        );
+
+        if (userData.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Send the combined data
+        res.status(200).json({
+            message: 'User info fetched successfully',
+            user: userData[0],
+        });
+    } catch (error) {
+        console.error('Error fetching user info:', error);
+        res.status(500).json({ error: 'Internal server error', details: error.message });
+    } finally {
+        if (connection) connection.release();
+    }
+},
   resetPassword: async (req, res) => {
     let connection;
     try {
@@ -443,22 +537,60 @@ export default {
       // Get a connection from the pool
       connection = await pool.getConnection();
 
-      // Archive user data
-      await archiveUser(connection, firebase_uid);
+      // Check if user exists in SQL before proceeding
+      const [userExists] = await connection.execute(
+        'SELECT firebase_uid FROM users WHERE firebase_uid = ?',
+        [firebase_uid]
+      );
 
-      // Delete from SQL database
-      await connection.execute('DELETE FROM users WHERE firebase_uid = ?', [firebase_uid]);
+      if (userExists.length === 0) {
+        return res.status(404).json({ error: 'User not found in SQL database' });
+      }
 
-      // Delete from Firestore users collection (already archived)
-      await admin.firestore().collection('users').doc(firebase_uid).delete();
+      // Check if user exists in Firestore
+      const firestoreUser = await admin.firestore().collection('users').doc(firebase_uid).get();
+      if (!firestoreUser.exists) {
+        return res.status(404).json({ error: 'User not found in Firestore' });
+      }
 
-      // Delete from Firebase Auth
-      await admin.auth().deleteUser(firebase_uid);
+      // Check if user exists in Firebase Auth
+      try {
+        await admin.auth().getUser(firebase_uid);
+      } catch (error) {
+        if (error.code === 'auth/user-not-found') {
+          return res.status(404).json({ error: 'User not found in Firebase Auth' });
+        }
+        throw error;
+      }
 
-      res.status(200).json({ message: 'Account deleted and archived successfully' });
+      // Begin deletion process
+      try {
+        // First archive the user data
+        await archiveUser(connection, firebase_uid);
+
+        // Then delete from all services
+        await Promise.all([
+          // Delete from SQL database
+          connection.execute('DELETE FROM users WHERE firebase_uid = ?', [firebase_uid]),
+          connection.execute('DELETE FROM user_info WHERE firebase_uid = ?', [firebase_uid]),
+          // Delete from Firestore users collection
+          admin.firestore().collection('users').doc(firebase_uid).delete(),
+          // Delete from Firebase Auth
+          admin.auth().deleteUser(firebase_uid)
+        ]);
+
+        res.status(200).json({ message: 'Account deleted and archived successfully' });
+      } catch (error) {
+        // If error occurs after archiving, we still have the archived data
+        console.error('Error during deletion process:', error);
+        throw error;
+      }
     } catch (error) {
       console.error('Error deleting user account:', error);
-      res.status(500).json({ error: 'Failed to delete account' });
+      res.status(500).json({ 
+        error: 'Failed to delete account', 
+        details: error.message 
+      });
     } finally {
       if (connection) connection.release();
     }

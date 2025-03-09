@@ -12,6 +12,8 @@ import { useFormik } from "formik";
 import * as Yup from "yup";
 import useGoogleAuth from "../../hooks/auth.hooks/useGoogleAuth";
 import { useStoreUser } from '../../hooks/api.hooks/useStoreUser';
+import { useUser } from "../../contexts/UserContext";
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
 
 const SignUp = () => {
   const { handleError, combinedError } = useCombinedErrorHandler();
@@ -21,9 +23,27 @@ const SignUp = () => {
   const [loading, setLoading] = useState(false);
   const { storeUser } = useStoreUser();
   const { handleGoogleAuth, loading: googleLoading } = useGoogleAuth();
+  const { loginAndSetUserData } = useUser();
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
+  };
+
+  // Add functions to check uniqueness
+  const checkUsernameUnique = async (username: string) => {
+    const db = getFirestore();
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("username", "==", username));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.empty;
+  };
+
+  const checkEmailUnique = async (email: string) => {
+    const db = getFirestore();
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("email", "==", email));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.empty;
   };
 
   const validationSchema = Yup.object({
@@ -31,10 +51,26 @@ const SignUp = () => {
       .required("Username is required.")
       .min(8, "Username must be at least 8 characters.")
       .max(20, "Username cannot exceed 20 characters.")
-      .matches(/^[a-zA-Z0-9_]+$/, "Username can only contain alphanumeric characters and underscores."),
+      .matches(/^[a-zA-Z0-9_]+$/, "Username can only contain alphanumeric characters and underscores.")
+      .test("unique", "Username is already taken", async function(value) {
+        if (!value) return true; // Skip if empty as required() will handle it
+        try {
+          return await checkUsernameUnique(value);
+        } catch (error) {
+          return false;
+        }
+      }),
     email: Yup.string()
       .required("Email is required.")
-      .email("Please enter a valid email address."),
+      .email("Please enter a valid email address.")
+      .test("unique", "Email is already in use", async function(value) {
+        if (!value) return true; // Skip if empty as required() will handle it
+        try {
+          return await checkEmailUnique(value);
+        } catch (error) {
+          return false;
+        }
+      }),
     password: Yup.string()
       .required("Password is required.")
       .min(8, "Password must be at least 8 characters.")
@@ -81,6 +117,7 @@ const SignUp = () => {
           username: values.username,
           email: values.email,
           password: values.password,
+          account_type: "free",
         }, token);
         console.log("Store user result:", storeUserResult);
 
@@ -114,36 +151,18 @@ const SignUp = () => {
 
   const handleGoogleSubmit = async () => {
     try {
-      const authResult = await handleGoogleAuth();
+      const authResult = await handleGoogleAuth("free");
       
-      // Store token
-      localStorage.setItem("userToken", authResult.token);
+      // Fetch and update user data using the new hook
+      await loginAndSetUserData(authResult.userData.uid, authResult.token);
 
-      // Store minimal user data
-      const userData = {
-        email: authResult.userData.email,
-        username: authResult.userData.displayName,
-        email_verified: authResult.emailVerified,
-        firebase_uid: authResult.userData.uid,
-        isNew: authResult.isNewUser,
-      };
-      localStorage.setItem("userData", JSON.stringify(userData));
-
-      // Show success message for new users
       if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
+        setTimeout(() => navigate("/dashboard/welcome"), 1500);
+      } else {
+        setSuccessMessage("Account already exists. Redirecting to login...");
+        setTimeout(() => navigate("/login"), 1500);
       }
-
-      // Navigate based on user status
-      setTimeout(() => {
-        if (authResult.isNewUser && authResult.emailVerified) {
-          navigate("/dashboard/welcome");
-        } else if (!authResult.emailVerified) {
-          navigate("/dashboard/verify-email", { state: { token: authResult.token } });
-        } else {
-          navigate("/dashboard/home");
-        }
-      }, 2000);
     } catch (error) {
       handleError(error);
     }

@@ -5,6 +5,7 @@ import studyMaterialRoutes from "./routes/StudyMaterialRoutes.js";
 import userRoutes from "./routes/UserAccount.js";
 import friendRoutes from "./routes/FriendRoutes.js";
 import userInfoRoutes from "./routes/UserInfoRoutes.js";
+import adminRoutes from "./routes/admin/AdminRoutes.js"; // Import admin routes
 import { corsMiddleware } from './middleware/CorsMiddleware.js'; // Import CORS middleware
 import { coopMiddleware } from './middleware/CoopMiddleware.js'; // Import COOP middleware
 // Load environment variables
@@ -30,5 +31,6 @@ app.use("/api/study-material", studyMaterialRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/friend", friendRoutes);
 app.use("/api/user-info", userInfoRoutes);
+app.use("/api/admin", adminRoutes); // Mount admin routes under /api/admin
 
 export default app;

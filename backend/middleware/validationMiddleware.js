@@ -14,6 +14,13 @@ const storeUserValidation = validate({
         'string.max': 'Username cannot exceed 20 characters.',
         'string.pattern.base': 'Username can only contain alphanumeric characters and underscores.',
       }),
+    account_type: Joi.string()
+      .required()
+      .valid('free', 'premium', 'admin')
+      .messages({
+        'string.empty': 'Account type is required.',
+        'string.valid': 'Invalid account type.',
+      }),
     email: Joi.string()
       .required()
       .email()

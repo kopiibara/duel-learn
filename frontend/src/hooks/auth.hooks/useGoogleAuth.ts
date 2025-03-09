@@ -1,10 +1,12 @@
 import { useState } from "react";
-import { signInWithPopup, browserPopupRedirectResolver } from "firebase/auth";
+import { signInWithPopup, browserPopupRedirectResolver, deleteUser } from "firebase/auth";
 import {
   auth,
   googleProvider,
 } from "../../services/firebase";
 import useGoogleSignUpApi, { GoogleSignUpError } from "../api.hooks/useGoogleSignUpApi";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "../../services/firebase";
 
 // Configure Google provider
 googleProvider.setCustomParameters({
@@ -36,15 +38,27 @@ const useGoogleAuth = () => {
   const [loading, setLoading] = useState(false);
   const { googleSignUpApi } = useGoogleSignUpApi();
 
-  const handleGoogleAuth = async (): Promise<AuthResult> => {
+  const checkUserExists = async (email: string | null): Promise<boolean> => {
+    if (!email) return false;
+    
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("email", "==", email));
+    const querySnapshot = await getDocs(q);
+    return !querySnapshot.empty;
+  };
+
+  const handleGoogleAuth = async (account_type: "free" | "premium" | "admin"): Promise<AuthResult> => {
     setLoading(true);
     try {
       // 1. Attempt Google Sign In
       const result = await signInWithPopup(auth, googleProvider, browserPopupRedirectResolver);
       const token = await result.user.getIdToken();
-      const isNewUser = result.user.metadata.creationTime === result.user.metadata.lastSignInTime;
 
-      // 2. If new user, create account through googleSignUpApi
+      // 2. Check if user exists in our database
+      const userExists = await checkUserExists(result.user.email);
+      const isNewUser = !userExists;
+
+      // 3. If new user, create account through googleSignUpApi
       if (isNewUser) {
         try {
           await googleSignUpApi(
@@ -55,11 +69,18 @@ const useGoogleAuth = () => {
             {
               creationTime: result.user.metadata.creationTime ?? null,
               lastSignInTime: result.user.metadata.lastSignInTime ?? null
-            }
+            },
+            account_type
           );
         } catch (error) {
           // If account creation fails, sign out and throw error
-          await auth.signOut();
+          if (auth.currentUser) {
+            try {
+              await deleteUser(auth.currentUser);
+            } catch (deleteError) {
+              console.error("Error deleting user from Firebase:", deleteError);
+            }
+          }
           if (error instanceof GoogleSignUpError) {
             throw new GoogleAuthError(error.message, error.code === 'EMAIL_IN_USE' ? 'EMAIL_IN_USE' : 'API_ERROR');
           }
@@ -67,7 +88,7 @@ const useGoogleAuth = () => {
         }
       }
 
-      // 3. Return authentication result
+      // 4. Return authentication result
       return {
         token,
         isNewUser,

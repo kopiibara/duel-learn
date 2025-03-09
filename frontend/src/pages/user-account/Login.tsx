@@ -1,20 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
 import useCombinedErrorHandler from "../../hooks/validation.hooks/useCombinedErrorHandler";
 import {
-  getFirestore,
   collection,
   query,
   where,
   getDocs,
-  getDoc,
-  doc,
 } from "firebase/firestore";
 import PageTransition from "../../styles/PageTransition";
 import useGoogleAuth from "../../hooks/auth.hooks/useGoogleAuth";
-import useUserData from "../../hooks/api.hooks/useUserData";
 import LoadingScreen from "../../components/LoadingScreen";
 import { useFormik } from "formik";
 import * as Yup from "yup";
@@ -23,36 +19,32 @@ import * as Yup from "yup";
 import { signInWithEmailAndPassword} from "firebase/auth";
 import {
   auth,
-  getAdditionalInfo,
   db,
 } from "../../services/firebase"; // Ensure you have this import for Firebase auth
 // Icons
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
+import { useStoreUser } from '../../hooks/api.hooks/useStoreUser';
 
 const Login = () => {
-  const { setUser, user } = useUser(); // Get user from context
+  const { user, loginAndSetUserData } = useUser();
   const { handleError, combinedError } = useCombinedErrorHandler();
   const navigate = useNavigate();
-  const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
+  const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const { handleGoogleAuth, loading: googleLoading } = useGoogleAuth();
-  const { fetchAndUpdateUserData, loading: userDataLoading } = useUserData();
   const [loading, setLoading] = useState(false);
+  const { storeUser } = useStoreUser();
 
-  // Check if user is already logged in
-  if (user) {
-    const confirmed = window.confirm("You are already logged in. Would you like to log out?");
-    if (confirmed) {
-      auth.signOut();
-    } else {
-      navigate("/dashboard/home");
-      return null; // Return early to prevent rendering the login form
+  // Check if user is already logged in and redirect
+  useEffect(() => {
+    if (user && user.isNew) {
+      navigate("/dashboard/welcome");
     }
-  }
+  }, [user, navigate]);
 
   const togglePassword = () => {
-    setShowPassword(!showPassword); // Toggle password visibility
+    setShowPassword(!showPassword);
   };
 
   const validationSchema = Yup.object({
@@ -71,44 +63,97 @@ const Login = () => {
     onSubmit: async (values) => {
       setLoading(true);
       let email = values.username;
-
+      const isEmailFormat = /\S+@\S+\.\S+/.test(values.username);
+      
       try {
-        if (!/\S+@\S+\.\S+/.test(values.username)) {
-          // If username is not an email, fetch email from user collection
-          const db = getFirestore();
+        // First, determine whether input is email or username
+        if (!isEmailFormat) {
+          // If username is provided, check first in temp_users collection
+          const tempUsersRef = collection(db, "temp_users");
+          const tempUsersQuery = query(tempUsersRef, where("username", "==", values.username));
+          const tempUsersSnapshot = await getDocs(tempUsersQuery);
+          
+          if (!tempUsersSnapshot.empty) {
+            // User exists in temp_users collection
+            const userDoc = tempUsersSnapshot.docs[0];
+            const userData = userDoc.data();
+            email = userData.email;
+            
+            // Try to sign in with Firebase
+            const result = await signInWithEmailAndPassword(auth, email, values.password);
+            const token = await result.user.getIdToken();
+            
+            // Store user data using storeUser endpoint
+            await storeUser({
+              username: userData.username,
+              email: userData.email,
+              password: values.password,
+              account_type: userData.account_type || "free"
+            }, token);
+            
+            // Navigate to verify email page
+            navigate("/dashboard/verify-email", { state: { token } });
+            return;
+          }
+          
+          // If not found in temp_users, check in users collection
           const usersRef = collection(db, "users");
-          const q = query(usersRef, where("username", "==", values.username));
-          const querySnapshot = await getDocs(q);
-
-          if (!querySnapshot.empty) {
-            email = email;
+          const usersQuery = query(usersRef, where("username", "==", values.username));
+          const usersSnapshot = await getDocs(usersQuery);
+          
+          if (!usersSnapshot.empty) {
+            const userDoc = usersSnapshot.docs[0];
+            email = userDoc.data().email;
           } else {
             throw new Error("Username not found");
           }
+        } else {
+          // If email is provided, check first in temp_users collection
+          const tempUsersRef = collection(db, "temp_users");
+          const tempUsersQuery = query(tempUsersRef, where("email", "==", values.username));
+          const tempUsersSnapshot = await getDocs(tempUsersQuery);
+          
+          if (!tempUsersSnapshot.empty) {
+            // User exists in temp_users collection
+            const userDoc = tempUsersSnapshot.docs[0];
+            const userData = userDoc.data();
+            
+            // Try to sign in with Firebase
+            const result = await signInWithEmailAndPassword(auth, email, values.password);
+            const token = await result.user.getIdToken();
+            
+            // Store user data using storeUser endpoint
+            await storeUser({
+              username: userData.username,
+              email: userData.email,
+              password: values.password,
+              account_type: userData.account_type || "free"
+            }, token);
+            
+            // Navigate to verify email page
+            navigate("/dashboard/verify-email", { state: { token } });
+            return;
+          }
+          
+          // If not in temp_users, we proceed with normal login flow
+          // The email input will be used directly
         }
         
+        // Proceed with standard login
         const result = await signInWithEmailAndPassword(auth, email, values.password);
         const token = await result.user.getIdToken();
 
-        // Fetch and update user data using the new hook
-        const userData = await fetchAndUpdateUserData(result.user.uid, token);
+        // Use the new loginAndSetUserData function
+        const userData = await loginAndSetUserData(result.user.uid, token);
         
         if (userData.isNew) {
-          setSuccessMessage("Account created successfully!");
+          setSuccessMessage("Account found successfully!");
+          setTimeout(() => navigate("/dashboard/welcome"), 1500);
+        } else if (!userData.email_verified) {
+          navigate("/dashboard/verify-email", { state: { token } });
+        } else {
+          navigate("/dashboard/home");
         }
-
-        // Navigate based on user status
-        setTimeout(() => {
-          if (userData.account_type === "admin") {
-            navigate("/admin/admin-dashboard");
-          } else if (userData.isNew && userData.email_verified) {
-            navigate("/dashboard/welcome");
-          } else if (!userData.email_verified) {
-            navigate("/dashboard/verify-email", { state: { token } });
-          } else {
-            navigate("/dashboard/home");
-          }
-        }, 2000);
       } catch (error) {
         handleError(error);
       } finally {
@@ -119,30 +164,24 @@ const Login = () => {
 
   const googleSubmit = async () => {
     try {
-      const authResult = await handleGoogleAuth();
-      
-      // Fetch and update user data using the new hook
-      const userData = await fetchAndUpdateUserData(authResult.userData.uid, authResult.token);
+      const account_type = "free";
+      const authResult = await handleGoogleAuth(account_type);
+      const userData = await loginAndSetUserData(authResult.userData.uid, authResult.token);
 
-      if (userData.isNew) {
+      if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
+        setTimeout(() => navigate("/dashboard/welcome"), 1500);
+      } else if (!userData.email_verified) {
+        navigate("/dashboard/verify-email", { state: { token: authResult.token } });
+      } else {
+        navigate("/dashboard/home");
       }
-
-      setTimeout(() => {
-        if (userData.isNew && userData.email_verified) {
-          navigate("/dashboard/welcome");
-        } else if (!userData.email_verified) {
-          navigate("/dashboard/verify-email", { state: { token: authResult.token } });
-        } else {
-          navigate("/dashboard/home");
-        }
-      }, 2000);
     } catch (error) {
       handleError(error);
     }
   };
 
-  if (loading || googleLoading || userDataLoading) {
+  if (loading || googleLoading) {
     return (
       <PageTransition>
         <LoadingScreen />

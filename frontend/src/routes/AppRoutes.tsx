@@ -14,12 +14,11 @@ import PasswordChangedSuccessfully from "../pages/user-account/PasswordChangedSu
 import ConfirmationAccount from "../pages/user-account/ConfirmationAccount";
 import NotFoundPage from "../pages/user-account/NotFoundPage";
 import ResetPassword from "../pages/user-account/ResetPassword";
-import SuccessReset from "../pages/user-account/SuccessReset";
-import EmailActionHandler from "../pages/user-account/EmailActionHandler"; // Import EmailActionHandler
-import EmailVerified from "../pages/user-account/EmailVerified"; // Import EmailVerified
+import EmailActionHandler from "../pages/user-account/EmailActionHandler";
+import EmailVerified from "../pages/user-account/EmailVerified";
 import LoadingScreen from "../components/LoadingScreen";
-import AdminRoutes from "./AdminRoutes"; // Import AdminRoutes
-import AdminSignUp from "../pages/user-account/AdminSignUp"; // Import AdminSignUp
+import AdminRoutes from "./AdminRoutes";
+import AdminSignUp from "../pages/user-account/AdminSignUp";
 
 const AppRoutes: React.FC = () => {
   const location = useLocation();
@@ -43,18 +42,17 @@ const AppRoutes: React.FC = () => {
         {/* User onboarding routes */}
         <Route path="/confirmation-account" element={<ConfirmationAccount />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/success-reset" element={<SuccessReset />} />
-        <Route path="/email-action" element={<EmailActionHandler />} />{" "}
+        <Route path="/email-action" element={<EmailActionHandler />} />
         <Route path="verify-email" element={<VerifyEmail />} />
         <Route path="/check-your-mail" element={<CheckYourMail />} />
-        <Route path="/email-verified" element={<EmailVerified />} />{" "}
-        <Route path="*" element={<NotFoundPage />} />
+        <Route path="/email-verified" element={<EmailVerified />} />
         <Route path="/loading" element={<LoadingScreen />} />
         <Route path="/dashboard/*" element={<PrivateRoutes />} />
-        <Route path="/admin-sign-up" element={<AdminSignUp />} />{" "}
-        {/* Add AdminSignUp route */}
-        <Route path="/admin/*" element={<AdminRoutes />} />{" "}
-        {/* Add AdminRoutes */}
+        <Route path="/admin-sign-up" element={<AdminSignUp />} />
+        <Route path="/admin/*" element={<AdminRoutes />} />
+        
+        {/* This wildcard route should be the VERY LAST route to catch all undefined routes */}
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </AnimatePresence>
   );

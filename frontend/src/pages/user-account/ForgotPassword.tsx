@@ -5,8 +5,8 @@ import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../../services/firebase";
 import PageTransition from "../../styles/PageTransition";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
-import useHandleForgotPasswordError from "../../hooks/validation.hooks/useHandleForgotPasswordError";
-import useForgotPasswordValidation from "../../hooks/validation.hooks/useForgotPasswordValidation";
+import useFirebaseError from "../../hooks/validation.hooks/useFirebaseError";
+import * as Yup from "yup";
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
@@ -15,19 +15,25 @@ const ForgotPassword = () => {
     email: "",
   });
 
-  const { errors, validate } = useForgotPasswordValidation();
   const [loading, setLoading] = useState(false);
   const [isSSOModalOpen, setIsSSOModalOpen] = useState(false);
-  const { error, handleForgotPasswordError, setError } =
-    useHandleForgotPasswordError();
+  const { error, handleFirebaseError, setError } = useFirebaseError();
+  const [submitError, setSubmitError] = useState("");
+
+  const validationSchema = Yup.object().shape({
+    email: Yup.string()
+      .email("Please enter a valid email address.")
+      .required("Email is required."),
+  });
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const { email } = formData;
-    const formIsValid = true;
+    const formIsValid = await validationSchema.isValid(formData);
+    setSubmitError("");
     const newErrors = { email: "" };
 
-    if (formIsValid && !errors.email) {
+    if (formIsValid) {
       try {
         setLoading(true);
         const usersRef = collection(db, "users");
@@ -36,7 +42,7 @@ const ForgotPassword = () => {
         const querySnapshot = await getDocs(q);
 
         if (querySnapshot.empty) {
-          setError("Account doesn't exist.");
+          setSubmitError("Account doesn't exist.");
         } else {
           const userDoc = querySnapshot.docs[0];
           const userData = userDoc.data();
@@ -52,19 +58,23 @@ const ForgotPassword = () => {
           }
         }
       } catch (error) {
-        handleForgotPasswordError(error);
+        handleFirebaseError(error);
       } finally {
         setLoading(false);
       }
     } else {
-      setError(newErrors.email);
+      setSubmitError(newErrors.email);
     }
   };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prevData) => ({ ...prevData, [field]: value }));
-    validate(field, value);
-    setError("");
+    validationSchema
+      .validateAt(field, { [field]: value })
+      .then(() => setError(""))
+      .catch((err) => {
+        setError(err.message);
+      });
   };
 
   const handleExitClick = () => {
@@ -89,9 +99,9 @@ const ForgotPassword = () => {
             Please enter your email to search for your account.
           </p>
 
-          {error && (
+          {submitError && (
             <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-md border border-red-300">
-              {error}
+              {submitError}
             </div>
           )}
 
@@ -105,13 +115,11 @@ const ForgotPassword = () => {
                 autoComplete="off"
                 onChange={(e) => handleInputChange("email", e.target.value)}
                 className={`block w-full p-3 mb-4 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
-                  error || errors.email
-                    ? "border border-red-500 focus:ring-red-500"
-                    : "focus:ring-[#4D18E8]"
+                  error ? "border border-red-500 focus:ring-red-500" : "focus:ring-[#4D18E8]"
                 }`}
               />
-              {errors.email && (
-                <p className="text-red-500 mt-1 text-sm">{errors.email}</p>
+              {error && (
+                <p className="text-red-500 mt-1 text-sm">{error}</p>
               )}
             </div>
             <button

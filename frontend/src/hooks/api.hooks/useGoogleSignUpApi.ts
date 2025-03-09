@@ -43,7 +43,8 @@ const useGoogleSignUpApi = () => {
     displayName: string | undefined | null,
     email: string | undefined | null,
     emailVerified: boolean,
-    metadata: { creationTime: string | null; lastSignInTime: string | null }
+    metadata: { creationTime: string | null; lastSignInTime: string | null },
+    account_type: "free" | "premium" | "admin"
   ): Promise<GoogleSignUpResponse> => {
     try {
       const token = await auth.currentUser?.getIdToken();
@@ -95,7 +96,9 @@ const useGoogleSignUpApi = () => {
         email: email || '',
         password: 'N/A',  // For SSO users
         email_verified: Boolean(emailVerified),  // Ensure boolean
-        isSSO: true  // Explicitly set as boolean
+        isSSO: true,  // Explicitly set as boolean
+        uid: firebase_uid,
+        account_type
       };
 
       console.log("GoogleSignUpApi preparing request:", {
@@ -129,6 +132,7 @@ const useGoogleSignUpApi = () => {
       const responseData = await signUpResponse.json();
       console.log("Google sign-up response:", responseData);
       setApiError(null);
+      
       return responseData;
     } catch (error) {
       if (error instanceof GoogleSignUpError) {

@@ -5,6 +5,7 @@ interface StoreUserData {
   username: string;
   email: string;
   password: string;
+  account_type: "free" | "premium" | "admin";
 }
 
 interface StoreUserResponse {

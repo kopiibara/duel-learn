@@ -6,6 +6,7 @@ interface StoredUserData {
     username: string;
     email: string;
     password: string;
+    account_type: "free" | "premium" | "admin";
   }
 }
 
@@ -69,12 +70,13 @@ const useSignUpApi = () => {
             "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify({
-            firebase_uid,
+            uid: firebase_uid,
             username: storedUserData.user.username,
             email: storedUserData.user.email,
             password: storedUserData.user.password,
-            isNew,
+            isSSO: false,
             email_verified,
+            account_type: storedUserData.user.account_type
           }), 
         }
       );
