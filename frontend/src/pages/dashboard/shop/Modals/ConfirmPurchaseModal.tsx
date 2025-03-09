@@ -4,7 +4,11 @@ import { Modal, Box } from "@mui/material";
 interface ConfirmPurchaseModalProps {
   isOpen: boolean;
   closeModal: () => void;
-  selectedItem: { name: string; buyLabel: string } | null;
+  selectedItem: {
+    name: string;
+    buyLabel: string;
+    image: string;
+  } | null;
   quantity: number;
 }
 
@@ -22,12 +26,12 @@ const ConfirmPurchaseModal: React.FC<ConfirmPurchaseModalProps> = ({
           top: "50%",
           left: "50%",
           transform: "translate(-50%, -50%)",
-          width: 400,
+          width: 500,
           bgcolor: "#080511",
           boxShadow: 24,
           borderColor: "#3B354D",
           borderWidth: "1px",
-          borderRadius: "10px",
+          borderRadius: "16px",
           p: 4,
           textAlign: "center",
           color: "white",
@@ -44,11 +48,15 @@ const ConfirmPurchaseModal: React.FC<ConfirmPurchaseModalProps> = ({
               </span>
             </p>
 
-            <div className="w-[84px] h-[84px] bg-white rounded-lg mb-8 mt-8 mx-auto"></div>
+            <img
+              src={selectedItem.image}
+              alt={selectedItem.name}
+              className="w-[84px] h-[84px] object-contain rounded-lg mb-8 mt-8 mx-auto"
+            />
 
             <div className="flex justify-between mt-10">
               <button
-                className="bg-white text-black px-5 py-2 rounded-full font-bold flex-1 mr-2 hover:bg-gray-200 transition-all duration-200"
+                className="bg-white text-black px-5 py-2 rounded-lg font-bold flex-1 mr-2 hover:bg-gray-200 transition-all duration-200"
                 onClick={() => {
                   console.log("Purchase confirmed!", selectedItem, quantity);
                   closeModal();
@@ -58,7 +66,7 @@ const ConfirmPurchaseModal: React.FC<ConfirmPurchaseModalProps> = ({
               </button>
 
               <button
-                className="text-white hover:text-gray-200 transition-all duration-200 flex-1 ml-2 border border-white rounded-full"
+                className="text-white hover:text-gray-200 transition-all duration-200 flex-1 ml-2 border border-white rounded-lg"
                 onClick={closeModal}
               >
                 Cancel
