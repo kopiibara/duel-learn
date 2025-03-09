@@ -1,8 +1,16 @@
 import * as React from "react";
-import { Popover, Button, Stack, Divider } from "@mui/material";
+import { Popover, Button, Stack, Divider, Menu, MenuItem } from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import ShareLink from "./ShareLink";
-import coverPhoto from "../../../../assets/study-material-popover-icons/cover-photo.svg";
+import { handlePrint } from "../../../../utils/printUtils";
+import type { ExportData } from "../../../../utils/exportUtils";
+import {
+  exportToTxt,
+  exportToDocx,
+  exportToPdf,
+} from "../../../../utils/exportUtils";
+import headerImage from "../../../../assets/General/print-header.png";
 import shareIcon from "../../../../assets/study-material-popover-icons/share-icon.svg";
 import printIcon from "../../../../assets/study-material-popover-icons/print-icon.svg";
 import exportIcon from "../../../../assets/study-material-popover-icons/export-icon.svg";
@@ -17,6 +25,7 @@ interface MoreOptionPopoverProps {
   studyMaterialId: string;
   isOwner: boolean;
   status?: string; // Add this prop to track if material is archived
+  studyMaterialData?: ExportData;
 }
 
 export default function MoreOptionPopover({
@@ -31,11 +40,9 @@ export default function MoreOptionPopover({
 
   const navigate = useNavigate();
   const [shareModalOpen, setShareModalOpen] = React.useState(false);
-
-  const handleChangeCover = () => {
-    console.log("Change Cover clicked");
-    // Implement cover change functionality here
-  };
+  const [exportAnchorEl, setExportAnchorEl] = useState<null | HTMLElement>(
+    null
+  );
 
   const handleShare = () => {
     setShareModalOpen(true);
@@ -46,14 +53,91 @@ export default function MoreOptionPopover({
     setShareModalOpen(false);
   };
 
-  const handlePrint = () => {
-    console.log("Print clicked");
-    // Implement print functionality here
+  const fetchStudyMaterialData = async () => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+      const response = await fetch(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/study-material/get-by-study-material-id/${studyMaterialId}`,
+        {
+          signal: controller.signal,
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return {
+        title: data.title || "Untitled",
+        totalItems: data.items?.length || 0,
+        items:
+          data.items?.map((item: any) => ({
+            term: item.term || "",
+            definition: item.definition || "",
+          })) || [],
+        summary: data.summary || "",
+      };
+    } catch (error) {
+      console.error("Fetch error:", error);
+      throw error;
+    }
   };
 
-  const handleExport = () => {
-    console.log("Export clicked");
-    // Implement export functionality here
+  const handlePrintClick = async () => {
+    try {
+      const data = await fetchStudyMaterialData();
+      if (!data) {
+        throw new Error("Failed to fetch study material data");
+      }
+      await handlePrint(data);
+    } catch (error) {
+      console.error("Print error:", error);
+    }
+  };
+
+  const handleExportClick = (event: React.MouseEvent<HTMLElement>) => {
+    setExportAnchorEl(event.currentTarget);
+  };
+
+  const handleExportFormat = async (format: string) => {
+    try {
+      console.log("Starting export for format:", format);
+      const data = await fetchStudyMaterialData();
+      console.log("Fetched data:", data);
+
+      if (!data) {
+        throw new Error("Failed to fetch study material data");
+      }
+
+      switch (format) {
+        case "txt":
+          console.log("Exporting to TXT");
+          exportToTxt(data);
+          break;
+        case "docx":
+          console.log("Exporting to DOCX");
+          await exportToDocx(data);
+          break;
+        case "pdf":
+          console.log("Exporting to PDF");
+          await exportToPdf(data, headerImage);
+          break;
+      }
+      setExportAnchorEl(null); // Close the menu after export
+    } catch (error) {
+      console.error("Error in export:", error);
+    }
   };
 
   const handleArchive = async () => {
@@ -148,6 +232,37 @@ export default function MoreOptionPopover({
 
   return (
     <>
+      <Menu
+        anchorEl={exportAnchorEl}
+        open={Boolean(exportAnchorEl)}
+        onClose={() => setExportAnchorEl(null)}
+        sx={{
+          "& .MuiMenu-paper": {
+            backgroundColor: "#120F1B",
+            borderRadius: "0.8rem",
+            padding: "1rem",
+          },
+        }}
+        anchorOrigin={{
+          vertical: "bottom",
+          horizontal: "right",
+        }}
+        transformOrigin={{
+          vertical: "top",
+          horizontal: "right",
+        }}
+      >
+        <MenuItem onClick={() => handleExportFormat("txt")}>
+          Export to TXT
+        </MenuItem>
+        <MenuItem onClick={() => handleExportFormat("docx")}>
+          Export to DOCX
+        </MenuItem>
+        <MenuItem onClick={() => handleExportFormat("pdf")}>
+          Export to PDF
+        </MenuItem>
+      </Menu>
+
       <Popover
         id={id}
         open={open}
@@ -172,26 +287,6 @@ export default function MoreOptionPopover({
         }}
       >
         <Stack spacing={1.5}>
-          <Button
-            variant="text"
-            startIcon={<img src={coverPhoto} alt="cover-photo" />}
-            sx={{
-              justifyContent: "flex-start",
-              textTransform: "none",
-              color: "inherit",
-              fontWeight: 400,
-              borderRadius: "0.8rem",
-              padding: "0.6rem 1rem",
-              transition: "all 0.3s ease-in-out",
-              "&:hover": {
-                transform: "scale(1.05)",
-                backgroundColor: "#3B354C",
-              },
-            }}
-            onClick={handleChangeCover}
-          >
-            Change Cover
-          </Button>
           <Button
             variant="text"
             startIcon={<img src={shareIcon} alt="share-icon" />}
@@ -228,7 +323,7 @@ export default function MoreOptionPopover({
                 backgroundColor: "#3B354C",
               },
             }}
-            onClick={handlePrint}
+            onClick={handlePrintClick}
           >
             Print
           </Button>
@@ -248,7 +343,7 @@ export default function MoreOptionPopover({
                 backgroundColor: "#3B354C",
               },
             }}
-            onClick={handleExport}
+            onClick={handleExportClick}
           >
             Export
           </Button>

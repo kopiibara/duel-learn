@@ -662,6 +662,7 @@ const CreateStudyMaterial = () => {
                   ]}
                   value={visibility}
                   onChange={handleVisibilityChange}
+                  hoverOpen
                 />
               </Stack>
             </Box>

@@ -23,9 +23,8 @@ const HomePage = ({
     <PageTransition>
       <Box className="h-full w-auto">
         <DocumentHead title="Home | Duel Learn" />
-        <Stack spacing={2} className="px-4 sm:px-6">
+        <Stack spacing={1} className="px-6 sm:px-6">
           <HomeBanner />
-
           <Stack spacing={2} className="pb-6 pt-6">
             <Stack
               direction={"row"}

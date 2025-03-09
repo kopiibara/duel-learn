@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
   getFirestore,
   collection,
@@ -32,25 +32,57 @@ const checkUsernameUnique = async (username: string, currentUserId: string) => {
   return userDoc.id === currentUserId;
 };
 
-const useEditUsernameValidation = (currentUserId: string) => {
+const useEditUsernameValidation = (userData: any) => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
-  const validate = async (field: string, value: string) => {
-    let error = "";
+  const validate = useCallback(
+    async (field: string, value: string) => {
+      let newErrors: { [key: string]: string } = { ...errors };
 
-    if (field === "username") {
-      error = usernameValidation(value);
-      if (!error) {
-        const isUnique = await checkUsernameUnique(value, currentUserId);
-        if (!isUnique) {
-          error = "Username is taken.";
+      if (field === "username") {
+        // Clear previous error for this field
+        delete newErrors.username;
+
+        // Basic validations
+        if (!value.trim()) {
+          newErrors.username = "Username is required";
+        } else if (value.length < 3) {
+          newErrors.username = "Username must be at least 3 characters";
+        } else if (value.length > 20) {
+          newErrors.username = "Username cannot exceed 20 characters";
+        } else if (!/^[a-zA-Z0-9_]+$/.test(value)) {
+          newErrors.username =
+            "Username can only contain letters, numbers, and underscores";
+        } else {
+          try {
+            // Check if username has actually changed before making the API call
+            const currentUsername = userData?.username;
+
+            // Only check for uniqueness if the username is different from current
+            if (value !== currentUsername) {
+              const response = await fetch(
+                `${
+                  import.meta.env.VITE_BACKEND_URL
+                }/api/user/check-username?username=${encodeURIComponent(value)}`
+              );
+
+              const data = await response.json();
+
+              if (data.exists) {
+                newErrors.username = "Username has been taken";
+              }
+            }
+          } catch (error) {
+            console.error("Error checking username:", error);
+          }
         }
       }
-    }
 
-    setErrors((prevErrors) => ({ ...prevErrors, [field]: error }));
-    return error;
-  };
+      setErrors(newErrors);
+      return newErrors;
+    },
+    [errors, userData?.username]
+  );
 
   return { errors, validate };
 };
