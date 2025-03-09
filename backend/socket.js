@@ -482,7 +482,7 @@ const setupSocket = (server) => {
 
                 console.log(`🎮 Player ${playerId} is ${isReady ? 'ready' : 'not ready'} in lobby ${lobbyCode}`);
 
-                // Broadcast to everyone in the lobby
+                // Broadcast to everyone in the lobby including the sender
                 io.to(lobbyCode).emit("player_ready_status", {
                     lobbyCode,
                     playerId,
@@ -523,9 +523,12 @@ const setupSocket = (server) => {
                     return;
                 }
 
+                // Add more detailed logging to diagnose material format issues
                 console.log(`📡 Host ${hostId} sending lobby info to ${requesterId} for lobby ${lobbyCode}`, {
                     lobbyCode,
-                    material: material?.title || "No material",
+                    material: material?.title
+                        ? { title: material.title, id: material.id || 'unknown' }
+                        : "No material or invalid format",
                     questionTypes: questionTypes || [],
                     mode
                 });
@@ -536,12 +539,41 @@ const setupSocket = (server) => {
                     requesterId,
                     hostId,
                     hostName,
+                    hostLevel: user.level,
+                    hostPicture: user.display_picture,
+                    material: selectedMaterial,
+                    questionTypes: selectedTypesFinal,
+                    mode: selectedMode
+                });
+            } catch (error) {
+                console.error("Error handling lobby info response:", error);
+            }
+        });
+
+        socket.on("lobby_material_update", (data) => {
+            try {
+                const { lobbyCode, material, questionTypes, mode } = data;
+
+                if (!lobbyCode) {
+                    console.error("Missing lobby code for material update");
+                    return;
+                }
+
+                console.log(`📚 Updating lobby ${lobbyCode} material:`, {
+                    material: material?.title,
+                    questionTypes,
+                    mode
+                });
+
+                // Broadcast to everyone in the lobby except the sender
+                socket.to(lobbyCode).emit("lobby_material_update", {
+                    lobbyCode,
                     material,
                     questionTypes,
                     mode
                 });
             } catch (error) {
-                console.error("Error handling lobby info response:", error);
+                console.error("Error handling lobby material update:", error);
             }
         });
 

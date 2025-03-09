@@ -108,6 +108,8 @@ const InvitationLobbySnackbar: React.FC = () => {
             state: {
                 isGuest: true,
                 lobbyCode: invitation.lobbyCode,
+                // Include a placeholder material object to prevent "None" display
+                selectedMaterial: { title: "Loading host's material..." },
                 // Include host information so it can be displayed
                 invitedPlayer: {
                     firebase_uid: invitation.senderId,
