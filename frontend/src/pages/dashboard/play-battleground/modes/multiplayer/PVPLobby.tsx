@@ -495,7 +495,6 @@ const PVPLobby: React.FC = () => {
         };
 
         setInvitedPlayer(joinedPlayer);
-        setIsGuestReady(true);
 
         // Send current lobby state to the joined player
         socket.emit("lobby_info_response", {
