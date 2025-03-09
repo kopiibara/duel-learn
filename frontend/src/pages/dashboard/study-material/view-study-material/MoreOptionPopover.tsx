@@ -76,7 +76,7 @@ export default function MoreOptionPopover({
         console.log("Study material archived successfully");
         onClose();
         // Navigate back to the dashboard after archiving
-        navigate("/dashboard/my-library");
+        navigate(`/dashboard/my-library`);
       } else {
         const errorData = await response.json();
         console.error("Error archiving study material:", errorData);

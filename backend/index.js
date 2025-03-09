@@ -8,6 +8,7 @@ import friendRoutes from "./routes/FriendRoutes.js";
 import userInfoRoutes from "./routes/UserInfoRoutes.js";
 import lobbyRoutes from "./routes/lobby.routes.js";
 import battleRoutes from './routes/battle.routes.js';
+import openAiRoutes from './routes/OpenAiRoutes.js';
 // Load environment variables
 dotenv.config();
 
@@ -49,7 +50,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/friend", friendRoutes);
 app.use("/api/user-info", userInfoRoutes);
 app.use("/api/lobby", lobbyRoutes);
-console.log("Registering battle routes...");
 app.use("/api/battle", battleRoutes);
+app.use("/api/openai", openAiRoutes);
 
 export default app;

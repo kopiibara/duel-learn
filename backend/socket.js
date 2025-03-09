@@ -104,7 +104,7 @@ const setupSocket = (server) => {
             }
         });
 
-        // Update the acceptFriendRequest handler to include more detailed information
+        // Update the acceptFriendRequest handler to include more detailed          information
         socket.on("acceptFriendRequest", (data) => {
             try {
                 const { sender_id, receiver_id, senderInfo, receiverInfo } = data;

@@ -2,11 +2,13 @@ export interface Item {
   term: string;
   definition: string;
   image?: string | null;
+  item_number: number;
 }
 
 export interface StudyMaterial {
   title: string;
   tags: string[];
+  summary: string;
   images: string[];
   total_items: number;
   created_by: string;
