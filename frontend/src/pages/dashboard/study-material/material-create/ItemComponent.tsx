@@ -34,6 +34,11 @@ const ItemComponent: FC<ItemComponentProps> = ({
       : null
   );
 
+  const resizeTextarea = (textarea: HTMLTextAreaElement) => {
+    textarea.style.height = "auto"; // Reset height
+    textarea.style.height = textarea.scrollHeight + "px"; // Set height to fit content
+  };
+
   const handleAddPhoto = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -152,17 +157,19 @@ const ItemComponent: FC<ItemComponentProps> = ({
             >
               <textarea
                 id="term"
-                className="border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full sm:w-1/3 text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-all ease-in-out duration-200"
+                className="border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full content-stretch sm:w-1/3 text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-all ease-in-out duration-200"
                 rows={1}
                 placeholder="Enter Term"
+                onInput={(e) => resizeTextarea(e.target as HTMLTextAreaElement)}
                 value={item.term}
                 onChange={(e) => updateItem("term", e.target.value)}
               />
               <textarea
                 id="definition"
-                className="border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full sm:w-2/3 text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-colors duration-200"
+                className="border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full content-stretch sm:w-2/3 text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-colors duration-200"
                 rows={1}
                 placeholder="Enter definition"
+                onInput={(e) => resizeTextarea(e.target as HTMLTextAreaElement)}
                 value={item.definition}
                 onChange={(e) => updateItem("definition", e.target.value)}
               />
