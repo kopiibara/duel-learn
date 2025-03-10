@@ -139,7 +139,7 @@ const Filter: React.FC<FilterProps> = ({
                     },
                     "& .MuiMenuItem-root.Mui-focusVisible": {
                       outline: "none", // Also handle keyboard focus
-                      backgroundColor: "#3B354C", // Custom focus background
+                      backgroundColor: "rgba(59, 53, 76, 0.3)", // Custom focus background
                     },
                   }}
                 >

@@ -189,8 +189,7 @@ export default function MoreOptionPopover({
       if (response.ok) {
         console.log("Study material restored successfully");
         onClose();
-        // Refresh the current page to show updated status
-        window.location.reload();
+        navigate(`/dashboard/my-library`);
       } else {
         const errorData = await response.json();
         console.error("Error restoring study material:", errorData);

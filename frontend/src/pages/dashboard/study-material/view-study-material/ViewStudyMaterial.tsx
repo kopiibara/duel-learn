@@ -220,14 +220,18 @@ const ViewStudyMaterial = () => {
     <PageTransition>
       <Box className="h-screen w-full px-8">
         <DocumentHead title={studyMaterial?.title + " | Duel Learn"} />
-        <Stack spacing={2.5}>
+        <Stack spacing={3}>
           <Stack direction={"row"}>
-            <Stack spacing={2}>
-              <Typography variant="h3" fontWeight="bold">
+            <Stack spacing={"1vh"}>
+              <Typography
+                variant="h3"
+                fontWeight="bold"
+                className="text-[#E2DDF3]"
+              >
                 {loading ? "Loading..." : studyMaterial?.title}
               </Typography>
               <Stack direction="row" spacing={2} alignItems="center">
-                <Typography variant="subtitle2">
+                <Typography variant="subtitle2" className="text-[#9F9BAE]">
                   Created on{" "}
                   <strong>
                     {loading
@@ -235,8 +239,10 @@ const ViewStudyMaterial = () => {
                       : formatDate(studyMaterial?.updated_at || "")}
                   </strong>
                 </Typography>
-                <Typography variant="subtitle2">•</Typography>
-                <Typography variant="subtitle2">
+                <Typography variant="subtitle2" className="text-[#9F9BAE]">
+                  •
+                </Typography>
+                <Typography variant="subtitle2" className="text-[#9F9BAE]">
                   Studied by{" "}
                   <strong>
                     {loading ? "Loading..." : studyMaterial?.total_views} People
@@ -246,8 +252,16 @@ const ViewStudyMaterial = () => {
                 {!loading &&
                   studyMaterial?.status?.toLowerCase() === "archived" && (
                     <>
-                      <Typography variant="subtitle2">•</Typography>
-                      <Typography variant="subtitle2">
+                      <Typography
+                        variant="subtitle2"
+                        className="text-[#9F9BAE]"
+                      >
+                        •
+                      </Typography>
+                      <Typography
+                        variant="subtitle2"
+                        className="text-[#9F9BAE]"
+                      >
                         <strong>Archived</strong>
                       </Typography>
                     </>
@@ -349,8 +363,10 @@ const ViewStudyMaterial = () => {
             </Stack>
           </Stack>
 
-          <Stack spacing={1}>
-            <Typography variant="subtitle1">Tags</Typography>
+          <Stack spacing={1.5} direction={"row"} alignItems={"center"}>
+            <Typography variant="subtitle1" className="text-[#9F9BAE]">
+              Tags:
+            </Typography>
             <Stack direction="row" spacing={1}>
               {studyMaterial?.tags?.map((tag: string, index: number) => (
                 <Chip
