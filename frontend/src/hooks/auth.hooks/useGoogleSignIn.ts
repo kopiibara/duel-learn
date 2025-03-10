@@ -1,21 +1,17 @@
 import { useNavigate } from "react-router-dom";
-import { useUser } from "../../contexts/UserContext";
 import { signInWithPopup } from "firebase/auth";
-import { setDoc, doc, serverTimestamp, getDoc } from "firebase/firestore";
 import {
   auth,
-  googleProvider,
   getAdditionalInfo,
-  db,
+  googleProvider,
 } from "../../services/firebase";
-import useSignUpApi from "../api.hooks/useSignUpApi";
+import useGoogleSignUpApi, { GoogleSignUpError } from "../api.hooks/useGoogleSignUpApi";
 import useHandleError from "../validation.hooks/useHandleError";
 import { useState } from "react";
 
 const useGoogleSignIn = () => {
-  const { setUser } = useUser();
   const navigate = useNavigate();
-  const { signUpApi } = useSignUpApi();
+  const { googleSignUpApi } = useGoogleSignUpApi();
   const { handleLoginError } = useHandleError();
   const [loading, setLoading] = useState(false);
 
@@ -25,78 +21,60 @@ const useGoogleSignIn = () => {
       const result = await signInWithPopup(auth, googleProvider);
       const token = await result.user.getIdToken();
       const additionalUserInfo = getAdditionalInfo(result);
-      const userData = {
-        firebaseToken: token,
-        firebase_uid: result.user.uid,
-        username: result.user.displayName,
-        email: result.user.email,
-        display_picture: result.user.photoURL,
-        isNew: additionalUserInfo?.isNewUser ?? false,
-        full_name: "",
-        email_verified: result.user.emailVerified,
-        isSSO: true,
-        account_type: "free" as "free" | "premium" | "admin",
-        level: 1
-      };
+      const isNewUser = additionalUserInfo?.isNewUser ?? false;
 
-      const userDoc = await getDoc(doc(db, "users", userData.firebase_uid));
-      const isNewUser =
-        !userDoc.exists() ||
-        (userDoc.exists() &&
-          Date.now() - userDoc.data().created_at.toMillis() < 300000);
+      console.log("New User Status:", isNewUser);
+      console.log("User Email Verified:", result.user.emailVerified);
 
-      if (isNewUser) {
-        await setDoc(doc(db, "users", userData.firebase_uid), {
-          firebase_uid: userData.firebase_uid || "",
-          username: userData.username,
-          email: userData.email,
-          password_hash: "N/A",
-          created_at: serverTimestamp(),
-          updated_at: serverTimestamp(),
-          display_picture: userData.display_picture || "",
-          full_name: "",
-          email_verified: userData.email_verified,
-          isSSO: userData.isSSO,
-          account_type: userData.account_type,
-          isNew: true
-        });
-
-        await signUpApi(
-          userData.firebase_uid,
-          userData.username ?? "Anonymous",
-          userData.email || "",
-          "",
-          true,
-          result.user.emailVerified
-        );
-      }
-
-      setUser(userData);
       localStorage.setItem("userToken", token);
 
-      setLoading(true); // Set loading to true when starting the sign-in process
+      if (isNewUser) {
+        try {
+          await googleSignUpApi(
+            result.user.uid,
+            result.user.displayName,
+            result.user.email,
+            result.user.emailVerified,
+            {
+              creationTime: result.user.metadata.creationTime || null,
+              lastSignInTime: result.user.metadata.lastSignInTime || null,
+            }
+          );
+        } catch (error) {
+          console.error("Error during Google Sign Up:", error);
+          if (error instanceof GoogleSignUpError) {
+            if (error.code === 'EMAIL_IN_USE') {
+              await auth.signOut();
+              localStorage.removeItem("userToken");
+              handleLoginError(new Error(error.message));
+              setLoading(false);
+              return;
+            }
+          }
+          throw error;
+        }
+      }
 
-setTimeout(() => {
-    if (userData.account_type === "admin") {
-        navigate("/admin/admin-dashboard");
-    } else if (isNewUser && userData.email_verified) {
-        navigate("/dashboard/welcome");
-    } else if (isNewUser && userData.email_verified === false) {
-        navigate("/dashboard/verify-email");
-    } else if (userData.email_verified === false) {
-        navigate("/dashboard/verify-email");
-    } else {
-        navigate("/dashboard/home");
-    }
-    setLoading(false); // Set loading to false after navigation
-}, 2000);
+      setTimeout(() => {
+        console.log("isNewUser:", isNewUser);
+        console.log("result.user.emailVerified:", result.user.emailVerified); 
+        if (isNewUser && result.user.emailVerified) {
+          console.log("New user, redirecting to welcome page");
+          navigate("/dashboard/welcome");
+        } else if (!result.user.emailVerified) {
+          navigate("/dashboard/verify-email");
+        } else {
+          navigate("/dashboard/home");
+        }
+        setLoading(false);
+      }, 2000);
     } catch (error: any) {
       handleLoginError(error);
       setLoading(false);
     }
   };
 
-  return { handleGoogleSignIn };
+  return { handleGoogleSignIn, loading };
 };
 
 export default useGoogleSignIn;

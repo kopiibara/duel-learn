@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import CoinIcon from "../../assets/CoinIcon.png";
 import ManaIcon from "../../assets/ManaIcon.png";
 import Tooltip from "@mui/material/Tooltip";
 import ProfilePopover from "./ProfilePopover";
-import { Avatar, Box, CircularProgress } from "@mui/material";
+import { Avatar, Box } from "@mui/material";
 import { useUser } from "../../contexts/UserContext";
 import defaultPicture from "../../assets/profile-picture/default-picture.svg";
 import axios from "axios";
@@ -13,38 +13,7 @@ import { UserInfo } from "../../types/userInfoObject";
 
 const StatsNProfile = () => {
   const { user } = useUser();
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // State to control the popover visibility
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-
-  // Fetch user info from the API
-  useEffect(() => {
-    const fetchUserInfo = async () => {
-      if (!user?.firebase_uid) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/user-info/details/${
-            user.firebase_uid
-          }`
-        );
-        setUserInfo(response.data.user);
-      } catch (err) {
-        console.error("Error fetching user info:", err);
-        setError("Failed to load user data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchUserInfo();
-  }, [user?.firebase_uid]);
 
   // Handle profile icon click to open/close popover
   const handleProfileClick = (event: React.MouseEvent<HTMLElement>) => {

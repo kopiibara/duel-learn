@@ -3,215 +3,107 @@ import { Link, useNavigate, useLocation } from "react-router-dom";
 import EmailSent from "../../assets/General/EmailSent.png"; // Importing the big star image
 import PageTransition from "../../styles/PageTransition"; // Importing the PageTransition component
 import {
-  getFirestore,
+  
   doc,
   setDoc,
   serverTimestamp,
-  getDoc,
 } from "firebase/firestore";
-import { collection, query, where, getDocs } from "firebase/firestore";
 import { auth, sendResetEmail, sendEmail } from "../../services/firebase";
 import useEmailTimestamp from "../../hooks/useEmailTimestamp";
-import firebaseEmailHandler from "../../services/firebaseEmailHandler";
 import { socket } from "../../services/socket";
+import { useUser } from "../../contexts/UserContext";
+import { db } from "../../services/firebase";
 
 export default function CheckYourMail() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [email, setEmail] = useState("");
-  const [firebase_uid, setFirebaseUid] = useState("");
-  const [type, setType] = useState("");
+  const { user } = useUser();
   const [buttonLoading, setButtonLoading] = useState(false);
-  const [_error, setError] = useState("");
+  const [error, setError] = useState("");
   const [buttonText, setButtonText] = useState("Send Email");
-  const { timeRemaining, isButtonDisabled, checkTimestamp } =
-    useEmailTimestamp(email);
-  const { handleEmailAction } = firebaseEmailHandler();
+
+  // Use location state with fallback to user context
+  const currentUser = {
+    email: location.state?.email || user?.email,
+    firebase_uid: location.state?.firebase_uid || user?.firebase_uid,
+    type: location.state?.type || "verification"
+  };
+
+  const { timeRemaining, isButtonDisabled} = 
+    useEmailTimestamp(currentUser.email || '', currentUser.firebase_uid);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      const locationState =
-        location.state || JSON.parse(localStorage.getItem("userData") || "{}");
-      setEmail(locationState.email || "");
-      setFirebaseUid(locationState.firebase_uid || "");
-      setType(locationState.type || "");
-
-      if (locationState.firebase_uid) {
-        const db = getFirestore();
-        const userDoc = await getDoc(
-          doc(db, "users", locationState.firebase_uid)
-        );
-        if (userDoc.exists()) {
-          const userData = userDoc.data();
-          if (
-            userData.email_verified &&
-            locationState.type === "verification"
-          ) {
-            navigate("/email-verified", {
-              state: {
-                email: locationState.email,
-                firebase_uid: locationState.firebase_uid,
-              },
-            });
-          }
-        }
-      }
-    };
-
-    fetchUserData();
-  }, [location.state, navigate]);
-
-  useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
-    const mode = queryParams.get("mode");
-    const oobCode = queryParams.get("oobCode");
-    const continueUrl = queryParams.get("continueUrl");
-
-    if (mode && oobCode && continueUrl) {
-      handleEmailAction(mode, oobCode, continueUrl)
-        .then(() => {
-          if (mode === "verifyEmail") {
-            navigate("/email-verified", { state: { email, firebase_uid } });
-          }
-        })
-        .catch((err) => {
-          console.error("Error handling email action:", err);
-          setError("The spell has faded — your magic link has expired.");
-        });
+    // Check if user is already verified
+    if (auth.currentUser?.emailVerified && currentUser.type === "verification") {
+      navigate("/email-verified", {
+        state: {
+          email: currentUser.email,
+          firebase_uid: currentUser.firebase_uid,
+        },
+      });
     }
-  }, [location.search]);
+  }, [auth.currentUser?.emailVerified]);
 
   useEffect(() => {
-    // Listen for email action results
+    // Socket event handlers
     const handleEmailActionResult = (result: any) => {
       const { mode, firebase_uid, email, oobCode } = result;
-
       if (mode === "verifyEmail") {
-        navigate("/email-verified", {
-          state: {
-            email,
-            firebase_uid,
-            oobCode,
-          },
-        });
+        navigate("/email-verified", { state: { email, firebase_uid, oobCode } });
       } else if (mode === "resetPassword") {
-        navigate(
-          `/reset-password?oobCode=${oobCode}&firebase_uid=${firebase_uid}`
-        );
+        navigate(`/reset-password?oobCode=${oobCode}&firebase_uid=${firebase_uid}`);
       }
     };
 
-    // Listen for password reset success
-    const handlePasswordResetSuccess = () => {
+    const handleSuccess = (type: 'password' | 'email') => {
       localStorage.removeItem("emailTimestamp");
-      navigate("/password-changed-successfully");
+      navigate(type === 'password' ? "/password-changed-successfully" : "/email-verified");
     };
 
-    // Listen for email verification success
-    const handleEmailVerifiedSuccess = () => {
-      localStorage.removeItem("emailTimestamp");
-      navigate("/email-verified");
-    };
-
-    // Set up socket event listeners
     socket.on("emailActionResult", handleEmailActionResult);
-    socket.on("passwordResetSuccess", handlePasswordResetSuccess);
-    socket.on("emailVerifiedSuccess", handleEmailVerifiedSuccess);
+    socket.on("passwordResetSuccess", () => handleSuccess('password'));
+    socket.on("emailVerifiedSuccess", () => handleSuccess('email'));
 
-    // Cleanup listeners on unmount
     return () => {
       socket.off("emailActionResult", handleEmailActionResult);
-      socket.off("passwordResetSuccess", handlePasswordResetSuccess);
-      socket.off("emailVerifiedSuccess", handleEmailVerifiedSuccess);
+      socket.off("passwordResetSuccess");
+      socket.off("emailVerifiedSuccess");
     };
   }, [navigate]);
 
-  const handleSendPasswordResetEmail = async () => {
-    try {
-      const actionCodeSettings = {
-        url: `${
-          import.meta.env.VITE_FRONTEND_URL
-        }/email-action-handler?mode=resetPassword&firebase_uid=${firebase_uid}&email=${email}`,
-        handleCodeInApp: true,
-      };
-
-      await sendResetEmail(auth, email, actionCodeSettings);
-      setButtonText("Resend Email");
-      setButtonLoading(false);
-
-      const db = getFirestore();
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", email));
-      const querySnapshot = await getDocs(q);
-
-      if (!querySnapshot.empty) {
-        const userDoc = querySnapshot.docs[0];
-        await setDoc(
-          doc(db, "users", userDoc.id),
-          {
-            emailTimestamp: serverTimestamp(),
-          },
-          { merge: true }
-        );
-      }
-
-      const now = new Date();
-      localStorage.setItem("emailTimestamp", now.toISOString());
-    } catch (err) {
-      setError("Failed to send password reset email");
-      setButtonLoading(false);
-    }
-  };
-
   const handleSendEmail = async () => {
+    if (!currentUser.email || !currentUser.firebase_uid) return;
+    
     setButtonLoading(true);
-
-    const canSendEmail = await checkTimestamp();
-    if (canSendEmail) {
-      if (type === "verification") {
-        await handleSendVerificationEmail();
-      } else {
-        await handleSendPasswordResetEmail();
-      }
-    } else {
-      setButtonLoading(false);
-      console.log("Cannot send email yet");
-    }
-  };
-
-  const handleSendVerificationEmail = async () => {
     try {
       const actionCodeSettings = {
-        url: `${
-          import.meta.env.VITE_FRONTEND_URL
-        }/email-action-handler?mode=verifyEmail&firebase_uid=${firebase_uid}&email=${email}`,
+        url: `${import.meta.env.VITE_FRONTEND_URL}/email-action-handler?mode=${
+          currentUser.type === "verification" ? "verifyEmail" : "resetPassword"
+        }&firebase_uid=${currentUser.firebase_uid}&email=${currentUser.email}`,
         handleCodeInApp: true,
       };
 
-      await sendEmail(auth.currentUser!, actionCodeSettings);
-      setButtonText("Resend Email");
-      setButtonLoading(false);
-
-      const db = getFirestore();
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", email));
-      const querySnapshot = await getDocs(q);
-
-      if (!querySnapshot.empty) {
-        const userDoc = querySnapshot.docs[0];
-        await setDoc(
-          doc(db, "users", userDoc.id),
-          {
-            emailTimestamp: serverTimestamp(),
-          },
-          { merge: true }
-        );
+      if (currentUser.type === "verification") {
+        await sendEmail(auth.currentUser!, actionCodeSettings);
+      } else {
+        await sendResetEmail(auth, currentUser.email, actionCodeSettings);
       }
 
-      const now = new Date();
-      localStorage.setItem("emailTimestamp", now.toISOString());
+      // Update timestamp in Firestore
+      try {
+        await setDoc(doc(db, "temp_users", currentUser.firebase_uid), {
+          emailTimestamp: serverTimestamp()
+        }, { merge: true });
+      } catch (error) {
+        console.error("Error updating Firestore timestamp:", error);
+        // Fallback to localStorage
+        localStorage.setItem("emailTimestamp", new Date().toISOString());
+      }
+
+      setButtonText("Resend Email");
     } catch (err) {
-      setError("Failed to send verification email");
+      setError(`Failed to send ${currentUser.type} email`);
+    } finally {
       setButtonLoading(false);
     }
   };
@@ -223,6 +115,7 @@ export default function CheckYourMail() {
       setButtonText("Send Email");
     }
   }, [timeRemaining]);
+
   return (
     <PageTransition>
       <main
@@ -245,6 +138,11 @@ export default function CheckYourMail() {
 
           <section className="flex flex-col items-center mt-14 ml-40 max-w-full text-center w-[213px] max-md:mt-5 max-md:ml-5">
             {/* Section container with flexbox layout, margin, and text alignment */}
+            {error && (
+              <div className="bg-red-700 text-white text-center py-2 mb-4 rounded w-[400px]">
+                {error}
+              </div>
+            )}
             <img
               loading="lazy"
               src={EmailSent}
@@ -266,7 +164,7 @@ export default function CheckYourMail() {
                 style={{ fontFamily: "Nunito" }}
               >
                 {/* Paragraph with margin, font size, and color */}
-                {type === "verification"
+                {currentUser.type === "verification"
                   ? "We sent you a link for your email verification. Check your spam folder if you do not hear from us after awhile."
                   : "We sent you a link for your password recovery. Check your spam folder if you do not hear from us after awhile."}
               </p>
