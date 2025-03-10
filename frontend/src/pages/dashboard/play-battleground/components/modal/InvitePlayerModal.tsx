@@ -161,8 +161,37 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
       return;
     }
 
+    // Add debug logging
+    console.group("Battle Invitation Debug");
+    console.log("User data:", {
+      firebase_uid: user?.firebase_uid,
+      username: user?.username
+    });
+    console.log("Friend data:", friend);
+    console.log("Lobby code:", lobbyCode);
+    console.log("Inviter name:", inviterName);
+    console.groupEnd();
+
     try {
       setInviting(true);
+
+      // Validate required fields before sending
+      if (!user.firebase_uid) {
+        console.error("Missing senderId (user.firebase_uid)");
+        return;
+      }
+      if (!user.username && !inviterName) {
+        console.error("Missing senderName (both user.username and inviterName are null)");
+        return;
+      }
+      if (!friend.firebase_uid) {
+        console.error("Missing receiverId (friend.firebase_uid)");
+        return;
+      }
+      if (!lobbyCode) {
+        console.error("Missing lobbyCode");
+        return;
+      }
 
       // Create explicit invitation data
       const invitationData = {
@@ -172,20 +201,8 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
         lobbyCode: lobbyCode
       };
 
-      console.log("Sending battle invitation with data:", invitationData);
-
-      // Send via SocketService
-      const socket = SocketService.getInstance().getSocket();
-      if (socket) {
-        socket.emit("notify_battle_invitation", invitationData);
-        console.log("Invitation sent via SocketService");
-      }
-
-      // Also send via direct socket for redundancy
-      if (directSocket && directSocket.connected) {
-        directSocket.emit("notify_battle_invitation", invitationData);
-        console.log("Invitation sent via direct socket");
-      }
+      // Log the final invitation data
+      console.log("Sending invitation data:", invitationData);
 
       // Close the modal and trigger success callback with complete invitation data
       handleClose();
@@ -283,7 +300,10 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
                       }
                     }}
                     disabled={inviting}
-                    onClick={() => handleInvite(friend)}
+                    onClick={() => {
+                      console.log("Inviting friend:", friend);
+                      handleInvite(friend);
+                    }}
                   >
                     {inviting ? "SENDING..." : "INVITE"}
                   </Button>

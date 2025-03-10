@@ -23,6 +23,7 @@ function App() {
                 <AppRoutes />
                 <GlobalSnackbar />
                 <SnackbarConnector />
+                <InvitationLobbySnackbar />
               </ThemeProvider>
             </HelmetProvider>
           </SnackbarProvider>

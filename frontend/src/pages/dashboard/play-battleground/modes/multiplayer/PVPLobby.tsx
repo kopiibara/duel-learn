@@ -152,87 +152,84 @@ const PVPLobby: React.FC = () => {
     }
   }, [mode, material, selectedTypes, location.state?.isGuest]);
 
-  // Update the socket effect
+  // Update the socket initialization effect
   useEffect(() => {
     if (loading || !user?.firebase_uid) {
-      console.log("User data not ready yet, waiting...");
-      return;
+        console.log("User data not ready yet, waiting...");
+        return;
     }
 
     console.log("Setting up socket service for user:", user.firebase_uid);
     const socketService = SocketService.getInstance();
     const newSocket = socketService.connect(user.firebase_uid);
-    setSocket(newSocket);
+    
+    // Wait for socket to connect
+    if (!newSocket.connected) {
+        newSocket.on('connect', () => {
+            console.log("Socket connected successfully");
+            setSocket(newSocket);
+        });
+    } else {
+        setSocket(newSocket);
+    }
 
     // IMPORTANT: Use the service's on method for better reliability
     const handleBattleInvitation = (data: any) => {
-      console.group("🔔 PVPLobby - Battle Invitation Received");
-      console.log("Raw data:", JSON.stringify(data));
+        console.group("🔔 PVPLobby - Battle Invitation Received");
+        console.log("Raw data:", JSON.stringify(data));
 
-      // Validate user
-      if (!user?.firebase_uid) {
-        console.log("User not logged in, ignoring invitation");
+        // Validate user
+        if (!user?.firebase_uid) {
+            console.log("User not logged in, ignoring invitation");
+            console.groupEnd();
+            return;
+        }
+
+        // Skip our own invitations
+        if (data.senderId === user.firebase_uid) {
+            console.log("This is our own invitation, ignoring");
+            console.groupEnd();
+            return;
+        }
+
+        // Validate the critical fields
+        if (!data.senderId) {
+            console.error("⚠️ Missing senderId in battle invitation data!");
+            console.groupEnd();
+            return;
+        }
+
+        if (!data.lobbyCode) {
+            console.error("⚠️ Missing lobbyCode in battle invitation data!");
+            console.groupEnd();
+            return;
+        }
+
+        // All checks passed, set the data
+        console.log("Setting invitation data:", data);
+        setInvitedPlayer({
+            firebase_uid: String(data.senderId || "missing-sender"),
+            username: data.senderName || "Unknown Player",
+            level: 1,
+            display_picture: null
+        });
+
+        // Then open the invitation dialog
+        setInviteModalOpen(true);
         console.groupEnd();
-        return;
-      }
-
-      // Skip our own invitations
-      if (data.senderId === user.firebase_uid) {
-        console.log("This is our own invitation, ignoring");
-        console.groupEnd();
-        return;
-      }
-
-      // Validate the critical fields
-      if (!data.senderId) {
-        console.error("⚠️ Missing senderId in battle invitation data!");
-        console.groupEnd();
-        return;
-      }
-
-      if (!data.lobbyCode) {
-        console.error("⚠️ Missing lobbyCode in battle invitation data!");
-        console.groupEnd();
-        return;
-      }
-
-      // All checks passed, set the data
-      console.group("🔍 Setting invitation data");
-      console.log("Raw data from socket:", data);
-      console.log("Data structure:", Object.keys(data).join(", "));
-      console.log("senderId:", data.senderId, typeof data.senderId);
-      console.log("lobbyCode:", data.lobbyCode, typeof data.lobbyCode);
-
-      // First set the data with guaranteed values
-      setInvitedPlayer({
-        firebase_uid: String(data.senderId || "missing-sender"),
-        username: data.senderName || "Unknown Player",
-        level: 1, // Assuming a default level
-        display_picture: null, // Assuming no display_picture
-      });
-
-      console.log("State should be updated with:", {
-        senderId: String(data.senderId || "missing-sender"),
-        senderName: data.senderName || "Unknown Player",
-        lobbyCode: String(data.lobbyCode || "missing-lobby")
-      });
-      console.groupEnd();
-
-      // Then open the invitation dialog
-      setInviteModalOpen(true);
-
-      console.log("Invitation dialog opened");
-      console.groupEnd();
     };
 
     // Register the handler with proper cleanup
     const removeListener = socketService.on("battle_invitation", handleBattleInvitation);
 
     return () => {
-      if (removeListener) removeListener();
-      console.log("Cleaned up battle_invitation listener");
+        if (removeListener) removeListener();
+        if (newSocket) {
+            console.log("Cleaning up socket connection");
+            newSocket.disconnect();
+        }
     };
-  }, [user?.firebase_uid, loading]);
+}, [user?.firebase_uid, loading]);
 
   // Add this effect to handle lobby code from URL
   useEffect(() => {
@@ -311,55 +308,79 @@ const PVPLobby: React.FC = () => {
   };
 
   const handleInvite = async (friend: Player) => {
-    if (!socket || !user?.firebase_uid || !user?.username) {
-      console.error("Missing required data for invitation");
-      return;
+    console.log("Socket:", socket);
+    console.log("User ID:", user?.firebase_uid);
+    console.log("Username:", user?.username);
+
+    if (!user?.firebase_uid || !user?.username) {
+        console.error("Missing user data for invitation");
+        return;
     }
 
     try {
-      console.log("Sending invitation to:", friend.username);
+        console.log("Handling invite for friend:", friend);
 
-      // Set invited player status to pending
-      setInvitedPlayerStatus({
-        isPending: true,
-        invitedAt: new Date()
-      });
+        // Set invited player status to pending
+        setInvitedPlayerStatus({
+            isPending: true,
+            invitedAt: new Date()
+        });
 
-      // Create the notification data
-      const notificationData = {
-        senderId: user.firebase_uid,
-        senderName: user.username,
-        receiverId: friend.firebase_uid,
-        lobbyCode: lobbyCode,
-        timestamp: new Date().toISOString(),
-      };
+        // Create the notification data
+        const notificationData = {
+            senderId: user.firebase_uid,
+            senderName: user.username,
+            receiverId: friend.firebase_uid,
+            lobbyCode: lobbyCode,
+            timestamp: new Date().toISOString(),
+        };
 
-      // First create database entry
-      await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/battle/pvp-invitation`,
-        {
-          senderId: user.firebase_uid,
-          receiverId: friend.firebase_uid,
-          lobbyCode: lobbyCode,
+        // First create database entry
+        await axios.post(
+            `${import.meta.env.VITE_BACKEND_URL}/api/battle/pvp-invitation`,
+            {
+                senderId: user.firebase_uid,
+                receiverId: friend.firebase_uid,
+                lobbyCode: lobbyCode,
+            }
+        );
+
+        // Get or create socket connection
+        let currentSocket = socket;
+        if (!currentSocket) {
+            console.log("Creating new socket connection...");
+            const socketService = SocketService.getInstance();
+            currentSocket = socketService.connect(user.firebase_uid);
+            setSocket(currentSocket);
         }
-      );
 
-      // Then emit socket event
-      console.log("Emitting battle invitation:", notificationData);
-      socket.emit("notify_battle_invitation", notificationData);
+        // Ensure socket is connected before sending
+        if (!currentSocket.connected) {
+            console.log("Waiting for socket to connect...");
+            await new Promise<void>((resolve) => {
+                currentSocket?.once('connect', () => {
+                    console.log("Socket connected successfully");
+                    resolve();
+                });
+            });
+        }
 
-      // Update local state to show invited player
-      setInvitedPlayer(friend);
-      setInviteModalOpen(false);
+        // Then emit socket event
+        console.log("Emitting battle invitation:", notificationData);
+        currentSocket.emit("notify_battle_invitation", notificationData);
+
+        // Update local state to show invited player
+        setInvitedPlayer(friend);
+        setInviteModalOpen(false);
     } catch (error) {
-      console.error("Error sending invitation:", error);
-      // Reset pending status on error
-      setInvitedPlayerStatus({
-        isPending: false,
-        invitedAt: new Date()
-      });
+        console.error("Error sending invitation:", error);
+        // Reset pending status on error
+        setInvitedPlayerStatus({
+            isPending: false,
+            invitedAt: new Date()
+        });
     }
-  };
+};
 
   // Update this based on the new guest logic
   const isHost = !isCurrentUserGuest;

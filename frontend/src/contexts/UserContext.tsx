@@ -21,6 +21,13 @@ interface User {
   coins: number;
 }
 
+export interface Friend {
+  firebase_uid: string;
+  username: string;
+  display_picture: string;
+  level: number;
+}
+
 interface UserContextProps {
   user: User | null;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
