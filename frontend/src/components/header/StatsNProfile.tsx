@@ -3,13 +3,25 @@ import CoinIcon from "../../assets/CoinIcon.png";
 import ManaIcon from "../../assets/ManaIcon.png";
 import Tooltip from "@mui/material/Tooltip";
 import ProfilePopover from "./ProfilePopover";
-import { Avatar, Box } from "@mui/material";
+import { Avatar, Box, CircularProgress } from "@mui/material";
 import { useUser } from "../../contexts/UserContext";
 import defaultPicture from "../../assets/profile-picture/default-picture.svg";
-import axios from "axios";
-import { UserInfo } from "../../types/userInfoObject";
 
-// User info interface
+interface User {
+  firebase_uid: string;
+  username: string | null;
+  email: string | null;
+  display_picture: string | null;
+  full_name: string | null;
+  email_verified: boolean;
+  isSSO: boolean;
+  account_type: "free" | "premium" | "admin";
+  isNew: boolean;
+  level: number;
+  exp: number;
+  mana: number;
+  coins: number;
+}
 
 const StatsNProfile = () => {
   const { user } = useUser();
@@ -27,55 +39,47 @@ const StatsNProfile = () => {
 
   return (
     <Box className="flex items-center space-x-2 sm:space-x-6">
-      {loading ? (
-        <CircularProgress size={24} color="inherit" />
-      ) : error ? (
-        <span className="text-red-500 text-sm">{error}</span>
-      ) : (
-        <>
-          {/* Coin */}
-          <Tooltip
-            title="Coin"
-            arrow
-            sx={{
-              "& .MuiTooltip-tooltip": {
-                padding: "8px 12px",
-                fontSize: "16px",
-                fontWeight: "bold",
-                animation: "fadeInOut 0.3s ease-in-out",
-              },
-            }}
-          >
-            <div className="flex items-center space-x-2">
-              <img src={CoinIcon} alt="Coins" className="w-6 h-auto" />
-              <span className="text-[#9F9BAE] text-[0.9rem] hover:text-[#E2DDF3]">
-                {userInfo?.coin || 0}
-              </span>
-            </div>
-          </Tooltip>
+      {/* Coin */}
+      <Tooltip
+        title="Coin"
+        arrow
+        sx={{
+          "& .MuiTooltip-tooltip": {
+            padding: "8px 12px",
+            fontSize: "16px",
+            fontWeight: "bold",
+            animation: "fadeInOut 0.3s ease-in-out",
+          },
+        }}
+      >
+        <div className="flex items-center space-x-2">
+          <img src={CoinIcon} alt="Coins" className="w-6 h-auto" />
+          <span className="text-[#9F9BAE] text-[0.9rem] hover:text-[#E2DDF3]">
+            {user?.coins || 0}
+          </span>
+        </div>
+      </Tooltip>
 
-          {/* Mana Icon */}
-          <Tooltip
-            title="Mana"
-            arrow
-            sx={{
-              "& .MuiTooltip-tooltip": {
-                padding: "8px 12px",
-                fontSize: "16px",
-                fontWeight: "bold",
-                animation: "fadeInOut 0.3s ease-in-out",
-              },
-            }}
-          >
-            <div className="flex items-center space-x-2">
-              <img src={ManaIcon} alt="Mana" className="w-5 h-auto" />
-              <span className="text-[#9F9BAE] text-[0.9rem] hover:text-[#E2DDF3] ">
-                {userInfo?.mana || 0}
-              </span>
-            </div>
-          </Tooltip>
-        </>
-      )}
+      {/* Mana Icon */}
+      <Tooltip
+        title="Mana"
+        arrow
+        sx={{
+          "& .MuiTooltip-tooltip": {
+            padding: "8px 12px",
+            fontSize: "16px",
+            fontWeight: "bold",
+            animation: "fadeInOut 0.3s ease-in-out",
+          },
+        }}
+      >
+        <div className="flex items-center space-x-2">
+          <img src={ManaIcon} alt="Mana" className="w-5 h-auto" />
+          <span className="text-[#9F9BAE] text-[0.9rem] hover:text-[#E2DDF3] ">
+            {user?.mana || 0}
+          </span>
+        </div>
+      </Tooltip>
 
       {/* Profile Avatar */}
       <Tooltip

@@ -60,7 +60,7 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
         );
 
         // Map the response data to match the Player interface
-        const formattedFriends: Player[] = response.data.data.map(
+        const formattedFriends: Player[] = (response.data as { data: any[] }).data.map(
           (friend: any) => ({
             firebase_uid: friend.firebase_uid,
             username: friend.username,

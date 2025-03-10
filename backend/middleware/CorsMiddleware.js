@@ -6,7 +6,7 @@ const corsOptions = {
     ? process.env.FRONTEND_URL // Use environment variable in production
     : 'http://localhost:5173', // Default for development
   methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify the allowed methods
-  allowedHeaders: ['Content-Type', 'Authorization'], // Specify the allowed headers
+  allowedHeaders: ['Content-Type', 'Authorization', 'cache-control', 'pragma'], // Added pragma header
   credentials: true, // Allow credentials (cookies, authorization headers, etc)
 };
 
