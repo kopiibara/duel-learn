@@ -86,6 +86,7 @@ const ExplorePage = () => {
   }, []);
 
   // Get the appropriate URL based on tab index and if force refresh is needed
+  // Add this improved URL handling and error handling to your fetchData function
   const getUrlForTab = useCallback(
     (tabIndex: number, force = false): string | null => {
       if (!user?.username) return null;
@@ -98,10 +99,11 @@ const ExplorePage = () => {
           }/api/study-material/get-top-picks`;
           break;
         case 1:
+          // Fix the encoding of the username to ensure special characters are properly handled
           baseUrl = `${
             import.meta.env.VITE_BACKEND_URL
           }/api/study-material/get-recommended-for-you/${encodeURIComponent(
-            user.username
+            user.username.trim()
           )}`;
           break;
         case 2:
@@ -171,8 +173,24 @@ const ExplorePage = () => {
         });
         clearTimeout(timeoutId);
 
-        if (!response.ok)
+        if (!response.ok) {
+          // More detailed error handling
+          console.error(
+            `API error: ${response.status} for tab ${tabIndex}, URL: ${url}`
+          );
+
+          if (response.status === 404) {
+            // Return empty array for 404s to avoid breaking the UI
+            if (tabIndex === selected) {
+              setCards([]);
+              setFilteredCards([]);
+              setIsLoading(false);
+            }
+            return;
+          }
+
           throw new Error(`Failed to fetch: ${response.status}`);
+        }
 
         const data: StudyMaterial[] = await response.json();
 
@@ -488,7 +506,7 @@ const ExplorePage = () => {
               />
               <p className="text-[#6F658D] font-bold text-[1rem] mt-4 pr-7 text-center">
                 {selected === 1
-                  ? "No recommended study materials found for you yet"
+                  ? "No recommended study materials found for you yet."
                   : selected === 2
                   ? "No study materials from your friends found"
                   : "No study materials available"}

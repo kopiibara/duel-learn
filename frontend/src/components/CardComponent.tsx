@@ -166,19 +166,29 @@ const CardComponent: React.FC<CardComponentProps> = ({
                   key={index}
                   label={tag}
                   sx={{
-                    backgroundColor: "#4D18E8",
-                    color: "#E2DDF3",
+                    backgroundColor: "#4D18E8 !important", // Force background color
+                    color: "#E2DDF3 !important", // Force text color
                     borderRadius: "0.8rem",
                     width: "fit-content",
                     height: "fit-content",
                     py: isXsScreen ? "0.2rem" : "0.3rem",
+                    px: "0.5rem",
                     fontSize: isXsScreen
-                      ? "1.2vh"
+                      ? "0.7rem"
                       : isSmScreen
-                      ? "0.6vw"
-                      : "0.6vw",
+                      ? "0.65rem"
+                      : "0.7rem",
                     fontWeight: "600",
                     mb: 0.5,
+                    display: "inline-flex",
+                    alignItems: "center",
+                    "& .MuiChip-label": {
+                      padding: "0 4px",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      color: "#E2DDF3 !important", // Force label text color
+                    },
                   }}
                 />
               ))}

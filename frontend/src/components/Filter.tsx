@@ -86,6 +86,7 @@ const Filter: React.FC<FilterProps> = ({
           border: "2px solid #3B354C",
           display: "flex",
           alignItems: "center",
+          height: "fit-content",
           justifyContent: "space-between",
           cursor: "pointer",
           transition: "all 0.3s ease-in-out",
