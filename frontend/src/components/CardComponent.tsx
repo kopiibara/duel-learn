@@ -166,9 +166,9 @@ const CardComponent: React.FC<CardComponentProps> = ({
                   key={index}
                   label={tag}
                   sx={{
-                    backgroundColor: "#4F4A64",
-                    color: "#FFFFFF",
-                    borderRadius: "0.6rem",
+                    backgroundColor: "#4D18E8",
+                    color: "#E2DDF3",
+                    borderRadius: "0.8rem",
                     width: "fit-content",
                     height: "fit-content",
                     py: isXsScreen ? "0.2rem" : "0.3rem",

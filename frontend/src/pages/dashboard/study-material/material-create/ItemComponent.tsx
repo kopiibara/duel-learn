@@ -34,6 +34,11 @@ const ItemComponent: FC<ItemComponentProps> = ({
       : null
   );
 
+  const resizeTextarea = (textarea: HTMLTextAreaElement) => {
+    textarea.style.height = "auto"; // Reset height
+    textarea.style.height = textarea.scrollHeight + "px"; // Set height to fit content
+  };
+
   const handleAddPhoto = () => {
     const input = document.createElement("input");
     input.type = "file";
@@ -65,18 +70,18 @@ const ItemComponent: FC<ItemComponentProps> = ({
   // Determine the border class based on the current state
   const getBorderClass = () => {
     if (isDragging) return "ring-[0.1rem] ring-[#A38CE6] border-[#A38CE6]";
-    if (isGrabbing) return "border-[#A38CE6]"; // New color when grabbing
+    if (isGrabbing) return "border-[#A38CE6] z-10"; // New color when grabbing
     return "border-[#3B354D] hover:border-[#9F9BAE]";
   };
 
   return (
     <Box
-      className={`bg-inherit rounded-[0.8rem] border-2 ${getBorderClass()} w-full transition-colors duration-300 ease-in-out`}
+      className={`bg-[#080511] rounded-[0.8rem] border-2 ${getBorderClass()} w-full transition-colors duration-300 ease-in-out`}
     >
       <Stack spacing={1} direction={"row"} className="flex">
         {/* Drag Indicator with Item Number */}
         <Box
-          className={`flex items-center rounded-tl-[0.7rem] rounded-bl-[0.7rem] border-[#211D2F] ${
+          className={`flex items-center rounded-tl-[0.65rem] rounded-bl-[0.7rem] border-[#211D2F] ${
             isGrabbing ? "bg-[#3B354D]" : "bg-[#211D2F]"
           } w-auto border transition-colors duration-200`}
           {...dragHandleProps?.attributes}
@@ -121,7 +126,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                     <img
                       src={previewSrc}
                       alt="Uploaded"
-                      className="rounded-md max-w-full md:max-w-xs h-auto"
+                      className="rounded-[0.8rem] max-w-full md:max-w-xs h-auto w-[14vw]"
                     />
                     <Tooltip title="Delete Photo" arrow>
                       <Fab
@@ -152,17 +157,19 @@ const ItemComponent: FC<ItemComponentProps> = ({
             >
               <textarea
                 id="term"
-                className="border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full sm:w-1/3 text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-all ease-in-out duration-200"
+                className="border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full content-stretch sm:w-1/3 text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-all ease-in-out duration-200"
                 rows={1}
                 placeholder="Enter Term"
+                onInput={(e) => resizeTextarea(e.target as HTMLTextAreaElement)}
                 value={item.term}
                 onChange={(e) => updateItem("term", e.target.value)}
               />
               <textarea
                 id="definition"
-                className="border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full sm:w-2/3 text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-colors duration-200"
+                className="border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full content-stretch sm:w-2/3 text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-colors duration-200"
                 rows={1}
                 placeholder="Enter definition"
+                onInput={(e) => resizeTextarea(e.target as HTMLTextAreaElement)}
                 value={item.definition}
                 onChange={(e) => updateItem("definition", e.target.value)}
               />

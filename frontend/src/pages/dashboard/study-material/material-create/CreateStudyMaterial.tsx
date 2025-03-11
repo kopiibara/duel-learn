@@ -453,6 +453,11 @@ const CreateStudyMaterial = () => {
     input.click();
   };
 
+  const resizeTextarea = (input: HTMLTextAreaElement) => {
+    input.style.width = "auto"; // Reset height
+    input.style.width = input.scrollWidth + "px"; // Set height to fit content
+  };
+
   // Add a handler for the visibility change
   const handleVisibilityChange = (value: string | number) => {
     setVisibility(value.toString());
@@ -554,7 +559,7 @@ const CreateStudyMaterial = () => {
             <Box className="flex items-center">
               <Stack spacing={1} className="flex">
                 <Typography variant="subtitle1" className="text-[#3B354D]">
-                  Tags
+                  Tags:
                 </Typography>
                 <Box
                   sx={{
@@ -562,11 +567,11 @@ const CreateStudyMaterial = () => {
                     alignItems: "center",
                     flexWrap: "wrap",
                     gap: 0.5,
-                    padding: "0.6rem",
+                    padding: "0.8rem",
                     border: "1px solid #3B354D",
                     borderRadius: "0.8rem",
                     backgroundColor: "#3B354D",
-                    transition: "all 0.3s ease", // Smooth transition for hover and active
+                    transition: "all 0.3s ease-in-out", // Smooth transition for hover and active
                     minWidth: "200px", // Set the minimum width for the Box
                     maxWidth: "100%", // Let the Box expand up to 100% of its container width
                     width: "auto", // Allow Box to take the width of its content
@@ -589,7 +594,10 @@ const CreateStudyMaterial = () => {
                       sx={{
                         backgroundColor: "#4D18E8",
                         color: "#E2DDF3",
+                        width: "fit-content",
+                        height: "fit-content",
                         padding: "0.4rem",
+                        borderRadius: "0.6rem",
                         "& .MuiChip-deleteIcon": { color: "#E2DDF3" },
                       }}
                     />
@@ -602,11 +610,15 @@ const CreateStudyMaterial = () => {
                     onChange={(e) => setCurrentTag(e.target.value)}
                     onKeyDown={handleAddTag}
                     placeholder="Press enter"
+                    onInput={(e) =>
+                      resizeTextarea(e.target as HTMLTextAreaElement)
+                    }
                     style={{
                       border: "none",
                       outline: "none",
                       background: "transparent",
                       color: "#E2DDF3",
+                      maxWidth: "auto",
                       width: "5.5rem", // Input should not be too small
                       fontSize: "1rem", // Adjust font size as needed
                       paddingLeft: 6, // Remove any default right padding that may create the extra space
