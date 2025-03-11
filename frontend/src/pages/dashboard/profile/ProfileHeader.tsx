@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import Profile from "../../../assets/profile-picture/bunny-picture.png";
+import Profile from "../../../assets/profile-picture/default-picture.svg";
 import PremiumLabel from "../../../assets/premium-star.png";
 import axios from "axios";
 import { UserInfo } from "../../../types/userInfoObject";

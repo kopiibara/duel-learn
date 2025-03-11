@@ -9,7 +9,6 @@ import {
   IconButton,
   Divider,
   Fab,
-  Typography,
 } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicatorRounded";
 import AddPhotoIcon from "@mui/icons-material/AddPhotoAlternateRounded";

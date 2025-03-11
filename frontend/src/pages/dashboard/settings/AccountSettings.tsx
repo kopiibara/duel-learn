@@ -6,8 +6,17 @@ import ProfilePictureModal from "../../../components/ProfilePictureModal";
 import useProfilePicture from "../../../hooks/useProfilePicture";
 import DeleteAccountModal from "../../../components/DeleteAccountModal";
 import { CircularProgress } from "@mui/material";
+import ErrorsSnackbar from "../../../components/ErrorsSnackbar";
+import { useState } from "react"; // Add this import
 
 export default function AccountSettings() {
+  // Add state for the success snackbar
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    isError: false,
+  });
+
   const {
     userData,
     isEditing,
@@ -21,7 +30,7 @@ export default function AccountSettings() {
     hasNoPassword,
     isLoading,
     handleEditClick,
-    handleSaveClick,
+    handleSaveClick: originalHandleSaveClick, // Rename to originalHandleSaveClick
     handleDiscardClick,
     handleInputChange,
     handlePasswordChangeClick,
@@ -39,6 +48,55 @@ export default function AccountSettings() {
     handleDeleteAccount,
   } = useAccountSettings();
 
+  // Create a wrapped version of handleSaveClick to show success/error messages
+  const handleSaveClick = async () => {
+    try {
+      // Call the original function and get the result
+      const result = await originalHandleSaveClick();
+
+      // If it returns successfully, show success message
+      setSnackbar({
+        open: true,
+        message: "Account settings updated successfully!",
+        isError: false,
+      });
+      return result;
+    } catch (err) {
+      // If there's an error that wasn't caught by the original function
+      setSnackbar({
+        open: true,
+        message: (err as Error)?.message || "Failed to update account settings",
+        isError: true,
+      });
+      throw err; // Re-throw to maintain original error handling
+    }
+  };
+
+  // Handle profile picture save with feedback
+  const handleProfilePictureSave = () => {
+    if (!isEditing) return;
+    try {
+      const newPicture = handleSave();
+      handleProfilePictureChange(newPicture);
+      setSnackbar({
+        open: true,
+        message: "Profile picture updated!",
+        isError: false,
+      });
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: "Failed to update profile picture",
+        isError: true,
+      });
+    }
+  };
+
+  // Handle closing the snackbar
+  const handleCloseSnackbar = () => {
+    setSnackbar((prev) => ({ ...prev, open: false }));
+  };
+
   const {
     isModalOpen,
     selectedPicture,
@@ -49,14 +107,15 @@ export default function AccountSettings() {
     handleSave,
   } = useProfilePicture(userData.display_picture || sampleAvatar);
 
-  const handleProfilePictureSave = () => {
-    if (!isEditing) return;
-    const newPicture = handleSave();
-    handleProfilePictureChange(newPicture);
-  };
-
   return (
     <div className="h-auto w-full">
+      {/* Global Snackbar for success/error messages */}
+      <ErrorsSnackbar
+        open={snackbar.open}
+        message={snackbar.message}
+        onClose={handleCloseSnackbar}
+      />
+
       {/* Main Content */}
       <main className="px-8">
         <h1 className="text-2xl font-semibold mb-6">Account Settings</h1>

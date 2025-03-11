@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import {
   Box,
-  Button,
   Modal,
   Typography,
   Stack,
@@ -11,7 +10,6 @@ import {
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ModalFriendList from "../../assets/General/ModalFriendList.png";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import SelectStudyMaterialModal from "./SelectStudyMaterialModal"; // Assuming it's in the same folder
 
 interface CustomModalProps {
@@ -27,6 +25,8 @@ interface ButtonData {
   hoverBackground: string;
   expanded?: boolean; // Optional property
   subButtons?: { label: string; subtitle: string }[]; // Optional property
+  image: string;
+  textColor: string;
 }
 
 const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
@@ -40,22 +40,28 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
       label: "Peaceful Mode",
       subtitle: "Study your way, no rush, just flow!",
       variant: "contained",
-      backgroundColor: "#E2DBF8",
+      backgroundColor: "#E2DDF3",
       hoverBackground: "#E8E2FE",
+      image: "/game-mode-selection/peaceful-mode-portrait.png",
+      textColor: "#266349",
     },
     {
       label: "Time Pressured",
       subtitle: "Test your skills under time pressure!",
       variant: "outlined",
-      backgroundColor: "#E2DBF8",
+      backgroundColor: "#E2DDF3",
       hoverBackground: "#E8E2FE",
+      image: "/game-mode-selection/time-pressured-mode-portrait.png",
+      textColor: "#504c36",
     },
     {
       label: "PvP Mode",
       subtitle: "Face off, outsmart, and win now!",
       variant: "contained",
-      backgroundColor: "#E2DBF8",
+      backgroundColor: "#E2DDF3",
       hoverBackground: "#E8E2FE",
+      image: "/game-mode-selection/pvp-mode-portrait.png",
+      textColor: "#303869",
     },
   ];
 
@@ -179,120 +185,72 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
                     justifyContent: "flex-end",
                     alignItems: "center",
                     overflow: "hidden",
-                    transition: "background-color 0.3s ease",
+                    transition: "all 0.3s ease",
                     position: "relative",
                     padding: "20px",
                     textAlign: "center",
+                    cursor: "pointer",
+                    transform:
+                      hoveredIndex === index ? "scale(1.03)" : "scale(1)",
+                    "&:hover": {
+                      backgroundColor: button.hoverBackground,
+                    },
                   }}
                   onClick={() => {
-                    if (button.label === "PvP Mode") {
-                      setSelectedMode(button.label); // Set the selected mode directly
-                      setModalOpen(true); // Open the SelectStudyMaterialModal
-                    } else {
-                      setSelectedMode(button.label); // Set the selected mode
-                      setModalOpen(true); // Open the SelectStudyMaterialModal
-                    }
+                    setSelectedMode(button.label);
+                    setModalOpen(true);
                   }}
                 >
-                  {/* Main Button Text */}
-                  {!(button.expanded && hoveredIndex === index) && (
-                    <>
-                      <Typography
-                        sx={{
-                          color: "#000000",
-                          fontWeight: "bold",
-                          fontSize: "17px",
-                          mb: "1px",
-                          transition: "opacity 0.3s ease",
-                        }}
-                      >
-                        {button.label}
-                      </Typography>
-                      <Typography
-                        sx={{
-                          color: "#322168",
-                          fontSize: "14px",
-                          width: "180px",
-                          transition: "opacity 0.3s ease",
-                        }}
-                      >
-                        {button.subtitle}
-                      </Typography>
-                    </>
-                  )}
+                  {/* Background Image */}
+                  <Box
+                    component="img"
+                    src={button.image}
+                    alt={button.label}
+                    sx={{
+                      position: "absolute",
+                      top: 0,
+                      right: 0,
+                      bottom: 0,
+                      left: 0,
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "cover",
+                      zIndex: 0,
+                    }}
+                  />
 
-                  {/* Sub-Buttons (only visible on hover) */}
-                  {button.expanded && hoveredIndex === index && (
-                    <Stack
-                      direction="column"
-                      spacing={0.925}
+                  {/* Text Content */}
+                  <Box
+                    sx={{
+                      position: "relative",
+                      zIndex: 1,
+                      textAlign: "center",
+                      alignSelf: "center",
+                      mt: "auto",
+                      width: "100%",
+                      padding: "0 8px",
+                    }}
+                  >
+                    <Typography
                       sx={{
-                        position: "absolute",
-                        top: 0,
-                        left: 0,
-                        width: "100%",
-                        height: "100%",
-                        backgroundColor: "#040209",
-                        display: "flex",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        boxSizing: "border-box",
+                        color: button.textColor,
+                        fontWeight: "700",
+                        fontSize: "17px",
+                        mb: "1px",
                       }}
                     >
-                      {button.subButtons?.map((subButton, subIndex) => (
-                        <Button
-                          key={subIndex}
-                          variant="outlined"
-                          sx={{
-                            width: "100%",
-                            height: `calc(33.33% - 5px)`,
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "center",
-                            border: "none",
-                            backgroundColor: "#73707F",
-                            color: "#000000",
-                            textTransform: "none",
-                            borderRadius: "5px",
-                            padding: "8px 25px",
-                            transition: "background-color 0.3s ease",
-                            "&:hover": {
-                              backgroundColor: "#E6DFFE",
-                            },
-                          }}
-                          onClick={() => {
-                            setSelectedMode(
-                              `${button.label} - ${subButton.label}`
-                            ); // Updated template literal
-                            setModalOpen(true);
-                          }}
-                        >
-                          <Typography
-                            sx={{ fontWeight: "bold", fontSize: "17px" }}
-                          >
-                            {subButton.label}
-                          </Typography>
-
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: "6px",
-                            }}
-                          >
-                            <AccessTimeIcon
-                              sx={{ fontSize: "19px", color: "#6F658D" }}
-                            />
-                            <Typography
-                              sx={{ fontSize: "17px", color: "#4B4B4B" }}
-                            >
-                              {subButton.subtitle}
-                            </Typography>
-                          </Box>
-                        </Button>
-                      ))}
-                    </Stack>
-                  )}
+                      {button.label}
+                    </Typography>
+                    <Typography
+                      sx={{
+                        color: button.textColor,
+                        fontSize: "14px",
+                        fontWeight: "650",
+                      }}
+                    >
+                      {button.subtitle}
+                    </Typography>
+                  </Box>
                 </Box>
               ))}
             </Stack>

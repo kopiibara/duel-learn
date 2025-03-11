@@ -148,7 +148,7 @@ const DiscoverMore = () => {
               key={index}
               sx={{
                 flex: `0 0 ${cardWidth}%`,
-                padding: "0 0.5rem",
+                padding: "0 0.4vw",
               }}
             >
               <CardComponent

@@ -1,9 +1,17 @@
-<svg width="381" height="281" viewBox="0 0 381 281" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
-<circle cx="77.5" cy="322.5" r="77.5" fill="white"/>
-<circle cx="349.5" cy="230.5" r="83.5" fill="white"/>
-<circle cx="46" cy="39" r="15" fill="white"/>
-<circle cx="23" cy="62" r="23" fill="white"/>
-<rect x="23" y="-13" width="339" height="308" fill="url(#pattern0_3030_1891)"/>
+<svg width="939" height="281" viewBox="0 0 939 281" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<circle cx="660.5" cy="174.5" r="95.5" fill="#B4A5EA"/>
+<circle cx="566.5" cy="229.5" r="56.5" fill="#B4A5EA"/>
+<circle cx="931.5" cy="111.5" r="56.5" fill="#B4A5EA"/>
+<circle cx="891.5" cy="54.5" r="23.5" fill="#B4A5EA"/>
+<circle cx="583.5" cy="322.5" r="77.5" fill="white"/>
+<circle cx="867.5" cy="218.5" r="95.5" fill="white"/>
+<circle cx="552" cy="39" r="15" fill="white"/>
+<circle cx="529" cy="62" r="23" fill="white"/>
+<rect x="529" y="-13" width="339" height="308" fill="url(#pattern0_3030_1891)"/>
+<circle cx="479" cy="272" r="27" fill="#B4A5EA"/>
+<circle cx="66" cy="303" r="97" fill="#B4A5EA"/>
+<ellipse cx="4.5" cy="210" rx="51.5" ry="51" fill="#B4A5EA"/>
+<ellipse cx="180.5" cy="208" rx="31.5" ry="31" fill="#B4A5EA"/>
 <defs>
 <pattern id="pattern0_3030_1891" patternContentUnits="objectBoundingBox" width="1" height="1">
 <use xlink:href="#image0_3030_1891" transform="matrix(0.000584279 0 0 0.000643087 -0.000435364 0)"/>
