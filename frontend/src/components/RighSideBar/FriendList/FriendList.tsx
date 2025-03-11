@@ -112,7 +112,7 @@ const FriendList: React.FC = () => {
     if (!user?.firebase_uid || !user?.username) return;
 
     try {
-      await handleSendFriendRequest(
+      await handleSendFriendRequest(  
         receiverId,
         user.firebase_uid,
         user.username
@@ -193,7 +193,7 @@ const FriendList: React.FC = () => {
   return (
     <>
       <Box className="rounded-[0.8rem] border-[0.2rem] border-[#3B354C] max-h-[80vh]">
-        <div className="px-[1.5vw] pt-[3vh] pb-[1vh]">
+        <div className="px-[2vw] pt-[4vh] pb-[2vh]">
           <div className="flex flex-row items-center mb-[2vh] gap-[0.8vw]">
             <img
               src="/bunny.png"
@@ -243,11 +243,7 @@ const FriendList: React.FC = () => {
             </Stack>
           ) : (
             localFriendList.map((friend: Friend) => (
-              <FriendListItem
-                key={friend.firebase_uid}
-                friend={friend}
-                onInvite={handleInvite}
-              />
+              <FriendListItem key={friend.firebase_uid} friend={friend} />
             ))
           )}
         </div>

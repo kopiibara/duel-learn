@@ -15,7 +15,8 @@ type RoutePath =
   | "/dashboard/profile"
   | "/dashboard/study-material/create"
   | "/dashboard/shop"
-  | "/dashboard/account-settings"; // Add account-settings to the type
+  | "/dashboard/account-settings"
+  | "/dashboard/search";
 
 const RightSideBar: React.FC = () => {
   const location = useLocation();
@@ -55,6 +56,13 @@ const RightSideBar: React.FC = () => {
     ),
     "/dashboard/profile": friendListContent,
     "/dashboard/shop": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
+    "/dashboard/search": (
       <>
         {friendListContent}
         <div className="my-7"></div>

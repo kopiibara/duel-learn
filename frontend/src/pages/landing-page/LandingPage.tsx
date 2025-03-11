@@ -15,7 +15,7 @@ const LandingPage = () => {
   };
 
   const handleAdmin = () => {
-    navigate("/admin/admin-dashboard"); // Navigate to the admin dashboard
+    navigate("/admin/dashboard"); // Navigate to the admin dashboard
   };
 
   return (

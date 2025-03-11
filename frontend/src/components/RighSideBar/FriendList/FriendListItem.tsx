@@ -5,13 +5,9 @@ import { Friend } from "../../../contexts/UserContext";
 
 interface FriendListItemProps {
   friend: Friend;
-  onInvite: (friendId: string) => void;
 }
 
-const FriendListItem: React.FC<FriendListItemProps> = ({
-  friend,
-  onInvite,
-}) => {
+const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   return (
     <div className="flex items-center justify-between mb-[2vh]">
       <div className="flex items-center">
@@ -42,7 +38,6 @@ const FriendListItem: React.FC<FriendListItemProps> = ({
       {/* Button with more responsive padding */}
       <Button
         variant="contained"
-        onClick={() => onInvite(friend.firebase_uid)}
         sx={{
           borderRadius: "0.6rem",
           padding: {
