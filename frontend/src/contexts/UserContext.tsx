@@ -1,7 +1,7 @@
 import React, { createContext, useState, useContext, useEffect, useCallback } from "react";
 import { auth } from "../services/firebase";
-import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+//import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
+import {getDoc, doc } from "firebase/firestore";
 import { db } from "../services/firebase";
 import useUserData from "../hooks/api.hooks/useUserData";
 
@@ -47,7 +47,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return userData ? JSON.parse(userData) : null;
   });
 
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(true);
   const { fetchAndUpdateUserData } = useUserData();
 
   // 🟢 Update user state and localStorage/sessionStorage
@@ -81,15 +81,60 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // 🔑 Handle login and fetch user data
-  const loginAndSetUserData = useCallback(async (firebase_uid: string, token: string) => {
+  const loginAndSetUserData = async (uid: string, token: string) => {
     try {
-      const userData = await fetchAndUpdateUserData(firebase_uid, token);
-      return updateUserState(userData);
+      // First try to fetch from main database (users who have completed verification)
+      try {
+        console.log("Attempting to fetch verified user data from main database");
+        const userData = await fetchAndUpdateUserData(uid, token);
+        if (userData) {
+          console.log("User found in main database:", userData);
+          setUser(userData);
+          return userData;
+        }
+      } catch (dbError) {
+        console.log("User not found in main database, checking temp_users", dbError);
+        // If not found in main database, continue to check temp_users
+      }
+      
+      // For users not found in main database, check temp_users
+      console.log("Checking temp_users collection for unverified user");
+      const tempUserDoc = await getDoc(doc(db, "temp_users", uid));
+      
+      if (!tempUserDoc.exists()) {
+        console.error("User not found in temp_users collection");
+        throw new Error("User not found in temp_users collection");
+      }
+      
+      // Handle unverified user from temp_users
+      const tempUserData = tempUserDoc.data();
+      const userDataWithDefaults = {
+        ...tempUserData,
+        firebase_uid: uid,
+        email_verified: false,
+        isNew: true,
+        display_picture: null,
+        full_name: null,
+        level: 1,
+        exp: 0,
+        mana: 200,
+        coins: 500,
+        isSSO: false,
+        account_type: tempUserData.account_type || "free",
+        username: tempUserData.username || null,
+        email: tempUserData.email || null
+      };
+      
+      console.log("User found in temp_users:", userDataWithDefaults);
+      setUser(userDataWithDefaults);
+      
+      return userDataWithDefaults;
     } catch (error) {
       console.error("Error during login and data setup:", error);
+      setUser(null);
       throw error;
     }
-  }, [fetchAndUpdateUserData, updateUserState]);
+  };
 
   // 🚪 Logout function
   const logout = useCallback(async () => {

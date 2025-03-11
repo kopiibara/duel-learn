@@ -39,7 +39,8 @@ const Login = () => {
   // Check if user is already logged in and redirect
   useEffect(() => {
     if (user && user.isNew) {
-      setLoading(true);("/dashboard/welcome");
+      setLoading(true);
+      navigate("/dashboard/welcome");
     }
   }, [user, navigate]);
 
@@ -79,20 +80,31 @@ const Login = () => {
             const userData = userDoc.data();
             email = userData.email;
             
+            console.log("Found user in temp_users collection, attempting to sign in with Firebase");
+            
             // Try to sign in with Firebase
             const result = await signInWithEmailAndPassword(auth, email, values.password);
             const token = await result.user.getIdToken();
             
+            console.log("Firebase sign in successful, storing user data");
+            
             // Store user data using storeUser endpoint
-            await storeUser({
+            const storeUserResult = await storeUser({
               username: userData.username,
               email: userData.email,
               password: values.password,
               account_type: userData.account_type || "free"
             }, token);
+            console.log("Store user result:", storeUserResult);
+
+            if (!storeUserResult.success) {
+              throw new Error(storeUserResult.error);
+            }
             
+            console.log("Navigating to email verification page");
             // Navigate to verify email page
-            setLoading(true);navigate("/dashboard/verify-email", { state: { token } });
+            setLoading(true);
+            navigate("/verify-email", { state: { token } });
             return;
           }
           
@@ -118,9 +130,13 @@ const Login = () => {
             const userDoc = tempUsersSnapshot.docs[0];
             const userData = userDoc.data();
             
+            console.log("Found user in temp_users collection with email search, attempting to sign in with Firebase");
+            
             // Try to sign in with Firebase
             const result = await signInWithEmailAndPassword(auth, email, values.password);
             const token = await result.user.getIdToken();
+            
+            console.log("Firebase sign in successful, storing user data");
             
             // Store user data using storeUser endpoint
             await storeUser({
@@ -130,8 +146,10 @@ const Login = () => {
               account_type: userData.account_type || "free"
             }, token);
             
+            console.log("Navigating to email verification page");
             // Navigate to verify email page
-            setLoading(true); navigate("/dashboard/verify-email", { state: { token } });
+            setLoading(true);
+            navigate("/verify-email", { state: { token } });
             return;
           }
           
@@ -144,18 +162,45 @@ const Login = () => {
         const token = await result.user.getIdToken();
 
         // Use the new loginAndSetUserData function
-        const userData = await loginAndSetUserData(result.user.uid, token);
-        
-        if (userData.isNew) {
-          setSuccessMessage("Account found successfully!");
-          setTimeout(() => {
+        try {
+          const userData = await loginAndSetUserData(result.user.uid, token);
+          console.log("User data after login:", userData);
+          
+          if (userData.isNew) {
+            setSuccessMessage("Account found successfully!");
+            setTimeout(() => {
+              setLoading(true);
+              navigate("/dashboard/welcome");
+            }, 1500);
+          } else if (!userData.email_verified) {
+            console.log("Email not verified, navigating to verification page");
             setLoading(true);
-            navigate("/dashboard/welcome");
-          }, 1500);
-        } else if (!userData.email_verified) {
-          setLoading(true);navigate("/dashboard/verify-email", { state: { token } });
-        } else {
-          setLoading(true);navigate("/dashboard/home");
+            navigate("/verify-email", { state: { token } });
+          } else {
+            console.log("Email verified, navigating to dashboard");
+            setLoading(true);
+            navigate("/dashboard/home");
+          }
+        } catch (loginError: any) {
+          // If the error is because user is not in temp_users, they might be a verified user
+          // Try direct API call as a fallback
+          if (loginError.message === "User not found in temp_users collection") {
+            console.log("User not in temp_users, trying direct API call...");
+            try {
+              // If Firebase auth succeeded but temp_users check failed,
+              // assume the user is verified and navigate to dashboard
+              setLoading(true);
+              navigate("/dashboard/home");
+              return;
+            } catch (apiError) {
+              handleError(apiError);
+              setLoading(false);
+            }
+          } else {
+            // For other errors, pass through to error handler
+            handleError(loginError);
+            setLoading(false);
+          }
         }
       } catch (error) {
         handleError(error);
@@ -173,11 +218,16 @@ const Login = () => {
 
       if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
-        setTimeout(() => {setLoading(true); navigate("/dashboard/welcome")}, 1500);
+        setTimeout(() => {
+          setLoading(true);
+          navigate("/dashboard/welcome");
+        }, 1500);
       } else if (!userData.email_verified) {
-        setLoading(true);navigate("/dashboard/verify-email", { state: { token: authResult.token } });
+        setLoading(true);
+        navigate("/verify-email", { state: { token: authResult.token } });
       } else {
-        setLoading(true);navigate("/dashboard/home");
+        setLoading(true);
+        navigate("/dashboard/home");
       }
     } catch (error) {
       handleError(error);

@@ -30,10 +30,10 @@ const useCombinedErrorHandler = () => {
       setCombinedError("Registration Failed. Please try again.");
     }
 
-    if (auth.currentUser) {
+    /*if (auth.currentUser) {
       deleteUser(auth.currentUser);
       deleteDoc(doc(db, "users", auth.currentUser.uid));
-    }
+    }*/
   };
 
   return { firebaseError, networkError, sqlError, combinedError, handleError };
