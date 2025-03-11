@@ -39,7 +39,7 @@ const Login = () => {
   // Check if user is already logged in and redirect
   useEffect(() => {
     if (user && user.isNew) {
-      navigate("/dashboard/welcome");
+      setLoading(true);("/dashboard/welcome");
     }
   }, [user, navigate]);
 
@@ -92,7 +92,7 @@ const Login = () => {
             }, token);
             
             // Navigate to verify email page
-            navigate("/dashboard/verify-email", { state: { token } });
+            setLoading(true);navigate("/dashboard/verify-email", { state: { token } });
             return;
           }
           
@@ -131,7 +131,7 @@ const Login = () => {
             }, token);
             
             // Navigate to verify email page
-            navigate("/dashboard/verify-email", { state: { token } });
+            setLoading(true); navigate("/dashboard/verify-email", { state: { token } });
             return;
           }
           
@@ -148,21 +148,24 @@ const Login = () => {
         
         if (userData.isNew) {
           setSuccessMessage("Account found successfully!");
-          setTimeout(() => navigate("/dashboard/welcome"), 1500);
+          setTimeout(() => {
+            setLoading(true);
+            navigate("/dashboard/welcome");
+          }, 1500);
         } else if (!userData.email_verified) {
-          navigate("/dashboard/verify-email", { state: { token } });
+          setLoading(true);navigate("/dashboard/verify-email", { state: { token } });
         } else {
-          navigate("/dashboard/home");
+          setLoading(true);navigate("/dashboard/home");
         }
       } catch (error) {
         handleError(error);
-      } finally {
         setLoading(false);
       }
     }
   });
 
   const googleSubmit = async () => {
+    setLoading(true);
     try {
       const account_type = "free";
       const authResult = await handleGoogleAuth(account_type);
@@ -170,14 +173,15 @@ const Login = () => {
 
       if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
-        setTimeout(() => navigate("/dashboard/welcome"), 1500);
+        setTimeout(() => {setLoading(true); navigate("/dashboard/welcome")}, 1500);
       } else if (!userData.email_verified) {
-        navigate("/dashboard/verify-email", { state: { token: authResult.token } });
+        setLoading(true);navigate("/dashboard/verify-email", { state: { token: authResult.token } });
       } else {
-        navigate("/dashboard/home");
+        setLoading(true);navigate("/dashboard/home");
       }
     } catch (error) {
       handleError(error);
+      setLoading(false);
     }
   };
 
