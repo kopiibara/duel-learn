@@ -66,10 +66,6 @@ const ViewStudyMaterial = () => {
           // Store the created_by_id from the API response
           const createdById = data.created_by_id || "";
 
-          console.log("Created by ID:", createdById);
-          console.log("Current user ID:", user?.firebase_uid);
-          console.log("Is owner?", createdById === user?.firebase_uid);
-
           setStudyMaterial({
             title: data.title,
             tags,
@@ -373,7 +369,7 @@ const ViewStudyMaterial = () => {
                   key={index}
                   label={tag}
                   sx={{
-                    backgroundColor: "#4D18E8",
+                    backgroundColor: "#4D18E8 !important",
                     color: "#E2DDF3",
                     borderRadius: "0.8rem",
                     width: "fit-content",
@@ -436,6 +432,8 @@ const ViewStudyMaterial = () => {
           open={open}
           onClose={handleClose}
           studyMaterialId={studyMaterialId || ""}
+          studyMaterialTitle={studyMaterial?.title || ""}
+          studyMaterialVisibility={studyMaterial?.visibility || 0}
           isOwner={studyMaterial?.created_by_id === user?.firebase_uid}
           status={studyMaterial?.status} // Pass the status to the popover
         />

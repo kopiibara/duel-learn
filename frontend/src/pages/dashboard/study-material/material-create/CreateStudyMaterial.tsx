@@ -433,7 +433,7 @@ const CreateStudyMaterial = () => {
   const handleDiscard = () => {
     if (editMode && studyMaterialId) {
       // If coming from edit mode, return to the view page for that specific material
-      navigate(`/dashboard/study-material/view/${studyMaterialId}`);
+      navigate(`/dashboard/study-material/view${studyMaterialId}`);
     } else {
       // Otherwise, just go back to the previous page
       navigate(-1);

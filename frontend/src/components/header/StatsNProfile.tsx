@@ -3,25 +3,9 @@ import CoinIcon from "../../assets/CoinIcon.png";
 import ManaIcon from "../../assets/ManaIcon.png";
 import Tooltip from "@mui/material/Tooltip";
 import ProfilePopover from "./ProfilePopover";
-import { Avatar, Box, CircularProgress } from "@mui/material";
+import { Avatar, Box } from "@mui/material";
 import { useUser } from "../../contexts/UserContext";
 import defaultPicture from "../../assets/profile-picture/default-picture.svg";
-
-interface User {
-  firebase_uid: string;
-  username: string | null;
-  email: string | null;
-  display_picture: string | null;
-  full_name: string | null;
-  email_verified: boolean;
-  isSSO: boolean;
-  account_type: "free" | "premium" | "admin";
-  isNew: boolean;
-  level: number;
-  exp: number;
-  mana: number;
-  coins: number;
-}
 
 const StatsNProfile = () => {
   const { user } = useUser();

@@ -146,7 +146,7 @@ const Leaderboards = () => {
         key={player.firebase_uid}
         className={`flex items-center justify-between mb-4 w-full ${
           showBackground && player.isCurrentUser
-            ? "bg-[#221f2e] rounded-lg px-[1vw] py-[1vh]"
+            ? "bg-[#221f2e] rounded-lg px-[0.8vw] py-[1.4vh]"
             : ""
         }`}
       >
@@ -188,7 +188,7 @@ const Leaderboards = () => {
             Level {player.level}
           </p>
           <p className="text-[#9F9BAE] text-[1.5vh]">•</p>
-          <p className="text-[1.4vh] truncate whitespace-nowrap text-[#9F9BAE]">
+          <p className="text-[1.4vh] whitespace-nowrap text-[#9F9BAE]">
             EXP {player.exp}
           </p>
         </div>
@@ -245,22 +245,24 @@ const Leaderboards = () => {
       </div>
 
       {/* Rest of the component remains the same */}
-      <Stack
-        direction={"row"}
-        spacing={1}
-        className="flex justify-center bg-[#120F1C] py-[2vh] px-[2vw] border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
-      >
-        <p
-          className={`text-[1.7vh] ${
-            leaderboardData.length > 3
-              ? "text-[#3B354D] hover:text-[#A38CE6] cursor-pointer transition-colors font-bold"
-              : "text-[#232029] cursor-not-allowed font-bold"
-          }`}
-          onClick={() => leaderboardData.length > 3 && setIsModalOpen(true)}
+      {leaderboardData.length > 3 && (
+        <Stack
+          direction={"row"}
+          spacing={1}
+          className="flex justify-center bg-[#120F1C] py-[2vh] px-[2vw] border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
         >
-          VIEW MORE
-        </p>
-      </Stack>
+          <p
+            className={`text-[1.7vh] ${
+              leaderboardData.length > 3
+                ? "text-[#3B354D] hover:text-[#A38CE6] cursor-pointer transition-colors font-bold"
+                : "text-[#232029] cursor-not-allowed font-bold"
+            }`}
+            onClick={() => leaderboardData.length > 3 && setIsModalOpen(true)}
+          >
+            VIEW MORE
+          </p>
+        </Stack>
+      )}
 
       {/* Modal remains the same */}
       {isModalOpen && (
