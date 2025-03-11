@@ -1,8 +1,11 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from "react";
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useCallback,
+} from "react";
 import { auth } from "../services/firebase";
-import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "../services/firebase";
 import useUserData from "../hooks/api.hooks/useUserData";
 
 interface User {
@@ -23,6 +26,7 @@ interface User {
 
 export interface Friend {
   firebase_uid: string;
+  exp: number;
   username: string;
   display_picture: string;
   level: number;
@@ -41,13 +45,15 @@ const UserContext = createContext<UserContextProps | undefined>(undefined);
 
 const REFRESH_INTERVAL = 60000; // 1 minute
 
-export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(() => {
     const userData = localStorage.getItem("userData");
     return userData ? JSON.parse(userData) : null;
   });
 
-  const [loading, setLoading] = useState(true);
+  const [loading] = useState(true);
   const { fetchAndUpdateUserData } = useUserData();
 
   // 🟢 Update user state and localStorage/sessionStorage
@@ -81,15 +87,18 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   // 🔑 Handle login and fetch user data
-  const loginAndSetUserData = useCallback(async (firebase_uid: string, token: string) => {
-    try {
-      const userData = await fetchAndUpdateUserData(firebase_uid, token);
-      return updateUserState(userData);
-    } catch (error) {
-      console.error("Error during login and data setup:", error);
-      throw error;
-    }
-  }, [fetchAndUpdateUserData, updateUserState]);
+  const loginAndSetUserData = useCallback(
+    async (firebase_uid: string, token: string) => {
+      try {
+        const userData = await fetchAndUpdateUserData(firebase_uid, token);
+        return updateUserState(userData);
+      } catch (error) {
+        console.error("Error during login and data setup:", error);
+        throw error;
+      }
+    },
+    [fetchAndUpdateUserData, updateUserState]
+  );
 
   // 🚪 Logout function
   const logout = useCallback(async () => {
@@ -110,7 +119,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const token = await auth.currentUser?.getIdToken(true);
           if (token) {
-            const userData = await fetchAndUpdateUserData(user.firebase_uid, token);
+            const userData = await fetchAndUpdateUserData(
+              user.firebase_uid,
+              token
+            );
             updateUserState(userData);
           }
         } catch (error) {
@@ -150,7 +162,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   */
 
   return (
-    <UserContext.Provider value={{ user, setUser, logout, loginAndSetUserData, loading, updateUser: updateUserState }}>
+    <UserContext.Provider
+      value={{
+        user,
+        setUser,
+        logout,
+        loginAndSetUserData,
+        loading,
+        updateUser: updateUserState,
+      }}
+    >
       {children}
     </UserContext.Provider>
   );

@@ -11,8 +11,7 @@ const setupSocket = (server) => {
     },
     pingTimeout: 60000, // Reduce to detect dead connections faster
     connectTimeout: 5000,
-    transports: ["websocket"], // Prefer WebSocket over polling for efficiency
-    allowEIO3: true, // Support older socket.io clients if needed
+    transports: ["websocket", "polling"], // Prefer WebSocket over polling for efficiency
   });
 
   // Store active user connections
@@ -23,8 +22,6 @@ const setupSocket = (server) => {
     console.log(`Connection error due to ${err.message}`);
   });
 
-  // Set max listeners to prevent warnings if needed
-  io.sockets.setMaxListeners(20);
 
   io.on("connection", (socket) => {
     console.log("🔌 New client connected:", socket.id);
@@ -65,15 +62,15 @@ const setupSocket = (server) => {
     // Update the sendFriendRequest event handler
     socket.on("sendFriendRequest", (data) => {
       try {
-        const { sender_id, receiver_id, senderUsername, receiver_username } =
+        const { sender_id, receiver_id, sender_username, receiver_username } =
           data;
 
-        if (!sender_id || !receiver_id || !senderUsername) {
+        if (!sender_id || !receiver_id || !sender_username) {
           throw new Error("Missing required friend request data");
         }
 
         console.log("📨 New friend request:", {
-          from: senderUsername,
+          from: sender_username,
           sender_id,
           to: receiver_id,
         });
@@ -81,7 +78,7 @@ const setupSocket = (server) => {
         // Emit to the receiver's room with all necessary data
         io.to(receiver_id).emit("newFriendRequest", {
           sender_id,
-          sender_username: senderUsername,
+          sender_username: sender_username,
           receiver_id,
           receiver_username,
         });
@@ -112,15 +109,15 @@ const setupSocket = (server) => {
           receiver_id,
           senderInfo: senderInfo
             ? {
-                username: senderInfo.username,
-                uid: senderInfo.firebase_uid || senderInfo.uid,
-              }
+              username: senderInfo.username,
+              uid: senderInfo.firebase_uid || senderInfo.uid,
+            }
             : "missing",
           receiverInfo: receiverInfo
             ? {
-                username: receiverInfo.username,
-                uid: receiverInfo.firebase_uid || receiverInfo.uid,
-              }
+              username: receiverInfo.username,
+              uid: receiverInfo.firebase_uid || receiverInfo.uid,
+            }
             : "missing",
         });
 
@@ -242,6 +239,7 @@ const setupSocket = (server) => {
           created_by_id: data.createdById || data.created_by_id,
           visibility: data.visibility || 0,
           created_at: data.created_at || new Date().toISOString(),
+          updated_at: data.updated_at || new Date().toISOString(),
           items: data.items || [],
         };
 
@@ -452,8 +450,7 @@ const setupSocket = (server) => {
         // Notify the host specifically
         if (hostId) {
           console.log(
-            `Notifying host ${hostId} about player ${
-              playerName || playerId
+            `Notifying host ${hostId} about player ${playerName || playerId
             } joining`
           );
           io.to(hostId).emit("player_joined_lobby", {
@@ -500,8 +497,7 @@ const setupSocket = (server) => {
         }
 
         console.log(
-          `🎮 Player ${playerId} is ${
-            isReady ? "ready" : "not ready"
+          `🎮 Player ${playerId} is ${isReady ? "ready" : "not ready"
           } in lobby ${lobbyCode}`
         );
 

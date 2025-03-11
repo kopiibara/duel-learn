@@ -24,7 +24,7 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
     <Stack
       direction={"row"}
       spacing={1}
-      className="flex justify-between bg-[#120F1C] py-[1.25rem] px-[0.8rem] border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
+      className="flex justify-between bg-[#120F1C] py-[2vh] px-[1vw] border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
     >
       <Tooltip title="Your Friends" placement="top" enterDelay={100} arrow>
         <button
@@ -33,7 +33,7 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
             activeTab === "YOUR FRIENDS" ? "text-[#A38CE6]" : "text-[#3B354D]"
           }`}
         >
-          <PeopleIcon />
+          <PeopleIcon sx={{ fontSize: "clamp(1rem, 1.2vw, 2rem)" }} />
         </button>
       </Tooltip>
       <Divider orientation="vertical" flexItem sx={{ width: "2px" }} />
@@ -56,13 +56,14 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
                   left: 14,
                   backgroundColor: "#A38CE6",
                   color: "#3B354D",
+                  fontSize: "clamp(0.5rem, 1vw, 0.8rem)",
                 },
               }}
             >
-              <PersonAddIcon />
+              <PersonAddIcon sx={{ fontSize: "clamp(1rem, 1.2vw, 2rem)" }} />
             </Badge>
           ) : (
-            <PersonAddIcon />
+            <PersonAddIcon sx={{ fontSize: "clamp(1rem, 1.2vw, 2rem)" }} />
           )}
         </button>
       </Tooltip>
@@ -74,7 +75,7 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
             activeTab === "FIND FRIENDS" ? "text-[#A38CE6]" : "text-[#3B354D]"
           }`}
         >
-          <PersonSearchIcon />
+          <PersonSearchIcon sx={{ fontSize: "clamp(1rem, 1.2vw, 2rem)" }} />
         </button>
       </Tooltip>
     </Stack>

@@ -136,86 +136,122 @@ const Leaderboards = () => {
     return undefined;
   };
 
-  const getDefaultAvatar = () => "/default-avatar.png"; // Replace with your default avatar path
+  // New function to render a player item
+  const renderPlayerItem = (
+    player: LeaderboardPlayer,
+    showBackground = true
+  ) => {
+    return (
+      <div
+        key={player.firebase_uid}
+        className={`flex items-center justify-between mb-4 w-full ${
+          showBackground && player.isCurrentUser
+            ? "bg-[#221f2e] rounded-lg px-[1vw] py-[1vh]"
+            : ""
+        }`}
+      >
+        {/* Left side with rank, avatar and username */}
+        <div className="flex items-center min-w-0 flex-1">
+          {/* Rank indicator - fixed width container */}
+          <div className="flex-shrink-0 w-[2vw] min-w-[24px] flex justify-center mr-[1vw]">
+            {player.rank <= 3 ? (
+              <img
+                src={getMedal(player.rank)}
+                alt={`Rank ${player.rank}`}
+                className="w-[2vw] h-[2vw] min-w-[24px] min-h-[24px]"
+              />
+            ) : (
+              <p className="text-[1.8vh] font-semibold text-center">
+                {player.rank}
+              </p>
+            )}
+          </div>
+
+          {/* Avatar with fixed dimensions */}
+          <div className="flex-shrink-0 mr-[0.8vw]">
+            <img
+              src={player.display_picture || defaultPicture}
+              alt="Avatar"
+              className="min-w-[44px] w-[2.7vw] max-w-[60px] h-auto rounded-[5px] object-cover"
+            />
+          </div>
+
+          {/* Username with truncation */}
+          <p className={`truncate text-[1.8vh] ${player.isCurrentUser}`}>
+            {player.username}
+          </p>
+        </div>
+
+        {/* Right side with level and XP - now properly pushed to the right edge */}
+        <div className="flex-shrink-0 flex items-center gap-[0.5vw] ml-2">
+          <p className="text-[1.4vh] truncate whitespace-nowrap text-[#9F9BAE]">
+            Level {player.level}
+          </p>
+          <p className="text-[#9F9BAE] text-[1.5vh]">•</p>
+          <p className="text-[1.4vh] truncate whitespace-nowrap text-[#9F9BAE]">
+            EXP {player.exp}
+          </p>
+        </div>
+      </div>
+    );
+  };
+
+  // Find current user
+  const currentUser = leaderboardData.find((player) => player.isCurrentUser);
+
+  // Get top 3 players
+  const top3Players = leaderboardData.filter((player) => player.rank <= 3);
 
   return (
-    <Box className="rounded-[1rem] shadow-md border-[3px] border-[#3B354C]">
-      <div className="px-8 pt-8 pb-5">
-        <div className="pl-1 flex flex-row items-center mb-5 gap-4">
+    <Box className="rounded-[1rem] shadow-md border-[0.2rem] border-[#3B354C]">
+      <div className="px-[1.5vw] pt-[3vh] pb-[1vh]">
+        <div className="pl-[0.5vw] flex flex-row items-center mb-[2vh] gap-[1vw]">
           <img
             src="/leaderboard.png"
-            className="w-[37px] h-[35px]"
+            className="min-w-[40px] w-[2.2vw] max-w-[56px] h-auto"
             alt="icon"
           />
-          <h2 className="text-[1.1rem] text-[#FFFFFF] font-semibold">
+          <h2 className="text-[clamp(1rem,1vw,2rem)]  font-semibold">
             Leaderboards
           </h2>
         </div>
 
-        <hr className="border-t-2 border-[#3B354D] mb-7" />
+        <hr className="border-t-2 border-[#3B354D] mb-[2vh] rounded-full" />
 
         {loading ? (
-          <div className="flex justify-center items-center h-64">
+          <div className="flex justify-center items-center h-[30vh]">
             <CircularProgress />
           </div>
         ) : error ? (
-          <div className="text-center text-red-500 py-8">{error}</div>
+          <div className="text-center text-red-500 py-[2vh]">{error}</div>
         ) : leaderboardData.length === 0 ? (
-          <div className="text-center text-gray-400 py-8">
+          <div className="text-center text-gray-400 py-[2vh]">
             No friends found. Add friends to see your leaderboard!
           </div>
         ) : (
-          leaderboardData.slice(0, 3).map((player) => (
-            <div
-              key={player.firebase_uid}
-              className={`flex items-center justify-between mb-4 ${
-                player.isCurrentUser ? "bg-[#221f2e] rounded-lg px-6 py-4" : ""
-              }`}
-            >
-              <div className="flex items-center">
-                {player.rank <= 3 ? (
-                  <img
-                    src={getMedal(player.rank)}
-                    alt={`Rank ${player.rank}`}
-                    className="w-8 h-8 mr-5"
-                  />
-                ) : (
-                  <p className="text-[1rem] font-semibold ml-3 mr-7">
-                    {player.rank}
-                  </p>
-                )}
-                <img
-                  src={player.display_picture || defaultPicture}
-                  alt="Avatar"
-                  className="w-12 h-12 rounded-[5px] object-cover mr-3"
-                />
-                <p
-                  className={`font-[0.6rem] ${
-                    player.isCurrentUser ? "text-[#A38CE6]" : ""
-                  }`}
-                >
-                  {player.username}
-                </p>
-              </div>
-              <div className="text-right">
-                <p className="text-[#E2DDF3]">{player.exp} XP</p>
-                <p className="text-sm text-[#9F9BAE] w-full">
-                  Level {player.level}
-                </p>
-              </div>
-            </div>
-          ))
+          <div className="flex flex-col">
+            {/* Top 3 Players - always without background styling */}
+            {top3Players.map((player) => renderPlayerItem(player, false))}
+
+            {/* Always add separator and current user with background styling */}
+            {currentUser && (
+              <>
+                <hr className="border-t-2 border-[#3B354D] mb-[2vh] rounded-full" />
+                {renderPlayerItem(currentUser, true)}
+              </>
+            )}
+          </div>
         )}
       </div>
 
-      {/* View More Button */}
+      {/* Rest of the component remains the same */}
       <Stack
         direction={"row"}
         spacing={1}
-        className="flex justify-center bg-[#120F1C] py-6 px-4 border-t-[3px] rounded-b-[0.8rem] border-[#3B354C]"
+        className="flex justify-center bg-[#120F1C] py-[2vh] px-[2vw] border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
       >
         <p
-          className={`${
+          className={`text-[1.7vh] ${
             leaderboardData.length > 3
               ? "text-[#3B354D] hover:text-[#A38CE6] cursor-pointer transition-colors font-bold"
               : "text-[#232029] cursor-not-allowed font-bold"
@@ -226,64 +262,25 @@ const Leaderboards = () => {
         </p>
       </Stack>
 
-      {/* Modal */}
+      {/* Modal remains the same */}
       {isModalOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-4"
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-[#080511] px-6 py-8 border-[#3B354D] border rounded-[0.8rem] w-full max-w-[689px] max-h-[90vh] shadow-lg flex flex-col space-y-6 items-center"
+            className="bg-[#080511] px-[3vw] py-[3vh] border-[#3B354D] border rounded-[0.8rem] w-full max-w-[80vw] max-h-[90vh] shadow-lg flex flex-col space-y-[2vh] items-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-xl text-white font-semibold">
+            <h2 className="text-[2.5vh] text-white font-semibold">
               Friend Leaderboard
             </h2>
-            <hr className="border-t-2 border-[#363D46] w-full mb-6" />
-            <div className="overflow-y-auto w-full max-h-[40vh] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-4">
-              {leaderboardData.map((player) => (
-                <div
-                  key={player.firebase_uid}
-                  className={`flex items-center justify-between w-full px-6 mb-4 ${
-                    player.isCurrentUser ? "bg-[#221f2e] rounded-lg p-2" : ""
-                  }`}
-                >
-                  <div className="flex items-center">
-                    {player.rank <= 3 ? (
-                      <img
-                        src={getMedal(player.rank)}
-                        alt={`Rank ${player.rank}`}
-                        className="w-8 h-8 mr-5"
-                      />
-                    ) : (
-                      <p className="text-lg font-semibold ml-3 mr-7">
-                        {player.rank}
-                      </p>
-                    )}
-                    <img
-                      src={player.display_picture || getDefaultAvatar()}
-                      alt="Avatar"
-                      className="w-12 h-12 rounded-[5px] object-cover mr-3"
-                    />
-                    <p
-                      className={`font-medium ${
-                        player.isCurrentUser ? "text-[#A38CE6]" : ""
-                      }`}
-                    >
-                      {player.username}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-gray-400">{player.exp} XP</p>
-                    <p className="text-sm text-gray-500">
-                      Level {player.level}
-                    </p>
-                  </div>
-                </div>
-              ))}
+            <hr className="border-t-2 border-[#363D46] w-full mb-[2vh]" />
+            <div className="overflow-y-auto w-full max-h-[40vh] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-[1.5vh]">
+              {leaderboardData.map((player) => renderPlayerItem(player))}
             </div>
             <button
-              className="mt-6 bg-[#4D1EE3] text-white px-6 py-2 rounded-md hover:bg-[#3B1BC9]"
+              className="mt-[2vh] bg-[#4D1EE3] text-white px-[2vw] py-[1.5vh] rounded-md hover:bg-[#3B1BC9] text-[1.8vh]"
               onClick={() => setIsModalOpen(false)}
             >
               Close

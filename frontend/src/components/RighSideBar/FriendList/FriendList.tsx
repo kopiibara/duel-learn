@@ -10,10 +10,7 @@ import { useFriendList } from "../../../hooks/friends.hooks/useFriendList";
 import { useFriendSocket } from "../../../hooks/friends.hooks/useFriendSocket";
 import { usePendingFriendRequests } from "../../../hooks/friends.hooks/usePendingFriendRequests";
 import axios from "axios";
-import {
-  SnackbarState,
-  FriendRequestData,
-} from "../../../types/friendObject";
+import { SnackbarState, FriendRequestData } from "../../../types/friendObject";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import noFriend from "../../../assets/images/NoFriend.svg";
@@ -195,22 +192,26 @@ const FriendList: React.FC = () => {
 
   return (
     <>
-      <Box className="rounded-[0.8rem] border-[0.2rem] border-[#3B354C]">
-        <div className="px-8 pt-8 pb-3">
-          <div className="flex flex-row items-center mb-6 gap-4">
-            <img src="/bunny.png" className="w-[44px] h-[40px]" alt="icon" />
-            <h2 className="text-[1.1rem] text-[#FFFFFF] font-semibold">
+      <Box className="rounded-[0.8rem] border-[0.2rem] border-[#3B354C] max-h-[80vh]">
+        <div className="px-[1.5vw] pt-[3vh] pb-[1vh]">
+          <div className="flex flex-row items-center mb-[2vh] gap-[0.8vw]">
+            <img
+              src="/bunny.png"
+              className="min-w-[40px] w-[2.5vw] max-w-[56px] h-auto"
+              alt="icon"
+            />
+            <p className="text-[clamp(1rem,1vw,2rem)] font-semibold">
               Friend List
-            </h2>
+            </p>
           </div>
-          <hr className="border-t-2 border-[#3B354D] mb-7" />
+          <hr className="border-t-2 border-[#3B354D] mb-[2vh]" />
 
           {loading ? (
             <Box display="flex" justifyContent="center" alignItems="center">
               <img
                 src={cauldronGif}
                 alt="Loading..."
-                style={{ width: "4rem", height: "auto" }}
+                style={{ width: "4vw", maxWidth: "4rem", height: "auto" }}
               />
             </Box>
           ) : error ? (
@@ -221,16 +222,21 @@ const FriendList: React.FC = () => {
               display="flex"
               justifyContent="center"
               alignItems="center"
-              paddingY={2}
+              paddingY="2vh"
             >
               <Box display="flex" justifyContent="center" alignItems="center">
                 <img
                   src={noFriend}
                   alt="noFriend"
-                  style={{ width: "8rem", height: "auto", opacity: 0.75 }}
+                  style={{
+                    width: "8vw",
+                    maxWidth: "8rem",
+                    height: "auto",
+                    opacity: 0.75,
+                  }}
                 />
               </Box>
-              <p className=" text-[#6F658D] font-semibold text-[0.85rem]">
+              <p className="text-[#6F658D] font-semibold text-[1.5vh]">
                 {" "}
                 Add friends and share the magic!
               </p>

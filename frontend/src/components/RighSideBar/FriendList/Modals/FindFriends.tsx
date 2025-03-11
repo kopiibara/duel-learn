@@ -208,7 +208,18 @@ const FindFriends: React.FC = () => {
                     <button
                       className="bg-[#5CA654] text-white py-2 px-4 rounded-md hover:scale-105 transition-all duration-300"
                       onClick={() => {
-                        if (!user?.firebase_uid || !user?.username) return;
+                        if (
+                          !user?.firebase_uid ||
+                          !user?.username ||
+                          !otherUser?.username
+                        ) {
+                          setSnackbar({
+                            open: true,
+                            message:
+                              "Missing user information. Please try again.",
+                          });
+                          return;
+                        }
 
                         // Update UI states first
                         setPendingRequests((prev) => ({
@@ -221,7 +232,7 @@ const FindFriends: React.FC = () => {
                           [otherUser.firebase_uid]: otherUser.username,
                         }));
 
-                        // Prepare request data with consistent property names
+                        // Prepare request data with all required fields
                         const requestData = {
                           sender_id: user.firebase_uid,
                           sender_username: user.username,
@@ -254,7 +265,20 @@ const FindFriends: React.FC = () => {
                           setSnackbar({
                             open: true,
                             message:
-                              "You've already sent a friend request to this user!",
+                              "Failed to send friend request. Please try again.",
+                          });
+
+                          // Clean up UI state if the request failed
+                          setPendingRequests((prev) => {
+                            const { [otherUser.firebase_uid]: _, ...rest } =
+                              prev;
+                            return rest;
+                          });
+
+                          setSentRequests((prev) => {
+                            const { [otherUser.firebase_uid]: _, ...rest } =
+                              prev;
+                            return rest;
                           });
                         });
                       }}
