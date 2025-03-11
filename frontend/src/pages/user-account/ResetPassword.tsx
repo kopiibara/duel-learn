@@ -5,18 +5,36 @@ import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import { verifyPasswordResetCode, confirmPasswordReset } from "firebase/auth";
 import { auth, db } from "../../services/firebase"; // Adjust the path as needed
-import usePasswordValidation from "../../hooks/validation.hooks/usePasswordValidation";
 import PageTransition from "../../styles/PageTransition";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png"; // Add this import
 import useResetPasswordApi from "../../hooks/api.hooks/useResetPasswordApi";
 import { setDoc, doc, getDoc } from "firebase/firestore";
 import bcrypt from "bcryptjs"; // Add this import
 import { socket } from "../../services/socket";
+import { useFormik } from "formik";
+import * as Yup from "yup";
 
 const ResetPassword = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Get location object
   const [isInvalidModalOpen, setIsInvalidModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { resetPasswordApi } = useResetPasswordApi();
+
+  const validationSchema = Yup.object({
+    newpassword: Yup.string()
+      .required("Password is required.")
+      .min(8, "Password must be at least 8 characters.")
+      .matches(/[A-Z]/, "Password must contain at least one uppercase letter.")
+      .matches(/[a-z]/, "Password must contain at least one lowercase letter.")
+      .matches(/[0-9]/, "Password must contain at least one number.")
+      .matches(/[!@#$%^&*(),.?":{}|<>]/, "Password must contain at least one special character."),
+    confirmPassword: Yup.string()
+      .required("Please confirm your password.")
+      .oneOf([Yup.ref('newpassword')], "Passwords do not match.")
+  });
 
   useEffect(() => {
     const queryParams = new URLSearchParams(location.search);
@@ -24,7 +42,7 @@ const ResetPassword = () => {
     const firebase_uid = queryParams.get("firebase_uid") || "";
 
     if (!oobCode) {
-      setError({ general: "Invalid or missing reset code." });
+      formik.setErrors({ general: "Invalid or missing reset code." });
       setIsInvalidModalOpen(true);
       setLoading(false);
       return;
@@ -39,7 +57,7 @@ const ResetPassword = () => {
       try {
         await verifyPasswordResetCode(auth, oobCode);
       } catch (err) {
-        setError({ general: "Reset code is invalid or expired." });
+        formik.setErrors({ general: "Reset code is invalid or expired." });
         setIsInvalidModalOpen(true);
       } finally {
         setLoading(false);
@@ -48,112 +66,68 @@ const ResetPassword = () => {
     validateCode();
   }, [location.search]);
 
-  const [formData, setFormData] = useState({
-    newpassword: "", // Only password is used here
-    confirmPassword: "", // New field for confirming password
-  });
+  const formik = useFormik({
+    initialValues: {
+      newpassword: "",
+      confirmPassword: "",
+      general: ""
+    },
+    validationSchema,
+    onSubmit: async (values) => {
+      const queryParams = new URLSearchParams(location.search);
+      const oobCode = queryParams.get("oobCode");
+      const firebase_uid = queryParams.get("firebase_uid") || "";
+      const updated_at = new Date().toISOString();
+      const password_hash = await bcrypt.hash(values.newpassword, 10);
 
-  const { errors, validatePassword, validatePasswordForm } =
-    usePasswordValidation();
-
-  const [loading, setLoading] = useState(false); // Loading state for the submit button
-
-  const [showPassword, setShowPassword] = useState(false); // State for toggling password visibility
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // State for toggling confirm password visibility
-  const togglePassword = () => {
-    setShowPassword(!showPassword); // Toggle password visibility
-  };
-  const toggleConfirmPassword = () => {
-    setShowConfirmPassword(!showConfirmPassword); // Toggle confirm password visibility
-  };
-
-  const [error, setError] = useState({ general: "" }); // For general errors
-
-  const { resetPasswordApi } = useResetPasswordApi();
-
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    const { newpassword, confirmPassword } = formData;
-    const updated_at = new Date().toISOString();
-
-    const formIsValid = validatePasswordForm(
-      {
-        newpassword,
-        confirmPassword,
-      },
-      "newpassword"
-    );
-
-    if (!formIsValid) {
-      return;
-    }
-
-    setLoading(true);
-
-    const queryParams = new URLSearchParams(location.search);
-    const oobCode = queryParams.get("oobCode");
-    const firebase_uid = queryParams.get("firebase_uid") || "";
-    const password_hash = await bcrypt.hash(newpassword, 10);
-
-    if (!oobCode) {
-      setError({ general: "Invalid or missing reset code." });
-      setIsInvalidModalOpen(true);
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const userDoc = await getDoc(doc(db, "users", firebase_uid));
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        const isMatch = await bcrypt.compare(
-          newpassword,
-          userData.password_hash
-        );
-        if (isMatch) {
-          setError({ general: "Cannot use old password. Please try again" });
-          setLoading(false);
-          return;
-        }
+      if (!oobCode) {
+        formik.setErrors({ general: "Invalid or missing reset code." });
+        setIsInvalidModalOpen(true);
+        return;
       }
 
-      await confirmPasswordReset(auth, oobCode, newpassword);
-      await resetPasswordApi(firebase_uid, password_hash, updated_at);
-      await setDoc(
-        doc(db, "users", firebase_uid),
-        { updated_at, password_hash },
-        { merge: true }
-      );
+      setLoading(true);
 
-      // Emit socket event instead of using BroadcastChannel
-      socket.emit("passwordResetSuccess");
+      try {
+        const userDocRef = doc(db, "users", firebase_uid);
+        const userDoc = await getDoc(userDocRef);
+        if (userDoc.exists()) {
+          const userData = userDoc.data();
+          const isMatch = await bcrypt.compare(
+            values.newpassword,
+            userData.password_hash
+          );
+          if (isMatch) {
+            formik.setErrors({ general: "Cannot use old password. Please try again" });
+            setLoading(false);
+            return;
+          }
+        }
 
-      navigate("/password-changed-successfully");
-    } catch (err) {
-      setError({ general: "Failed to Reset Password." });
-      console.log(err);
-    } finally {
-      setLoading(false);
+        await confirmPasswordReset(auth, oobCode, values.newpassword);
+        await resetPasswordApi(firebase_uid, password_hash, updated_at);
+        
+        // Update the user document with new password hash
+        const userRef = doc(db, "users", firebase_uid);
+        await setDoc(userRef, 
+          { updated_at, password_hash },
+          { merge: true }
+        );
+
+        socket.emit("passwordResetSuccess");
+        navigate("/password-changed-successfully");
+      } catch (err) {
+        formik.setErrors({ general: "Failed to Reset Password." });
+        console.log(err);
+      } finally {
+        setLoading(false);
+      }
     }
-  };
+  });
 
-  const handleInputChange = (field: string, value: string) => {
-    // Update the input value
-
-    setFormData((prevData) => {
-      const updatedData = { ...prevData, [field]: value };
-      // Validate the field on change
-      validatePassword(field, value, updatedData, "newpassword");
-      return updatedData;
-    });
-
-    // Clear the general error when typing in either field
-    setError({ general: "" });
-  };
-
-  const handleBacktoLoginClick = () => {
-    navigate("/login"); // Navigate to login when the button is clicked
-  };
+  const togglePassword = () => setShowPassword(!showPassword);
+  const toggleConfirmPassword = () => setShowConfirmPassword(!showConfirmPassword);
+  const handleBacktoLoginClick = () => navigate("/login");
 
   return (
     <PageTransition>
@@ -186,30 +160,26 @@ const ResetPassword = () => {
           </p>
 
           {/* Error Message Box */}
-          {error.general && (
+          {formik.errors.general && (
             <div className="w-full max-w-sm mb-4 px-4 py-2 bg-red-100 text-red-600 rounded-md border border-red-300">
-              {error.general}
+              {formik.errors.general}
             </div>
           )}
 
           {/* Form */}
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={formik.handleSubmit}>
             {/* New Password Input */}
             <div className="relative mb-4">
               <input
-                id="password-field"
+                id="newpassword"
                 type={showPassword ? "text" : "password"}
-                name="password"
+                name="newpassword"
                 placeholder="Enter your password"
-                required
-                value={formData.newpassword}
-                onChange={(e) =>
-                  handleInputChange("newpassword", e.target.value)
-                }
-                onCopy={(e) => e.preventDefault()} // Disable copy
-                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                value={formik.values.newpassword}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
-                  errors.newpassword
+                  formik.touched.newpassword && formik.errors.newpassword
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
                 }`}
@@ -225,10 +195,8 @@ const ResetPassword = () => {
                   <VisibilityOffRoundedIcon />
                 )}
               </span>
-              {errors.newpassword && (
-                <p className="text-red-500 mt-1 text-sm">
-                  {errors.newpassword}
-                </p>
+              {formik.touched.newpassword && formik.errors.newpassword && (
+                <p className="text-red-500 mt-1 text-sm">{formik.errors.newpassword}</p>
               )}
             </div>
 
@@ -236,18 +204,14 @@ const ResetPassword = () => {
             <div className="relative mb-4">
               <input
                 type={showConfirmPassword ? "text" : "password"}
-                id="confirm-password-field"
+                id="confirmPassword"
                 name="confirmPassword"
                 placeholder="Confirm your password"
-                required
-                value={formData.confirmPassword}
-                onChange={(e) =>
-                  handleInputChange("confirmPassword", e.target.value)
-                }
-                onPaste={(e) => e.preventDefault()}
-                onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
+                value={formik.values.confirmPassword}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
-                  errors.confirmPassword
+                  formik.touched.confirmPassword && formik.errors.confirmPassword
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
                 }`}
@@ -263,10 +227,8 @@ const ResetPassword = () => {
                   <VisibilityOffRoundedIcon />
                 )}
               </span>
-              {errors.confirmPassword && (
-                <p className="text-red-500 mt-1 text-sm">
-                  {errors.confirmPassword}
-                </p>
+              {formik.touched.confirmPassword && formik.errors.confirmPassword && (
+                <p className="text-red-500 mt-1 text-sm">{formik.errors.confirmPassword}</p>
               )}
             </div>
 

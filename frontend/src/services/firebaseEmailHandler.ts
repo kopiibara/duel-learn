@@ -27,7 +27,6 @@ const firebaseEmailHandler = () => {
           await checkActionCode(auth, oobCode);
           return { success: true, mode: "resetPassword", firebase_uid, email };
         case "verifyEmail":
-          await checkActionCode(auth, oobCode);
           console.log("Email verification successful");
           return {
             success: true,

@@ -1,7 +1,7 @@
 import React from "react";
 import { Button } from "@mui/material";
 import defaultPicture from "../../../assets/profile-picture/default-picture.svg";
-import { Friend } from "../../../types/friendObject";
+import { Friend } from "../../../contexts/UserContext";
 
 interface FriendListItemProps {
   friend: Friend;

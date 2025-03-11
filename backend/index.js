@@ -1,7 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
 import { connectDB } from "./config/db.js";
-import cors from "cors"; // Import CORS package
 import studyMaterialRoutes from "./routes/StudyMaterialRoutes.js";
 import userRoutes from "./routes/UserAccount.js";
 import friendRoutes from "./routes/FriendRoutes.js";
@@ -9,6 +8,9 @@ import userInfoRoutes from "./routes/UserInfoRoutes.js";
 import lobbyRoutes from "./routes/lobby.routes.js";
 import battleRoutes from './routes/battle.routes.js';
 import openAiRoutes from './routes/OpenAiRoutes.js';
+import adminRoutes from "./routes/admin/AdminRoutes.js"; // Import admin routes
+import { corsMiddleware } from './middleware/CorsMiddleware.js'; // Import CORS middleware
+import { coopMiddleware } from './middleware/CoopMiddleware.js'; // Import COOP middleware
 // Load environment variables
 dotenv.config();
 
@@ -18,25 +20,17 @@ connectDB();
 // Initialize Express App
 const app = express();
 
-const allowedOrigins = [process.env.FRONTEND_URL];
+// Use CORS middleware
+app.use(corsMiddleware);
 
-app.use(cors({
-    origin: function (origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            callback(new Error("Not allowed by CORS"));
-        }
-    },
-    credentials: true,
-}));
+// Use COOP middleware
+app.use(coopMiddleware);
 
+// Middleware
 // Increase the JSON payload size limit (adjust the size as needed)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Middleware
-app.use(express.json());
 
 // Add this before your routes
 app.use((req, res, next) => {
@@ -52,5 +46,6 @@ app.use("/api/user-info", userInfoRoutes);
 app.use("/api/lobby", lobbyRoutes);
 app.use("/api/battle", battleRoutes);
 app.use("/api/openai", openAiRoutes);
+app.use("/api/admin", adminRoutes); // Mount admin routes under /api/admin
 
 export default app;

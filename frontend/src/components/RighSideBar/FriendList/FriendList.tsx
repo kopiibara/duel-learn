@@ -13,11 +13,11 @@ import axios from "axios";
 import {
   SnackbarState,
   FriendRequestData,
-  Friend,
 } from "../../../types/friendObject";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import noFriend from "../../../assets/images/NoFriend.svg";
+import { Friend } from "../../../contexts/UserContext";
 
 const FriendList: React.FC = () => {
   const { user } = useUser();
@@ -89,14 +89,15 @@ const FriendList: React.FC = () => {
     if (!user?.firebase_uid) return;
 
     try {
-      const response = await axios.get(
+      const response = await axios.get<{ count: number }>(
         `${import.meta.env.VITE_BACKEND_URL}/api/friend/requests-count/${
           user.firebase_uid
         }`
       );
 
-      if (response.data && typeof response.data.count === "number") {
-        setPendingCount(response.data.count);
+      const { count } = response.data;
+      if (typeof count === "number") {
+        setPendingCount(count);
       }
     } catch (error) {
       console.error("Error fetching pending request count:", error);
