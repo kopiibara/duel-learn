@@ -48,6 +48,13 @@ interface ChooseYourChallengeProps {
   onSelectMaterial?: (material: StudyMaterial) => void;
 }
 
+// First, let's map game types to each mode
+const modeToTypesMap = {
+  "Peaceful Mode": ["matching", "flashcards", "quiz"],
+  "Time Pressured Mode": ["matching", "flashcards", "quiz"],
+  "PvP Mode": ["matching", "quiz"],
+};
+
 const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
   onSelectMode,
   onSelectMaterial,
@@ -56,6 +63,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [isLobby, setIsLobby] = useState(false); // Add this state
   const theme = useTheme();
   const isXsScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
@@ -74,10 +82,15 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
     }
   };
 
-  // Opens the modal with the selected mode
-  const openModalWithMode = (mode: string, types: string[] = []) => {
+  // New handler similar to ChooseModeModal
+  const handleModeClick = (mode: string) => {
     setSelectedMode(mode);
-    setSelectedTypes(types);
+    // Set types based on the mode selected
+    setSelectedTypes(modeToTypesMap[mode as keyof typeof modeToTypesMap] || []);
+
+    // Set isLobby flag based on the mode
+    setIsLobby(mode === "PvP Mode");
+
     setModalOpen(true);
   };
 
@@ -97,15 +110,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         }}
       >
         {/* Peaceful Mode */}
-        <ModeCard
-          onClick={() =>
-            openModalWithMode("Peaceful Mode", [
-              "matching",
-              "flashcards",
-              "quiz",
-            ])
-          }
-        >
+        <ModeCard onClick={() => handleModeClick("Peaceful Mode")}>
           <CardMedia
             component="svg"
             className="cardMedia"
@@ -156,11 +161,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         </ModeCard>
 
         {/* Time Pressured Mode */}
-        <ModeCard
-          onClick={() =>
-            openModalWithMode("Time Pressured Mode", ["matching", "quiz"])
-          }
-        >
+        <ModeCard onClick={() => handleModeClick("Time Pressured Mode")}>
           <CardMedia
             component="svg"
             className="cardMedia"
@@ -211,9 +212,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         </ModeCard>
 
         {/* PvP Mode */}
-        <ModeCard
-          onClick={() => openModalWithMode("PvP Mode", ["matching", "quiz"])}
-        >
+        <ModeCard onClick={() => handleModeClick("PvP Mode")}>
           <CardMedia
             component="svg"
             className="cardMedia"
@@ -267,11 +266,12 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
       {/* Material Selection Modal */}
       <SelectStudyMaterialModal
         open={modalOpen}
-        handleClose={() => setModalOpen(false)}
-        mode={selectedMode}
-        onMaterialSelect={handleMaterialSelect}
-        onModeSelect={handleModeSelect}
-        selectedTypes={selectedTypes}
+        handleClose={() => setModalOpen(false)} // This closes the study material modal
+        mode={selectedMode} // Pass the selected mode
+        isLobby={isLobby} // Pass the isLobby flag
+        onMaterialSelect={handleMaterialSelect} // Pass the selection handler
+        onModeSelect={handleModeSelect} // Pass the mode selection handler
+        selectedTypes={selectedTypes} // Pass selectedTypes to the modal
       />
     </>
   );

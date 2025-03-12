@@ -193,7 +193,7 @@ const Header = () => {
                 color: "white",
                 borderColor: "white",
                 textTransform: "none",
-                borderRadius: "8px",
+                borderRadius: "0.8rem",
                 px: 3,
                 "&:hover": {
                   borderColor: "#4D18E8",
@@ -210,7 +210,7 @@ const Header = () => {
               sx={{
                 backgroundColor: "#4D18E8",
                 textTransform: "none",
-                borderRadius: "8px",
+                borderRadius: "0.8rem",
                 px: 3,
                 "&:hover": {
                   backgroundColor: "#4315c7",

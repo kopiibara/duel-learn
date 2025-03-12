@@ -4,7 +4,6 @@ import ClockIcon from "../../../../assets/clock.png";
 import ManaIcon from "../../../../assets/ManaIcon.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import AutoConfettiAnimation from "../../../../pages/dashboard/play-battleground/components/common/AutoConfettiAnimation";
-import SessionReportBanner from "../../../../assets/General/SessionReportBanner.png";
 import { useAudio } from "../../../../contexts/AudioContext"; // Import the useAudio hook
 
 interface SessionReportProps {
@@ -102,13 +101,13 @@ const SessionReport = () => {
 
   return (
     <div
-      style={{ overflow: "auto", height: "100vh" }}
+      style={{ overflow: "auto", height: "80vh" }}
       className="min-h-screen flex items-center justify-center p-4 pb-16"
     >
       {" "}
       {/* Added pb-16 for padding-bottom */}
       {!earlyEnd && <AutoConfettiAnimation />}
-      <div className="w-full max-w-[800px] space-y-8 text-center mb-[600px]  max-h-[100vh]">
+      <div className="w-full max-w-[800px ] space-y-8 text-center mb-[600px]  max-h-screen">
         {/* Session Complete Banner */}
         <div className="relative inline-block mx-auto mt-[490px]">
           <img
@@ -119,14 +118,6 @@ const SessionReport = () => {
         </div>
 
         <div>
-          <div className="flex justify-center">
-            <img
-              src={SessionReportBanner}
-              alt="Session Report Banner"
-              className="w-[470px] h-[220px]"
-            />
-          </div>
-
           {/* Stats Box */}
           <div className="backdrop-blur-sm p-8 mt-[8px] mb-[-20px] rounded-xl">
             <div className="flex flex-col mt-3 gap-4 items-center">
