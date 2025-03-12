@@ -1,11 +1,9 @@
-import React, { useState } from "react";
+import React from "react";
 import { useLocation } from "react-router-dom";
 
 // Importing the necessary content components
 import Leaderboards from "./Leaderboards/Leaderboards";
 import FriendList from "./FriendList/FriendList";
-import EmptyLB from "./Leaderboards/EmptyLB";
-import EmptyFriendList from "./FriendList/EmptyFriendList";
 
 // Define the possible route paths based on the PrivateRoutes
 type RoutePath =
@@ -21,13 +19,9 @@ type RoutePath =
 const RightSideBar: React.FC = () => {
   const location = useLocation();
 
-  // State to simulate the number of friends (replace with actual logic if dynamic)
-  const [friendCount, _setFriendCount] = useState<number>(6); // Example: Change this to dynamically update based on data
-
   // Determine whether to show EmptyLB or Leaderboards
-  const leaderboardContent = friendCount >= 5 ? <Leaderboards /> : <EmptyLB />;
-  const friendListContent =
-    friendCount >= 1 ? <FriendList /> : <EmptyFriendList />;
+  const leaderboardContent = <Leaderboards />;
+  const friendListContent = <FriendList />;
 
   // Mapping route paths to content components
   const contentMap: Partial<Record<RoutePath, JSX.Element>> &

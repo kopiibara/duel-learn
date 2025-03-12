@@ -112,7 +112,7 @@ const FriendList: React.FC = () => {
     if (!user?.firebase_uid || !user?.username) return;
 
     try {
-      await handleSendFriendRequest(  
+      await handleSendFriendRequest(
         receiverId,
         user.firebase_uid,
         user.username
