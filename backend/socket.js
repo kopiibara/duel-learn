@@ -487,31 +487,6 @@ const setupSocket = (server) => {
       }
     });
 
-    socket.on("player_ready", (data) => {
-      try {
-        const { lobbyCode, playerId, isReady } = data;
-
-        if (!lobbyCode || !playerId) {
-          console.error("Missing required ready status data:", data);
-          return;
-        }
-
-        console.log(
-          `🎮 Player ${playerId} is ${isReady ? "ready" : "not ready"
-          } in lobby ${lobbyCode}`
-        );
-
-        // Broadcast to everyone in the lobby including the sender
-        io.to(lobbyCode).emit("player_ready_status", {
-          lobbyCode,
-          playerId,
-          isReady,
-        });
-      } catch (error) {
-        console.error("Error in player_ready handler:", error);
-      }
-    });
-
     socket.on("request_lobby_info", (data) => {
       try {
         const { lobbyCode, requesterId } = data;
