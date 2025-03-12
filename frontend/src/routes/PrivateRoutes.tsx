@@ -41,9 +41,14 @@ const PrivateRoutes = () => {
     return <Navigate to="/landing-page" />;
   }
 
-  if (user.account_type === "admin") {
+  /* isAdmin = user.account_type === "admin" || 
+                 (localStorage.getItem("userData") && 
+                  JSON.parse(localStorage.getItem("userData") || "{}").account_type === "admin");
+
+  if (isAdmin) {
+    console.log("PrivateRoutes - Admin user detected, redirecting to admin dashboard");
     return <Navigate to="/admin/dashboard" />;
-  }
+  }*/
 
   if (!user.email_verified) {
     return <Navigate to="/verify-email" />;

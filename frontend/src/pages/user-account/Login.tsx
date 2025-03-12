@@ -178,8 +178,23 @@ const Login = () => {
             navigate("/verify-email", { state: { token } });
           } else {
             console.log("Email verified, navigating to dashboard");
-            setLoading(true);
-            navigate("/dashboard/home");
+            
+            // Check if user is admin and handle special redirection
+            if (userData.account_type === "admin") {
+              console.log("Admin user detected, navigating to admin dashboard");
+              // Make sure userData is stored in localStorage before redirecting
+              localStorage.setItem("userData", JSON.stringify(userData));
+              localStorage.setItem("userToken", token);
+              
+              // Add a small delay to ensure localStorage is updated
+              setTimeout(() => {
+                setLoading(true);
+                navigate("/admin/dashboard");
+              }, 100);
+            } else {
+              setLoading(true);
+              navigate("/dashboard/home");
+            }
           }
         } catch (loginError: any) {
           // If the error is because user is not in temp_users, they might be a verified user
