@@ -9,6 +9,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import PageTransition from "../../../../../styles/PageTransition";
 import { generateCode } from "../../utils/codeGenerator";
+import axios from "axios";
 
 const SetUpQuestionType: React.FC = () => {
   // Move all hooks to the top before any conditional logic
@@ -34,6 +35,7 @@ const SetUpQuestionType: React.FC = () => {
   const [openAlert, setOpenAlert] = useState(false); // State to control alert visibility
   const [manaPoints, _setManaPoints] = useState(10); // State for dynamic mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana alert
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Signal when component is fully ready
   useEffect(() => {
@@ -87,50 +89,40 @@ const SetUpQuestionType: React.FC = () => {
     // If no question type is selected, show the alert
     if (selectedTypes.length === 0) {
       setOpenAlert(true);
+      return;
     }
+    
     // If manaPoints are below 10 and mode is not "Time Pressured", show the mana alert
-    else if (mode !== "Time Pressured" && manaPoints < 10) {
+    if (mode !== "Time Pressured" && manaPoints < 10) {
       setOpenManaAlert(true);
+      return;
     }
-    // If mode is "Time Pressured", navigate to Timer Setup
-    else if (mode === "Time Pressured") {
-      navigate("/dashboard/setup/timer", {
-        state: {
-          mode,
-          material,
-          selectedTypes,
-        },
-      });
-    }
-    // If the mode is "Peaceful", navigate to LoadingScreen
-    else if (mode === "Peaceful") {
-      navigate("/dashboard/loading-screen", {
-        state: {
-          mode,
-          material,
-          selectedTypes,
-          timeLimit: null,
-        },
-      });
-    }
-    // If the mode is not "Time Pressured" and not "Peaceful Mode", navigate to PvP Lobby
-    else if (mode !== "Time Pressured" && mode !== "Peaceful Mode") {
-      const generatedLobbyCode = generateCode(); // Generate a new lobby code
-      console.log("Generated lobby code:", generatedLobbyCode);
+    
+    // Pass selectedTypes but don't generate AI questions yet
+    const navigationState = {
+      mode,
+      material,
+      selectedTypes
+    };
+    
+    console.log("Navigation state being passed:", navigationState);
+    console.log("Mode type:", typeof mode, "Mode value:", mode);
 
-      // Store the lobby code in state before navigating
-      navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
-        state: {
-          mode,
-          material,
-          selectedTypes,
-          lobbyCode: generatedLobbyCode, // Add lobby code to state
-        },
+    // Navigate based on mode with strict equality check
+    if (mode === "Time Pressured") {
+      console.log("Navigating to timer setup");
+      navigate("/dashboard/setup/timer", { state: navigationState });
+    } else if (mode === "Peaceful") {
+      console.log("Navigating to peaceful mode");
+      navigate("/dashboard/loading-screen", {
+        state: { ...navigationState, timeLimit: null }
       });
-    }
-    // Default fallback logic
-    else {
-      console.log("Normal mode selected, staying on current flow.");
+    } else {
+      console.log("Navigating to PVP mode");
+      const generatedLobbyCode = generateCode();
+      navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
+        state: { ...navigationState, lobbyCode: generatedLobbyCode }
+      });
     }
   };
 
@@ -287,12 +279,15 @@ const SetUpQuestionType: React.FC = () => {
                 <div className="flex justify-center">
                   <button
                     onClick={handleStartLearning}
+                    disabled={isGenerating}
                     className="mt-8 w-[240px] sm:w-[280px] md:w-[320px] py-2 sm:py-3 border-2 border-black text-black rounded-lg text-md sm:text-lg shadow-lg hover:bg-purple-700 hover:text-white hover:border-transparent flex items-center justify-center"
                   >
-                    {mode === "Time Pressured" ? (
-                      "Continue" // This will not check mana points
+                    {isGenerating ? (
+                      "Generating Questions..."
+                    ) : mode === "Time Pressured" ? (
+                      "Continue"
                     ) : (
-                      <>START LEARNING!</>
+                      "START LEARNING!"
                     )}
                   </button>
                 </div>
