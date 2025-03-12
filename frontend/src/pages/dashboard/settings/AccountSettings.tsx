@@ -57,13 +57,16 @@ export default function AccountSettings() {
       <main className="px-8">
         <h1 className="text-2xl font-semibold mb-6">Account Settings</h1>
         <div className="flex items-start">
-          <form onSubmit={formik.handleSubmit} className="bg-[#0D0A17] rounded-[1rem] p-12 space-y-8">
+          <form
+            onSubmit={formik.handleSubmit}
+            className="bg-[#0D0A17] rounded-[1rem] p-12 space-y-8"
+          >
             {/* Profile Image Section */}
             {error.general && (
-                  <div className="w-[850px] px-4 py-2 bg-red-100 text-red-600 rounded-[0.8rem] border border-red-300">
-                    {error.general}
-                  </div>
-                )}  
+              <div className="w-[850px] px-4 py-2 bg-red-100 text-red-600 rounded-[0.8rem] border border-red-300">
+                {error.general}
+              </div>
+            )}
             <div className="space-y-4">
               <label className="block text-[1.05rem] text-[#9F9BAE]">
                 Profile Image
@@ -100,7 +103,9 @@ export default function AccountSettings() {
                 style={{ color: isEditing ? "white" : "#6F658D" }}
               />
               {formik.touched.username && formik.errors.username && (
-                <p className="text-red-500 text-sm mt-1">{formik.errors.username}</p>
+                <p className="text-red-500 text-sm mt-1">
+                  {formik.errors.username}
+                </p>
               )}
             </div>
 
@@ -175,9 +180,12 @@ export default function AccountSettings() {
                         )}
                       </button>
                     </div>
-                    {formik.touched.newpassword && formik.errors.newpassword && (
-                      <p className="text-red-500 text-sm mt-1">{formik.errors.newpassword}</p>
-                    )}
+                    {formik.touched.newpassword &&
+                      formik.errors.newpassword && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {formik.errors.newpassword}
+                        </p>
+                      )}
                   </div>
                   <div className="space-y-2">
                     <label
@@ -206,9 +214,12 @@ export default function AccountSettings() {
                         )}
                       </button>
                     </div>
-                    {formik.touched.confirmPassword && formik.errors.confirmPassword && (
-                      <p className="text-red-500 text-sm mt-1">{formik.errors.confirmPassword}</p>
-                    )}
+                    {formik.touched.confirmPassword &&
+                      formik.errors.confirmPassword && (
+                        <p className="text-red-500 text-sm mt-1">
+                          {formik.errors.confirmPassword}
+                        </p>
+                      )}
                   </div>
                 </>
               )
@@ -232,7 +243,6 @@ export default function AccountSettings() {
               )
             ) : (
               <>
-                
                 <div className="space-y-2">
                   <label
                     htmlFor="newpassword"
@@ -261,7 +271,9 @@ export default function AccountSettings() {
                     </button>
                   </div>
                   {formik.touched.newpassword && formik.errors.newpassword && (
-                    <p className="text-red-500 text-sm mt-1">{formik.errors.newpassword}</p>
+                    <p className="text-red-500 text-sm mt-1">
+                      {formik.errors.newpassword}
+                    </p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -291,9 +303,12 @@ export default function AccountSettings() {
                       )}
                     </button>
                   </div>
-                  {formik.touched.confirmPassword && formik.errors.confirmPassword && (
-                    <p className="text-red-500 text-sm mt-1">{formik.errors.confirmPassword}</p>
-                  )}
+                  {formik.touched.confirmPassword &&
+                    formik.errors.confirmPassword && (
+                      <p className="text-red-500 text-sm mt-1">
+                        {formik.errors.confirmPassword}
+                      </p>
+                    )}
                 </div>
               </>
             )}

@@ -137,6 +137,7 @@ export const useFriendSocket = ({
   ]);
 
   // Update the sendFriendRequest function to ensure all required data is sent
+  // Update the sendFriendRequest function to ensure all required data is sent
   const sendFriendRequest = (requestData: {
     sender_id: string;
     receiver_id: string;
@@ -144,11 +145,21 @@ export const useFriendSocket = ({
     receiver_username?: string;
   }) => {
     if (socket?.connected) {
+      // Validate the required fields before sending
+      if (
+        !requestData.sender_id ||
+        !requestData.receiver_id ||
+        !requestData.sender_username
+      ) {
+        console.error("Missing required data for friend request:", requestData);
+        return;
+      }
+
       console.log("Sending friend request:", requestData);
       socket.emit("sendFriendRequest", {
         sender_id: requestData.sender_id,
         receiver_id: requestData.receiver_id,
-        senderUsername: requestData.sender_username, // Key issue: Backend expects senderUsername, not sender_username
+        sender_username: requestData.sender_username,
         receiver_username: requestData.receiver_username,
       });
     } else {

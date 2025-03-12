@@ -49,7 +49,9 @@ const AppRoutes: React.FC = () => {
         <Route path="/loading" element={<LoadingScreen />} />
         <Route path="/dashboard/*" element={<PrivateRoutes />} />
         <Route path="/admin/*" element={<AdminRoutes />} />
-        
+
+        {/* Search page route */}
+
         {/* This wildcard route should be the VERY LAST route to catch all undefined routes */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

@@ -32,6 +32,7 @@ import AccountSettings from "../pages/dashboard/settings/AccountSettings";
 import HostModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/HostModeSelection";
 import Player2ModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/Player2ModeSelection";
 import PvpBattle from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/PvpBattle";
+import SearchPage from "../pages/dashboard/search/SearchPage";
 
 const PrivateRoutes = () => {
   const { user } = useUser();
@@ -82,6 +83,7 @@ const PrivateRoutes = () => {
           path="study-material/view/:studyMaterialId"
           element={<ViewStudyMaterial />}
         />
+        <Route path="search" element={<SearchPage />} />
         <Route path="account-settings" element={<AccountSettings />} />
       </Route>
 

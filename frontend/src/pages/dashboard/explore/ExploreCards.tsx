@@ -30,7 +30,7 @@ const ExploreCards = ({ cards }: ExploreCardsProps) => {
   };
 
   return (
-    <Box className="px-3">
+    <Box className="px-2">
       <Grid container spacing={2}>
         {cards.map((item, index) => (
           <Grid item xs={12} sm={6} md={4} key={index}>

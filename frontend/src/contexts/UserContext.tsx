@@ -1,4 +1,10 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from "react";
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useCallback,
+} from "react";
 import { auth } from "../services/firebase";
 //import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import {getDoc, doc } from "firebase/firestore";
@@ -23,6 +29,7 @@ interface User {
 
 export interface Friend {
   firebase_uid: string;
+  exp: number;
   username: string;
   display_picture: string;
   level: number;
@@ -41,7 +48,9 @@ const UserContext = createContext<UserContextProps | undefined>(undefined);
 
 const REFRESH_INTERVAL = 60000; // 1 minute
 
-export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(() => {
     const userData = localStorage.getItem("userData");
     return userData ? JSON.parse(userData) : null;
@@ -113,7 +122,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.error("User not found in temp_users collection");
         throw new Error("User not found in temp_users collection");
       }
-      
+    
       // Handle unverified user from temp_users
       const tempUserData = tempUserDoc.data();
       const userDataWithDefaults = {
@@ -163,7 +172,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           const token = await auth.currentUser?.getIdToken(true);
           if (token) {
-            const userData = await fetchAndUpdateUserData(user.firebase_uid, token);
+            const userData = await fetchAndUpdateUserData(
+              user.firebase_uid,
+              token
+            );
             updateUserState(userData);
           }
         } catch (error) {
@@ -203,7 +215,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({ children
   */
 
   return (
-    <UserContext.Provider value={{ user, setUser, logout, loginAndSetUserData, loading, updateUser: updateUserState }}>
+    <UserContext.Provider
+      value={{
+        user,
+        setUser,
+        logout,
+        loginAndSetUserData,
+        loading,
+        updateUser: updateUserState,
+      }}
+    >
       {children}
     </UserContext.Provider>
   );

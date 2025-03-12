@@ -433,7 +433,7 @@ const CreateStudyMaterial = () => {
   const handleDiscard = () => {
     if (editMode && studyMaterialId) {
       // If coming from edit mode, return to the view page for that specific material
-      navigate(`/dashboard/study-material/view/${studyMaterialId}`);
+      navigate(`/dashboard/study-material/view${studyMaterialId}`);
     } else {
       // Otherwise, just go back to the previous page
       navigate(-1);
@@ -451,6 +451,11 @@ const CreateStudyMaterial = () => {
       }
     };
     input.click();
+  };
+
+  const resizeTextarea = (input: HTMLTextAreaElement | HTMLInputElement) => {
+    input.style.width = "auto"; // Reset height
+    input.style.width = input.scrollWidth + "px"; // Set height to fit content
   };
 
   // Add a handler for the visibility change
@@ -479,14 +484,24 @@ const CreateStudyMaterial = () => {
               >
                 <TextField
                   id="title"
-                  label="Title"
+                  label={title ? "" : "Enter your title here..."}
                   variant="standard"
-                  value={title} // <-- Bind to state
-                  onChange={(e) => setTitle(e.target.value)} // <-- Update state on change
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onInput={(e) => resizeTextarea(e.target as HTMLInputElement)}
                   sx={{
-                    width: "32rem",
-                    "& .MuiInputLabel-root": { color: "#3B354D" },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#381898" },
+                    minWidth: "32rem", // Set minimum width
+                    maxWidth: "80%", // Prevent it from growing too wide
+                    "& .MuiInputLabel-root": {
+                      color: "#3B354D",
+                      transform: title
+                        ? "translate(0, -1.5px) scale(0.75)"
+                        : "translate(0, 20px) scale(1)",
+                    },
+                    "& .MuiInputLabel-root.Mui-focused": {
+                      color: "#A38CE6",
+                      transform: "translate(0, -1.5px) scale(0.75)",
+                    },
                     "& .MuiInput-root": {
                       color: "#E2DDF3",
                       fontWeight: 500,
@@ -499,11 +514,24 @@ const CreateStudyMaterial = () => {
                       borderBottomColor: "#A38CE6",
                     },
                     "& .MuiInput-underline:after": {
-                      borderBottomColor: "#381898",
+                      borderBottomColor: "#A38CE6",
+                    },
+                    "& .MuiInputBase-input::placeholder": {
+                      color: "#9F9BAE",
+                      opacity: 0.7,
+                      // Hide placeholder when input is focused or has value
+                      transition: "opacity 0.2s ease-in-out",
+                    },
+                    "& .MuiInputBase-input:focus::placeholder": {
+                      opacity: 0,
+                    },
+                  }}
+                  InputProps={{
+                    style: {
+                      transition: "all 0.3s ease",
                     },
                   }}
                 />
-
                 <Box flexGrow={1} />
                 <Stack direction={"row"} spacing={1}>
                   <Button
@@ -515,7 +543,7 @@ const CreateStudyMaterial = () => {
                       color: "#E2DDF3",
                       height: "fit-content",
                       borderRadius: "0.8rem",
-                      padding: "0.4rem 2rem",
+                      width: "6vw",
                       fontSize: "0.8rem",
                       transition: "all 0.3s ease",
                       "&:hover": {
@@ -529,9 +557,8 @@ const CreateStudyMaterial = () => {
                     variant="contained"
                     sx={{
                       borderRadius: "0.8rem",
-                      padding: "0.4rem 2rem",
                       display: "flex",
-                      width: "full",
+                      width: "6vw",
                       height: "fit-content",
                       borderColor: "#E2DDF3",
                       color: "#E2DDF3",
@@ -554,22 +581,20 @@ const CreateStudyMaterial = () => {
             <Box className="flex items-center">
               <Stack spacing={1} className="flex">
                 <Typography variant="subtitle1" className="text-[#3B354D]">
-                  Tags
+                  Tags:
                 </Typography>
                 <Box
                   sx={{
-                    display: "inline-flex", // Make the Box adjust based on content size
+                    display: "inline-flex", // Make the Box adjust based on content si
                     alignItems: "center",
                     flexWrap: "wrap",
                     gap: 0.5,
-                    padding: "0.6rem",
+                    padding: "0.8rem",
+                    width: "fit-content",
                     border: "1px solid #3B354D",
                     borderRadius: "0.8rem",
                     backgroundColor: "#3B354D",
-                    transition: "all 0.3s ease", // Smooth transition for hover and active
-                    minWidth: "200px", // Set the minimum width for the Box
-                    maxWidth: "100%", // Let the Box expand up to 100% of its container width
-                    width: "auto", // Allow Box to take the width of its content
+                    transition: "all 0.3s ease-in-out", // Smooth transition for hover and active
                     "&:hover": {
                       backgroundColor: "#4A435C", // Hover styles
                       borderColor: "#A38CE6",
@@ -587,9 +612,12 @@ const CreateStudyMaterial = () => {
                       label={tag}
                       onDelete={() => handleDeleteTag(tag)}
                       sx={{
-                        backgroundColor: "#4D18E8",
+                        backgroundColor: "#4D18E8 !important",
                         color: "#E2DDF3",
+                        width: "fit-content",
+                        height: "fit-content",
                         padding: "0.4rem",
+                        borderRadius: "0.6rem",
                         "& .MuiChip-deleteIcon": { color: "#E2DDF3" },
                       }}
                     />
@@ -602,12 +630,15 @@ const CreateStudyMaterial = () => {
                     onChange={(e) => setCurrentTag(e.target.value)}
                     onKeyDown={handleAddTag}
                     placeholder="Press enter"
+                    onInput={(e) =>
+                      resizeTextarea(e.target as HTMLTextAreaElement)
+                    }
                     style={{
                       border: "none",
                       outline: "none",
                       background: "transparent",
+                      width: "fit-content",
                       color: "#E2DDF3",
-                      width: "5.5rem", // Input should not be too small
                       fontSize: "1rem", // Adjust font size as needed
                       paddingLeft: 6, // Remove any default right padding that may create the extra space
                       textAlign: "left", // Ensure text is aligned properly
@@ -640,7 +671,7 @@ const CreateStudyMaterial = () => {
                     width: "auto",
                     justifyContent: "center",
                     color: "#3B354D",
-                    height: "fit-content",
+                    height: "2.8rem",
                     border: "0.15rem solid #3B354D",
                     textTransform: "none",
                     transition: "all 0.3s ease-in-out",
@@ -662,6 +693,7 @@ const CreateStudyMaterial = () => {
                   ]}
                   value={visibility}
                   onChange={handleVisibilityChange}
+                  hoverOpen
                 />
               </Stack>
             </Box>

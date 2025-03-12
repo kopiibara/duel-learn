@@ -3,16 +3,10 @@ import { Box, Fab } from "@mui/material";
 import CardComponent from "../../../components/CardComponent";
 import NextIcon from "@mui/icons-material/ArrowForwardIosRounded";
 import PreviousIcon from "@mui/icons-material/ArrowBackIosNewRounded";
-
-type CardData = {
-  title: string;
-  totalItems: number;
-  tags: string[];
-  creator: string;
-};
+import { StudyMaterial } from "../../../types/studyMaterialObject";
 
 const RecentlyOpened = () => {
-  const [cards, _setCards] = useState<CardData[]>([]);
+  const [cards, _setCards] = useState<StudyMaterial[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const cardsToShow = 3; // Number of cards to display at once
   const cardWidth = 100 / cardsToShow; // Each card takes a fraction of the total width
@@ -59,13 +53,16 @@ const RecentlyOpened = () => {
           >
             <CardComponent
               title={item.title}
-              totalItems={item.totalItems}
+              totalItems={item.total_items}
               tags={item.tags}
-              createdBy={item.creator}
-              images={[]} // Provide appropriate value
-              totalViews={0} // Provide appropriate value
-              createdAt={new Date().toISOString()} // Provide appropriate value
-              visibility={1} // Provide appropriate value
+              createdBy={item.created_by}
+              createdById={item.created_by_id}
+              totalViews={item.total_views}
+              createdAt={item.updated_at}
+              updatedAt={item.updated_at}
+              images={item.images}
+              status={item.status}
+              visibility={item.visibility}
               items={[]} // Provide appropriate value
             />
           </Box>

@@ -1,7 +1,15 @@
 import { useState, useEffect } from "react";
 import { linkWithCredential, EmailAuthProvider } from "firebase/auth";
 import { auth, db } from "../services/firebase";
-import { doc, getDoc, updateDoc, collection, query, where, getDocs } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  updateDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import bcrypt from "bcryptjs";
 import useUpdateUserDetailsApi from "./api.hooks/useUpdateUserDetailsApi";
 import { useUser } from "../contexts/UserContext";
@@ -14,7 +22,8 @@ const useAccountSettings = () => {
   const [isChangingPassword, setIsChangingPassword] = useState<boolean>(false);
   const [isCreatingPassword, setIsCreatingPassword] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState<boolean>(false);
+  const [showConfirmPassword, setShowConfirmPassword] =
+    useState<boolean>(false);
   const { updateUserDetailsApi } = useUpdateUserDetailsApi();
   const [error, setError] = useState({ general: "" });
   const [hasNoPassword, setHasNoPassword] = useState<boolean>(false);
@@ -26,7 +35,7 @@ const useAccountSettings = () => {
   const [changedFields, setChangedFields] = useState({
     username: false,
     display_picture: false,
-    password: false
+    password: false,
   });
 
   // Validation Schema
@@ -35,27 +44,30 @@ const useAccountSettings = () => {
       .required("Username is required")
       .min(3, "Username must be at least 3 characters")
       .max(30, "Username must be at most 30 characters")
-      .matches(/^[a-zA-Z0-9_]+$/, "Username can only contain letters, numbers, and underscores"),
-    newpassword: Yup.string()
-      .when([], {
-        is: () => isChangingPassword || isCreatingPassword,
-        then: (schema) => schema
+      .matches(
+        /^[a-zA-Z0-9_]+$/,
+        "Username can only contain letters, numbers, and underscores"
+      ),
+    newpassword: Yup.string().when([], {
+      is: () => isChangingPassword || isCreatingPassword,
+      then: (schema) =>
+        schema
           .required("Password is required")
           .min(8, "Password must be at least 8 characters")
           .matches(
             /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
             "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
           ),
-        otherwise: (schema) => schema
-      }),
-    confirmPassword: Yup.string()
-      .when([], {
-        is: () => isChangingPassword || isCreatingPassword,
-        then: (schema) => schema
+      otherwise: (schema) => schema,
+    }),
+    confirmPassword: Yup.string().when([], {
+      is: () => isChangingPassword || isCreatingPassword,
+      then: (schema) =>
+        schema
           .required("Please confirm your password")
           .oneOf([Yup.ref("newpassword")], "Passwords must match"),
-        otherwise: (schema) => schema
-      })
+      otherwise: (schema) => schema,
+    }),
   });
 
   // Check if username exists in Firestore
@@ -65,12 +77,12 @@ const useAccountSettings = () => {
       const usersRef = collection(db, "users");
       const q = query(usersRef, where("username", "==", username));
       const querySnapshot = await getDocs(q);
-      
+
       // If no documents found, username is available
       if (querySnapshot.empty) {
         return false;
       }
-      
+
       // If username exists, check if it belongs to current user
       let belongsToCurrentUser = false;
       querySnapshot.forEach((doc) => {
@@ -78,7 +90,7 @@ const useAccountSettings = () => {
           belongsToCurrentUser = true;
         }
       });
-      
+
       // If username belongs to current user, it's not a conflict
       return !belongsToCurrentUser;
     } catch (error) {
@@ -87,7 +99,13 @@ const useAccountSettings = () => {
     }
   };
 
-  const formik = useFormik({
+  interface FormValues {
+    username: string;
+    newpassword: string;
+    confirmPassword: string;
+    display_picture: string;
+  }
+  const formik = useFormik<FormValues>({
     initialValues: {
       username: user?.username || "",
       newpassword: "",
@@ -96,14 +114,16 @@ const useAccountSettings = () => {
     },
     validationSchema,
     enableReinitialize: true,
-    onSubmit: async (values) => {
+    onSubmit: async (values: FormValues): Promise<void> => {
       setIsLoading(true);
       setError({ general: "" });
 
       try {
         // Check if username is being changed and verify it's not taken
         if (changedFields.username && values.username !== user?.username) {
-          const usernameExists = await checkUsernameExists(values.username);
+          const usernameExists: boolean = await checkUsernameExists(
+            values.username
+          );
           if (usernameExists) {
             setError({ general: "Username already taken by another user" });
             setIsLoading(false);
@@ -117,12 +137,14 @@ const useAccountSettings = () => {
           if (userDoc.exists()) {
             const userDataFromDb = userDoc.data();
             if (values.newpassword) {
-              const isMatch = await bcrypt.compare(
+              const isMatch: boolean = await bcrypt.compare(
                 values.newpassword,
                 userDataFromDb.password_hash
               );
               if (isMatch) {
-                setError({ general: "Cannot use old password. Please try again" });
+                setError({
+                  general: "Cannot use old password. Please try again",
+                });
                 setIsLoading(false);
                 return;
               }
@@ -156,17 +178,17 @@ const useAccountSettings = () => {
         );
 
         console.log("User details saved successfully");
-
-        // Update user state and storage with only changed fields
         const updatedUserData = {
           ...user!,
           ...(changedFields.username && { username: values.username }),
-          ...(changedFields.display_picture && { display_picture: values.display_picture }),
+          ...(changedFields.display_picture && {
+            display_picture: values.display_picture,
+          }),
         };
         setUser(updatedUserData);
         localStorage.setItem("userData", JSON.stringify(updatedUserData));
         sessionStorage.setItem("userData", JSON.stringify(updatedUserData));
-        
+
         // Reset all states
         setIsEditing(false);
         setIsChangingPassword(false);
@@ -174,7 +196,7 @@ const useAccountSettings = () => {
         setChangedFields({
           username: false,
           display_picture: false,
-          password: false
+          password: false,
         });
         setIsLoading(false);
       } catch (error) {
@@ -182,7 +204,7 @@ const useAccountSettings = () => {
         setError({ general: "Error updating user details. Please try again." });
         setIsLoading(false);
       }
-    }
+    },
   });
 
   useEffect(() => {
@@ -197,7 +219,7 @@ const useAccountSettings = () => {
       setChangedFields({
         username: false,
         display_picture: false,
-        password: false
+        password: false,
       });
     }
   }, [user]);
@@ -220,19 +242,19 @@ const useAccountSettings = () => {
     setChangedFields({
       username: false,
       display_picture: false,
-      password: false
+      password: false,
     });
     setIsLoading(false);
   };
 
   const handlePasswordChangeClick = () => {
     setIsChangingPassword(true);
-    setChangedFields(prev => ({ ...prev, password: true }));
+    setChangedFields((prev) => ({ ...prev, password: true }));
   };
 
   const handleCreatePasswordClick = () => {
     setIsCreatingPassword(true);
-    setChangedFields(prev => ({ ...prev, password: true }));
+    setChangedFields((prev) => ({ ...prev, password: true }));
   };
 
   const togglePassword = () => {
@@ -245,19 +267,21 @@ const useAccountSettings = () => {
 
   const handleProfilePictureChange = (newPicture: string) => {
     formik.setFieldValue("display_picture", newPicture);
-    setChangedFields(prev => ({ ...prev, display_picture: true }));
+    setChangedFields((prev) => ({ ...prev, display_picture: true }));
   };
 
   // Track username changes
-  const handleUsernameChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUsernameChange = async (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const newUsername = e.target.value;
     formik.handleChange(e);
-    
+
     if (newUsername !== user?.username) {
       // Set as changed to enable saving
-      setChangedFields(prev => ({ ...prev, username: true }));
+      setChangedFields((prev) => ({ ...prev, username: true }));
     } else {
-      setChangedFields(prev => ({ ...prev, username: false }));
+      setChangedFields((prev) => ({ ...prev, username: false }));
     }
   };
 
@@ -268,14 +292,14 @@ const useAccountSettings = () => {
   const handleDeleteAccount = async () => {
     try {
       setIsDeletingAccount(true);
-      const token = await auth.currentUser?.getIdToken()
+      const token = await auth.currentUser?.getIdToken();
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/user/delete-account`,
         {
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             firebase_uid: user!.firebase_uid,
@@ -333,7 +357,7 @@ const useAccountSettings = () => {
     openDeleteModal,
     closeDeleteModal,
     handleDeleteAccount,
-    changedFields
+    changedFields,
   };
 };
 

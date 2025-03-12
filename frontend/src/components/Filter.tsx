@@ -1,117 +1,182 @@
 import * as React from "react";
 import Box from "@mui/material/Box";
 import MenuItem from "@mui/material/MenuItem";
-import FormControl from "@mui/material/FormControl";
-import Select, { SelectChangeEvent } from "@mui/material/Select";
+import Grow from "@mui/material/Grow";
+import ClickAwayListener from "@mui/material/ClickAwayListener";
+import Popper from "@mui/material/Popper";
+import MenuList from "@mui/material/MenuList";
+import Paper from "@mui/material/Paper";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 
 interface FilterProps {
   menuItems: { value: number | string; label: string }[];
   value: number | string;
   onChange: (value: number | string) => void;
+  hoverOpen?: boolean; // Add this prop to optionally enable hover behavior
 }
 
-const Filter: React.FC<FilterProps> = ({ menuItems, value, onChange }) => {
+const Filter: React.FC<FilterProps> = ({
+  menuItems,
+  value,
+  onChange,
+  hoverOpen = false, // Default to false to maintain backward compatibility
+}) => {
   // Set the default value to the first item in the menuItems array, unless a value is passed
   const selectedValue = value || menuItems[0]?.value;
+  const [open, setOpen] = React.useState(false);
+  const anchorRef = React.useRef<HTMLDivElement>(null);
 
-  const handleChange = (event: SelectChangeEvent<string | number>) => {
-    onChange(event.target.value);
+  const handleChange = (newValue: string | number) => {
+    onChange(newValue);
+    setOpen(false);
+  };
+
+  const handleToggle = () => {
+    if (!hoverOpen) {
+      setOpen((prevOpen) => !prevOpen);
+    }
+  };
+
+  const handleClose = (event: Event) => {
+    if (
+      anchorRef.current &&
+      anchorRef.current.contains(event.target as HTMLElement)
+    ) {
+      return;
+    }
+    setOpen(false);
+  };
+
+  // Find the current selected label
+  const selectedLabel =
+    menuItems.find((item) => item.value === selectedValue)?.label || "";
+
+  // Handle hover events
+  const handleMouseEnter = () => {
+    if (hoverOpen) {
+      setOpen(true);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverOpen) {
+      setOpen(false); // Immediately close without delay
+    }
   };
 
   return (
-    <Box sx={{ minWidth: 120, maxWidth: "full" }}>
-      <FormControl fullWidth>
-        <Select
-          id="select"
-          size="small"
-          value={selectedValue}
-          onChange={handleChange}
+    <Box
+      sx={{
+        minWidth: 120,
+        maxWidth: "full",
+        position: "relative",
+      }}
+      ref={anchorRef}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <Box
+        onClick={handleToggle}
+        sx={{
+          backgroundColor: "transparent",
+          color: "#6F658D",
+          borderRadius: "0.8rem",
+          fontSize: "14px",
+          padding: "8px 14px",
+          border: "2px solid #3B354C",
+          display: "flex",
+          alignItems: "center",
+          height: "fit-content",
+          justifyContent: "space-between",
+          cursor: "pointer",
+          transition: "all 0.3s ease-in-out",
+          "&:hover": {
+            transform: "scale(1.03)",
+            backgroundColor: "rgba(59, 53, 76, 0.3)",
+            borderColor: "#9F9BAE",
+          },
+        }}
+      >
+        {selectedLabel}
+        <ArrowDropDownIcon
           sx={{
-            backgroundColor: "transparent",
-            color: "#9F9BAE", // This ensures the text color is consistent
-            borderRadius: "0.8rem",
-            fontSize: "14px",
-            transition: "all 0.3s ease-in-out",
-            "&:hover": {
-              transform: "scale(1.03)",
-              backgroundColor: "rgba(59, 53, 76, 0.3)",
-            },
-            "& .MuiSelect-icon": {
-              color: "#6F658D",
-              transition: "all 0.3s ease-in-out",
-            },
-            "& .MuiOutlinedInput-notchedOutline": {
-              borderColor: "#3B354C",
-              borderWidth: "2px", // Updated border width to 2px
-              transition: "all 0.3s ease-in-out",
-            },
-            "&:hover .MuiOutlinedInput-notchedOutline": {
-              borderColor: "#9F9BAE",
-              borderWidth: "2px", // Consistent 2px border on hover
-            },
-            "&.Mui-focused": {
-              backgroundColor: "rgba(59, 53, 76, 0.5)",
-            },
-            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-              borderColor: "#9F9BAE",
-              borderWidth: "2px",
-            },
-            // Fix for the selected value text color
-            "& .MuiSelect-select": {
-              color: "#6F658D",
-            },
+            transition: "transform 0.3s",
+            transform: open ? "rotate(180deg)" : "rotate(0deg)",
           }}
-          MenuProps={{
-            PaperProps: {
-              sx: {
+        />
+      </Box>
+
+      <Popper
+        open={open}
+        anchorEl={anchorRef.current}
+        transition
+        disablePortal
+        placement="bottom-start"
+        style={{ zIndex: 1300, width: anchorRef.current?.clientWidth }}
+      >
+        {({ TransitionProps }) => (
+          <Grow
+            {...TransitionProps}
+            style={{
+              transformOrigin: "top",
+            }}
+          >
+            <Paper
+              sx={{
                 backgroundColor: "#120F1B",
                 borderRadius: "0.8rem",
                 boxShadow: "0 8px 16px rgba(0, 0, 0, 0.5)",
                 mt: 1,
-                padding: "0rem 0.5rem",
-                // Override the default blue background
-                "& .MuiList-root": {
-                  padding: "0.5rem 0",
-                },
-                "& .Mui-selected": {
-                  backgroundColor: "#3B354C !important",
-                  color: "#E2DDF3 !important",
-                },
-                "& .Mui-selected:hover": {
-                  backgroundColor: "#4A465A !important",
-                },
-              },
-            },
-          }}
-        >
-          {menuItems.map((item) => (
-            <MenuItem
-              key={item.value}
-              value={item.value}
-              sx={{
-                color: "#E2DDF3",
-                padding: "0.6rem 1rem",
-                margin: "0.2rem 0",
-                transition: "all 0.3s ease-in-out",
-                borderRadius: "0.5rem",
-                "&:hover": {
-                  transform: "scale(1.02)",
-                  backgroundColor: "#3B354C",
-                },
-                "&.Mui-selected": {
-                  backgroundColor: "#3B354C",
-                  color: "#E2DDF3",
-                  "&:hover": {
-                    backgroundColor: "#4A465A",
-                  },
-                },
+                width: "100%",
               }}
             >
-              {item.label}
-            </MenuItem>
-          ))}
-        </Select>
-      </FormControl>
+              <ClickAwayListener onClickAway={handleClose}>
+                <MenuList
+                  autoFocusItem={open}
+                  sx={{
+                    padding: "0.5rem 0",
+                    "& .MuiMenuItem-root:focus": {
+                      outline: "none", // Remove default focus outline
+                    },
+                    "& .MuiMenuItem-root.Mui-focusVisible": {
+                      outline: "none", // Also handle keyboard focus
+                      backgroundColor: "rgba(59, 53, 76, 0.3)", // Custom focus background
+                    },
+                  }}
+                >
+                  {menuItems.map((item) => (
+                    <MenuItem
+                      key={item.value}
+                      selected={item.value === selectedValue}
+                      onClick={() => handleChange(item.value)}
+                      sx={{
+                        color: "#E2DDF3",
+                        padding: "0.6rem 1rem",
+                        margin: "0.2rem 0.5rem",
+                        transition: "all 0.3s ease-in-out",
+                        borderRadius: "0.5rem",
+                        "&:hover": {
+                          transform: "scale(1.02)",
+                          backgroundColor: "#3B354C",
+                        },
+                        "&.Mui-selected": {
+                          backgroundColor: "#3B354C",
+                          color: "#E2DDF3",
+                          "&:hover": {
+                            backgroundColor: "#4A465A",
+                          },
+                        },
+                      }}
+                    >
+                      {item.label}
+                    </MenuItem>
+                  ))}
+                </MenuList>
+              </ClickAwayListener>
+            </Paper>
+          </Grow>
+        )}
+      </Popper>
     </Box>
   );
 };
