@@ -1,14 +1,57 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import axios from "axios";
 import "./styles/HostModeSelection.css";
 import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
 import "../../../../../user-onboarding/styles/EffectUserOnboarding.css";
 import CardBackImg from "../../../../../../assets/General/CardDesignBack.png";
+import DefaultBackHoverCard from "../../../../../../assets/General/DefaultBackHoverCard.png";
 
 export default function Player2ModeSelection() {
-  const [selectedDifficulty, setSelectedDifficulty] = useState("Easy Mode");
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { hostUsername, guestUsername, lobbyCode } = location.state || {};
+  const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null);
   const [autoCycling, setAutoCycling] = useState(true);
+
+  // Add polling effect to check for difficulty updates
+  useEffect(() => {
+    const checkDifficulty = async () => {
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/difficulty/${lobbyCode}`
+        );
+
+        if (response.data.success && response.data.data.difficulty) {
+          setSelectedDifficulty(response.data.data.difficulty);
+          setAutoCycling(false);
+
+          // Navigate to battle when difficulty is received
+          navigate("/dashboard/pvp-battle", {
+            state: {
+              lobbyCode,
+              difficulty: response.data.data.difficulty,
+              isHost: false,
+              hostUsername,
+              guestUsername
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Error checking difficulty:", error);
+      }
+    };
+
+    // Check immediately
+    checkDifficulty();
+
+    // Then check every 1.2 seconds
+    const interval = setInterval(checkDifficulty, 1200);
+
+    return () => clearInterval(interval);
+  }, [lobbyCode, navigate, hostUsername, guestUsername]);
 
   const handleManualSelection = (mode: string) => {
     setSelectedDifficulty(mode);
@@ -56,13 +99,13 @@ export default function Player2ModeSelection() {
       <div className="max-w-5xl w-full mt-20 flex flex-col items-center">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-[42px] mt-[-40px] font-bold mb-3">
-            HOST CURRENTLY SELECTING DIFFICULTY
+          <h1 className="text-[33px] mt-[-40px] font-bold mb-3">
+            {hostUsername ? `${hostUsername.toUpperCase()} IS` : 'HOST'} CURRENTLY SELECTING DIFFICULTY
             <span className="dot-1">.</span>
             <span className="dot-2">.</span>
             <span className="dot-3">.</span>
           </h1>
-          <p className="text-gray-400 text-xl">Please wait badadladidas</p>
+          <p className="text-gray-400 text-lg">Please wait while the host makes their selection</p>
         </div>
 
         {/* Mode Selector Tabs */}
@@ -70,31 +113,28 @@ export default function Player2ModeSelection() {
           <div className="flex space-x-10">
             <button
               onClick={() => handleManualSelection("Easy Mode")}
-              className={`px-8 py-3 text-lg transition-all cursor-pointer ${
-                selectedDifficulty === "Easy Mode"
-                  ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
-                  : "text-gray-400 hover:text-gray-300"
-              }`}
+              className={`px-8 py-3 text-base transition-all cursor-pointer ${selectedDifficulty === "Easy Mode"
+                ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
+                : "text-gray-400 hover:text-gray-300"
+                }`}
             >
               EASY MODE
             </button>
             <button
               onClick={() => handleManualSelection("Average Mode")}
-              className={`px-8 py-3 text-lg transition-all cursor-pointer ${
-                selectedDifficulty === "Average Mode"
-                  ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
-                  : "text-gray-400 hover:text-gray-300"
-              }`}
+              className={`px-8 py-3 text-lg transition-all cursor-pointer ${selectedDifficulty === "Average Mode"
+                ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
+                : "text-gray-400 hover:text-gray-300"
+                }`}
             >
               AVERAGE MODE
             </button>
             <button
               onClick={() => handleManualSelection("Hard Mode")}
-              className={`px-8 py-3 text-lg transition-all cursor-pointer ${
-                selectedDifficulty === "Hard Mode"
-                  ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
-                  : "text-gray-400 hover:text-gray-300"
-              }`}
+              className={`px-8 py-3 text-lg transition-all cursor-pointer ${selectedDifficulty === "Hard Mode"
+                ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
+                : "text-gray-400 hover:text-gray-300"
+                }`}
             >
               HARD MODE
             </button>
@@ -120,20 +160,25 @@ export default function Player2ModeSelection() {
             style={{ columnGap: "3.5rem", maxWidth: "fit-content" }}
           >
             {[1, 2, 3, 4].map((card) => (
-              <div key={card} className="flip-card relative z-10">
+              <div
+                key={card}
+                className="flip-card relative z-10"
+                style={{ width: "180px", height: "250px" }}
+              >
                 <div className="flip-card-inner">
                   <div className="flip-card-front">
                     <img
                       src={CardBackImg}
                       alt="Card back design"
                       className="w-full h-full object-contain"
-                      style={{ borderRadius: "0.5rem" }}
                     />
                   </div>
                   <div className="flip-card-back">
-                    <div className="card-content p-0 w-full h-full">
-                      <p>MSMSMSMS</p>
-                    </div>
+                    <img
+                      src={DefaultBackHoverCard}
+                      alt="Card hover design"
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                 </div>
               </div>
@@ -149,7 +194,7 @@ export default function Player2ModeSelection() {
           >
             <KeyboardArrowLeft />
           </button>
-          <p className="text-center text-xl text-gray-300 mx-8">
+          <p className="text-center text-lg text-gray-300 mx-8">
             {selectedDifficulty === "Easy Mode" &&
               "Easy mode includes cards that belong to easy mode only."}
             {selectedDifficulty === "Average Mode" &&

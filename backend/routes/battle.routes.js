@@ -1,5 +1,5 @@
 import express from 'express';
-import { createBattleInvitation, updateBattleInvitationStatus, getHostInfo, updateInvitationStatusByLobbyCode, getInvitationDetails, updateLobbySettings } from '../controller/BattleInvitationController.js';
+import { createBattleInvitation, updateBattleInvitationStatus, getHostInfo, updateInvitationStatusByLobbyCode, getInvitationDetails, updateLobbySettings, updatePlayerReadyState, getReadyState, getLobbySettings, updateBattleStatus, getBattleStatus, updateDifficulty, getDifficulty } from '../controller/BattleInvitationController.js';
 
 const router = express.Router();
 
@@ -20,5 +20,20 @@ router.get('/invitations-lobby/details/:lobby_code/:sender_id/:receiver_id', get
 
 // Update lobby settings
 router.put('/invitations-lobby/settings', updateLobbySettings);
+
+// Add these new routes
+router.put('/invitations-lobby/ready-state', updatePlayerReadyState);
+router.get('/invitations-lobby/ready-state/:lobby_code', getReadyState);
+
+// Add this new route for fetching lobby settings
+router.get('/invitations-lobby/settings/:lobby_code', getLobbySettings);
+
+// Add these new routes for battle status
+router.put('/invitations-lobby/battle-status', updateBattleStatus);
+router.get('/invitations-lobby/battle-status/:lobby_code', getBattleStatus);
+
+// Add these new routes for difficulty settings
+router.put('/invitations-lobby/difficulty', updateDifficulty);
+router.get('/invitations-lobby/difficulty/:lobby_code', getDifficulty);
 
 export default router;

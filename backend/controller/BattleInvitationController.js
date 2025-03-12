@@ -230,6 +230,61 @@ export const getInvitationDetails = async (req, res) => {
     }
 };
 
+export const getLobbySettings = async (req, res) => {
+    try {
+        const { lobby_code } = req.params;
+
+        if (!lobby_code) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing lobby code"
+            });
+        }
+
+        // Get latest invitation for this lobby
+        const [invitations] = await pool.query(
+            `SELECT question_types, study_material_title 
+            FROM battle_invitations 
+            WHERE lobby_code = ? 
+            ORDER BY created_at DESC LIMIT 1`,
+            [lobby_code]
+        );
+
+        if (invitations.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Lobby not found"
+            });
+        }
+
+        const { question_types, study_material_title } = invitations[0];
+
+        // Parse question types from JSON
+        let parsedQuestionTypes = [];
+        try {
+            parsedQuestionTypes = JSON.parse(question_types || '[]');
+        } catch (e) {
+            console.error('Error parsing question_types:', e);
+        }
+
+        res.json({
+            success: true,
+            data: {
+                question_types: parsedQuestionTypes,
+                study_material_title
+            }
+        });
+
+    } catch (error) {
+        console.error('Error getting lobby settings:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to get lobby settings",
+            error: error.message
+        });
+    }
+};
+
 export const updateLobbySettings = async (req, res) => {
     try {
         const { lobby_code, question_types, study_material_title } = req.body;
@@ -264,6 +319,334 @@ export const updateLobbySettings = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to update lobby settings",
+            error: error.message
+        });
+    }
+};
+
+// Add these functions for handling player ready state
+
+export const updatePlayerReadyState = async (req, res) => {
+    try {
+        const { lobby_code, player_id, is_ready } = req.body;
+
+        if (!lobby_code || !player_id) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields"
+            });
+        }
+
+        // Get invitation details to determine player roles
+        const [invitations] = await pool.query(
+            `SELECT * FROM battle_invitations 
+            WHERE lobby_code = ? 
+            ORDER BY created_at DESC LIMIT 1`,
+            [lobby_code]
+        );
+
+        if (invitations.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Lobby not found"
+            });
+        }
+
+        const invitation = invitations[0];
+
+        // Determine if the player is host or guest
+        const isHost = player_id === invitation.sender_id;
+        const isGuest = player_id === invitation.receiver_id;
+
+        if (!isHost && !isGuest) {
+            return res.status(403).json({
+                success: false,
+                message: "Player is not part of this lobby"
+            });
+        }
+
+        // Update the appropriate ready state column
+        const fieldToUpdate = isHost ? 'host_ready' : 'guest_ready';
+
+        // Update the ready state in the database
+        const query = `
+            UPDATE battle_invitations 
+            SET ${fieldToUpdate} = ?
+            WHERE lobby_code = ? 
+            AND id = ?
+        `;
+
+        const [result] = await pool.query(query, [
+            is_ready ? 1 : 0,
+            lobby_code,
+            invitation.id
+        ]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Failed to update ready state"
+            });
+        }
+
+        res.json({
+            success: true,
+            message: `Ready state updated successfully`,
+            data: {
+                lobby_code,
+                player_id,
+                is_ready
+            }
+        });
+
+    } catch (error) {
+        console.error('Error updating player ready state:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update player ready state",
+            error: error.message
+        });
+    }
+};
+
+export const getReadyState = async (req, res) => {
+    try {
+        const { lobby_code } = req.params;
+
+        if (!lobby_code) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing lobby code"
+            });
+        }
+
+        // Get latest invitation for this lobby
+        const [invitations] = await pool.query(
+            `SELECT host_ready, guest_ready 
+            FROM battle_invitations 
+            WHERE lobby_code = ? 
+            ORDER BY created_at DESC LIMIT 1`,
+            [lobby_code]
+        );
+
+        if (invitations.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Lobby not found"
+            });
+        }
+
+        const { host_ready, guest_ready } = invitations[0];
+
+        res.json({
+            success: true,
+            data: {
+                hostReady: Boolean(host_ready),
+                guestReady: Boolean(guest_ready)
+            }
+        });
+
+    } catch (error) {
+        console.error('Error getting ready state:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to get ready state",
+            error: error.message
+        });
+    }
+};
+
+// Add these new functions for battle status
+
+export const updateBattleStatus = async (req, res) => {
+    try {
+        const { lobby_code, battle_started } = req.body;
+
+        if (!lobby_code) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing lobby code"
+            });
+        }
+
+        // Get latest invitation for this lobby
+        const [invitations] = await pool.query(
+            `SELECT id FROM battle_invitations 
+            WHERE lobby_code = ? 
+            ORDER BY created_at DESC LIMIT 1`,
+            [lobby_code]
+        );
+
+        if (invitations.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Lobby not found"
+            });
+        }
+
+        const invitationId = invitations[0].id;
+
+        // Update battle_started status
+        const query = `
+            UPDATE battle_invitations 
+            SET battle_started = ?
+            WHERE id = ?
+        `;
+
+        const [result] = await pool.query(query, [
+            battle_started ? 1 : 0,
+            invitationId
+        ]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Failed to update battle status"
+            });
+        }
+
+        res.json({
+            success: true,
+            message: `Battle status updated successfully`,
+            data: {
+                lobby_code,
+                battle_started
+            }
+        });
+
+    } catch (error) {
+        console.error('Error updating battle status:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update battle status",
+            error: error.message
+        });
+    }
+};
+
+export const getBattleStatus = async (req, res) => {
+    try {
+        const { lobby_code } = req.params;
+
+        if (!lobby_code) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing lobby code"
+            });
+        }
+
+        // Get latest invitation for this lobby
+        const [invitations] = await pool.query(
+            `SELECT battle_started 
+            FROM battle_invitations 
+            WHERE lobby_code = ? 
+            ORDER BY created_at DESC LIMIT 1`,
+            [lobby_code]
+        );
+
+        if (invitations.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Lobby not found"
+            });
+        }
+
+        const { battle_started } = invitations[0];
+
+        res.json({
+            success: true,
+            data: {
+                battle_started: Boolean(battle_started)
+            }
+        });
+
+    } catch (error) {
+        console.error('Error getting battle status:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to get battle status",
+            error: error.message
+        });
+    }
+};
+
+export const updateDifficulty = async (req, res) => {
+    try {
+        const { lobby_code, difficulty } = req.body;
+
+        if (!lobby_code || !difficulty) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields"
+            });
+        }
+
+        const query = `
+            UPDATE battle_invitations 
+            SET selected_difficulty = ?
+            WHERE lobby_code = ? 
+            ORDER BY created_at DESC
+            LIMIT 1
+        `;
+
+        const [result] = await pool.query(query, [difficulty, lobby_code]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Lobby not found"
+            });
+        }
+
+        res.json({
+            success: true,
+            message: "Difficulty updated successfully",
+            data: { difficulty }
+        });
+
+    } catch (error) {
+        console.error('Error updating difficulty:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update difficulty",
+            error: error.message
+        });
+    }
+};
+
+export const getDifficulty = async (req, res) => {
+    try {
+        const { lobby_code } = req.params;
+
+        const query = `
+            SELECT selected_difficulty 
+            FROM battle_invitations 
+            WHERE lobby_code = ? 
+            ORDER BY created_at DESC
+            LIMIT 1
+        `;
+
+        const [results] = await pool.query(query, [lobby_code]);
+
+        if (results.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Lobby not found"
+            });
+        }
+
+        res.json({
+            success: true,
+            data: {
+                difficulty: results[0].selected_difficulty
+            }
+        });
+
+    } catch (error) {
+        console.error('Error getting difficulty:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to get difficulty",
             error: error.message
         });
     }
