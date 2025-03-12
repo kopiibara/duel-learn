@@ -63,6 +63,12 @@ const recalculateItemNumbers = (
   }));
 };
 
+// Add this interface near the top of your file with other types
+interface TermDefinitionPair {
+  term: string;
+  definition: string;
+}
+
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Add this line
@@ -440,14 +446,86 @@ const CreateStudyMaterial = () => {
     }
   };
 
-  const handleUploadFile = () => {
+  const handleUploadFile = async () => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".pdf, .docx, .jpg, .jpeg, .png, .gif";
-    input.onchange = (e: Event) => {
+    input.onchange = async (e: Event) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        console.log("Uploaded file:", file);
+        console.log("Uploading file:", file);
+
+        try {
+          // Create a FormData object to send the file
+          const formData = new FormData();
+          formData.append("file", file);
+
+          // Step 1: Show loading state
+          handleShowSnackbar("Processing your document...");
+
+          // Step 2: Extract text with OCR
+          const ocrResponse = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-text`,
+            {
+              method: "POST",
+              body: formData,
+            }
+          );
+
+          if (!ocrResponse.ok) {
+            throw new Error(`OCR server responded with ${ocrResponse.status}`);
+          }
+
+          const ocrData = await ocrResponse.json();
+          console.log("Extracted text:", ocrData.text);
+
+          if (!ocrData.text || ocrData.text.trim() === "") {
+            handleShowSnackbar("No text could be extracted from the image");
+            return;
+          }
+
+          // Step 3: Process text into term-definition pairs with AI
+          handleShowSnackbar("Identifying terms and definitions...");
+          const aiResponse = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-pairs`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text: ocrData.text }),
+            }
+          );
+
+          if (!aiResponse.ok) {
+            throw new Error(`AI server responded with ${aiResponse.status}`);
+          }
+
+          const aiData = await aiResponse.json();
+          console.log("Term-definition pairs:", aiData.pairs);
+
+          // Step 4: Create study material items from the pairs
+          if (aiData.pairs && aiData.pairs.length > 0) {
+            const newItems = aiData.pairs.map(
+              (pair: TermDefinitionPair, index: number) => ({
+                id: items.length + index + 1,
+                term: pair.term || "",
+                definition: pair.definition || "",
+                image: null,
+                item_number: items.length + index + 1,
+              })
+            );
+
+            // Add the new items to the existing ones
+            setItems([...items, ...newItems]);
+            handleShowSnackbar(
+              `Added ${newItems.length} new terms and definitions!`
+            );
+          } else {
+            handleShowSnackbar("No term-definition pairs could be identified");
+          }
+        } catch (error) {
+          console.error("Error processing document:", error);
+          handleShowSnackbar("Failed to process the document");
+        }
       }
     };
     input.click();
