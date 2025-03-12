@@ -23,8 +23,6 @@ import WelcomeGameMode from "../pages/dashboard/play-battleground/screens/Welcom
 import SetUpTimeQuestion from "../pages/dashboard/play-battleground/components/setup/SetUpTimeQuestion";
 import PVPLobby from "../pages/dashboard/play-battleground/modes/multiplayer/PVPLobby";
 import { useState } from "react";
-import VerifyEmail from "../pages/user-account/VerifyEmail";
-import CheckYourMail from "../pages/user-account/CheckYourMail";
 import LoadingScreen from "../pages/dashboard/play-battleground/screens/LoadingScreen";
 import SessionReport from "../pages/dashboard/play-battleground/screens/SessionReport";
 import PeacefulMode from "../pages/dashboard/play-battleground/modes/peaceful/PeacefulMode";
@@ -39,8 +37,16 @@ const PrivateRoutes = () => {
   const { user } = useUser();
   const [_selectedIndex, setSelectedIndex] = useState<number | null>(1);
 
-  if (!user ) {
+  if (!user) {
     return <Navigate to="/landing-page" />;
+  }
+
+  if (user.account_type === "admin") {
+    return <Navigate to="/admin/dashboard" />;
+  }
+
+  if (!user.email_verified) {
+    return <Navigate to="/verify-email" />;
   }
 
   return (
@@ -73,10 +79,6 @@ const PrivateRoutes = () => {
         />
         <Route path="account-settings" element={<AccountSettings />} />
       </Route>
-
-      {/* Authentication Routes */}
-      <Route path="verify-email" element={<VerifyEmail />} />
-      <Route path="/check-your-mail" element={<CheckYourMail />} />
 
       {/* Premium Routes */}
       <Route path="/buy-premium-account" element={<BuyPremium />} />
