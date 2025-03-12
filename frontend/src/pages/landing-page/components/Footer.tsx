@@ -12,20 +12,6 @@ const Footer = () => {
         overflow: "hidden",
       }}
     >
-      {/* SVG Footer Decoration */}
-      <Box
-        component="img"
-        src="src/assets/landing-page/circles-footer-part.svg"
-        sx={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "auto",
-          pointerEvents: "none",
-        }}
-      />
-
       {/* Footer Content */}
       <Container
         maxWidth="xl"
