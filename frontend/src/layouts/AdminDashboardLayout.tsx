@@ -1,17 +1,35 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
-import Sidebar from "../components/Sidebar";
-import Header from "../components/header/Header";
+import AdminSidebar from "../components/AdminSidebar";
+import AdminHeader from "../components/header/AdminHeader";
 import Footer from "../components/Footer";
 import { Box } from "@mui/system";
 import "../styles/custom-scrollbar.css";
 import WidgetsIcon from "@mui/icons-material/Widgets";
-import { useMediaQuery, Typography } from "@mui/material"; // Import useMediaQuery from Material-UI
+import { useMediaQuery } from "@mui/material";
+import AdminDrawerSidebarMenu from "../components/header/AdminDrawerSidebarMenu";
+import { useUser } from "../contexts/UserContext";
 
 const AdminDashboardLayout = () => {
+  const { user } = useUser();
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const isMobile = useMediaQuery("(max-width:1022px)"); // Check if the screen size is mobile
+  const isMobile = useMediaQuery("(max-width:1022px)");
   const [selectedIndex, setSelectedIndex] = useState<number | null>(0);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  // Log when the component is rendered
+  useEffect(() => {
+    console.log("AdminDashboardLayout - Component rendered");
+    console.log("AdminDashboardLayout - User data:", user);
+    
+    // Also check localStorage
+    const userData = localStorage.getItem("userData");
+    if (userData) {
+      console.log("AdminDashboardLayout - localStorage userData:", JSON.parse(userData));
+    } else {
+      console.log("AdminDashboardLayout - No userData in localStorage");
+    }
+  }, [user]);
 
   const toggleDrawer = (open: boolean) => {
     setDrawerOpen(open);
@@ -22,12 +40,12 @@ const AdminDashboardLayout = () => {
       className={`h-screen px-8 flex flex-col lg:flex-row w-screen overflow-x-hidden ${
         useMediaQuery("(min-width:1400px)") ? "px-11" : "px-25"
       }`}
+      sx={{ backgroundColor: "#080511" }}
     >
-      {/* Sidebar (hidden on small screens) */}
+      {/* AdminSidebar (hidden on small screens) */}
       <aside className="hidden lg:block pl-4 pr-4 h-screen sticky top-0">
         <Box>
-          
-          <Sidebar
+          <AdminSidebar
             selectedIndex={selectedIndex}
             setSelectedIndex={setSelectedIndex}
           />
@@ -37,7 +55,7 @@ const AdminDashboardLayout = () => {
       {/* Main Section */}
       <Box className="flex-1 flex flex-col">
         <header className="w-full pr-2 top-0 pb-2 sticky z-50 bg-[#080511] shadow-sm">
-          <Header />
+          <AdminHeader />
         </header>
 
         {/* Main Content Section */}
@@ -64,32 +82,16 @@ const AdminDashboardLayout = () => {
       </Box>
 
       {/* Admin-specific drawer for mobile */}
-      {isMobile && drawerOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-50"
-          onClick={() => toggleDrawer(false)}
-        >
-          <div 
-            className="absolute right-0 top-0 h-full w-64 bg-white p-4"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <Typography variant="h6" component="div" className="font-bold text-purple-600">
-                Admin Menu
-              </Typography>
-              <button 
-                onClick={() => toggleDrawer(false)}
-                className="p-2 rounded-full hover:bg-gray-200"
-              >
-                ✕
-              </button>
-            </div>
-            <Sidebar
-              selectedIndex={selectedIndex}
-              setSelectedIndex={setSelectedIndex}
-            />
-          </div>
-        </div>
+      {isMobile && (
+        <AdminDrawerSidebarMenu 
+          drawerOpen={drawerOpen}
+          toggleDrawer={toggleDrawer}
+          collapsed={false}
+          selectedIndex={selectedIndex || 0}
+          setSelectedIndex={(index) => setSelectedIndex(index)}
+          hoveredIndex={hoveredIndex}
+          setHoveredIndex={setHoveredIndex}
+        />
       )}
     </Box>
   );

@@ -101,6 +101,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         const userData = await fetchAndUpdateUserData(uid, token);
         if (userData) {
           console.log("User found in main database:", userData);
+          
+          // Ensure we update localStorage immediately for admin users
+          if (userData.account_type === "admin") {
+            console.log("Admin user detected in UserContext, updating localStorage");
+            localStorage.setItem("userData", JSON.stringify(userData));
+            localStorage.setItem("userToken", token);
+          }
+          
           setUser(userData);
           return userData;
         }

@@ -429,6 +429,7 @@ export default {
           existInSQL: true,
           existInFirestore: !!firestoreUser,
           existInFirebaseAuth: !!authUser,
+          created_at: sqlUser.created_at,
         };
       });
 
