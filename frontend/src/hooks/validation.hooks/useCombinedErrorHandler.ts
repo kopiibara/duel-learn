@@ -2,9 +2,10 @@ import { useState } from "react";
 import useFirebaseError from "./useFirebaseError";
 import useNetworkError from "./useNetworkError";
 import useSQLError from "./useSQLError";
+/*
 import { auth, db } from "../../services/firebase";
 import { deleteUser } from "firebase/auth";
-import { deleteDoc, doc } from "firebase/firestore";
+import { deleteDoc, doc } from "firebase/firestore";*/
 
 const useCombinedErrorHandler = () => {
   const { error: firebaseError, handleFirebaseError } = useFirebaseError();
@@ -30,10 +31,10 @@ const useCombinedErrorHandler = () => {
       setCombinedError("Registration Failed. Please try again.");
     }
 
-    if (auth.currentUser) {
+    /*if (auth.currentUser) {
       deleteUser(auth.currentUser);
       deleteDoc(doc(db, "users", auth.currentUser.uid));
-    }
+    }*/
   };
 
   return { firebaseError, networkError, sqlError, combinedError, handleError };

@@ -23,8 +23,6 @@ import WelcomeGameMode from "../pages/dashboard/play-battleground/screens/Welcom
 import SetUpTimeQuestion from "../pages/dashboard/play-battleground/components/setup/SetUpTimeQuestion";
 import PVPLobby from "../pages/dashboard/play-battleground/modes/multiplayer/PVPLobby";
 import { useState } from "react";
-import VerifyEmail from "../pages/user-account/VerifyEmail";
-import CheckYourMail from "../pages/user-account/CheckYourMail";
 import LoadingScreen from "../pages/dashboard/play-battleground/screens/LoadingScreen";
 import SessionReport from "../pages/dashboard/play-battleground/screens/SessionReport";
 import PeacefulMode from "../pages/dashboard/play-battleground/modes/peaceful/PeacefulMode";
@@ -42,6 +40,19 @@ const PrivateRoutes = () => {
 
   if (!user) {
     return <Navigate to="/landing-page" />;
+  }
+
+  /* isAdmin = user.account_type === "admin" || 
+                 (localStorage.getItem("userData") && 
+                  JSON.parse(localStorage.getItem("userData") || "{}").account_type === "admin");
+
+  if (isAdmin) {
+    console.log("PrivateRoutes - Admin user detected, redirecting to admin dashboard");
+    return <Navigate to="/admin/dashboard" />;
+  }*/
+
+  if (!user.email_verified) {
+    return <Navigate to="/verify-email" />;
   }
 
   return (
@@ -75,10 +86,6 @@ const PrivateRoutes = () => {
         <Route path="search" element={<SearchPage />} />
         <Route path="account-settings" element={<AccountSettings />} />
       </Route>
-
-      {/* Authentication Routes */}
-      <Route path="verify-email" element={<VerifyEmail />} />
-      <Route path="/check-your-mail" element={<CheckYourMail />} />
 
       {/* Premium Routes */}
       <Route path="/buy-premium-account" element={<BuyPremium />} />
