@@ -487,31 +487,6 @@ const setupSocket = (server) => {
       }
     });
 
-    socket.on("player_ready", (data) => {
-      try {
-        const { lobbyCode, playerId, isReady } = data;
-
-        if (!lobbyCode || !playerId) {
-          console.error("Missing required ready status data:", data);
-          return;
-        }
-
-        console.log(
-          `🎮 Player ${playerId} is ${isReady ? "ready" : "not ready"
-          } in lobby ${lobbyCode}`
-        );
-
-        // Broadcast to everyone in the lobby including the sender
-        io.to(lobbyCode).emit("player_ready_status", {
-          lobbyCode,
-          playerId,
-          isReady,
-        });
-      } catch (error) {
-        console.error("Error in player_ready handler:", error);
-      }
-    });
-
     socket.on("request_lobby_info", (data) => {
       try {
         const { lobbyCode, requesterId } = data;
@@ -606,6 +581,29 @@ const setupSocket = (server) => {
         });
       } catch (error) {
         console.error("Error handling lobby material update:", error);
+      }
+    });
+
+    socket.on("player_ready_state_changed", (data) => {
+      try {
+        const { lobbyCode, playerId, isReady } = data;
+
+        if (!lobbyCode || playerId === undefined) {
+          console.error("Missing required ready state data");
+          return;
+        }
+
+        console.log(`🎮 Player ${playerId} ready state changed to ${isReady} in lobby ${lobbyCode}`);
+
+        // Broadcast to everyone in the lobby
+        socket.to(lobbyCode).emit("player_ready_state_changed", {
+          lobbyCode,
+          playerId,
+          isReady
+        });
+
+      } catch (error) {
+        console.error("Error in player_ready_state_changed handler:", error);
       }
     });
   });

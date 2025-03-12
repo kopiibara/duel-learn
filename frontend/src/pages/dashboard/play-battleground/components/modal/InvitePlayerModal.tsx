@@ -23,6 +23,8 @@ interface InvitePlayerModalProps {
   inviterName?: string;
   senderId?: string;
   onInvitationAccepted?: (lobbyCode: string) => void;
+  selectedTypesFinal: string[];
+  selectedMaterial: { id: string; title: string } | null;
 }
 
 const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
@@ -33,6 +35,8 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
   inviterName,
   senderId,
   onInvitationAccepted,
+  selectedTypesFinal,
+  selectedMaterial,
 }) => {
   const [friends, setFriends] = useState<Player[]>([]);
   const [loading, setLoading] = useState(false);
@@ -161,40 +165,41 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
       return;
     }
 
-    // Add debug logging
-    console.group("Battle Invitation Debug");
-    console.log("User data:", {
-      firebase_uid: user?.firebase_uid,
-      username: user?.username
-    });
-    console.log("Friend data:", friend);
-    console.log("Lobby code:", lobbyCode);
-    console.log("Inviter name:", inviterName);
-    console.groupEnd();
-
     try {
       setInviting(true);
 
-      // Validate required fields before sending
-      if (!user.firebase_uid) {
-        console.error("Missing senderId (user.firebase_uid)");
-        return;
-      }
-      if (!user.username && !inviterName) {
-        console.error("Missing senderName (both user.username and inviterName are null)");
-        return;
-      }
-      if (!friend.firebase_uid) {
-        console.error("Missing receiverId (friend.firebase_uid)");
-        return;
-      }
-      if (!lobbyCode) {
-        console.error("Missing lobbyCode");
+      // Validate required fields
+      if (!user.firebase_uid || !user.username || !friend.firebase_uid || !lobbyCode) {
+        console.error("Missing required fields for invitation");
         return;
       }
 
-      // Create explicit invitation data
+      // Create invitation data
       const invitationData = {
+        sender_id: user.firebase_uid,
+        sender_username: user.username,
+        sender_level: user.level || 1,
+        receiver_id: friend.firebase_uid,
+        receiver_username: friend.username,
+        receiver_level: friend.level || 1,
+        lobby_code: lobbyCode,
+        status: 'pending',
+        question_types: selectedTypesFinal,
+        study_material_title: selectedMaterial?.title
+      };
+
+      // Make POST request to create battle invitation
+      const response = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby`,
+        invitationData
+      );
+
+      if (!response.data.success) {
+        throw new Error("Failed to create battle invitation");
+      }
+
+      // Create socket notification data
+      const socketData = {
         senderId: user.firebase_uid,
         senderName: user.username || inviterName || "Unknown Player",
         receiverId: friend.firebase_uid,
@@ -202,21 +207,18 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
       };
 
       // Log the final invitation data
-      console.log("Sending invitation data:", invitationData);
+      console.log("Sending invitation data:", socketData);
 
       // Close the modal and trigger success callback with complete invitation data
       handleClose();
       onInviteSuccess(friend, {
-        senderId: invitationData.senderId,
-        senderName: invitationData.senderName,
-        receiverId: friend.firebase_uid,
-        receiverName: friend.username,
-        lobbyCode: invitationData.lobbyCode,
-        status: "pending"
+        ...invitationData,
+        dbRecord: response.data.data // Include the database record
       });
 
     } catch (error) {
       console.error("Error inviting player:", error);
+      // You might want to show an error message to the user here
     } finally {
       setInviting(false);
     }
