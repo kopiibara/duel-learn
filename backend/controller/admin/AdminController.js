@@ -15,7 +15,10 @@ const AdminController = {
       
       // Get users from Firestore
       const firestoreUsersSnapshot = await admin.firestore().collection('users').get();
-      const firestoreUsers = firestoreUsersSnapshot.docs.map(doc => doc.data());
+      const firestoreUsers = firestoreUsersSnapshot.docs.map(doc => ({
+        ...doc.data(),
+        firebase_uid: doc.id // Ensure firebase_uid is correctly extracted
+      }));
       
       // Get users from SQL with available fields
       const [sqlUsers] = await connection.execute(`
@@ -211,6 +214,14 @@ const AdminController = {
               }
             }
           });
+        }
+      });
+      
+      // Update Firestore existence check
+      userMap.forEach((user, key) => {
+        const firestoreUser = firestoreUsers.find(fUser => fUser.firebase_uid === key);
+        if (firestoreUser) {
+          user.existInFirestore = true;
         }
       });
       
