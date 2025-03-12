@@ -21,7 +21,7 @@ const HomePage = ({
 
   return (
     <PageTransition>
-      <Box className="h-full w-auto">
+      <Box className="h-full w-auto" sx={{ backgroundColor: '#080511' }}>
         <DocumentHead title="Home | Duel Learn" />
         <Stack spacing={2} className="px-4 sm:px-6">
           <HomeBanner />
@@ -33,7 +33,7 @@ const HomePage = ({
               className="flex items-center justify-start pl-2"
             >
               <img src="/book.png" className="w-8 h-6" alt="icon" />
-              <Typography variant="h6">Choose your Challenge</Typography>
+              <Typography variant="h6" sx={{ color: '#E2DDF3' }}>Choose your Challenge</Typography>
             </Stack>
             <ChooseYourChallenge />
           </Stack>
@@ -49,6 +49,7 @@ const HomePage = ({
                 <Typography
                   variant="h6"
                   className="text-base sm:text-lg md:text-xl"
+                  sx={{ color: '#E2DDF3' }}
                 >
                   Discover more materials
                 </Typography>
@@ -61,12 +62,12 @@ const HomePage = ({
                   textTransform: "none",
                   borderRadius: "0.8rem",
                   padding: "0.5rem 1rem",
-                  color: "#3B354D",
+                  color: "#E2DDF3",
                   transition: "all 0.3s ease",
                   "&:hover": {
-                    color: "inherit",
+                    color: "#4D18E8",
                     transform: "scale(1.01)",
-                    backgroundColor: "#3B354C",
+                    backgroundColor: "rgba(77, 24, 232, 0.08)",
                   },
                 }}
               >

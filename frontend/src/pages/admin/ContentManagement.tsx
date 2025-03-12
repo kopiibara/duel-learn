@@ -39,6 +39,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SortIcon from '@mui/icons-material/Sort';
 import AddIcon from '@mui/icons-material/Add';
+import CloseIcon from '@mui/icons-material/Close';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -69,9 +70,7 @@ function TabPanel(props: TabPanelProps) {
 interface ContentItem {
   id: string;
   title: string;
-  type: 'lesson' | 'quiz' | 'game' | 'challenge';
-  subject: string;
-  difficulty: 'beginner' | 'intermediate' | 'advanced';
+  type: 'AI-Generated' | 'User-Generated' | 'flashcards' | 'notes' | 'quiz' | 'practice';
   tags: string[];
   createdBy: string;
   createdAt: string;
@@ -86,12 +85,10 @@ interface ContentItem {
 const sampleContentItems: ContentItem[] = [
   {
     id: 'content-001',
-    title: 'Introduction to Algebra',
-    type: 'lesson',
-    subject: 'Mathematics',
-    difficulty: 'beginner',
-    tags: ['algebra', 'introduction', 'equations'],
-    createdBy: 'Admin User',
+    title: 'Algebra Fundamentals Flashcards',
+    type: 'User-Generated',
+    tags: ['Mathematics', 'algebra', 'fundamentals', 'equations'],
+    createdBy: 'beginner',
     createdAt: '2023-08-15',
     status: 'published',
     engagement: {
@@ -102,12 +99,10 @@ const sampleContentItems: ContentItem[] = [
   },
   {
     id: 'content-002',
-    title: 'Advanced Trigonometry',
-    type: 'lesson',
-    subject: 'Mathematics',
-    difficulty: 'advanced',
-    tags: ['trigonometry', 'calculus', 'functions'],
-    createdBy: 'Math Teacher',
+    title: 'Advanced Calculus Study Notes',
+    type: 'AI-Generated',
+    tags: ['Mathematics', 'calculus', 'derivatives', 'integrals'],
+    createdBy: 'advanced',
     createdAt: '2023-07-22',
     status: 'published',
     engagement: {
@@ -118,12 +113,10 @@ const sampleContentItems: ContentItem[] = [
   },
   {
     id: 'content-003',
-    title: 'Chemistry Basics Quiz',
-    type: 'quiz',
-    subject: 'Chemistry',
-    difficulty: 'beginner',
-    tags: ['chemistry', 'elements', 'periodic table'],
-    createdBy: 'Science Coordinator',
+    title: 'Chemistry Periodic Table Quiz',
+    type: 'User-Generated',
+    tags: ['Chemistry', 'elements', 'periodic table'],
+    createdBy: 'beginner',
     createdAt: '2023-09-05',
     status: 'published',
     engagement: {
@@ -134,12 +127,10 @@ const sampleContentItems: ContentItem[] = [
   },
   {
     id: 'content-004',
-    title: 'Physics Challenge: Forces',
-    type: 'challenge',
-    subject: 'Physics',
-    difficulty: 'intermediate',
-    tags: ['physics', 'forces', 'motion'],
-    createdBy: 'Admin User',
+    title: 'Physics Practice Problems: Forces',
+    type: 'AI-Generated',
+    tags: ['Physics', 'forces', 'motion'],
+    createdBy: 'intermediate',
     createdAt: '2023-08-30',
     status: 'draft',
     engagement: {
@@ -150,12 +141,10 @@ const sampleContentItems: ContentItem[] = [
   },
   {
     id: 'content-005',
-    title: 'Biology Game: Cell Structure',
-    type: 'game',
-    subject: 'Biology',
-    difficulty: 'beginner',
-    tags: ['biology', 'cells', 'organelles'],
-    createdBy: 'Game Developer',
+    title: 'Biology Cell Structure Notes',
+    type: 'User-Generated',
+    tags: ['Biology', 'cells', 'organelles'],
+    createdBy: 'beginner',
     createdAt: '2023-07-10',
     status: 'under review',
     engagement: {
@@ -166,12 +155,10 @@ const sampleContentItems: ContentItem[] = [
   },
   {
     id: 'content-006',
-    title: 'History Timeline Challenge',
-    type: 'challenge',
-    subject: 'History',
-    difficulty: 'advanced',
-    tags: ['history', 'timeline', 'events'],
-    createdBy: 'Content Creator',
+    title: 'World History Timeline Practice',
+    type: 'AI-Generated',
+    tags: ['History', 'timeline', 'events'],
+    createdBy: 'advanced',
     createdAt: '2023-09-12',
     status: 'archived',
     engagement: {
@@ -244,9 +231,9 @@ const ContentManagement: React.FC = () => {
     
     const matchesType = selectedContentType === 'all' || item.type === selectedContentType;
     const matchesStatus = selectedStatus === 'all' || item.status === selectedStatus;
-    const matchesDifficulty = selectedDifficulty === 'all' || item.difficulty === selectedDifficulty;
+    const matchesCreatedBy = selectedDifficulty === 'all' || item.createdBy === selectedDifficulty;
     
-    return matchesSearch && matchesType && matchesStatus && matchesDifficulty;
+    return matchesSearch && matchesType && matchesStatus && matchesCreatedBy;
   });
 
   const getStatusColor = (status: string) => {
@@ -269,27 +256,39 @@ const ContentManagement: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
+    <Box sx={{ p: 3, backgroundColor: '#080511', minHeight: '100vh' }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          Content Management
+        <Typography variant="h4" component="h1" gutterBottom sx={{ color: '#E2DDF3' }}>
+          Study Material Management
         </Typography>
         <Button 
           variant="contained" 
-          color="primary" 
           startIcon={<AddIcon />}
-          onClick={() => window.location.href = '/admin/create-content'}
+          onClick={() => window.location.href = '/admin/create-study-material'}
+          sx={{
+            backgroundColor: '#4D18E8',
+            color: '#E2DDF3',
+            '&:hover': {
+              backgroundColor: '#3b10b9'
+            }
+          }}
         >
-          Create New Content
+          Create New Study Material
         </Button>
       </Box>
 
-      <Paper sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Content Overview
+      <Paper sx={{ 
+        p: 3, 
+        mb: 3,
+        backgroundColor: '#1E1A2B',
+        border: '1px solid #3B354D',
+        borderRadius: '1rem'
+      }}>
+        <Typography variant="h6" gutterBottom sx={{ color: '#E2DDF3' }}>
+          Study Material Overview
         </Typography>
-        <Typography paragraph>
-          Manage all educational content from this centralized dashboard. Create, edit, and organize lessons, quizzes, games, and challenges. Monitor engagement metrics and ensure content quality across all subjects and difficulty levels.
+        <Typography paragraph sx={{ color: '#9F9BAE' }}>
+          Manage all study materials including flashcards, notes, quizzes, and practice exercises. Monitor engagement metrics and ensure quality across all subjects and difficulty levels.
         </Typography>
         
         <Grid container spacing={2} sx={{ mt: 2 }}>
@@ -303,9 +302,30 @@ const ContentManagement: React.FC = () => {
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
-                    <SearchIcon />
+                    <SearchIcon sx={{ color: '#9F9BAE' }} />
                   </InputAdornment>
                 ),
+              }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: '#2A2636',
+                  '& fieldset': {
+                    borderColor: '#3B354D',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: '#4D18E8',
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#4D18E8',
+                  },
+                },
+                '& .MuiOutlinedInput-input': {
+                  color: '#E2DDF3',
+                  '&::placeholder': {
+                    color: '#9F9BAE',
+                    opacity: 1,
+                  },
+                },
               }}
             />
           </Grid>
@@ -315,7 +335,15 @@ const ContentManagement: React.FC = () => {
               variant="outlined" 
               startIcon={<FilterListIcon />}
               onClick={handleFilterClick}
-              sx={{ height: '100%' }}
+              sx={{ 
+                height: '100%',
+                borderColor: '#3B354D',
+                color: '#E2DDF3',
+                '&:hover': {
+                  borderColor: '#4D18E8',
+                  backgroundColor: 'rgba(77, 24, 232, 0.08)'
+                }
+              }}
             >
               Filter
             </Button>
@@ -325,34 +353,61 @@ const ContentManagement: React.FC = () => {
                 zIndex: 1, 
                 mt: 1, 
                 p: 2, 
-                minWidth: 300, 
-                boxShadow: 3 
+                minWidth: 300,
+                backgroundColor: '#2A2636',
+                border: '1px solid #3B354D',
+                borderRadius: '1rem',
+                boxShadow: '0 8px 16px rgba(0, 0, 0, 0.4)'
               }}>
-                <Typography variant="subtitle1" gutterBottom>
+                <Typography variant="subtitle1" gutterBottom sx={{ color: '#E2DDF3' }}>
                   Filter Content
                 </Typography>
                 <FormControl fullWidth margin="normal">
-                  <InputLabel id="content-type-label">Content Type</InputLabel>
+                  <InputLabel id="content-type-label" sx={{ color: '#9F9BAE' }}>Content Type</InputLabel>
                   <Select
                     labelId="content-type-label"
                     value={selectedContentType}
                     label="Content Type"
                     onChange={(e) => setSelectedContentType(e.target.value)}
+                    sx={{
+                      color: '#E2DDF3',
+                      '.MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#3B354D'
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#4D18E8'
+                      },
+                      '.MuiSvgIcon-root': {
+                        color: '#9F9BAE'
+                      },
+                      backgroundColor: '#1E1A2B'
+                    }}
                   >
                     <MenuItem value="all">All Types</MenuItem>
-                    <MenuItem value="lesson">Lessons</MenuItem>
-                    <MenuItem value="quiz">Quizzes</MenuItem>
-                    <MenuItem value="game">Games</MenuItem>
-                    <MenuItem value="challenge">Challenges</MenuItem>
+                    <MenuItem value="AI-Generated">AI-Generated</MenuItem>
+                    <MenuItem value="User-Generated">User-Generated</MenuItem>
                   </Select>
                 </FormControl>
                 <FormControl fullWidth margin="normal">
-                  <InputLabel id="status-label">Status</InputLabel>
+                  <InputLabel id="status-label" sx={{ color: '#9F9BAE' }}>Status</InputLabel>
                   <Select
                     labelId="status-label"
                     value={selectedStatus}
                     label="Status"
                     onChange={(e) => setSelectedStatus(e.target.value)}
+                    sx={{
+                      color: '#E2DDF3',
+                      '.MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#3B354D'
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#4D18E8'
+                      },
+                      '.MuiSvgIcon-root': {
+                        color: '#9F9BAE'
+                      },
+                      backgroundColor: '#1E1A2B'
+                    }}
                   >
                     <MenuItem value="all">All Statuses</MenuItem>
                     <MenuItem value="published">Published</MenuItem>
@@ -362,12 +417,25 @@ const ContentManagement: React.FC = () => {
                   </Select>
                 </FormControl>
                 <FormControl fullWidth margin="normal">
-                  <InputLabel id="difficulty-label">Difficulty</InputLabel>
+                  <InputLabel id="difficulty-label" sx={{ color: '#9F9BAE' }}>Difficulty</InputLabel>
                   <Select
                     labelId="difficulty-label"
                     value={selectedDifficulty}
                     label="Difficulty"
                     onChange={(e) => setSelectedDifficulty(e.target.value)}
+                    sx={{
+                      color: '#E2DDF3',
+                      '.MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#3B354D'
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: '#4D18E8'
+                      },
+                      '.MuiSvgIcon-root': {
+                        color: '#9F9BAE'
+                      },
+                      backgroundColor: '#1E1A2B'
+                    }}
                   >
                     <MenuItem value="all">All Levels</MenuItem>
                     <MenuItem value="beginner">Beginner</MenuItem>
@@ -395,7 +463,15 @@ const ContentManagement: React.FC = () => {
               variant="outlined" 
               startIcon={<SortIcon />}
               onClick={handleSortClick}
-              sx={{ height: '100%' }}
+              sx={{ 
+                height: '100%',
+                borderColor: '#3B354D',
+                color: '#E2DDF3',
+                '&:hover': {
+                  borderColor: '#4D18E8',
+                  backgroundColor: 'rgba(77, 24, 232, 0.08)'
+                }
+              }}
             >
               Sort
             </Button>
@@ -405,47 +481,86 @@ const ContentManagement: React.FC = () => {
                 zIndex: 1, 
                 mt: 1, 
                 p: 2, 
-                minWidth: 200, 
-                boxShadow: 3 
+                minWidth: 200,
+                backgroundColor: '#2A2636',
+                border: '1px solid #3B354D',
+                borderRadius: '1rem',
+                boxShadow: '0 8px 16px rgba(0, 0, 0, 0.4)'
               }}>
-                <Typography variant="subtitle1" gutterBottom>
+                <Typography variant="subtitle1" gutterBottom sx={{ color: '#E2DDF3' }}>
                   Sort By
                 </Typography>
-                <MenuItem onClick={handleSortClose}>Title (A-Z)</MenuItem>
-                <MenuItem onClick={handleSortClose}>Title (Z-A)</MenuItem>
-                <MenuItem onClick={handleSortClose}>Date Created (Newest)</MenuItem>
-                <MenuItem onClick={handleSortClose}>Date Created (Oldest)</MenuItem>
-                <MenuItem onClick={handleSortClose}>Most Views</MenuItem>
-                <MenuItem onClick={handleSortClose}>Highest Completion Rate</MenuItem>
-                <MenuItem onClick={handleSortClose}>Highest Rating</MenuItem>
+                <MenuItem onClick={handleSortClose} sx={{ color: '#E2DDF3', '&:hover': { backgroundColor: 'rgba(77, 24, 232, 0.08)' } }}>
+                  Title (A-Z)
+                </MenuItem>
+                <MenuItem onClick={handleSortClose} sx={{ color: '#E2DDF3', '&:hover': { backgroundColor: 'rgba(77, 24, 232, 0.08)' } }}>
+                  Title (Z-A)
+                </MenuItem>
+                <MenuItem onClick={handleSortClose} sx={{ color: '#E2DDF3', '&:hover': { backgroundColor: 'rgba(77, 24, 232, 0.08)' } }}>
+                  Date Created (Newest)
+                </MenuItem>
+                <MenuItem onClick={handleSortClose} sx={{ color: '#E2DDF3', '&:hover': { backgroundColor: 'rgba(77, 24, 232, 0.08)' } }}>
+                  Date Created (Oldest)
+                </MenuItem>
+                <MenuItem onClick={handleSortClose} sx={{ color: '#E2DDF3', '&:hover': { backgroundColor: 'rgba(77, 24, 232, 0.08)' } }}>
+                  Most Views
+                </MenuItem>
+                <MenuItem onClick={handleSortClose} sx={{ color: '#E2DDF3', '&:hover': { backgroundColor: 'rgba(77, 24, 232, 0.08)' } }}>
+                  Highest Completion Rate
+                </MenuItem>
+                <MenuItem onClick={handleSortClose} sx={{ color: '#E2DDF3', '&:hover': { backgroundColor: 'rgba(77, 24, 232, 0.08)' } }}>
+                  Highest Rating
+                </MenuItem>
               </Paper>
             )}
           </Grid>
         </Grid>
       </Paper>
 
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs value={tabValue} onChange={handleTabChange} aria-label="content management tabs">
-          <Tab label="All Content" id="content-tab-0" />
-          <Tab label="Lessons" id="content-tab-1" />
-          <Tab label="Quizzes" id="content-tab-2" />
-          <Tab label="Games" id="content-tab-3" />
-          <Tab label="Challenges" id="content-tab-4" />
+      <Box sx={{ 
+        borderBottom: 1, 
+        borderColor: '#3B354D',
+        '.MuiTabs-indicator': {
+          backgroundColor: '#4D18E8'
+        }
+      }}>
+        <Tabs 
+          value={tabValue} 
+          onChange={handleTabChange} 
+          aria-label="study material management tabs"
+          sx={{
+            '& .MuiTab-root': {
+              color: '#9F9BAE',
+              '&.Mui-selected': {
+                color: '#E2DDF3'
+              }
+            }
+          }}
+        >
+          <Tab label="All Materials" id="content-tab-0" />
+          <Tab label="AI-Generated" id="content-tab-1" />
+          <Tab label="User-Generated" id="content-tab-2" />
+          <Tab label="Quizzes" id="content-tab-3" />
+          <Tab label="Practice" id="content-tab-4" />
         </Tabs>
       </Box>
 
       <TabPanel value={tabValue} index={0}>
-        <TableContainer component={Paper}>
-          <Table sx={{ minWidth: 650 }} aria-label="content table">
+        <TableContainer component={Paper} sx={{ 
+          backgroundColor: '#1E1A2B',
+          border: '1px solid #3B354D',
+          borderRadius: '1rem'
+        }}>
+          <Table sx={{ minWidth: 650 }} aria-label="study materials table">
             <TableHead>
               <TableRow>
-                <TableCell>Title</TableCell>
-                <TableCell align="center">Type</TableCell>
-                <TableCell align="center">Subject</TableCell>
-                <TableCell align="center">Difficulty</TableCell>
-                <TableCell align="center">Status</TableCell>
-                <TableCell align="center">Engagement</TableCell>
-                <TableCell align="center">Actions</TableCell>
+                <TableCell sx={{ color: '#E2DDF3', borderBottom: '1px solid #3B354D', fontWeight: 600 }}>Study Material</TableCell>
+                <TableCell align="center" sx={{ color: '#E2DDF3', borderBottom: '1px solid #3B354D', fontWeight: 600 }}>Type</TableCell>
+                <TableCell align="center" sx={{ color: '#E2DDF3', borderBottom: '1px solid #3B354D', fontWeight: 600 }}>Subject</TableCell>
+                <TableCell align="center" sx={{ color: '#E2DDF3', borderBottom: '1px solid #3B354D', fontWeight: 600 }}>Difficulty</TableCell>
+                <TableCell align="center" sx={{ color: '#E2DDF3', borderBottom: '1px solid #3B354D', fontWeight: 600 }}>Status</TableCell>
+                <TableCell align="center" sx={{ color: '#E2DDF3', borderBottom: '1px solid #3B354D', fontWeight: 600 }}>Engagement</TableCell>
+                <TableCell align="center" sx={{ color: '#E2DDF3', borderBottom: '1px solid #3B354D', fontWeight: 600 }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -454,56 +569,170 @@ const ContentManagement: React.FC = () => {
                 .map((content) => (
                 <TableRow
                   key={content.id}
-                  sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                  sx={{ 
+                    '&:last-child td, &:last-child th': { border: 0 },
+                    '&:hover': { backgroundColor: 'rgba(77, 24, 232, 0.08)' },
+                    transition: 'background-color 0.2s ease'
+                  }}
                 >
-                  <TableCell component="th" scope="row">
-                    <Typography variant="subtitle2">
-                      {content.title}
-                    </Typography>
-                    <Typography variant="caption" display="block" color="text.secondary">
-                      Created: {content.createdAt} by {content.createdBy}
-                    </Typography>
+                  <TableCell 
+                    component="th" 
+                    scope="row"
+                    sx={{ borderBottom: '1px solid #3B354D' }}
+                  >
+                    <Box>
+                      <Typography variant="subtitle1" sx={{ color: '#E2DDF3', fontWeight: 500 }}>
+                        {content.title}
+                      </Typography>
+                      <Typography variant="caption" display="block" sx={{ color: '#9F9BAE' }}>
+                        Created by {content.createdBy} • {content.createdAt}
+                      </Typography>
+                      <Box sx={{ mt: 0.5 }}>
+                        {content.tags.map((tag, index) => (
+                          <Chip
+                            key={index}
+                            label={tag}
+                            size="small"
+                            sx={{
+                              mr: 0.5,
+                              mb: 0.5,
+                              backgroundColor: '#2A2636',
+                              color: '#9F9BAE',
+                              border: '1px solid #3B354D',
+                              '&:hover': {
+                                backgroundColor: '#3B354D'
+                              }
+                            }}
+                          />
+                        ))}
+                      </Box>
+                    </Box>
                   </TableCell>
-                  <TableCell align="center">
-                    <Chip label={content.type.charAt(0).toUpperCase() + content.type.slice(1)} />
-                  </TableCell>
-                  <TableCell align="center">{content.subject}</TableCell>
-                  <TableCell align="center">
+                  <TableCell 
+                    align="center"
+                    sx={{ borderBottom: '1px solid #3B354D' }}
+                  >
                     <Chip 
-                      label={content.difficulty.charAt(0).toUpperCase() + content.difficulty.slice(1)} 
-                      color={getDifficultyColor(content.difficulty) as "success" | "warning" | "error" | "default"}
+                      label={content.type.charAt(0).toUpperCase() + content.type.slice(1)}
+                      sx={{
+                        backgroundColor: '#2A2636',
+                        color: '#E2DDF3',
+                        border: '1px solid #3B354D',
+                        '&:hover': {
+                          backgroundColor: '#3B354D'
+                        }
+                      }}
                     />
                   </TableCell>
-                  <TableCell align="center">
+                  <TableCell 
+                    align="center"
+                    sx={{ color: '#E2DDF3', borderBottom: '1px solid #3B354D' }}
+                  >
+                    {content.tags.join(', ')}
+                  </TableCell>
+                  <TableCell 
+                    align="center"
+                    sx={{ borderBottom: '1px solid #3B354D' }}
+                  >
+                    <Chip 
+                      label={content.createdBy.charAt(0).toUpperCase() + content.createdBy.slice(1)} 
+                      color={getDifficultyColor(content.createdBy) as "success" | "warning" | "error" | "default"}
+                      sx={{
+                        backgroundColor: 'rgba(77, 24, 232, 0.1)',
+                        color: '#E2DDF3',
+                        border: '1px solid rgba(77, 24, 232, 0.2)'
+                      }}
+                    />
+                  </TableCell>
+                  <TableCell 
+                    align="center"
+                    sx={{ borderBottom: '1px solid #3B354D' }}
+                  >
                     <Chip 
                       label={content.status.charAt(0).toUpperCase() + content.status.slice(1)} 
                       color={getStatusColor(content.status) as "success" | "warning" | "error" | "default"}
+                      sx={{
+                        '&.MuiChip-colorSuccess': {
+                          backgroundColor: 'rgba(46, 196, 134, 0.1)',
+                          color: '#2EC486',
+                          border: '1px solid rgba(46, 196, 134, 0.2)'
+                        },
+                        '&.MuiChip-colorWarning': {
+                          backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                          color: '#FF9800',
+                          border: '1px solid rgba(255, 152, 0, 0.2)'
+                        },
+                        '&.MuiChip-colorError': {
+                          backgroundColor: 'rgba(255, 82, 82, 0.1)',
+                          color: '#FF5252',
+                          border: '1px solid rgba(255, 82, 82, 0.2)'
+                        }
+                      }}
                     />
                   </TableCell>
-                  <TableCell align="center">
+                  <TableCell 
+                    align="center"
+                    sx={{ borderBottom: '1px solid #3B354D' }}
+                  >
                     <Box>
-                      <Typography variant="body2">
-                        {content.engagement.views} views
+                      <Typography variant="body2" sx={{ color: '#E2DDF3' }}>
+                        {content.engagement.views.toLocaleString()} views
                       </Typography>
-                      <Typography variant="body2">
-                        {content.engagement.completions} completions
+                      <Typography variant="body2" sx={{ color: '#E2DDF3' }}>
+                        {content.engagement.completions.toLocaleString()} completions
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography variant="body2" sx={{ color: '#E2DDF3' }}>
                         {content.engagement.averageRating.toFixed(1)} ★
                       </Typography>
                     </Box>
                   </TableCell>
-                  <TableCell align="center">
-                    <IconButton onClick={() => handlePreviewContent(content)}>
+                  <TableCell 
+                    align="center"
+                    sx={{ borderBottom: '1px solid #3B354D' }}
+                  >
+                    <IconButton 
+                      onClick={() => handlePreviewContent(content)} 
+                      sx={{ 
+                        color: '#9F9BAE',
+                        '&:hover': {
+                          color: '#E2DDF3',
+                          backgroundColor: 'rgba(77, 24, 232, 0.08)'
+                        }
+                      }}
+                    >
                       <VisibilityIcon />
                     </IconButton>
-                    <IconButton color="primary">
+                    <IconButton 
+                      sx={{ 
+                        color: '#4D18E8',
+                        '&:hover': {
+                          color: '#3b10b9',
+                          backgroundColor: 'rgba(77, 24, 232, 0.08)'
+                        }
+                      }}
+                    >
                       <EditIcon />
                     </IconButton>
-                    <IconButton>
+                    <IconButton 
+                      sx={{ 
+                        color: '#9F9BAE',
+                        '&:hover': {
+                          color: '#E2DDF3',
+                          backgroundColor: 'rgba(77, 24, 232, 0.08)'
+                        }
+                      }}
+                    >
                       <ContentCopyIcon />
                     </IconButton>
-                    <IconButton color="error">
+                    <IconButton 
+                      sx={{ 
+                        color: '#FF5252',
+                        '&:hover': {
+                          color: '#ff0000',
+                          backgroundColor: 'rgba(255, 82, 82, 0.08)'
+                        }
+                      }}
+                    >
                       <DeleteIcon />
                     </IconButton>
                   </TableCell>
@@ -519,14 +748,41 @@ const ContentManagement: React.FC = () => {
             page={page}
             onPageChange={handleChangePage}
             onRowsPerPageChange={handleChangeRowsPerPage}
+            sx={{
+              color: '#E2DDF3',
+              '.MuiTablePagination-select': {
+                color: '#E2DDF3',
+                backgroundColor: '#2A2636',
+                borderColor: '#3B354D'
+              },
+              '.MuiTablePagination-selectIcon': {
+                color: '#9F9BAE'
+              },
+              '.MuiTablePagination-displayedRows': {
+                color: '#E2DDF3'
+              },
+              '.MuiTablePagination-actions': {
+                color: '#E2DDF3',
+                '& .MuiIconButton-root': {
+                  color: '#9F9BAE',
+                  '&:hover': {
+                    backgroundColor: 'rgba(77, 24, 232, 0.08)',
+                    color: '#E2DDF3'
+                  },
+                  '&.Mui-disabled': {
+                    color: '#3B354D'
+                  }
+                }
+              }
+            }}
           />
         </TableContainer>
       </TabPanel>
 
       <TabPanel value={tabValue} index={1}>
         <Grid container spacing={3}>
-          {filteredContent
-            .filter(item => item.type === 'lesson')
+          {sampleContentItems
+            .filter(item => item.type === 'AI-Generated')
             .map(content => (
             <Grid item xs={12} sm={6} md={4} key={content.id}>
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -537,13 +793,13 @@ const ContentManagement: React.FC = () => {
                   <Box sx={{ mt: 1 }}>
                     <Chip 
                       size="small" 
-                      label={content.subject} 
+                      label={content.tags.join(', ')} 
                       sx={{ mr: 1, mb: 1 }}
                     />
                     <Chip 
                       size="small" 
-                      label={content.difficulty.charAt(0).toUpperCase() + content.difficulty.slice(1)} 
-                      color={getDifficultyColor(content.difficulty) as "success" | "warning" | "error" | "default"}
+                      label={content.createdBy.charAt(0).toUpperCase() + content.createdBy.slice(1)} 
+                      color={getDifficultyColor(content.createdBy) as "success" | "warning" | "error" | "default"}
                       sx={{ mr: 1, mb: 1 }}
                     />
                     <Chip 
@@ -590,8 +846,8 @@ const ContentManagement: React.FC = () => {
 
       <TabPanel value={tabValue} index={2}>
         <Grid container spacing={3}>
-          {filteredContent
-            .filter(item => item.type === 'quiz')
+          {sampleContentItems
+            .filter(item => item.type === 'User-Generated')
             .map(content => (
             <Grid item xs={12} sm={6} md={4} key={content.id}>
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -599,17 +855,16 @@ const ContentManagement: React.FC = () => {
                   <Typography variant="h6" component="div">
                     {content.title}
                   </Typography>
-                  {/* Same card content as in Lessons tab */}
                   <Box sx={{ mt: 1 }}>
                     <Chip 
                       size="small" 
-                      label={content.subject} 
+                      label={content.tags.join(', ')} 
                       sx={{ mr: 1, mb: 1 }}
                     />
                     <Chip 
                       size="small" 
-                      label={content.difficulty.charAt(0).toUpperCase() + content.difficulty.slice(1)} 
-                      color={getDifficultyColor(content.difficulty) as "success" | "warning" | "error" | "default"}
+                      label={content.createdBy.charAt(0).toUpperCase() + content.createdBy.slice(1)} 
+                      color={getDifficultyColor(content.createdBy) as "success" | "warning" | "error" | "default"}
                       sx={{ mr: 1, mb: 1 }}
                     />
                     <Chip 
@@ -657,7 +912,7 @@ const ContentManagement: React.FC = () => {
       <TabPanel value={tabValue} index={3}>
         <Grid container spacing={3}>
           {filteredContent
-            .filter(item => item.type === 'game')
+            .filter(item => item.type === 'quiz')
             .map(content => (
             <Grid item xs={12} sm={6} md={4} key={content.id}>
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -665,17 +920,16 @@ const ContentManagement: React.FC = () => {
                   <Typography variant="h6" component="div">
                     {content.title}
                   </Typography>
-                  {/* Same card content as in other tabs */}
                   <Box sx={{ mt: 1 }}>
                     <Chip 
                       size="small" 
-                      label={content.subject} 
+                      label={content.tags.join(', ')} 
                       sx={{ mr: 1, mb: 1 }}
                     />
                     <Chip 
                       size="small" 
-                      label={content.difficulty.charAt(0).toUpperCase() + content.difficulty.slice(1)} 
-                      color={getDifficultyColor(content.difficulty) as "success" | "warning" | "error" | "default"}
+                      label={content.createdBy.charAt(0).toUpperCase() + content.createdBy.slice(1)} 
+                      color={getDifficultyColor(content.createdBy) as "success" | "warning" | "error" | "default"}
                       sx={{ mr: 1, mb: 1 }}
                     />
                     <Chip 
@@ -723,7 +977,7 @@ const ContentManagement: React.FC = () => {
       <TabPanel value={tabValue} index={4}>
         <Grid container spacing={3}>
           {filteredContent
-            .filter(item => item.type === 'challenge')
+            .filter(item => item.type === 'practice')
             .map(content => (
             <Grid item xs={12} sm={6} md={4} key={content.id}>
               <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
@@ -731,17 +985,16 @@ const ContentManagement: React.FC = () => {
                   <Typography variant="h6" component="div">
                     {content.title}
                   </Typography>
-                  {/* Same card content as in other tabs */}
                   <Box sx={{ mt: 1 }}>
                     <Chip 
                       size="small" 
-                      label={content.subject} 
+                      label={content.tags.join(', ')} 
                       sx={{ mr: 1, mb: 1 }}
                     />
                     <Chip 
                       size="small" 
-                      label={content.difficulty.charAt(0).toUpperCase() + content.difficulty.slice(1)} 
-                      color={getDifficultyColor(content.difficulty) as "success" | "warning" | "error" | "default"}
+                      label={content.createdBy.charAt(0).toUpperCase() + content.createdBy.slice(1)} 
+                      color={getDifficultyColor(content.createdBy) as "success" | "warning" | "error" | "default"}
                       sx={{ mr: 1, mb: 1 }}
                     />
                     <Chip 
@@ -786,102 +1039,242 @@ const ContentManagement: React.FC = () => {
         </Grid>
       </TabPanel>
 
-      {/* Content Preview Dialog */}
-      <Dialog open={dialogOpen} onClose={handleCloseDialog} maxWidth="md" fullWidth>
-        <DialogTitle>
-          {currentContent?.title}
+      {/* Study Material Preview Dialog */}
+      <Dialog 
+        open={dialogOpen} 
+        onClose={handleCloseDialog} 
+        maxWidth="md" 
+        fullWidth
+        PaperProps={{
+          sx: {
+            backgroundColor: '#1E1A2B',
+            border: '1px solid #3B354D',
+            borderRadius: '1rem',
+            color: '#E2DDF3'
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          borderBottom: '1px solid #3B354D',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between'
+        }}>
+          <Typography variant="h6" component="div" sx={{ color: '#E2DDF3' }}>
+            Study Material Preview
+          </Typography>
           <IconButton
             aria-label="close"
             onClick={handleCloseDialog}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
+            sx={{ 
+              color: '#9F9BAE',
+              '&:hover': {
+                color: '#E2DDF3',
+                backgroundColor: 'rgba(77, 24, 232, 0.08)'
+              }
+            }}
           >
-            X
+            <CloseIcon />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers>
-          <Box sx={{ mb: 2 }}>
-            <Chip 
-              label={currentContent?.type.charAt(0).toUpperCase() + currentContent?.type.slice(1)} 
-              sx={{ mr: 1 }}
-            />
-            <Chip 
-              label={currentContent?.subject} 
-              sx={{ mr: 1 }}
-            />
-            <Chip 
-              label={currentContent?.difficulty.charAt(0).toUpperCase() + currentContent?.difficulty.slice(1)} 
-              color={currentContent ? getDifficultyColor(currentContent.difficulty) as "success" | "warning" | "error" | "default" : "default"}
-              sx={{ mr: 1 }}
-            />
-            <Chip 
-              label={currentContent?.status.charAt(0).toUpperCase() + currentContent?.status.slice(1)} 
-              color={currentContent ? getStatusColor(currentContent.status) as "success" | "warning" | "error" | "default" : "default"}
-            />
-          </Box>
-
-          <Typography variant="subtitle2" gutterBottom>
-            Created by {currentContent?.createdBy} on {currentContent?.createdAt}
-          </Typography>
-
-          <Divider sx={{ my: 2 }} />
-
-          <Typography variant="h6" gutterBottom>
-            Content Details
-          </Typography>
-          
-          <Typography paragraph>
-            This is a preview of "{currentContent?.title}". The actual content would be displayed here, including text, images, videos, questions, or interactive elements depending on the content type.
-          </Typography>
-
-          <Typography paragraph>
-            For this {currentContent?.type} content, students will learn about topics related to {currentContent?.subject} at a {currentContent?.difficulty} level.
-          </Typography>
-
-          <Box sx={{ mt: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Engagement Metrics
+        <DialogContent dividers sx={{ borderColor: '#3B354D', p: 3 }}>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h5" gutterBottom sx={{ color: '#E2DDF3', fontWeight: 500 }}>
+              {currentContent?.title}
             </Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={4}>
-                <Paper sx={{ p: 2, textAlign: 'center' }}>
-                  <Typography variant="h4">{currentContent?.engagement.views}</Typography>
-                  <Typography variant="body2">Total Views</Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={4}>
-                <Paper sx={{ p: 2, textAlign: 'center' }}>
-                  <Typography variant="h4">{currentContent?.engagement.completions}</Typography>
-                  <Typography variant="body2">Completions</Typography>
-                </Paper>
-              </Grid>
-              <Grid item xs={4}>
-                <Paper sx={{ p: 2, textAlign: 'center' }}>
-                  <Typography variant="h4">{currentContent?.engagement.averageRating.toFixed(1)}</Typography>
-                  <Typography variant="body2">Avg. Rating (out of 5)</Typography>
-                </Paper>
-              </Grid>
-            </Grid>
-          </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2, gap: 1 }}>
+              <Chip 
+                label={currentContent?.type.charAt(0).toUpperCase() + currentContent?.type.slice(1)} 
+                sx={{ 
+                  backgroundColor: '#2A2636',
+                  color: '#E2DDF3',
+                  border: '1px solid #3B354D'
+                }}
+              />
+              <Chip 
+                label={currentContent?.tags.join(', ')} 
+                sx={{ 
+                  backgroundColor: '#2A2636',
+                  color: '#E2DDF3',
+                  border: '1px solid #3B354D'
+                }}
+              />
+              <Chip 
+                label={currentContent?.createdBy.charAt(0).toUpperCase() + currentContent?.createdBy.slice(1)} 
+                color={getDifficultyColor(currentContent?.createdBy) as "success" | "warning" | "error" | "default"}
+                sx={{ 
+                  backgroundColor: 'rgba(77, 24, 232, 0.1)',
+                  color: '#E2DDF3',
+                  border: '1px solid rgba(77, 24, 232, 0.2)'
+                }}
+              />
+              <Chip 
+                label={currentContent?.status.charAt(0).toUpperCase() + currentContent?.status.slice(1)} 
+                color={getStatusColor(currentContent?.status) as "success" | "warning" | "error" | "default"}
+                sx={{ 
+                  '&.MuiChip-colorSuccess': {
+                    backgroundColor: 'rgba(46, 196, 134, 0.1)',
+                    color: '#2EC486',
+                    border: '1px solid rgba(46, 196, 134, 0.2)'
+                  },
+                  '&.MuiChip-colorWarning': {
+                    backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                    color: '#FF9800',
+                    border: '1px solid rgba(255, 152, 0, 0.2)'
+                  },
+                  '&.MuiChip-colorError': {
+                    backgroundColor: 'rgba(255, 82, 82, 0.1)',
+                    color: '#FF5252',
+                    border: '1px solid rgba(255, 82, 82, 0.2)'
+                  }
+                }}
+              />
+            </Box>
 
-          <Box sx={{ mt: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Tags
+            <Typography variant="subtitle2" sx={{ color: '#9F9BAE', mb: 2 }}>
+              Created by {currentContent?.createdBy} • {currentContent?.createdAt}
             </Typography>
-            <Box>
-              {currentContent?.tags.map(tag => (
-                <Chip key={tag} label={tag} sx={{ mr: 1, mb: 1 }} />
-              ))}
+
+            <Box sx={{ mb: 3 }}>
+              <Typography variant="subtitle1" gutterBottom sx={{ color: '#E2DDF3', fontWeight: 500 }}>
+                Tags
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                {currentContent?.tags.map((tag, index) => (
+                  <Chip 
+                    key={index}
+                    label={tag}
+                    size="small"
+                    sx={{ 
+                      backgroundColor: '#2A2636',
+                      color: '#9F9BAE',
+                      border: '1px solid #3B354D',
+                      '&:hover': {
+                        backgroundColor: '#3B354D'
+                      }
+                    }}
+                  />
+                ))}
+              </Box>
+            </Box>
+
+            <Divider sx={{ my: 3, borderColor: '#3B354D' }} />
+
+            <Typography variant="h6" gutterBottom sx={{ color: '#E2DDF3', fontWeight: 500 }}>
+              Study Material Content
+            </Typography>
+            
+            <Box sx={{ 
+              backgroundColor: '#2A2636',
+              border: '1px solid #3B354D',
+              borderRadius: '0.5rem',
+              p: 2,
+              mb: 3
+            }}>
+              <Typography sx={{ color: '#9F9BAE' }}>
+                {currentContent?.type === 'flashcards' && 'A set of flashcards for interactive learning'}
+                {currentContent?.type === 'notes' && 'Comprehensive study notes with key concepts'}
+                {currentContent?.type === 'quiz' && 'Interactive quiz with multiple choice questions'}
+                {currentContent?.type === 'practice' && 'Practice exercises with step-by-step solutions'}
+              </Typography>
+            </Box>
+
+            <Box sx={{ mt: 3 }}>
+              <Typography variant="h6" gutterBottom sx={{ color: '#E2DDF3', fontWeight: 500 }}>
+                Engagement Metrics
+              </Typography>
+              <Grid container spacing={2}>
+                <Grid item xs={4}>
+                  <Paper sx={{ 
+                    p: 2, 
+                    textAlign: 'center',
+                    backgroundColor: '#2A2636',
+                    border: '1px solid #3B354D',
+                    borderRadius: '0.5rem'
+                  }}>
+                    <Typography variant="h4" sx={{ color: '#E2DDF3' }}>
+                      {currentContent?.engagement.views.toLocaleString()}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#9F9BAE' }}>Total Views</Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={4}>
+                  <Paper sx={{ 
+                    p: 2, 
+                    textAlign: 'center',
+                    backgroundColor: '#2A2636',
+                    border: '1px solid #3B354D',
+                    borderRadius: '0.5rem'
+                  }}>
+                    <Typography variant="h4" sx={{ color: '#E2DDF3' }}>
+                      {currentContent?.engagement.completions.toLocaleString()}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#9F9BAE' }}>Completions</Typography>
+                  </Paper>
+                </Grid>
+                <Grid item xs={4}>
+                  <Paper sx={{ 
+                    p: 2, 
+                    textAlign: 'center',
+                    backgroundColor: '#2A2636',
+                    border: '1px solid #3B354D',
+                    borderRadius: '0.5rem'
+                  }}>
+                    <Typography variant="h4" sx={{ color: '#E2DDF3' }}>
+                      {currentContent?.engagement.averageRating.toFixed(1)}
+                    </Typography>
+                    <Typography variant="body2" sx={{ color: '#9F9BAE' }}>Avg. Rating</Typography>
+                  </Paper>
+                </Grid>
+              </Grid>
             </Box>
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseDialog}>Close</Button>
-          <Button variant="outlined" startIcon={<EditIcon />} color="primary">
-            Edit Content
+        <DialogActions sx={{ 
+          borderTop: '1px solid #3B354D',
+          p: 2,
+          gap: 1
+        }}>
+          <Button 
+            onClick={handleCloseDialog}
+            sx={{ 
+              color: '#9F9BAE',
+              '&:hover': {
+                color: '#E2DDF3',
+                backgroundColor: 'rgba(77, 24, 232, 0.08)'
+              }
+            }}
+          >
+            Close
           </Button>
-          <Button variant="contained" color="primary">
-            Publish Changes
+          <Button 
+            variant="outlined" 
+            startIcon={<EditIcon />} 
+            sx={{ 
+              borderColor: '#4D18E8',
+              color: '#4D18E8',
+              '&:hover': {
+                borderColor: '#3b10b9',
+                backgroundColor: 'rgba(77, 24, 232, 0.08)'
+              }
+            }}
+          >
+            Edit Material
           </Button>
+          {currentContent?.status !== 'published' && (
+            <Button 
+              variant="contained" 
+              sx={{ 
+                backgroundColor: '#4D18E8',
+                color: '#E2DDF3',
+                '&:hover': {
+                  backgroundColor: '#3b10b9'
+                }
+              }}
+            >
+              Publish Material
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </Box>

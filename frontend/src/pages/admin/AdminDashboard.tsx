@@ -110,95 +110,127 @@ const AdminDashboard: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom component="h1">
+    <Box sx={{ p: 3, backgroundColor: '#080511', minHeight: '100vh' }}>
+      <Typography variant="h4" gutterBottom component="h1" sx={{ color: '#E2DDF3' }}>
         Admin Dashboard
       </Typography>
-      <Typography variant="subtitle1" gutterBottom color="text.secondary">
+      <Typography variant="subtitle1" gutterBottom color="text.secondary" sx={{ color: '#9F9BAE' }}>
         Welcome to your admin control center. Monitor system health, user activity, and content performance.
       </Typography>
 
       {/* Quick Stats */}
       <Grid container spacing={3} sx={{ mb: 4, mt: 1 }}>
         <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 140 }}>
+          <Paper sx={{ 
+            p: 2, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            height: 140,
+            backgroundColor: '#1E1A2B',
+            border: '1px solid #3B354D',
+            borderRadius: '1rem'
+          }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography color="text.secondary" variant="subtitle2" gutterBottom>
+              <Typography color="#9F9BAE" variant="subtitle2" gutterBottom>
                 Total Users
               </Typography>
-              <Avatar sx={{ bgcolor: '#0088FE', width: 32, height: 32 }}>
+              <Avatar sx={{ bgcolor: '#4D18E8', width: 32, height: 32 }}>
                 <PeopleIcon fontSize="small" />
               </Avatar>
             </Box>
-            <Typography component="p" variant="h4" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+            <Typography component="p" variant="h4" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', color: '#E2DDF3' }}>
               1,642
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <TrendingUpIcon sx={{ color: 'success.main', mr: 1, fontSize: 18 }} />
-              <Typography variant="body2" color="success.main">
+              <TrendingUpIcon sx={{ color: '#2EC486', mr: 1, fontSize: 18 }} />
+              <Typography variant="body2" sx={{ color: '#2EC486' }}>
                 +12% from last month
               </Typography>
             </Box>
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 140 }}>
+          <Paper sx={{ 
+            p: 2, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            height: 140,
+            backgroundColor: '#1E1A2B',
+            border: '1px solid #3B354D',
+            borderRadius: '1rem'
+          }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography color="text.secondary" variant="subtitle2" gutterBottom>
-                Content Items
+              <Typography color="#9F9BAE" variant="subtitle2" gutterBottom>
+                Study Material Created
               </Typography>
-              <Avatar sx={{ bgcolor: '#00C49F', width: 32, height: 32 }}>
+              <Avatar sx={{ bgcolor: '#4D18E8', width: 32, height: 32 }}>
                 <MenuBookIcon fontSize="small" />
               </Avatar>
             </Box>
-            <Typography component="p" variant="h4" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+            <Typography component="p" variant="h4" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', color: '#E2DDF3' }}>
               853
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <TrendingUpIcon sx={{ color: 'success.main', mr: 1, fontSize: 18 }} />
-              <Typography variant="body2" color="success.main">
+              <TrendingUpIcon sx={{ color: '#2EC486', mr: 1, fontSize: 18 }} />
+              <Typography variant="body2" sx={{ color: '#2EC486' }}>
                 +8% from last month
               </Typography>
             </Box>
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 140 }}>
+          <Paper sx={{ 
+            p: 2, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            height: 140,
+            backgroundColor: '#1E1A2B',
+            border: '1px solid #3B354D',
+            borderRadius: '1rem'
+          }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography color="text.secondary" variant="subtitle2" gutterBottom>
-                Course Completions
+              <Typography color="#9F9BAE" variant="subtitle2" gutterBottom>
+                Study Materials Played
               </Typography>
-              <Avatar sx={{ bgcolor: '#FFBB28', width: 32, height: 32 }}>
+              <Avatar sx={{ bgcolor: '#4D18E8', width: 32, height: 32 }}>
                 <SchoolIcon fontSize="small" />
               </Avatar>
             </Box>
-            <Typography component="p" variant="h4" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+            <Typography component="p" variant="h4" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', color: '#E2DDF3' }}>
               3,427
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <TrendingUpIcon sx={{ color: 'success.main', mr: 1, fontSize: 18 }} />
-              <Typography variant="body2" color="success.main">
+              <TrendingUpIcon sx={{ color: '#2EC486', mr: 1, fontSize: 18 }} />
+              <Typography variant="body2" sx={{ color: '#2EC486' }}>
                 +15% from last month
               </Typography>
             </Box>
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', height: 140 }}>
+          <Paper sx={{ 
+            p: 2, 
+            display: 'flex', 
+            flexDirection: 'column', 
+            height: 140,
+            backgroundColor: '#1E1A2B',
+            border: '1px solid #3B354D',
+            borderRadius: '1rem'
+          }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography color="text.secondary" variant="subtitle2" gutterBottom>
-                Quiz Submissions
+              <Typography color="#9F9BAE" variant="subtitle2" gutterBottom>
+                PVP Matches Played
               </Typography>
-              <Avatar sx={{ bgcolor: '#FF8042', width: 32, height: 32 }}>
+              <Avatar sx={{ bgcolor: '#4D18E8', width: 32, height: 32 }}>
                 <QuizIcon fontSize="small" />
               </Avatar>
             </Box>
-            <Typography component="p" variant="h4" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center' }}>
+            <Typography component="p" variant="h4" sx={{ flexGrow: 1, display: 'flex', alignItems: 'center', color: '#E2DDF3' }}>
               7,842
             </Typography>
             <Box sx={{ display: 'flex', alignItems: 'center' }}>
-              <TrendingDownIcon sx={{ color: 'error.main', mr: 1, fontSize: 18 }} />
-              <Typography variant="body2" color="error.main">
+              <TrendingDownIcon sx={{ color: '#FF5252', mr: 1, fontSize: 18 }} />
+              <Typography variant="body2" sx={{ color: '#FF5252' }}>
                 -3% from last month
               </Typography>
             </Box>
@@ -207,60 +239,127 @@ const AdminDashboard: React.FC = () => {
       </Grid>
 
       {/* System Health */}
-      <Paper sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6" gutterBottom>
+      <Paper sx={{ 
+        p: 3, 
+        mb: 4,
+        backgroundColor: '#1E1A2B',
+        border: '1px solid #3B354D',
+        borderRadius: '1rem'
+      }}>
+        <Typography variant="h6" gutterBottom sx={{ color: '#E2DDF3' }}>
           System Health
         </Typography>
         <Grid container spacing={3}>
           <Grid item xs={12} md={6}>
             <Box sx={{ mb: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2">Server Load</Typography>
-                <Typography variant="body2" color="text.secondary">68%</Typography>
+                <Typography variant="body2" sx={{ color: '#E2DDF3' }}>Server Load</Typography>
+                <Typography variant="body2" sx={{ color: '#9F9BAE' }}>68%</Typography>
               </Box>
-              <LinearProgress variant="determinate" value={68} color="warning" sx={{ height: 8, borderRadius: 5 }} />
+              <LinearProgress 
+                variant="determinate" 
+                value={68} 
+                color="warning" 
+                sx={{ 
+                  height: 8, 
+                  borderRadius: 5,
+                  backgroundColor: '#3B354D',
+                  '& .MuiLinearProgress-bar': {
+                    backgroundColor: '#4D18E8'
+                  }
+                }} 
+              />
             </Box>
             <Box sx={{ mb: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2">Database Performance</Typography>
-                <Typography variant="body2" color="text.secondary">92%</Typography>
+                <Typography variant="body2" sx={{ color: '#E2DDF3' }}>Database Performance</Typography>
+                <Typography variant="body2" sx={{ color: '#9F9BAE' }}>92%</Typography>
               </Box>
-              <LinearProgress variant="determinate" value={92} color="success" sx={{ height: 8, borderRadius: 5 }} />
+              <LinearProgress 
+                variant="determinate" 
+                value={92} 
+                sx={{ 
+                  height: 8, 
+                  borderRadius: 5,
+                  backgroundColor: '#3B354D',
+                  '& .MuiLinearProgress-bar': {
+                    backgroundColor: '#2EC486'
+                  }
+                }} 
+              />
             </Box>
             <Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="body2">Storage Capacity</Typography>
-                <Typography variant="body2" color="text.secondary">45%</Typography>
+                <Typography variant="body2" sx={{ color: '#E2DDF3' }}>Storage Capacity</Typography>
+                <Typography variant="body2" sx={{ color: '#9F9BAE' }}>45%</Typography>
               </Box>
-              <LinearProgress variant="determinate" value={45} color="info" sx={{ height: 8, borderRadius: 5 }} />
+              <LinearProgress 
+                variant="determinate" 
+                value={45} 
+                sx={{ 
+                  height: 8, 
+                  borderRadius: 5,
+                  backgroundColor: '#3B354D',
+                  '& .MuiLinearProgress-bar': {
+                    backgroundColor: '#4D18E8'
+                  }
+                }} 
+              />
             </Box>
           </Grid>
           <Grid item xs={12} md={6}>
             <Box sx={{ mb: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
-                  <Typography variant="body1" fontWeight="medium">Active Servers</Typography>
-                  <Typography variant="body2" color="text.secondary">All servers operational</Typography>
+                  <Typography variant="body1" sx={{ color: '#E2DDF3', fontWeight: 'medium' }}>Active Servers</Typography>
+                  <Typography variant="body2" sx={{ color: '#9F9BAE' }}>All servers operational</Typography>
                 </Box>
-                <Chip label="Healthy" color="success" size="small" />
+                <Chip 
+                  label="Healthy" 
+                  color="success" 
+                  size="small"
+                  sx={{
+                    backgroundColor: 'rgba(46, 196, 134, 0.1)',
+                    color: '#2EC486',
+                    border: '1px solid rgba(46, 196, 134, 0.2)'
+                  }}
+                />
               </Box>
             </Box>
             <Box sx={{ mb: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
-                  <Typography variant="body1" fontWeight="medium">API Status</Typography>
-                  <Typography variant="body2" color="text.secondary">All endpoints responding normally</Typography>
+                  <Typography variant="body1" sx={{ color: '#E2DDF3', fontWeight: 'medium' }}>API Status</Typography>
+                  <Typography variant="body2" sx={{ color: '#9F9BAE' }}>All endpoints responding normally</Typography>
                 </Box>
-                <Chip label="Operational" color="success" size="small" />
+                <Chip 
+                  label="Operational" 
+                  color="success" 
+                  size="small"
+                  sx={{
+                    backgroundColor: 'rgba(46, 196, 134, 0.1)',
+                    color: '#2EC486',
+                    border: '1px solid rgba(46, 196, 134, 0.2)'
+                  }}
+                />
               </Box>
             </Box>
             <Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Box>
-                  <Typography variant="body1" fontWeight="medium">Backup Status</Typography>
-                  <Typography variant="body2" color="text.secondary">Last backup: 6 hours ago</Typography>
+                  <Typography variant="body1" sx={{ color: '#E2DDF3', fontWeight: 'medium' }}>Backup Status</Typography>
+                  <Typography variant="body2" sx={{ color: '#9F9BAE' }}>Last backup: 6 hours ago</Typography>
                 </Box>
-                <Chip label="Up to Date" color="success" size="small" />
+                <Chip 
+                  label="Up to Date" 
+                  color="success" 
+                  size="small"
+                  sx={{
+                    backgroundColor: 'rgba(46, 196, 134, 0.1)',
+                    color: '#2EC486',
+                    border: '1px solid rgba(46, 196, 134, 0.2)'
+                  }}
+                />
               </Box>
             </Box>
           </Grid>
@@ -271,8 +370,14 @@ const AdminDashboard: React.FC = () => {
       <Grid container spacing={4}>
         {/* User Statistics Chart */}
         <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom sx={{ mb: 3 }}>
+          <Paper sx={{ 
+            p: 3, 
+            height: '100%',
+            backgroundColor: '#1E1A2B',
+            border: '1px solid #3B354D',
+            borderRadius: '1rem'
+          }}>
+            <Typography variant="h6" gutterBottom sx={{ mb: 3, color: '#E2DDF3' }}>
               User Growth Statistics
             </Typography>
             <ResponsiveContainer width="100%" height={300}>
@@ -280,13 +385,20 @@ const AdminDashboard: React.FC = () => {
                 data={userStatisticsData}
                 margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
               >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="active" name="Active Users" fill="#0088FE" />
-                <Bar dataKey="new" name="New Users" fill="#00C49F" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#3B354D" />
+                <XAxis dataKey="name" stroke="#9F9BAE" />
+                <YAxis stroke="#9F9BAE" />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: '#2A2636',
+                    border: '1px solid #3B354D',
+                    borderRadius: '0.5rem',
+                    color: '#E2DDF3'
+                  }}
+                />
+                <Legend wrapperStyle={{ color: '#9F9BAE' }} />
+                <Bar dataKey="active" name="Active Users" fill="#4D18E8" />
+                <Bar dataKey="new" name="New Users" fill="#2EC486" />
               </BarChart>
             </ResponsiveContainer>
           </Paper>
@@ -294,8 +406,14 @@ const AdminDashboard: React.FC = () => {
 
         {/* User Distribution Pie Chart */}
         <Grid item xs={12} md={4}>
-          <Paper sx={{ p: 3, height: '100%' }}>
-            <Typography variant="h6" gutterBottom>
+          <Paper sx={{ 
+            p: 3, 
+            height: '100%',
+            backgroundColor: '#1E1A2B',
+            border: '1px solid #3B354D',
+            borderRadius: '1rem'
+          }}>
+            <Typography variant="h6" gutterBottom sx={{ color: '#E2DDF3' }}>
               User Distribution
             </Typography>
             <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 300 }}>
@@ -312,10 +430,17 @@ const AdminDashboard: React.FC = () => {
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
                     {userTypeData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={['#4D18E8', '#2EC486', '#FF9800', '#FF5252'][index % 4]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#2A2636',
+                      border: '1px solid #3B354D',
+                      borderRadius: '0.5rem',
+                      color: '#E2DDF3'
+                    }}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </Box>
@@ -324,12 +449,26 @@ const AdminDashboard: React.FC = () => {
 
         {/* Recent Activity */}
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
+          <Paper sx={{ 
+            p: 3,
+            backgroundColor: '#1E1A2B',
+            border: '1px solid #3B354D',
+            borderRadius: '1rem'
+          }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-              <Typography variant="h6">
+              <Typography variant="h6" sx={{ color: '#E2DDF3' }}>
                 Recent Activity
               </Typography>
-              <Button variant="text" size="small">
+              <Button 
+                variant="text" 
+                size="small"
+                sx={{ 
+                  color: '#4D18E8',
+                  '&:hover': {
+                    backgroundColor: 'rgba(77, 24, 232, 0.08)'
+                  }
+                }}
+              >
                 View All
               </Button>
             </Box>
@@ -339,7 +478,7 @@ const AdminDashboard: React.FC = () => {
                   <ListItem
                     alignItems="flex-start"
                     secondaryAction={
-                      <IconButton edge="end" aria-label="more">
+                      <IconButton edge="end" aria-label="more" sx={{ color: '#9F9BAE' }}>
                         <MoreVertIcon />
                       </IconButton>
                     }
@@ -350,23 +489,34 @@ const AdminDashboard: React.FC = () => {
                       </Avatar>
                     </ListItemAvatar>
                     <ListItemText
-                      primary={activity.title}
+                      primary={
+                        <Typography sx={{ color: '#E2DDF3' }}>
+                          {activity.title}
+                        </Typography>
+                      }
                       secondary={
                         <React.Fragment>
                           <Typography
-                            sx={{ display: 'inline' }}
+                            sx={{ display: 'inline', color: '#9F9BAE' }}
                             component="span"
                             variant="body2"
-                            color="text.primary"
                           >
                             {activity.description}
                           </Typography>
+                          <Typography
+                            sx={{ display: 'inline', color: '#6F658D', ml: 1 }}
+                            component="span"
+                            variant="body2"
+                          >
                           {" — "}{activity.time}
+                          </Typography>
                         </React.Fragment>
                       }
                     />
                   </ListItem>
-                  {index < recentActivityData.length - 1 && <Divider variant="inset" component="li" />}
+                  {index < recentActivityData.length - 1 && (
+                    <Divider variant="inset" component="li" sx={{ borderColor: '#3B354D' }} />
+                  )}
                 </React.Fragment>
               ))}
             </List>
@@ -375,131 +525,52 @@ const AdminDashboard: React.FC = () => {
 
         {/* Quick Actions */}
         <Grid item xs={12} md={6}>
-          <Paper sx={{ p: 3 }}>
-            <Typography variant="h6" gutterBottom>
+          <Paper sx={{ 
+            p: 3,
+            backgroundColor: '#1E1A2B',
+            border: '1px solid #3B354D',
+            borderRadius: '1rem'
+          }}>
+            <Typography variant="h6" gutterBottom sx={{ color: '#E2DDF3' }}>
               Quick Actions
             </Typography>
             <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={6} md={4}>
+              {[
+                { title: 'User Management', icon: <PeopleIcon />, path: '/admin/user-management' },
+                { title: 'Content Management', icon: <MenuBookIcon />, path: '/admin/content-management' },
+                { title: 'Create Content', icon: <QuizIcon />, path: '/admin/create-content' },
+                { title: 'Settings', icon: <SettingsIcon />, path: '/admin/settings' },
+                { title: 'Notifications', icon: <NotificationsIcon />, path: '/admin/notifications' },
+                { title: 'Support', icon: <HelpIcon />, path: '/admin/support' }
+              ].map((action, index) => (
+                <Grid item xs={6} md={4} key={index}>
                 <Card 
                   sx={{ 
                     textAlign: 'center', 
                     cursor: 'pointer',
                     transition: 'all 0.3s',
-                    '&:hover': { transform: 'translateY(-5px)', boxShadow: 3 }
-                  }}
-                  onClick={() => handleNavigate('/admin/user-management')}
+                      backgroundColor: '#2A2636',
+                      border: '1px solid #3B354D',
+                      '&:hover': { 
+                        transform: 'translateY(-5px)', 
+                        boxShadow: 3,
+                        borderColor: '#4D18E8',
+                        backgroundColor: '#312E44'
+                      }
+                    }}
+                    onClick={() => handleNavigate(action.path)}
                 >
                   <CardContent>
-                    <Avatar sx={{ bgcolor: '#0088FE', margin: '0 auto', mb: 1 }}>
-                      <PeopleIcon />
+                      <Avatar sx={{ bgcolor: '#4D18E8', margin: '0 auto', mb: 1 }}>
+                        {action.icon}
                     </Avatar>
-                    <Typography variant="body1">
-                      User Management
+                      <Typography variant="body1" sx={{ color: '#E2DDF3' }}>
+                        {action.title}
                     </Typography>
                   </CardContent>
                 </Card>
               </Grid>
-              <Grid item xs={6} md={4}>
-                <Card 
-                  sx={{ 
-                    textAlign: 'center', 
-                    cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    '&:hover': { transform: 'translateY(-5px)', boxShadow: 3 }
-                  }}
-                  onClick={() => handleNavigate('/admin/content-management')}
-                >
-                  <CardContent>
-                    <Avatar sx={{ bgcolor: '#00C49F', margin: '0 auto', mb: 1 }}>
-                      <MenuBookIcon />
-                    </Avatar>
-                    <Typography variant="body1">
-                      Content Management
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={6} md={4}>
-                <Card 
-                  sx={{ 
-                    textAlign: 'center', 
-                    cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    '&:hover': { transform: 'translateY(-5px)', boxShadow: 3 }
-                  }}
-                  onClick={() => handleNavigate('/admin/create-content')}
-                >
-                  <CardContent>
-                    <Avatar sx={{ bgcolor: '#FFBB28', margin: '0 auto', mb: 1 }}>
-                      <QuizIcon />
-                    </Avatar>
-                    <Typography variant="body1">
-                      Create Content
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={6} md={4}>
-                <Card 
-                  sx={{ 
-                    textAlign: 'center', 
-                    cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    '&:hover': { transform: 'translateY(-5px)', boxShadow: 3 }
-                  }}
-                  onClick={() => handleNavigate('/admin/settings')}
-                >
-                  <CardContent>
-                    <Avatar sx={{ bgcolor: '#FF8042', margin: '0 auto', mb: 1 }}>
-                      <SettingsIcon />
-                    </Avatar>
-                    <Typography variant="body1">
-                      Settings
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={6} md={4}>
-                <Card 
-                  sx={{ 
-                    textAlign: 'center', 
-                    cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    '&:hover': { transform: 'translateY(-5px)', boxShadow: 3 }
-                  }}
-                  onClick={() => handleNavigate('/admin/notifications')}
-                >
-                  <CardContent>
-                    <Avatar sx={{ bgcolor: '#4CAF50', margin: '0 auto', mb: 1 }}>
-                      <NotificationsIcon />
-                    </Avatar>
-                    <Typography variant="body1">
-                      Notifications
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-              <Grid item xs={6} md={4}>
-                <Card 
-                  sx={{ 
-                    textAlign: 'center', 
-                    cursor: 'pointer',
-                    transition: 'all 0.3s',
-                    '&:hover': { transform: 'translateY(-5px)', boxShadow: 3 }
-                  }}
-                  onClick={() => handleNavigate('/admin/support')}
-                >
-                  <CardContent>
-                    <Avatar sx={{ bgcolor: '#9C27B0', margin: '0 auto', mb: 1 }}>
-                      <HelpIcon />
-                    </Avatar>
-                    <Typography variant="body1">
-                      Support
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
+              ))}
             </Grid>
           </Paper>
         </Grid>
