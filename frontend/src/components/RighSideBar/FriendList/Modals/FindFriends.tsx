@@ -170,7 +170,7 @@ const FindFriends: React.FC = () => {
             value={searchQuery}
             autoFocus
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-3 rounded-[0.8rem] bg-[#2A2A3B] border border-[#3B354C] focus:outline-none focus:border-[#6F658D]"
+            className="w-full px-4 py-3 rounded-[0.8rem] bg-[#3B354D] border border-[#3B354C] focus:outline-none focus:border-[#6F658D]"
           />
         </div>
         {users.length === 0 ? (
@@ -306,7 +306,6 @@ const FindFriends: React.FC = () => {
         open={snackbar.open}
         message={snackbar.message}
         onClose={handleCloseSnackbar}
-        // Increase auto-hide duration to give user more time to see the notification
         autoHideDuration={6000}
       />
     </>

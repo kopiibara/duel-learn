@@ -8,6 +8,7 @@ import userInfoRoutes from "./routes/UserInfoRoutes.js";
 import lobbyRoutes from "./routes/lobby.routes.js";
 import battleRoutes from './routes/battle.routes.js';
 import openAiRoutes from './routes/OpenAiRoutes.js';
+import searchRoutes from './routes/SearchRoutes.js'; // Import search routes
 import adminRoutes from "./routes/admin/AdminRoutes.js"; // Import admin routes
 import { corsMiddleware } from './middleware/CorsMiddleware.js'; // Import CORS middleware
 import { coopMiddleware } from './middleware/CoopMiddleware.js'; // Import COOP middleware
@@ -44,6 +45,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/friend", friendRoutes);
 app.use("/api/user-info", userInfoRoutes);
 app.use("/api/lobby", lobbyRoutes);
+app.use("/api/search", searchRoutes);
 app.use("/api/battle", battleRoutes);
 app.use("/api/openai", openAiRoutes);
 app.use("/api/admin", adminRoutes); // Mount admin routes under /api/admin

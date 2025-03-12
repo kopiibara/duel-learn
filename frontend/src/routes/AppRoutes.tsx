@@ -50,7 +50,9 @@ const AppRoutes: React.FC = () => {
         <Route path="/dashboard/*" element={<PrivateRoutes />} />
         <Route path="/admin-sign-up" element={<AdminSignUp />} />
         <Route path="/admin/*" element={<AdminRoutes />} />
-        
+
+        {/* Search page route */}
+
         {/* This wildcard route should be the VERY LAST route to catch all undefined routes */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

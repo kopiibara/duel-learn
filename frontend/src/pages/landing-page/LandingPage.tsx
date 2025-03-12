@@ -10,6 +10,20 @@ import PremiumSection from "./components/PremiumSection";
 import Footer from "./components/Footer";
 
 const LandingPage = () => {
+  const navigate = useNavigate();
+
+  const handleDashboard = () => {
+    navigate("/dashboard/home"); // Navigate to the dashboard
+  };
+
+  const handleLogin = () => {
+    navigate("/login"); // Navigate to the login page
+  };
+
+  const handleAdmin = () => {
+    navigate("/admin/dashboard"); // Navigate to the admin dashboard
+  };
+
   return (
     <PageTransition>
       <Box

@@ -58,6 +58,7 @@ export default function InviteSnackbar({
             justifyContent: "center",
             padding: "0.5rem 2rem",
             borderRadius: "0.8rem",
+            gap: "0.5rem",
             boxShadow: "0px 4px 10px rgba(0, 0, 0, 0.2)", // Add shadow
             marginBottom: "0.8rem", // Add margin at the bottom
           },

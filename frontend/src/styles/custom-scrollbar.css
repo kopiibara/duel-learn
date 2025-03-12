@@ -2,7 +2,7 @@
 
 ::-webkit-scrollbar-thumb {
   background-color: #382e53; /* Sets the thumb color */
-  border-radius: 10px; /* Optional: round the thumb edges */
+  border-radius: "full"; /* Optional: round the thumb edges */
 }
 
 ::-webkit-scrollbar-thumb:hover {

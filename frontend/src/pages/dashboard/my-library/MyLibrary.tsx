@@ -376,7 +376,7 @@ const MyLibraryPage = () => {
             <Typography variant="h6" color="inherit">
               My Library
             </Typography>
-            <Typography variant="subtitle2">•</Typography>
+            <Typography variant="subtitle2">—</Typography>
             <Typography variant="h6">{count}</Typography>
             <Box flexGrow={1} />
 

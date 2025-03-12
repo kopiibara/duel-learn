@@ -751,7 +751,8 @@ const studyMaterialController = {
 
       // Get study material info before deleting (for cache invalidation)
       const [studyMaterialInfo] = await connection.execute(
-        `SELECT created_by, created_by_id, title FROM study_material_info WHERE study_material_id = ?`,
+        `SELECT created_by, created_by_id, title FROM study_material_info WHERE 
+         study_material_id = ?`,
         [studyMaterialId]
       );
 
@@ -1073,6 +1074,36 @@ const studyMaterialController = {
       connection.release();
     }
   },
+
+  updateVisibility: async (req, res) => {
+    const connection = await pool.getConnection();
+    try {
+      const { studyMaterialId } = req.params;
+      const { visibility } = req.body;
+
+      await connection.execute(
+        `UPDATE study_material_info
+          SET visibility = ?
+          WHERE study_material_id = ?`,
+        [visibility, studyMaterialId]
+      );
+
+      // Clear specific study material cache
+      studyMaterialCache.del(`study_material_${studyMaterialId}`);
+
+      res.status(200).json({
+        message: "Visibility updated successfully",
+        studyMaterialId,
+        visibility
+      });
+    } catch (error) {
+      console.error("Error updating visibility:", error);
+      res.status(500).json({ error: "Internal server error", details: error.message });
+    } finally {
+      connection.release();
+    }
+  },
+
 
   incrementViews: async (req, res) => {
     const connection = await pool.getConnection();

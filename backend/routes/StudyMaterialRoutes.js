@@ -12,6 +12,7 @@ router.post("/restore/:studyMaterialId", studyMaterialController.restoreStudyMat
 router.post('/increment-views/:studyMaterialId', studyMaterialController.incrementViews);
 router.post("/bookmark", studyMaterialController.bookmarkStudyMaterial);
 router.post("/update-creator", studyMaterialController.updateCreatedByUser);
+router.post("/update-visibility/:studyMaterialId", studyMaterialController.updateVisibility);
 
 router.get("/get-by-study-material-id/:studyMaterialId", studyMaterialController.getStudyMaterialById);
 router.get("/get-by-user/:created_by", studyMaterialController.getStudyMaterialByUser);
