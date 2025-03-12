@@ -119,11 +119,13 @@ if (isVerifying) {
     localStorage.removeItem("emailTimestamp");
 
     // Navigate based on user type and status
-    if (user.account_type === "admin") {
-      navigate("/admin/admin-dashboard");
-    } else if (isNew) {
+    if(isNew && user.email_verified){
       navigate("/dashboard/welcome");
-    } else {
+    }
+    else if (user.account_type === "admin" && !isNew && user.email_verified) {
+      navigate("/admin/admin-dashboard");
+    }
+    else {
       navigate("/dashboard/home");
     }
   };
