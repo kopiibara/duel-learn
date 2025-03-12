@@ -7,6 +7,7 @@ import "./styles/HostModeSelection.css";
 import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
 import "../../../../../user-onboarding/styles/EffectUserOnboarding.css";
 import CardBackImg from "../../../../../../assets/General/CardDesignBack.png";
+import DefaultBackHoverCard from "../../../../../../assets/General/DefaultBackHoverCard.png";
 
 export default function Player2ModeSelection() {
   const location = useLocation();
@@ -170,13 +171,14 @@ export default function Player2ModeSelection() {
                       src={CardBackImg}
                       alt="Card back design"
                       className="w-full h-full object-contain"
-                      style={{ borderRadius: "0.5rem" }}
                     />
                   </div>
                   <div className="flip-card-back">
-                    <div className="card-content p-0 w-full h-full">
-                      <p>MSMSMSMS</p>
-                    </div>
+                    <img
+                      src={DefaultBackHoverCard}
+                      alt="Card hover design"
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                 </div>
               </div>
