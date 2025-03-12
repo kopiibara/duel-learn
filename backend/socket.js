@@ -583,6 +583,29 @@ const setupSocket = (server) => {
         console.error("Error handling lobby material update:", error);
       }
     });
+
+    socket.on("player_ready_state_changed", (data) => {
+      try {
+        const { lobbyCode, playerId, isReady } = data;
+
+        if (!lobbyCode || playerId === undefined) {
+          console.error("Missing required ready state data");
+          return;
+        }
+
+        console.log(`🎮 Player ${playerId} ready state changed to ${isReady} in lobby ${lobbyCode}`);
+
+        // Broadcast to everyone in the lobby
+        socket.to(lobbyCode).emit("player_ready_state_changed", {
+          lobbyCode,
+          playerId,
+          isReady
+        });
+
+      } catch (error) {
+        console.error("Error in player_ready_state_changed handler:", error);
+      }
+    });
   });
 
   // Global error handler for the io server

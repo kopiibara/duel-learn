@@ -24,6 +24,7 @@ import defaultAvatar from "../../../../../assets/profile-picture/bunny-picture.p
 import { io, Socket } from "socket.io-client";
 import axios from "axios";
 import SocketService from "../../../../../services/socketService";
+import CircularProgress from "@mui/material/CircularProgress";
 
 interface Player {
   firebase_uid: string;
@@ -52,6 +53,13 @@ interface InvitedPlayerStatus {
   invitedAt: Date;
 }
 
+// Define a type for the study material
+interface StudyMaterial {
+  title: string;
+  id?: string;
+  [key: string]: any; // For any other properties
+}
+
 const PVPLobby: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -74,7 +82,7 @@ const PVPLobby: React.FC = () => {
 
   const { user, loading } = useUser(); // Get the user and loading state from UserContext
 
-  const [manaPoints, setManaPoints] = useState(0); // Example starting mana points
+  const [manaPoints, setManaPoints] = useState(40); // Example starting mana points
   const [_openManaAlert, setOpenManaAlert] = useState(false); // State for the mana points alert
   const [openDialog, setOpenDialog] = useState(false); // State to control the modal
   const [copySuccess, setCopySuccess] = useState(false); // To track if the text was copied
@@ -86,7 +94,7 @@ const PVPLobby: React.FC = () => {
   );
 
   // State to manage selected material and mode
-  const [selectedMaterial, setSelectedMaterial] = useState<any>(
+  const [selectedMaterial, setSelectedMaterial] = useState<StudyMaterial | null>(
     location.state?.selectedMaterial || material
   );
   const [selectedMode, setSelectedMode] = useState<string | null>(mode);
@@ -133,6 +141,22 @@ const PVPLobby: React.FC = () => {
     isPending: false,
     invitedAt: new Date()
   });
+
+  // Add this state to track player ready status
+  const [playerReadyState, setPlayerReadyState] = useState<{
+    hostReady: boolean;
+    guestReady: boolean;
+  }>({
+    hostReady: true, // Host is always considered ready
+    guestReady: false,
+  });
+
+  // Add loading state for ready status operations
+  const [readyStateLoading, setReadyStateLoading] = useState(false);
+
+  // Add battle started state
+  const [battleStarted, setBattleStarted] = useState(false);
+  const [battleStartLoading, setBattleStartLoading] = useState(false);
 
   // Set the state variables
   useEffect(() => {
@@ -270,12 +294,98 @@ const PVPLobby: React.FC = () => {
     setOpenDialog(false); // Close the modal if canceled
   };
 
-  const handleBattleStart = () => {
-    if (manaPoints < 10) {
-      setOpenManaAlert(true);
+  // Find the useEffect that handles battle started status for guest
+  useEffect(() => {
+    // Only run this for guests, not for hosts
+    if (!isCurrentUserGuest || !lobbyCode) return;
+
+    const checkBattleStarted = async () => {
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/battle-status/${lobbyCode}`
+        );
+
+        if (response.data.success && response.data.data.battle_started) {
+          console.log("Battle has started! Navigating to difficulty selection...");
+          setBattleStarted(true);
+
+          // Navigate guest to their specific route with host username
+          navigate("/dashboard/select-difficulty/pvp/player2", {
+            state: {
+              lobbyCode,
+              material: selectedMaterial,
+              questionTypes: selectedTypesFinal,
+              isGuest: true,
+              hostUsername: players[0]?.username,
+              guestUsername: user?.username
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Error checking battle status:", error);
+      }
+    };
+
+    // Check immediately
+    checkBattleStarted();
+
+    // Then check every 1.5 seconds
+    const interval = setInterval(checkBattleStarted, 1500);
+
+    return () => clearInterval(interval);
+  }, [isCurrentUserGuest, lobbyCode, navigate, selectedMaterial, selectedTypesFinal, players, user?.username]);
+
+  // Update the handleBattleStart function
+  const handleBattleStart = async () => {
+    // For host: only allow battle start if guest is ready
+    if (!isCurrentUserGuest) {
+      if (!playerReadyState.guestReady) {
+        // Perhaps show a message that guest isn't ready
+        return;
+      }
+
+      if (manaPoints < 10) {
+        setOpenManaAlert(true);
+        return;
+      }
+
+      setBattleStartLoading(true);
+
+      try {
+        // Update battle_started status in the database
+        const response = await axios.put(
+          `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/battle-status`,
+          {
+            lobby_code: lobbyCode,
+            battle_started: true
+          }
+        );
+
+        if (response.data.success) {
+          // Deduct mana points
+          setManaPoints((prev) => prev - 10);
+          console.log("Battle Started!");
+
+          // Navigate host to their specific route
+          navigate("/dashboard/select-difficulty/pvp", {
+            state: {
+              lobbyCode,
+              material: selectedMaterial,
+              questionTypes: selectedTypesFinal,
+              isHost: true,
+              hostUsername: players[0]?.username,
+              guestUsername: user?.username
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Error starting battle:", error);
+      } finally {
+        setBattleStartLoading(false);
+      }
     } else {
-      setManaPoints((prev) => prev - 10); // Deduct mana points
-      console.log("Battle Started!");
+      // For guest: toggle ready state
+      toggleGuestReadyState();
     }
   };
 
@@ -288,26 +398,16 @@ const PVPLobby: React.FC = () => {
       // Update local state
       setSelectedMaterial(material);
 
-      // Update in database
+      // Update in database only - no socket emit
       await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/settings`, {
         lobby_code: lobbyCode,
         question_types: selectedTypesFinal,
         study_material_title: material.title
       });
 
-      // Notify guest through socket
-      if (socket) {
-        socket.emit("lobby_settings_updated", {
-          lobbyCode: lobbyCode,
-          question_types: selectedTypesFinal,
-          study_material_title: material.title
-        });
-      }
-
       setOpenMaterialModal(false);
     } catch (error) {
       console.error("Error updating study material:", error);
-      // You might want to show an error message to the user
     }
   };
 
@@ -318,6 +418,24 @@ const PVPLobby: React.FC = () => {
 
   const handleChangeQuestionType = () => {
     setModalOpenChangeQuestionType(true);
+  };
+
+  const handleQuestionTypeUpdate = async (selected: string[]) => {
+    try {
+      // Update local state
+      setSelectedTypesFinal(selected);
+
+      // Update in database only - no socket emit
+      await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/settings`, {
+        lobby_code: lobbyCode,
+        question_types: selected,
+        study_material_title: selectedMaterial?.title
+      });
+
+      setModalOpenChangeQuestionType(false);
+    } catch (error) {
+      console.error("Error updating question types:", error);
+    }
   };
 
   const handleInvite = async (friend: Player) => {
@@ -515,7 +633,10 @@ const PVPLobby: React.FC = () => {
         console.log("Received lobby info from host:", data);
 
         if (data.material) {
-          setSelectedMaterial(data.material);
+          setSelectedMaterial((prev: StudyMaterial | null) => ({
+            ...prev,
+            title: data.material.title
+          }));
         }
 
         if (data.questionTypes && Array.isArray(data.questionTypes)) {
@@ -558,7 +679,10 @@ const PVPLobby: React.FC = () => {
 
     const handleMaterialUpdate = (data: any) => {
       if (data.lobbyCode === lobbyCode) {
-        setSelectedMaterial(data.material);
+        setSelectedMaterial((prev: StudyMaterial | null) => ({
+          ...prev,
+          title: data.material.title
+        }));
         setSelectedTypesFinal(data.questionTypes);
         setSelectedMode(data.mode);
       }
@@ -609,7 +733,7 @@ const PVPLobby: React.FC = () => {
       if (data.lobbyCode === lobbyCode) {
         setSelectedTypesFinal(data.question_types);
         if (data.study_material_title) {
-          setSelectedMaterial((prev: { title: string }) => ({
+          setSelectedMaterial((prev: StudyMaterial | null) => ({
             ...prev,
             title: data.study_material_title
           }));
@@ -635,34 +759,171 @@ const PVPLobby: React.FC = () => {
     });
   };
 
-  // Add this function to handle question type updates
-  const handleQuestionTypeUpdate = async (selected: string[]) => {
+  // Add this function to toggle ready state
+  const toggleGuestReadyState = async () => {
+    if (!user?.firebase_uid || !lobbyCode) return;
+
+    setReadyStateLoading(true);
+
     try {
-      // Update local state
-      setSelectedTypesFinal(selected);
+      // Update ready state in the database
+      const response = await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/ready-state`,
+        {
+          lobby_code: lobbyCode,
+          player_id: user.firebase_uid,
+          is_ready: !playerReadyState.guestReady // Toggle current state
+        }
+      );
 
-      // Update in database
-      await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/settings`, {
-        lobby_code: lobbyCode,
-        question_types: selected,
-        study_material_title: selectedMaterial?.title
-      });
+      if (response.data.success) {
+        // Update local state
+        setPlayerReadyState(prev => ({
+          ...prev,
+          guestReady: !prev.guestReady
+        }));
 
-      // Notify guest through socket
-      if (socket) {
-        socket.emit("lobby_settings_updated", {
-          lobbyCode: lobbyCode,
-          question_types: selected,
-          study_material_title: selectedMaterial?.title
-        });
+        // Also update via socket for immediate feedback to host
+        if (socket) {
+          socket.emit("player_ready_state_changed", {
+            lobbyCode: lobbyCode,
+            playerId: user.firebase_uid,
+            isReady: !playerReadyState.guestReady
+          });
+        }
       }
-
-      setModalOpenChangeQuestionType(false);
     } catch (error) {
-      console.error("Error updating question types:", error);
-      // You might want to show an error message to the user
+      console.error("Error updating ready state:", error);
+    } finally {
+      setReadyStateLoading(false);
     }
   };
+
+  // Add this function to check ready state from database
+  const checkReadyState = async () => {
+    if (!lobbyCode) return;
+
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/ready-state/${lobbyCode}`
+      );
+
+      if (response.data.success) {
+        const { hostReady, guestReady } = response.data.data;
+        setPlayerReadyState({
+          hostReady: hostReady || true, // Default to true for host
+          guestReady: guestReady || false
+        });
+      }
+    } catch (error) {
+      console.error("Error checking ready state:", error);
+    }
+  };
+
+  // Add this effect to periodically check ready state
+  useEffect(() => {
+    if (!lobbyCode) return;
+
+    // Check immediately
+    checkReadyState();
+
+    // Then check every 3 seconds
+    const interval = setInterval(checkReadyState, 1200);
+
+    return () => clearInterval(interval);
+  }, [lobbyCode]);
+
+  // Add this effect to listen for socket ready state changes
+  useEffect(() => {
+    if (!socket || !lobbyCode) return;
+
+    const handlePlayerReadyChange = (data: PlayerReadyData) => {
+      if (data.lobbyCode === lobbyCode) {
+        // Update local state based on which player changed status
+        if (isCurrentUserGuest && data.playerId !== user?.firebase_uid) {
+          // Host changed status (less common case)
+          setPlayerReadyState(prev => ({
+            ...prev,
+            hostReady: data.isReady
+          }));
+        } else if (!isCurrentUserGuest && data.playerId !== user?.firebase_uid) {
+          // Guest changed status
+          setPlayerReadyState(prev => ({
+            ...prev,
+            guestReady: data.isReady
+          }));
+        }
+      }
+    };
+
+    socket.on("player_ready_state_changed", handlePlayerReadyChange);
+
+    return () => {
+      socket.off("player_ready_state_changed", handlePlayerReadyChange);
+    };
+  }, [socket, lobbyCode, isCurrentUserGuest, user?.firebase_uid]);
+
+  // Modify the checkLobbySettings function to only trigger UI updates when something actually changes
+  const checkLobbySettings = async () => {
+    if (!lobbyCode) return;
+
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/settings/${lobbyCode}`
+      );
+
+      if (response.data.success) {
+        const { question_types, study_material_title } = response.data.data;
+
+        // Track if we're making any changes
+        let settingsChanged = false;
+
+        // Update question types if different
+        if (question_types && Array.isArray(question_types)) {
+          if (JSON.stringify(question_types.sort()) !== JSON.stringify(selectedTypesFinal.sort())) {
+            console.log("Updating question types from poll:", question_types);
+            setSelectedTypesFinal(question_types);
+            settingsChanged = true;
+          }
+        }
+
+        // Update study material if different
+        if (study_material_title && study_material_title !== selectedMaterial?.title) {
+          console.log("Updating study material from poll:", study_material_title);
+          setSelectedMaterial((prev: StudyMaterial | null) => ({
+            ...prev,
+            title: study_material_title
+          }));
+          settingsChanged = true;
+        }
+
+        // Only show the visual indicator if settings actually changed
+        if (settingsChanged && isCurrentUserGuest) {
+          setSettingsUpdated(true);
+          // Clear the update notification after 2 seconds
+          setTimeout(() => setSettingsUpdated(false), 2000);
+        }
+      }
+    } catch (error) {
+      console.error("Error polling lobby settings:", error);
+    }
+  };
+
+  // Add a state for settings update indicator
+  const [settingsUpdated, setSettingsUpdated] = useState(false);
+
+  // Add this effect to periodically check lobby settings
+  useEffect(() => {
+    if (!lobbyCode) return;
+
+    // Check immediately
+    checkLobbySettings();
+
+    // Then check every 1.2 seconds for more responsive updates
+    const interval = setInterval(checkLobbySettings, 1200);
+
+    return () => clearInterval(interval);
+  }, [lobbyCode]);
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-white px-6 py-8 overflow-hidden">
@@ -731,7 +992,7 @@ const PVPLobby: React.FC = () => {
               )}
               {isCurrentUserGuest && (
                 <span className="ml-2 text-[12px] text-purple-300">
-                  (You cannot change these settings)
+                  (Guest mode)
                 </span>
               )}
               <span className="transition-colors duration-200">
@@ -745,7 +1006,6 @@ const PVPLobby: React.FC = () => {
                   }}
                 />
               </span>
-
             </p>
           </div>
         </div>
@@ -972,19 +1232,44 @@ const PVPLobby: React.FC = () => {
             </motion.div>
           )}
 
-          {/* Battle Start Button */}
+          {/* Battle Start Button - modified */}
           <motion.button
             onClick={handleBattleStart}
+            disabled={readyStateLoading || battleStartLoading}
             className={`mt-6 sm:mt-11 w-full max-w-[250px] sm:max-w-[300px] md:max-w-[350px] py-2 sm:py-3 
-              bg-[#4D1EE3] text-white rounded-lg text-md sm:text-lg shadow-lg transition flex items-center justify-center 
-              hover:bg-purple-800`}
+              ${!isCurrentUserGuest && !playerReadyState.guestReady
+                ? 'bg-[#3a3a3a] hover:bg-[#4a4a4a] cursor-not-allowed'
+                : isCurrentUserGuest && playerReadyState.guestReady
+                  ? 'bg-[#E44D4D] hover:bg-[#C03A3A]'
+                  : 'bg-[#4D1EE3] hover:bg-purple-800'
+              } text-white rounded-lg text-md sm:text-lg shadow-lg transition flex items-center justify-center`}
           >
-            BATTLE START! -10
-            <img
-              src={ManaIcon}
-              alt="Mana"
-              className="w-4 h-4 sm:w-3 sm:h-3 md:w-5 md:h-5 ml-2 filter invert brightness-0"
-            />
+            {readyStateLoading || battleStartLoading ? (
+              <CircularProgress size={24} color="inherit" />
+            ) : !isCurrentUserGuest ? (
+              <>
+                {playerReadyState.guestReady ? (
+                  <>
+                    BATTLE START! -10
+                    <img
+                      src={ManaIcon}
+                      alt="Mana"
+                      className="w-4 h-4 sm:w-3 sm:h-3 md:w-5 md:h-5 ml-2 filter invert brightness-0"
+                    />
+                  </>
+                ) : (
+                  <>
+                    START 1/2
+                    {players.length > 1 ? " (Waiting for guest)" : " (Waiting for player)"}
+                  </>
+                )}
+              </>
+            ) : (
+              // Guest view
+              <>
+                {playerReadyState.guestReady ? "CANCEL 2/2" : "START 1/2"}
+              </>
+            )}
           </motion.button>
         </motion.div>
       </div>
@@ -1093,7 +1378,10 @@ const PVPLobby: React.FC = () => {
           inviterName={user?.username ?? undefined}
           senderId={user?.firebase_uid}
           selectedTypesFinal={selectedTypesFinal}
-          selectedMaterial={selectedMaterial}
+          selectedMaterial={selectedMaterial ? {
+            id: selectedMaterial.id || "",
+            title: selectedMaterial.title
+          } : null}
         />
       )}
 
