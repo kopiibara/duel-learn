@@ -91,37 +91,40 @@ const SetUpQuestionType: React.FC = () => {
       setOpenAlert(true);
       return;
     }
-    
+
     // If manaPoints are below 10 and mode is not "Time Pressured", show the mana alert
     if (mode !== "Time Pressured" && manaPoints < 10) {
       setOpenManaAlert(true);
       return;
     }
-    
+
     // Pass selectedTypes but don't generate AI questions yet
     const navigationState = {
       mode,
       material,
-      selectedTypes
+      selectedTypes,
     };
-    
+
     console.log("Navigation state being passed:", navigationState);
     console.log("Mode type:", typeof mode, "Mode value:", mode);
 
     // Navigate based on mode with strict equality check
-    if (mode === "Time Pressured") {
+    // Update this section of your handleStartLearning function:
+
+    // Navigate based on mode with more flexible mode checks
+    if (mode === "Time Pressured" || mode === "Time Pressured Mode") {
       console.log("Navigating to timer setup");
       navigate("/dashboard/setup/timer", { state: navigationState });
-    } else if (mode === "Peaceful") {
+    } else if (mode === "Peaceful" || mode === "Peaceful Mode") {
       console.log("Navigating to peaceful mode");
       navigate("/dashboard/loading-screen", {
-        state: { ...navigationState, timeLimit: null }
+        state: { ...navigationState, timeLimit: null },
       });
     } else {
       console.log("Navigating to PVP mode");
       const generatedLobbyCode = generateCode();
       navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
-        state: { ...navigationState, lobbyCode: generatedLobbyCode }
+        state: { ...navigationState, lobbyCode: generatedLobbyCode },
       });
     }
   };
@@ -246,27 +249,30 @@ const SetUpQuestionType: React.FC = () => {
                       {/* Toggle Button */}
                       <div
                         onClick={() => toggleSelection(type.value)}
-                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all ${selectedTypes.includes(type.value)
-                          ? "bg-black"
-                          : "bg-black"
-                          }`}
+                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all ${
+                          selectedTypes.includes(type.value)
+                            ? "bg-black"
+                            : "bg-black"
+                        }`}
                       >
                         {/* Check Icon */}
                         <div
-                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md transition-all ${selectedTypes.includes(type.value)
-                            ? "bg-black text-[#461ABD]"
-                            : "bg-white text-[#461ABD]"
-                            } `}
+                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md transition-all ${
+                            selectedTypes.includes(type.value)
+                              ? "bg-black text-[#461ABD]"
+                              : "bg-white text-[#461ABD]"
+                          } `}
                         >
                           <CloseIcon />
                         </div>
 
                         {/* Uncheck Icon */}
                         <div
-                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded transition-all ${selectedTypes.includes(type.value)
-                            ? "bg-white text-[#461ABD]"
-                            : "bg-black text-[#461ABD]"
-                            }`}
+                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded transition-all ${
+                            selectedTypes.includes(type.value)
+                              ? "bg-white text-[#461ABD]"
+                              : "bg-black text-[#461ABD]"
+                          }`}
                         >
                           <CheckIcon />
                         </div>
@@ -282,13 +288,11 @@ const SetUpQuestionType: React.FC = () => {
                     disabled={isGenerating}
                     className="mt-8 w-[240px] sm:w-[280px] md:w-[320px] py-2 sm:py-3 border-2 border-black text-black rounded-lg text-md sm:text-lg shadow-lg hover:bg-purple-700 hover:text-white hover:border-transparent flex items-center justify-center"
                   >
-                    {isGenerating ? (
-                      "Generating Questions..."
-                    ) : mode === "Time Pressured" ? (
-                      "Continue"
-                    ) : (
-                      "START LEARNING!"
-                    )}
+                    {isGenerating
+                      ? "Generating Questions..."
+                      : mode === "Time Pressured"
+                      ? "Continue"
+                      : "START LEARNING!"}
                   </button>
                 </div>
               </div>
