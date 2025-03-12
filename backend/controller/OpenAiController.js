@@ -182,6 +182,7 @@ If generating multiple questions, include them all in the array.`;
             // Clean the term by removing any letter prefix
             const cleanedTerm = term.replace(/^[A-D]\.\s+/, '');
 
+            // Highlight the style rule more prominently
             const prompt = `Generate ${numberOfItems} multiple choice questions based on this term and definition:
 Term: "${cleanedTerm}"
 Definition: "${definition}"
@@ -191,7 +192,8 @@ Rules for generating the question:
 3. The original term MUST be one of the options
 4. Options must be complete words or phrases, NEVER single letters
 5. Each option should be 1-3 words maximum
-6. All options should be of similar length and style to the original term
+6. Each option should be closely related to the term
+7. CRITICAL: All options MUST be of similar length and style to the original term "${cleanedTerm}"
 Format the response exactly as JSON array:
 [
   {
@@ -249,6 +251,37 @@ Important:
                             value.toLowerCase() === cleanedTerm.toLowerCase())?.[0];
                         if (optionLetter) {
                             q.answer = `${optionLetter}. ${cleanedTerm}`;
+                        }
+                        
+                        // Check if options follow similar length/style rule
+                        const termLength = cleanedTerm.length;
+                        const termWordCount = cleanedTerm.split(/\s+/).length;
+                        
+                        let isStyleConsistent = true;
+                        const optionsInfo = Object.entries(q.options).map(([letter, value]) => {
+                            const optionLength = String(value).length;
+                            const optionWordCount = String(value).split(/\s+/).length;
+                            
+                            // Check if length or word count differs significantly
+                            const lengthDiff = Math.abs(optionLength - termLength);
+                            const wordDiff = Math.abs(optionWordCount - termWordCount);
+                            
+                            if (lengthDiff > termLength * 0.5 || wordDiff > 1) {
+                                isStyleConsistent = false;
+                            }
+                            
+                            return { letter, value, length: optionLength, words: optionWordCount };
+                        });
+                        
+                        console.log(`Style consistency check for "${cleanedTerm}":`, {
+                            termLength,
+                            termWordCount,
+                            options: optionsInfo,
+                            isStyleConsistent
+                        });
+                        
+                        if (!isStyleConsistent) {
+                            console.log("WARNING: Options do not follow similar length/style rule");
                         }
                     }
                     return q;
