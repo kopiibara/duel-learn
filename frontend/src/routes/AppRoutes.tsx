@@ -30,6 +30,7 @@ const AppRoutes: React.FC = () => {
         <Route path="/landing-page" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/sign-up" element={<SignUp />} />
+        <Route path="/admin-sign-up" element={<AdminSignUp />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/terms-and-conditions" element={<TermsAndConditions />} />
         <Route path="/privacy-policy" element={<PrivacyPolicy />} />
@@ -43,12 +44,10 @@ const AppRoutes: React.FC = () => {
         <Route path="/confirmation-account" element={<ConfirmationAccount />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/email-action" element={<EmailActionHandler />} />
-        <Route path="verify-email" element={<VerifyEmail />} />
-        <Route path="/check-your-mail" element={<CheckYourMail />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/email-verified" element={<EmailVerified />} />
         <Route path="/loading" element={<LoadingScreen />} />
         <Route path="/dashboard/*" element={<PrivateRoutes />} />
-        <Route path="/admin-sign-up" element={<AdminSignUp />} />
         <Route path="/admin/*" element={<AdminRoutes />} />
         
         {/* This wildcard route should be the VERY LAST route to catch all undefined routes */}
