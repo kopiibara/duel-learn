@@ -4,8 +4,12 @@ import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
 import playerCharacter from "../../../../../../assets/pvp-battle/playerCharacter.png";
 import enemyCharacter from "../../../../../../assets/pvp-battle/enemyCharacter.gif";
+import { useLocation } from "react-router-dom";
 
 export default function PvpBattle() {
+  const location = useLocation();
+  const { hostUsername, guestUsername, isHost } = location.state || {};
+
   const [timeLeft, setTimeLeft] = useState(25);
   const [currentQuestion, setCurrentQuestion] = useState(1);
   const totalQuestions = 30;
@@ -24,6 +28,10 @@ export default function PvpBattle() {
     return `${mins}:${secs}`;
   };
 
+  // Use the usernames in the UI
+  const playerName = isHost ? hostUsername : guestUsername;
+  const opponentName = isHost ? guestUsername : hostUsername;
+
   return (
     <div className="w-full h-screen  flex flex-col">
       {/* Top UI Bar */}
@@ -32,7 +40,7 @@ export default function PvpBattle() {
         <div className="flex items-center gap-3 flex-1">
           <div className="w-16 h-16 bg-white rounded-lg"></div>
           <div className="flex flex-col gap-1">
-            <div className="text-white text-sm">JING009</div>
+            <div className="text-white text-sm">{playerName}</div>
             <div className="flex items-center gap-1">
               <span className="text-white text-xs">90 HP</span>
               <span className="text-gray-500 text-xs">/100</span>
@@ -57,7 +65,7 @@ export default function PvpBattle() {
         {/* Right Player */}
         <div className="flex items-center gap-3 flex-1 justify-end">
           <div className="flex flex-col gap-1 items-end">
-            <div className="text-white text-sm">JING009</div>
+            <div className="text-white text-sm">{opponentName}</div>
             <div className="flex items-center gap-1 justify-end">
               <span className="text-white text-xs">90 HP</span>
               <span className="text-gray-500 text-xs">/100</span>
