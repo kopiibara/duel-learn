@@ -158,10 +158,10 @@ const SignUp = () => {
 
       if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
-        setTimeout(() => navigate("/dashboard/welcome"), 1500);
+        setTimeout(() => {setLoading(true); navigate("/dashboard/welcome")}, 1500);
       } else {
         setSuccessMessage("Account already exists. Redirecting to login...");
-        setTimeout(() => navigate("/login"), 1500);
+        setTimeout(() => {setLoading(true); navigate("/login")}, 1500);
       }
     } catch (error) {
       handleError(error);
@@ -349,7 +349,7 @@ const SignUp = () => {
           <p className="mt-4 text-center text-sm text-[#9F9BAE]">
             Already have an account?{" "}
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => {setLoading(true); navigate("/login")}}
               className="text-[#4D18E8] hover:underline"
             >
               Log in

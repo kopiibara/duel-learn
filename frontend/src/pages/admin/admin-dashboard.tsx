@@ -28,6 +28,7 @@ import DocumentHead from "../../components/DocumentHead";
 import PageTransition from "../../styles/PageTransition";
 import { AxiosError } from "axios";
 import { styled } from '@mui/material/styles';
+import LoadingScreen from "../../components/LoadingScreen";
 
 interface User {
   firebase_uid: string;
@@ -56,15 +57,93 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
+  const [initialLoading, setInitialLoading] = useState<boolean>(true);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState<boolean>(false);
   const [deleteAllConfirmOpen, setDeleteAllConfirmOpen] = useState<boolean>(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
 
+  // Update effect to wait for user context to be available
   useEffect(() => {
-    fetchUsers();
+    // Only fetch users when user context is available
+    if (user && user.firebase_uid) {
+      fetchInitialUsers();
+    } else if (user === null) {
+      // If user context has been checked and is null, show auth error
+      // The useUser hook will set user to null when auth is complete but unsuccessful
+      console.log("Authentication incomplete - waiting for user context to be ready");
+      // Keep initialLoading true, but we could set an auth error message here
+    }
+  }, [user]); // Depend on user context changes
+
+  // Function to handle auth status checking with timeout
+  useEffect(() => {
+    // Set a timeout to check if authentication is taking too long
+    const authTimeout = setTimeout(() => {
+      if (initialLoading && !user) {
+        console.log("Authentication timed out or failed");
+        // Try again with current auth state
+        fetchInitialUsersWithAuth();
+      }
+    }, 5000); // 5 second timeout
+
+    return () => clearTimeout(authTimeout);
   }, []);
 
-  const fetchUsers = async () => {
+  // Try to fetch users with current auth state, even if not ideal
+  const fetchInitialUsersWithAuth = async () => {
+    setLoading(true);
+    try {
+      console.log("Attempting to fetch users with current auth state...");
+      const currentFirebaseUser = auth.currentUser;
+      
+      // If we have Firebase user but not user context, try to use Firebase token
+      if (currentFirebaseUser) {
+        const token = await currentFirebaseUser.getIdToken(true);
+        console.log("Using Firebase token for request");
+        
+        // Get user claims if any
+        const claims = await currentFirebaseUser.getIdTokenResult();
+        console.log("Token claims:", claims.claims);
+        
+        const response = await apiClient.get('/admin/users');
+        if (Array.isArray(response.data.users)) {
+          setUsers(response.data.users);
+          setAuthError(null);
+        } else {
+          throw new Error("Invalid data format");
+        }
+      } else {
+        // Try the request anyway - may fail with 401, which is handled in catch
+        console.log("No auth user available, attempting request");
+        const response = await apiClient.get('/admin/users');
+        if (Array.isArray(response.data.users)) {
+          setUsers(response.data.users);
+          setAuthError(null);
+        } else {
+          throw new Error("Invalid data format");
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      
+      // Check if the error is related to authentication
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status === 401 || axiosError.response?.status === 403) {
+        setAuthError("Authentication failed. Please try refreshing the users or reload the page.");
+      } else if (axiosError.response) {
+        console.log("Error status:", axiosError.response.status);
+        console.log("Error data:", axiosError.response.data);
+      }
+    } finally {
+      setLoading(false);
+      setInitialLoading(false);
+    }
+  };
+
+  // Separate function for initial loading
+  const fetchInitialUsers = async () => {
+    setInitialLoading(true);
     setLoading(true);
     try {
       // Log user context for debugging
@@ -89,6 +168,7 @@ const AdminDashboard = () => {
       const response = await apiClient.get('/admin/users');
       if (Array.isArray(response.data.users)) {
         setUsers(response.data.users);
+        setAuthError(null);
       } else {
         throw new Error("Invalid data format");
       }
@@ -97,12 +177,40 @@ const AdminDashboard = () => {
       
       // Check the exact error response
       const axiosError = error as AxiosError;
-      if (axiosError.response) {
+      if (axiosError.response?.status === 401 || axiosError.response?.status === 403) {
+        setAuthError("Authentication failed. Please try refreshing the users or reload the page.");
+      } else if (axiosError.response) {
         console.log("Error status:", axiosError.response.status);
         console.log("Error data:", axiosError.response.data);
       }
       
       // Note: Error handling is already managed by apiClient interceptors
+    } finally {
+      setLoading(false);
+      setInitialLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    setAuthError(null);
+    try {
+      const response = await apiClient.get('/admin/users');
+      if (Array.isArray(response.data.users)) {
+        setUsers(response.data.users);
+      } else {
+        throw new Error("Invalid data format");
+      }
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      // Check the exact error response
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status === 401 || axiosError.response?.status === 403) {
+        setAuthError("Authentication failed. Please ensure you are logged in as an admin.");
+      } else if (axiosError.response) {
+        console.log("Error status:", axiosError.response.status);
+        console.log("Error data:", axiosError.response.data);
+      }
     } finally {
       setLoading(false);
     }
@@ -215,6 +323,24 @@ const AdminDashboard = () => {
     }
   };
 
+  if (initialLoading) {
+    const adminLoadingMessages = [
+      "Securing the admin portal...",
+      "Fetching user data...",
+      "Analyzing system integrity...",
+      "Preparing admin controls...",
+      "Verifying admin privileges...",
+      "Loading management interface...",
+      "Scanning for magical anomalies in the user database...",
+      "Preparing the admin console for the Grand Wizard...",
+      "Summoning user data from the mystical database...",
+      "Enchanting the admin dashboard...",
+    ];
+    
+    const randomMessage = adminLoadingMessages[Math.floor(Math.random() * adminLoadingMessages.length)];
+    return <LoadingScreen text={randomMessage} />;
+  }
+
   return (
     <PageTransition>
       <Box className="h-full w-auto" sx={{ backgroundColor: '#0f0f12', color: '#fff' }}>
@@ -248,6 +374,35 @@ const AdminDashboard = () => {
               />
             </Box>
           </Stack>
+
+          {/* Authentication error message */}
+          {authError && (
+            <Box 
+              className="flex items-center justify-between gap-4 p-3 mb-4 rounded-lg" 
+              sx={{ 
+                backgroundColor: 'rgba(211, 47, 47, 0.15)',
+                border: '1px solid rgba(211, 47, 47, 0.3)'
+              }}
+            >
+              <Typography variant="body1" sx={{ color: '#fff' }}>
+                {authError}
+              </Typography>
+              <Button
+                variant="contained"
+                onClick={fetchUsers}
+                size="small"
+                sx={{ 
+                  backgroundColor: '#2d2d3a',
+                  color: '#fff',
+                  '&:hover': {
+                    backgroundColor: '#3d3d4a',
+                  }
+                }}
+              >
+                Try Again
+              </Button>
+            </Box>
+          )}
 
           {/* Selected Users Actions */}
           {selectedUsers.length > 0 && (

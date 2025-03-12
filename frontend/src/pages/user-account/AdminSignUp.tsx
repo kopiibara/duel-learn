@@ -121,7 +121,7 @@ const AdminSignUp = () => {
         setSuccessMessage("Account created! Please verify your email.");
 
         setTimeout(() => {
-          navigate("/verify-email", { state: { token } });
+          setLoading(true); navigate("/verify-email", { state: { token } });
         }, 2000);
 
       } catch (error) {
@@ -138,10 +138,10 @@ const AdminSignUp = () => {
 
       if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
-        setTimeout(() => navigate("/dashboard/welcome"), 1500);
+        setTimeout(() => {setLoading(true); navigate("/dashboard/welcome")}, 1500);
       } else {
         setSuccessMessage("Account already exists. Redirecting to login...");
-        setTimeout(() => navigate("/login"), 1500);
+        setTimeout(() => {setLoading(true); navigate("/login")}, 1500);
       }
     } catch (error) {
       handleError(error);
@@ -329,7 +329,7 @@ const AdminSignUp = () => {
           <p className="mt-4 text-center text-sm text-[#9F9BAE]">
             Already have an account?{" "}
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => {setLoading(true); navigate("/login")}}
               className="text-[#4D18E8] hover:underline"
             >
               Log in

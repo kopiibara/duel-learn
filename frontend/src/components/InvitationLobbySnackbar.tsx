@@ -3,6 +3,7 @@ import { io } from 'socket.io-client';
 import { useUser } from '../contexts/UserContext';
 import { useNavigate } from 'react-router-dom';
 import { Alert, AlertTitle, Box, Button, Snackbar } from "@mui/material";
+import axios from 'axios';
 
 const InvitationLobbySnackbar: React.FC = () => {
     const { user } = useUser();
@@ -115,53 +116,96 @@ const InvitationLobbySnackbar: React.FC = () => {
         setLogs((prev) => [message, ...prev].slice(0, 10));
     };
 
-    const handleAcceptInvitation = () => {
-        log(`Accepting invitation to lobby: ${invitation.lobbyCode}`);
-        console.log("Accepting invitation:", invitation);
+    const handleAcceptInvitation = async () => {
+        try {
+            // Fetch host information
+            const hostResponse = await axios.get(
+                `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/host/${invitation.senderId}`
+            );
 
-        if (socket) {
-            socket.emit("accept_battle_invitation", {
-                senderId: invitation.senderId,
-                receiverId: user?.firebase_uid,
-                lobbyCode: invitation.lobbyCode,
+            // Fetch invitation details including material and question types
+            const invitationResponse = await axios.get(
+                `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/details/${invitation.lobbyCode}/${invitation.senderId}/${user?.firebase_uid}`
+            );
+
+            if (!hostResponse.data.success || !invitationResponse.data.success) {
+                throw new Error("Failed to fetch required information");
+            }
+
+            const hostInfo = hostResponse.data.data;
+            const invitationDetails = invitationResponse.data.data;
+
+            // Update invitation status to 'accepted'
+            await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/status/update`, {
+                lobby_code: invitation.lobbyCode,
+                sender_id: invitation.senderId,
+                receiver_id: user?.firebase_uid,
+                status: 'accepted'
             });
+
+            if (socket) {
+                socket.emit("accept_battle_invitation", {
+                    senderId: invitation.senderId,
+                    receiverId: user?.firebase_uid,
+                    lobbyCode: invitation.lobbyCode,
+                });
+            }
+
+            // Navigate to the lobby with all the information
+            navigate(`/dashboard/pvp-lobby/${invitation.lobbyCode}`, {
+                state: {
+                    isGuest: true,
+                    lobbyCode: invitation.lobbyCode,
+                    selectedMaterial: {
+                        title: invitationDetails.study_material_title
+                    },
+                    selectedTypes: invitationDetails.question_types,
+                    invitedPlayer: {
+                        firebase_uid: invitation.senderId,
+                        username: hostInfo.username,
+                        level: hostInfo.level,
+                        display_picture: hostInfo.display_picture,
+                    }
+                },
+            });
+
+            // Close the invitation
+            setInvitation(prev => ({ ...prev, open: false }));
+        } catch (error) {
+            console.error("Error accepting invitation:", error);
+            // You might want to show an error message to the user
         }
-
-        // Navigate to the lobby with enhanced state information
-        navigate(`/dashboard/pvp-lobby/${invitation.lobbyCode}`, {
-            state: {
-                isGuest: true,
-                lobbyCode: invitation.lobbyCode,
-                selectedMaterial: { title: "Loading host's material..." },
-                invitedPlayer: {
-                    firebase_uid: invitation.senderId,
-                    username: invitation.inviterName,
-                    level: 1,
-                    display_picture: null,
-                }
-            },
-        });
-
-        // Close the invitation
-        setInvitation(prev => ({ ...prev, open: false }));
     };
 
-    const handleDeclineInvitation = () => {
+    const handleDeclineInvitation = async () => {
         log(`Declining invitation from: ${invitation.senderId}`);
 
-        if (socket) {
-            socket.emit("decline_battle_invitation", {
-                senderId: invitation.senderId,
-                receiverId: user?.firebase_uid,
-                receiverName: user?.username || "Player",
-                lobbyCode: invitation.lobbyCode,
+        try {
+            // Update invitation status to 'declined'
+            await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/status/update`, {
+                lobby_code: invitation.lobbyCode,
+                sender_id: invitation.senderId,
+                receiver_id: user?.firebase_uid,
+                status: 'declined'
             });
 
-            log("Decline notification sent to sender");
-        }
+            if (socket) {
+                socket.emit("decline_battle_invitation", {
+                    senderId: invitation.senderId,
+                    receiverId: user?.firebase_uid,
+                    receiverName: user?.username || "Player",
+                    lobbyCode: invitation.lobbyCode,
+                });
 
-        // Close the invitation
-        setInvitation(prev => ({ ...prev, open: false }));
+                log("Decline notification sent to sender");
+            }
+
+            // Close the invitation
+            setInvitation(prev => ({ ...prev, open: false }));
+        } catch (error) {
+            console.error("Error declining invitation:", error);
+            // You might want to show an error message to the user here
+        }
     };
 
     // Debug panel for development
