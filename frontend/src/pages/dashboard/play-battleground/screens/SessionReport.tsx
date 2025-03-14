@@ -4,7 +4,6 @@ import ClockIcon from "../../../../assets/clock.png";
 import ManaIcon from "../../../../assets/ManaIcon.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import AutoConfettiAnimation from "../../../../pages/dashboard/play-battleground/components/common/AutoConfettiAnimation";
-import SessionReportBanner from "../../../../assets/General/SessionReportBanner.png";
 import { useAudio } from "../../../../contexts/AudioContext"; // Import the useAudio hook
 import { useEffect } from "react"; // Remove useRef since we don't need it anymore
 

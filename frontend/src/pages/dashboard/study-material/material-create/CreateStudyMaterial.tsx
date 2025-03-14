@@ -75,6 +75,12 @@ const recalculateItemNumbers = (
   }));
 };
 
+// Add this interface near the top of your file with other types
+interface TermDefinitionPair {
+  term: string;
+  definition: string;
+}
+
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Add this line
