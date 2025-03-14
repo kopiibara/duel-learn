@@ -48,12 +48,17 @@ const ExplorePage = () => {
   // Track if component is mounted (for socket cleanup)
   const isMounted = useRef(true);
 
-  // Memoize socket instance
+  // In ExplorePage.tsx
   const socket = useMemo(
     () =>
       io(import.meta.env.VITE_BACKEND_URL, {
         transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 10000,
         autoConnect: false,
+        path: "/socket.io/", // Make sure path matches server
       }),
     []
   );
@@ -98,10 +103,11 @@ const ExplorePage = () => {
           }/api/study-material/get-top-picks`;
           break;
         case 1:
+          // Fix the encoding of the username to ensure special characters are properly handled
           baseUrl = `${
             import.meta.env.VITE_BACKEND_URL
           }/api/study-material/get-recommended-for-you/${encodeURIComponent(
-            user.username
+            user.username.trim()
           )}`;
           break;
         case 2:
@@ -171,8 +177,24 @@ const ExplorePage = () => {
         });
         clearTimeout(timeoutId);
 
-        if (!response.ok)
+        if (!response.ok) {
+          // More detailed error handling
+          console.error(
+            `API error: ${response.status} for tab ${tabIndex}, URL: ${url}`
+          );
+
+          if (response.status === 404) {
+            // Return empty array for 404s to avoid breaking the UI
+            if (tabIndex === selected) {
+              setCards([]);
+              setFilteredCards([]);
+              setIsLoading(false);
+            }
+            return;
+          }
+
           throw new Error(`Failed to fetch: ${response.status}`);
+        }
 
         const data: StudyMaterial[] = await response.json();
 
@@ -283,21 +305,15 @@ const ExplorePage = () => {
     }
   }, [fetchData, selected, user?.username, showTemporaryUpdateLabel]);
 
-  // Initial load and refresh intervals
+  // Initial load and refresh intervals - REMOVED PRELOADING HERE
   useEffect(() => {
     if (!user?.username) return;
 
     // Reset the component mounted flag
     isMounted.current = true;
 
-    // Start with current tab
+    // Only fetch data for the current tab on initial load
     fetchData(selected);
-
-    // Then fetch other tabs in background with slight delays to avoid overwhelming server
-    const timeouts = [
-      setTimeout(() => fetchData(0 === selected ? 1 : 0), 1000),
-      setTimeout(() => fetchData(2 === selected ? 1 : 2), 2000),
-    ];
 
     // Set up background refresh interval - align better with backend's cache TTL
     // Backend cache is 10 minutes, so refresh every 5 minutes
@@ -305,7 +321,6 @@ const ExplorePage = () => {
 
     return () => {
       isMounted.current = false;
-      timeouts.forEach(clearTimeout);
       clearInterval(refreshInterval);
     };
   }, [user?.username, fetchData, selected, backgroundRefresh]);
@@ -348,8 +363,6 @@ const ExplorePage = () => {
 
       // Set the updates available flag for better UX
       setUpdatesAvailable(true);
-
-      // Optional: You could trigger a silent background refresh here or wait for the interval
     };
 
     socket.on("broadcastStudyMaterial", handleNewMaterial);
@@ -488,7 +501,7 @@ const ExplorePage = () => {
               />
               <p className="text-[#6F658D] font-bold text-[1rem] mt-4 pr-7 text-center">
                 {selected === 1
-                  ? "No recommended study materials found for you yet"
+                  ? "No recommended study materials found for you yet."
                   : selected === 2
                   ? "No study materials from your friends found"
                   : "No study materials available"}
@@ -503,8 +516,6 @@ const ExplorePage = () => {
           open={snackbarOpen}
           onClose={() => setSnackbarOpen(false)}
         />
-
-        {/* Add global styles for animations */}
       </Box>
     </PageTransition>
   );

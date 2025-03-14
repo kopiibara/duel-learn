@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import GoldMedal from "../../../assets/General/gold-medal.svg";
 import SilverMedal from "../../../assets/General/silver-medal.svg";
 import BronzeMedal from "../../../assets/General/bronze-medal.svg";
-import ProfileIcon from "../../../assets/profile-picture/kopibara-picture.png";
 import "./media-queries/LeaderboardResponsive.css";
 import { useUser } from "../../../contexts/UserContext";
 import axios from "axios";
 import { CircularProgress } from "@mui/material";
+import defaultProfile from "../../../assets/profile-picture/default-picture.svg";
+import noLeaderboard from "../../../assets/images/noLeaderboard.svg";
 
 interface LeaderboardPlayer {
   firebase_uid: string;
@@ -52,7 +53,7 @@ const Leaderboards = () => {
           }));
 
           setLeaderboardData(dataWithRank);
-          setError(null);
+          setError(error);
         } else {
           console.error("Unexpected response format:", typeof response.data);
           setLeaderboardData([]);
@@ -99,7 +100,7 @@ const Leaderboards = () => {
   };
 
   const getDefaultAvatar = (player: LeaderboardPlayer) => {
-    return player.display_picture || ProfileIcon;
+    return player.display_picture || defaultProfile;
   };
 
   const openModal = () => setIsModalOpen(true);
@@ -113,15 +114,15 @@ const Leaderboards = () => {
         <div className="flex justify-center items-center h-64">
           <CircularProgress />
         </div>
-      ) : friendCount >= 3 ? (
-        <div className="rounded-[1rem] shadow-md border-[0.2rem] border-[#3B354C]">
+      ) : friendCount >= 2 ? (
+        <div className="rounded-[0.8rem] border-[0.2rem] border-[#3B354C]">
           {leaderboardData.slice(0, 3).map((player, index) => (
             <div
               key={index}
               className="rank-entry"
               style={{
                 backgroundColor: index % 2 === 0 ? "#120F1C" : "transparent",
-                borderRadius: "1rem",
+                borderRadius: "0.8rem",
               }}
             >
               {/* Medal + Profile Pic (Grouped) */}
@@ -163,7 +164,7 @@ const Leaderboards = () => {
           ))}
 
           <button
-            className="w-full cursor-pointer py-2 sm:py-2.5 md:py-3 lg:py-4 rounded-b-[1rem] bg-[#120F1D] text-[#5b5277] text-md border-t-2 border-[#3B354C] hover:text-white"
+            className="w-full cursor-pointersm:py-2.5 md:py-3 lg:py-4 rounded-b-[0.8rem] bg-[#120F1D] text-[#5b5277] text-md border-t-2 border-[#3B354C] hover:text-white"
             onClick={openModal}
           >
             VIEW MORE
@@ -171,24 +172,18 @@ const Leaderboards = () => {
         </div>
       ) : (
         // Show "No Friends More Than 5" section
-        <div className="mt-10 flex flex-col items-center justify-center border-[0.2rem] border-[#3B354C] rounded-sm">
+        <div className="mt-10 flex flex-col items-center justify-center border-[0.2rem] border-[#3B354C] rounded-[0.8rem]">
           <div className="flex flex-col items-center justify-center px-10 py-14">
-            <div className="bg-gray-300 w-24 h-24 rounded"></div>
-            <p className="text-center w-[300px] text-gray-400 mt-8">
-              Add more friends to unlock the Leaderboards and compete with them
-              for the top spot!
+            <img
+              src={noLeaderboard}
+              alt="No Leaderboard"
+              className=" w-[16em] h-auto"
+            />
+            <p className="text-center  text-[#9F9BAE] mt-4">
+              Add more friends to unlock the Leaderboards and <br />
+              compete with them for the top spot!
             </p>
           </div>
-          <button
-            className="w-full py-2 text-[#5b5277] border rounded hover:bg-gray-600 hover:text-white"
-            style={{
-              cursor: "pointer",
-              backgroundColor: "rgba(59, 53, 77, 0.25)",
-              borderColor: "#6F658D",
-            }}
-          >
-            REQUEST FELLOWSHIP
-          </button>
         </div>
       )}
 
@@ -199,7 +194,7 @@ const Leaderboards = () => {
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-[#080511] px-6 py-8 border-[#3B354D] border rounded-lg w-full max-w-[689px] max-h-[90vh] shadow-lg flex flex-col space-y-6 items-center"
+            className="bg-[#080511] px-6 py-8 border-[#3B354D] border rounded-[0.8rem] w-full max-w-[689px] max-h-[90vh] shadow-lg flex flex-col space-y-6 items-center"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl text-white font-semibold">
@@ -249,7 +244,7 @@ const Leaderboards = () => {
               ))}
             </div>
             <button
-              className="mt-6 bg-[#4D1EE3] text-white px-6 py-2 rounded-md hover:bg-[#3B1BC9]"
+              className="mt-6 bg-[#4D1EE3] text-white px-6 py-2 rounded-[0.8rem] hover:scale-105 transition-all ease-in-out"
               onClick={() => setIsModalOpen(false)}
             >
               Close

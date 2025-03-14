@@ -22,19 +22,7 @@ import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 import { useUser } from "../../contexts/UserContext";
 import { generateCode } from "../../pages/dashboard/play-battleground/utils/codeGenerator";
-
-interface StudyMaterial {
-  title: string;
-  summary: string;
-  items: Array<{
-    term: string;
-    definition: string;
-    image?: string | null;
-  }>;
-  created_by: string;
-  created_at: string;
-  total_views: number;
-}
+import { StudyMaterial } from "../../types/studyMaterialObject";
 
 interface SelectStudyMaterialModalProps {
   open: boolean;
@@ -174,7 +162,10 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
       }}
       closeAfterTransition
       BackdropProps={{
-        style: { backgroundColor: "transparent" },
+        timeout: 500,
+        sx: {
+          backgroundColor: "rgba(0, 0, 0, 0.5)", // Darker background
+        },
       }}
     >
       <Fade in={open}>
@@ -237,7 +228,7 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
           <Typography
             variant="h4"
             sx={{
-              color: "#FFFFFF",
+              color: "#E2DDF3",
               textAlign: "center",
               fontWeight: "bold",
               mb: 1,
@@ -269,9 +260,9 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
             <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
               <Typography
                 sx={{
-                  color: "#FFFFFF",
                   fontSize: "16px",
                   fontWeight: "bold",
+                  color: "#9F9BAE",
                 }}
               >
                 Your Library
@@ -280,12 +271,13 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
               <FormControl size="small" sx={{ minWidth: 120 }}>
                 <Select
                   value={filter}
+                  size="small"
                   onChange={(e) => setFilter(e.target.value)}
                   onOpen={() => setOpenDropdown(true)}
                   onClose={() => setOpenDropdown(false)}
                   sx={{
                     backgroundColor: "transparent",
-                    color: "#FFFFFF",
+                    color: "#9F9BAE",
                     border: "2px solid #3B354B",
                     borderRadius: "7px",
                     ".MuiOutlinedInput-notchedOutline": {
@@ -323,12 +315,13 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
               placeholder="Search material"
               variant="outlined"
               value={searchQuery}
+              size="small"
               onChange={(e) => setSearchQuery(e.target.value)}
               sx={{
                 width: { xs: "100%", sm: "40%" },
-                marginTop: { xs: "20px" },
+
                 bgcolor: "#3B354C",
-                borderRadius: "8px",
+                borderRadius: "0.8rem",
                 input: { color: "#FFFFFF" },
                 label: { color: "#6F658D" },
                 ".MuiOutlinedInput-notchedOutline": {

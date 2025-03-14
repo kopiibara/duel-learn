@@ -376,7 +376,7 @@ const MyLibraryPage = () => {
             <Typography variant="h6" color="inherit">
               My Library
             </Typography>
-            <Typography variant="subtitle2">•</Typography>
+            <Typography variant="subtitle2">—</Typography>
             <Typography variant="h6">{count}</Typography>
             <Box flexGrow={1} />
 
@@ -428,16 +428,18 @@ const MyLibraryPage = () => {
                 ]}
                 value={filter}
                 onChange={setFilter}
+                hoverOpen={true}
               />
               <Filter
                 menuItems={[
                   { value: "most recent", label: "Most Recent" },
                   { value: "least recent", label: "Least Recent" },
-                  { value: "A-Z", label: "Alpabetical (A-Z)" },
-                  { value: "Z-A", label: "Alpabetical (Z-A)" },
+                  { value: "A-Z", label: "A-Z" },
+                  { value: "Z-A", label: "Z-A" },
                 ]}
                 value={sort}
                 onChange={setSort}
+                hoverOpen={true}
               />
             </Stack>
           </Stack>

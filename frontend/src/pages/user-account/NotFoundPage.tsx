@@ -1,7 +1,7 @@
 import PageTransition from "../../styles/PageTransition";
 
 const NotFound = () => {
-  console.log("nifisenf");
+  console.log("");
   return (
     <PageTransition>
       <div style={{ padding: "20px", textAlign: "center" }}>

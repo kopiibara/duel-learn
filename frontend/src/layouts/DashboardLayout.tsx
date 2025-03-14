@@ -47,7 +47,7 @@ const DashboardLayout = () => {
         <Box className="flex flex-1">
           <main
             className={`flex-1 pt-3 relative ${
-              useMediaQuery("(min-width:1400px)") ? "px-11" : "px-25"
+              useMediaQuery("(min-width:1200px)") ? "px-11" : "px-25"
             }`}
           >
             <Outlet />
@@ -65,10 +65,11 @@ const DashboardLayout = () => {
           </main>
 
           {/* Right Sidebar */}
+
           <aside
             className="pr-2 pb-12"
             style={{
-              display: useMediaQuery("(min-width:1400px)") ? "block" : "none",
+              display: isMobile ? "none" : "block",
             }}
           >
             <Box className="sticky top-0">

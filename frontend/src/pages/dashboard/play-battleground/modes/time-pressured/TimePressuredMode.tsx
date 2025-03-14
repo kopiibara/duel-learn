@@ -1,22 +1,90 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useGameLogic } from "../../hooks/useGameLogic";
 import FlashCard from "../../components/common/FlashCard";
 import Header from "../../components/common/Header";
 import Timer from "../../components/common/Timer";
-import { GameState } from "../../types";
+import axios from "axios";
 import "./../../styles/setupques.css";
+import { useAudio } from "../../../../../contexts/AudioContext";
 
-const TimePressuredMode: React.FC<GameState> = ({
+interface TimePressuredModeProps {
+  mode: string;
+  material: any;
+  selectedTypes: string[];
+  timeLimit?: number;
+}
+
+const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   mode,
   material,
   selectedTypes,
   timeLimit,
 }) => {
+  const [isGeneratingAI, setIsGeneratingAI] = useState(true);
+  const [aiQuestions, setAiQuestions] = useState<any[]>([]);
+  const { playCorrectAnswerSound, playIncorrectAnswerSound } = useAudio();
+
+  // Fix whitespace and case sensitivity issues
+  const normalizedMode = String(mode).trim();
+
+  if (normalizedMode === "Time Pressured") {
+    // ...
+  }
+
+  // Generate AI questions when component mounts
+  useEffect(() => {
+    const generateAIQuestions = async () => {
+      console.log("Starting AI question generation in TimePressuredMode");
+      setIsGeneratingAI(true);
+      const generatedQuestions = [];
+
+      try {
+        for (const type of selectedTypes) {
+          console.log(`Generating questions for type: ${type}`);
+
+          for (const item of material.items) {
+            console.log(`Requesting ${type} question for term: "${item.term}"`);
+
+            const endpoint = `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/openai/generate-${type}`;
+            console.log(`Making API request to: ${endpoint}`);
+
+            const requestPayload = {
+              term: item.term,
+              definition: item.definition,
+              numberOfItems: 1,
+            };
+
+            const response = await axios.post(endpoint, requestPayload);
+            console.log(
+              `Response received for ${type} question:`,
+              response.data
+            );
+
+            if (Array.isArray(response.data) && response.data.length > 0) {
+              generatedQuestions.push(...response.data);
+            }
+          }
+        }
+
+        console.log("All AI questions generated:", generatedQuestions);
+        setAiQuestions(generatedQuestions);
+      } catch (error) {
+        console.error("Error generating AI questions:", error);
+      } finally {
+        setIsGeneratingAI(false);
+      }
+    };
+
+    generateAIQuestions();
+  }, [material, selectedTypes]);
+
   const {
     currentQuestion,
     isFlipped,
     handleFlip,
-    handleAnswerSubmit,
+    handleAnswerSubmit: originalHandleAnswerSubmit,
     correctCount,
     incorrectCount,
     showResult,
@@ -31,9 +99,54 @@ const TimePressuredMode: React.FC<GameState> = ({
     highestStreak,
     masteredCount,
     unmasteredCount,
-  } = useGameLogic({ mode, material, selectedTypes, timeLimit });
+    handleRevealAnswer,
+    cardDisabled,
+  } = useGameLogic({
+    mode,
+    material,
+    selectedTypes,
+    timeLimit,
+    aiQuestions,
+  });
+
+  // Custom answer submit handler with sound effects
+  const handleAnswerSubmit = (answer: string) => {
+    let isAnswerCorrect = false;
+
+    if (currentQuestion?.questionType === "identification") {
+      isAnswerCorrect =
+        answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+    } else {
+      isAnswerCorrect =
+        answer.toLowerCase() === currentQuestion?.correctAnswer.toLowerCase();
+    }
+
+    // Play appropriate sound using AudioContext
+    if (isAnswerCorrect) {
+      playCorrectAnswerSound();
+    } else {
+      playIncorrectAnswerSound();
+    }
+
+    // Call the original handler
+    originalHandleAnswerSubmit(answer);
+  };
 
   const [startTime] = useState(new Date());
+
+  // Show loading state while AI questions are being generated
+  if (isGeneratingAI) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold mb-4">Generating Questions...</h1>
+          <p className="text-lg">
+            Please wait while our AI prepares your timed challenge.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const renderQuestionContent = () => {
     if (!currentQuestion) return null;
@@ -42,15 +155,15 @@ const TimePressuredMode: React.FC<GameState> = ({
       case "multiple-choice":
         return (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-[1000px] mx-auto">
-            {currentQuestion.options?.map((option, index) => (
+            {currentQuestion.options?.map((option: string, index: number) => (
               <button
                 key={index}
                 onClick={() => handleAnswerSubmit(option)}
                 disabled={showResult}
                 className={`h-[100px] w-full bg-transparent 
-                                    ${getButtonStyle(option)}
-                                    rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                                    disabled:cursor-not-allowed px-4 text-center`}
+                          ${getButtonStyle(option)}
+                          rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                          disabled:cursor-not-allowed px-4 text-center`}
               >
                 {option}
               </button>
@@ -74,11 +187,10 @@ const TimePressuredMode: React.FC<GameState> = ({
               className={`w-full p-4 rounded-lg bg-transparent py-10 px-10 border-2 text-center
                                 ${
                                   showResult
-                                    ? inputAnswer.toLowerCase() ===
-                                      currentQuestion.correctAnswer.toLowerCase()
-                                      ? "border-[#52A647]"
-                                      : "border-[#FF3B3F]"
-                                    : "border-gray-600"
+                                    ? currentQuestion?.isCorrect
+                                      ? "border-[#52A647]" // Green border for correct answers
+                                      : "border-[#FF3B3F]" // Red border for incorrect answers
+                                    : "border-gray-600" // Default gray border
                                 }
                                 text-white focus:outline-none placeholder:text-[#6F658D]`}
               placeholder="Type your answer here..."
@@ -165,7 +277,10 @@ const TimePressuredMode: React.FC<GameState> = ({
                 correctAnswer={currentQuestion?.correctAnswer || ""}
                 isFlipped={isFlipped}
                 onFlip={handleFlip}
+                onReveal={handleRevealAnswer}
                 timeRemaining={questionTimer}
+                type={currentQuestion?.type}
+                disabled={cardDisabled}
               />
             </div>
             {renderQuestionContent()}

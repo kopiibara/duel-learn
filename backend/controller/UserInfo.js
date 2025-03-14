@@ -9,31 +9,35 @@ const UserInfo = {
             // Get a connection from the pool
             connection = await pool.getConnection();
 
-            // Fetch user info from user_info table
-            const [userInfo] = await connection.execute(
-                'SELECT firebase_uid, username, display_picture, level, exp, mana, coins as coin FROM user_info WHERE firebase_uid = ?',
+            // Fetch combined user data from both tables
+            const [userData] = await connection.execute(
+                `SELECT 
+                    u.firebase_uid,
+                    u.username,
+                    u.email,
+                    u.display_picture,
+                    u.full_name,
+                    u.email_verified,
+                    u.isSSO,
+                    u.account_type,
+                    ui.level,
+                    ui.exp,
+                    ui.mana,
+                    ui.coins
+                FROM users u
+                LEFT JOIN user_info ui ON u.firebase_uid = ui.firebase_uid
+                WHERE u.firebase_uid = ?`,
                 [firebase_uid]
             );
 
-            if (userInfo.length === 0) {
+            if (userData.length === 0) {
                 return res.status(404).json({ error: 'User not found' });
             }
 
-            // Fetch account type from users table
-            const [userAccount] = await connection.execute(
-                'SELECT account_type FROM users WHERE firebase_uid = ?',
-                [firebase_uid]
-            );
-
-            // Combine the data
-            const userData = {
-                ...userInfo[0],
-                account_type: userAccount.length > 0 ? userAccount[0].account_type : 'free'
-            };
-
+            // Send the combined data
             res.status(200).json({
                 message: 'User info fetched successfully',
-                user: userData,
+                user: userData[0],
             });
         } catch (error) {
             console.error('Error fetching user info:', error);
@@ -44,7 +48,6 @@ const UserInfo = {
     },
 
     updateLevel: async (req, res) => {
-
         let connection;
 
         try {

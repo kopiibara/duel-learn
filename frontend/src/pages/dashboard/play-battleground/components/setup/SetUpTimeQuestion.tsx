@@ -36,6 +36,8 @@ const SetUpTimeQuestion: React.FC = () => {
       state: {
         mode, // Pass back the mode
         material, // Pass back the material
+        selectedTypes, // Pass back the selected types
+        fromWelcome: true, // Add this flag to prevent redirection
       },
     });
   };

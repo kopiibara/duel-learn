@@ -1,137 +1,132 @@
 import { useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
-import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
+import sampleAvatar2 from "../../assets/profile-picture/kopibara-picture.png";
 import PageTransition from "../../styles/PageTransition";
 import { toast } from "react-hot-toast";
-import useUpdateEmailVerifiedApi from "../../hooks/api.hooks/useUpdateEmailVerifiedApi";
-import { db, auth } from "../../services/firebase";
-import { setDoc, doc, serverTimestamp, getDoc } from "firebase/firestore";
-import { reload, applyActionCode } from "firebase/auth";
+import { auth } from "../../services/firebase";
+import { reload, applyActionCode,} from "firebase/auth";
+import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
 import { useUser } from "../../contexts/UserContext";
+
+interface LocationState {
+  email?: string;
+  firebase_uid?: string;
+  oobCode?: string;
+  token?: string;
+}
+
 const EmailVerified = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { updateEmailVerifiedApi } = useUpdateEmailVerifiedApi();
-  const [email, setEmail] = useState("");
-  const [firebase_uid, setFirebaseUid] = useState("");
-  const [_isNewUser, setIsNewUser] = useState(false);
-  const [accountType, setAccountType] = useState("");
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
-  const { setUser } = useUser(); // Get user from context
-  useEffect(() => {
-    const fetchUserData = async () => {
-      const locationState = location.state || {};
-      setEmail(locationState.email || "");
-      setFirebaseUid(locationState.firebase_uid || "");
+  const { user, setUser, loginAndSetUserData } = useUser();
+  const { signUpApi } = useSignUpApi();
+  const [isVerifying, setIsVerifying] = useState(false);
+  const[okayNaTo, isOkayNaTo] = useState(false);
+  const [isNew, setIsNew] = useState(false);
+  const verifyEmail = async () => {
+    const state = location.state as LocationState;
 
-      if (locationState.firebase_uid) {
-        try {
-          setFirebaseUid(locationState.firebase_uid || "");
-          const userDocRef = doc(db, "users", locationState.firebase_uid);
-          const userDoc = await getDoc(userDocRef);
-          console.log("User Document:", userDoc.data());
-          if (userDoc.exists()) {
-            const userData = userDoc.data();
-            setAccountType(userData.account_type || "");
-
-            // Check if user is new (created within last 5 minutes)
-            const isNew = Date.now() - userData.created_at.toMillis() < 300000;
-            setIsNewUser(isNew);
-
-            // Update email verified status
-            if (!isEmailVerified) {
-              // Apply the email verification action code
-              if (locationState.oobCode) {
-                await applyActionCode(auth, locationState.oobCode);
-                setIsEmailVerified(true);
-              }
-
-              await setDoc(
-                userDocRef,
-                {
-                  email_verified: true,
-                  updated_at: serverTimestamp(),
-                },
-                { merge: true }
-              );
-
-              // Update backend
-              await updateEmailVerifiedApi(
-                locationState.firebase_uid,
-                true,
-                new Date().toISOString()
-              );
-
-              // Remove email timestamp from localStorage
-              localStorage.removeItem("emailTimestamp");
-
-              // Reload the user to get the latest email verification state
-              if (auth.currentUser) {
-                await reload(auth.currentUser);
-                const userDocRef = doc(db, "users", locationState.firebase_uid);
-                const userDoc = await getDoc(userDocRef);
-                const userData = userDoc.data();
-                setIsEmailVerified(userData?.email_verified || false);
-                console.log("Email Verified:", userData?.email_verified);
-              }
-            }
-            // Log verification status
-            console.log("Email Verified:", userData.email_verified);
-            if (auth.currentUser) {
-              console.log(
-                "Firebase Email Verified:",
-                auth.currentUser.emailVerified
-              );
-              console.log("Firebase Email:", email);
-            }
-          }
-        } catch (error: any) {
-          console.error("Error fetching user document:", error);
-          toast.error("Failed to fetch user information. Please try again.");
-        }
+    if (!state?.oobCode || !state.firebase_uid) {
+      toast.error("Invalid verification link");
+      return;
+    }
+  
+    try {
+      setIsVerifying(true);
+      if(!okayNaTo){
+      await applyActionCode(auth, state.oobCode);
+      console.log("applyActionCode successful");
+      isOkayNaTo(true);
       }
-    };
+      // 2. Reload user to get updated status
+      if (!auth.currentUser) {
+        throw new Error("No user is currently signed in");
+      }
 
-    fetchUserData();
-  }, [location.state, updateEmailVerifiedApi]);
+      await reload(auth.currentUser);
+      console.log("User reloaded");
 
-  const handleBacktoLoginClick = async () => {
-    const userDoc = await getDoc(doc(db, "users", firebase_uid));
+      // 3. Verify email is actually verified
+      if (!auth.currentUser.emailVerified) {
+        throw new Error("Email verification failed");
+      }
 
-    if (userDoc.exists()) {
-      const userData = {
-        firebase_uid: firebase_uid,
-        username: userDoc.data().username,
-        email: userDoc.data().email,
-        display_picture: userDoc.data().display_picture,
-        isNew: userDoc.data().isNewUser,
-        full_name: userDoc.data().full_name,
-        email_verified: userDoc.data().email_verified,
-        isSSO: userDoc.data().isSSO,
-        level: userDoc.data().level || 0, // Add required level property
-        account_type: userDoc.data().account_type as
-          | "free"
-          | "premium"
-          | "admin", // Ensure the value is either 'free' or 'premium'
-      };
-      console.log("User Data:", userData);
-      const isNewUser =
-        !userDoc.exists() ||
-        (userDoc.exists() &&
-          Date.now() - userDoc.data().created_at.toMillis() < 300000);
+      // 4. Update user context with verified status
+      if (user) {
+        const updatedUser = {
+          ...user,
+          email_verified: true,
+        };
+        setUser(updatedUser);
+      }
+      await reload(auth.currentUser);
 
-      // Store user data in context
-      setUser(userData);
+      // 5. Call signup API with verified status
+      const metadata = auth.currentUser.metadata;
+      const isNew = metadata.creationTime === metadata.lastSignInTime;
+      const email_verified = auth.currentUser.emailVerified || false;
+      setIsNew(isNew);
 
-      setTimeout(() => {
-        if (accountType === "admin") {
-          navigate("/admin/admin-dashboard");
-        } else if (isNewUser) {
-          navigate("/dashboard/welcome");
-        } else {
-          navigate("/dashboard/home");
-        }
-      }, 2000);
+      // Force email_verified to true since we just verified it
+
+      console.log("Before API call:", {
+        firebase_uid: state.firebase_uid,
+        isNew,
+        email_verified: auth.currentUser.emailVerified,
+      });
+
+      if (email_verified) {
+        await signUpApi(state.firebase_uid, isNew, email_verified);
+        
+        // Get token after successful verification
+        const token = await auth.currentUser.getIdToken();
+        
+        // Fetch and update user data
+        await loginAndSetUserData(state.firebase_uid, token);
+      }
+      // 6. Clear email verification related data
+      localStorage.removeItem("emailTimestamp");
+    } catch (error) {
+      console.error("Error verifying email:", error);
+      toast.error(
+        error instanceof Error ? error.message : "Failed to verify email"
+      );
+      return;
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  useEffect(() => {
+// Prevent double verification
+if (isVerifying) {
+  return;
+}
+    verifyEmail();
+
+  }, [location.state]);
+
+  const handleContinue = () => {
+    console.log("handleContinue called");
+    console.log("user:", user);
+    if (!user) {
+      toast.error("User data not found");
+      navigate("/login");
+      return;
+    }
+
+    // Clear any remaining verification data
+    localStorage.removeItem("emailTimestamp");
+
+    // Navigate based on user type and status
+    if(isNew && user.email_verified){
+      navigate("/dashboard/welcome");
+    }
+    else if (user.account_type === "admin" && !isNew && user.email_verified) {
+      navigate("/admin/admin-dashboard");
+    }
+    else {
+      navigate("/dashboard/home");
     }
   };
 
@@ -153,7 +148,7 @@ const EmailVerified = () => {
           <button
             type="button"
             className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
-            onClick={handleBacktoLoginClick}
+            onClick={handleContinue}
           >
             Continue Onboarding
           </button>

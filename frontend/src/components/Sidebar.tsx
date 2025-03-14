@@ -97,6 +97,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     setCollapsed(true);
     navigate("/dashboard/study-material/create");
   };
+
   const renderButton = (
     icon: React.ReactNode,
     text: string,
@@ -110,12 +111,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         sx={{
           textTransform: "none",
           borderRadius: "0.8rem",
-          padding: "0.6rem 2rem",
+          padding: collapsed ? "0.6rem" : "0.6rem 2vw",
           display: "flex",
-          width: "full",
-          justifyContent: "center",
+          width: "100%",
+          justifyContent: "center", // Always center
           alignItems: "center",
-          transition: "all 0.3s ease", // Smooth transition for hover effects
+          transition: "all 0.3s ease",
           ...(variant === "contained" && {
             backgroundColor: "#4D18E8",
             borderWidth: "2px",
@@ -128,16 +129,24 @@ const Sidebar: React.FC<SidebarProps> = ({
           "&:hover": {
             transform: "scale(1.05)",
           },
+          "& .MuiSvgIcon-root": {
+            fontSize: "clamp(1.3rem, 1vw, 1.7rem)",
+            margin: collapsed ? "0 auto" : "0", // Center icon when collapsed
+          },
         }}
       >
         {icon}
         <Typography
           variant="subtitle1"
           className={clsx("transition-all duration-100", {
-            "opacity-0 w-auto": collapsed,
-            "opacity-100 w-auto": !collapsed,
+            "opacity-0 w-0 absolute pointer-events-none": collapsed, // Add absolute and pointer-events-none
+            "opacity-100 ": !collapsed,
           })}
-          sx={{ whiteSpace: "nowrap", overflow: "hidden" }}
+          sx={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            fontSize: "clamp(0.8rem, 0.8vw, 1rem)",
+          }}
         >
           {text}
         </Typography>
@@ -155,26 +164,32 @@ const Sidebar: React.FC<SidebarProps> = ({
   }, [location.pathname]);
 
   return (
-    <Box style={{ display: "flex", position: "relative" }}>
+    <Box
+      style={{
+        display: "flex",
+        position: "relative",
+        height: "100vh",
+      }}
+    >
       <Stack
-        className="h-full w-full pl-2 mx-2 py-12 flex flex-col justify-between"
+        className="h-full w-full flex flex-col justify-between"
         spacing={2}
         sx={{
-          width: collapsed ? "5.5rem" : "15rem",
-          transition: "width 0.35s",
+          width: collapsed ? "5vw" : "13vw",
+          minWidth: collapsed ? "4rem" : "12rem",
+          maxWidth: collapsed ? "6rem" : "18rem",
+          padding: "6vh 1vw",
+          transition: "all 0.35s ease",
         }}
       >
         <Stack spacing={3} className="flex">
-          <Stack
-            direction="row"
-            className="flex items-center pb-2  "
-            spacing={2}
-          >
+          <Stack direction="row" className="flex items-center pb-3" spacing={1}>
             <Button
               onClick={handleLandingPage}
               sx={{
                 transition: "transform 0.3s ease",
                 textTransform: "none",
+                padding: 0,
                 "&:hover": {
                   transform: "scale(1.05)",
                 },
@@ -182,21 +197,24 @@ const Sidebar: React.FC<SidebarProps> = ({
             >
               <img
                 src="/duel-learn-logo.svg"
-                className="w-10 h-10"
+                style={{
+                  width: "clamp(2rem, 3vw, 2.5rem)",
+                  height: "clamp(2rem, 3vw, 2.5rem)",
+                }}
                 alt="icon"
               />
               <Typography
-                variant="h6"
                 fontWeight={600}
                 className={clsx("transition-all duration-100", {
-                  "opacity-0 w-auto": collapsed,
-                  "opacity-100 w-auto": !collapsed,
+                  "opacity-0 w-0": collapsed,
+                  "opacity-100 ml-2": !collapsed,
                 })}
                 sx={{
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   color: "#E2DDF3",
-                  marginLeft: "1rem",
+                  fontSize: "clamp(1rem, 1.1vw, 1.5rem)",
+                  marginLeft: { xs: "0.5rem", sm: "1rem" },
                 }}
               >
                 Duel Learn
@@ -208,60 +226,52 @@ const Sidebar: React.FC<SidebarProps> = ({
               onClick={toggleCollapse}
               size="small"
               sx={{
-                backgroundColor: "transparent",
-                transition: "all 0.3s ease", // Smooth transition for visibility
-                "& .MuiSvgIcon-root": { color: "#3B354D" },
+                backgroundColor: "inherit",
+                transition: "all 0.3s ease",
+                width: "fit-content",
+                height: "fit-content",
+                minHeight: 0,
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                "& .MuiSvgIcon-root": {
+                  color: "#3B354D",
+                  fontSize: "clamp(1rem, 1vw, 1.5rem)",
+                },
                 "&:hover": {
                   backgroundColor: "#3B354D",
                   "& .MuiSvgIcon-root": { color: "#E2DDF3" },
                 },
               }}
-              className={clsx(
-                "absolute z-50 transition-all duration-300",
-                collapsed ? "left-[0rem]" : "left-[0rem]"
-              )}
+              className="absolute z-50 left-0"
             >
-              {collapsed ? (
-                <ArrowForwardIcon fontSize="small" />
-              ) : (
-                <ArrowBackIcon fontSize="small" />
-              )}
+              {collapsed ? <ArrowForwardIcon /> : <ArrowBackIcon />}
             </Fab>
           </Stack>
 
-          {/* This adds padding below Create */}
-          {renderButton(
-            <AddIcon
-              fontSize="small"
-              className={clsx({ "mr-1": !collapsed })}
-            />,
-            "Create",
-            "contained",
-            handleCreateStudyMaterial
-          )}
-          {renderButton(
-            <PlayIcon className={clsx({ "mr-1": !collapsed })} />,
-            "Play",
-            "outlined",
-            handleModalOpen
-          )}
-          <Divider sx={{ height: "2px", backgroundColor: "#3B354C" }} />
+          <Stack spacing={2} sx={{ marginTop: "5vh" }}>
+            {renderButton(
+              <AddIcon fontSize="small" />,
+              "Create",
+              "contained",
+              handleCreateStudyMaterial
+            )}
+            {renderButton(<PlayIcon />, "Play", "outlined", handleModalOpen)}
+          </Stack>
+
+          <Divider
+            sx={{ height: "2px", backgroundColor: "#3B354C", margin: "2vh 0" }}
+          />
         </Stack>
 
-        <nav aria-label="sidebar">
-          <List>
+        <nav aria-label="sidebar" style={{ flex: 1, marginTop: "2vh" }}>
+          <List sx={{ height: "100%" }}>
             {menuItems.map((item, index) => (
-              <ListItem key={index} disablePadding className="mb-2">
+              <ListItem key={index} disablePadding sx={{ marginBottom: "1vh" }}>
                 <Tooltip
                   title={collapsed ? item.title : ""}
                   placement="right"
                   arrow
-                  sx={{
-                    fontSize: "16px",
-                    backgroundColor: "yellow",
-                    color: "blue",
-                    borderRadius: "8px",
-                  }}
                 >
                   <ListItemButton
                     selected={selectedIndex === index}
@@ -279,24 +289,28 @@ const Sidebar: React.FC<SidebarProps> = ({
                         fontWeight: "bold",
                       },
                       transition: "all 0.3s ease",
-                      justifyContent: collapsed ? "center" : "center",
-                      padding: "0.6rem 1.6rem",
+                      justifyContent: collapsed ? "center" : "flex-start", // Changed from flex-center to center when collapsed
+                      alignItems: "center", // Add this to ensure vertical centering
+                      padding: collapsed ? "1vh" : "1vh 1vw", // Use vh for vertical padding too
                       color: "#E2DDF3",
                       borderColor: "#080511",
                       borderWidth: "2px",
                       borderStyle: "solid",
                       borderRadius: "0.8rem",
+                      width: "100%", // Ensure full width
                     }}
                     onMouseEnter={() => setHoveredIndex(index)}
                     onMouseLeave={() => setHoveredIndex(null)}
                   >
                     <ListItemIcon
                       sx={{
-                        minWidth: 0,
+                        minWidth: collapsed ? 0 : "2vw", // Zero minWidth when collapsed
+                        width: collapsed ? "auto" : "auto", // Auto width
                         justifyContent: "center",
                         display: "flex",
                         alignItems: "center",
-                        marginRight: collapsed ? 0 : "1rem",
+                        marginRight: collapsed ? 0 : "0.55vw",
+                        padding: collapsed ? "0" : "0", // No padding when collapsed
                       }}
                     >
                       <img
@@ -305,17 +319,28 @@ const Sidebar: React.FC<SidebarProps> = ({
                             ? item.icon.replace(".svg", "-colored.svg")
                             : item.icon
                         }
-                        className="w-6.5"
+                        style={{
+                          width: collapsed
+                            ? "clamp(1rem, 1.3vw, 2rem)"
+                            : "clamp(1rem, 1.3vw, 2rem)",
+                          margin: collapsed ? "0 auto" : "0", // Center the image when collapsed
+                        }}
                         alt={`${item.title} icon`}
                       />
                     </ListItemIcon>
                     <ListItemText
                       primary={item.title}
                       className={clsx("transition-all duration-0", {
-                        "opacity-0 w-auto": collapsed,
-                        "opacity-100 w-auto": !collapsed,
+                        "opacity-0 w-0 absolute": collapsed, // Added absolute positioning when collapsed
+                        "opacity-100": !collapsed,
                       })}
-                      sx={{ whiteSpace: "nowrap", overflow: "hidden" }}
+                      primaryTypographyProps={{
+                        sx: {
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          fontSize: "clamp(0.8rem, 0.8vw, 1rem)",
+                        },
+                      }}
                     />
                   </ListItemButton>
                 </Tooltip>

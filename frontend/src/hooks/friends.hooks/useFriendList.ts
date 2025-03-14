@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
-import { Friend } from "../../types/friendObject";
+import { Friend } from "../../contexts/UserContext";
 import { useFriendSocket } from "./useFriendSocket";
 
 export const useFriendList = (userId: string | undefined) => {
@@ -104,8 +104,8 @@ export const useFriendList = (userId: string | undefined) => {
       }));
 
       return response;
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response?.status === 400) {
+    } catch (error: any) {
+      if (error?.response?.status === 400) {
         throw new Error(
           error.response.data.message || "Failed to send friend request"
         );
@@ -129,8 +129,8 @@ export const useFriendList = (userId: string | undefined) => {
         ),
       ]);
 
-      const senderInfo = senderResponse.data;
-      const receiverInfo = receiverResponse.data;
+      const senderInfo = senderResponse.data as Friend;
+      const receiverInfo = receiverResponse.data as Friend;
 
       // Accept the friend request via API
       const response = await axios.post(

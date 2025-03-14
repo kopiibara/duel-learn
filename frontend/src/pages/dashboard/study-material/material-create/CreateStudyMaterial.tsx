@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { io } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 import { useNavigate, useLocation } from "react-router-dom"; // Add useLocation import
 import DocumentHead from "../../../../components/DocumentHead";
 import PageTransition from "../../../../styles/PageTransition";
@@ -63,11 +63,19 @@ const recalculateItemNumbers = (
   }));
 };
 
+// Add this interface near the top of your file with other types
+interface TermDefinitionPair {
+  term: string;
+  definition: string;
+}
+
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Add this line
   const { user } = useUser();
-  const socket = io(import.meta.env.VITE_BACKEND_URL);
+
+  // Properly type the socket state
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   // Check if we're in edit mode
   const editMode = location.state?.editMode || false;
@@ -227,6 +235,18 @@ const CreateStudyMaterial = () => {
     setSnackbarOpen(false);
   };
 
+  // Set up socket connection with proper cleanup
+  useEffect(() => {
+    // Initialize socket connection
+    const socketInstance = io(import.meta.env.VITE_BACKEND_URL);
+    setSocket(socketInstance);
+
+    // Clean up on component unmount
+    return () => {
+      socketInstance.disconnect();
+    };
+  }, []);
+
   // Update the save button handler to preserve item_number values
   // Update the handleSaveButton function
 
@@ -368,9 +388,11 @@ const CreateStudyMaterial = () => {
           items: savedData.items || transformedItems,
         };
 
-        // Emit the transformed data
+        // Emit the transformed data (now with null check for socket)
         console.log("Emitting new study material event:", broadcastData);
-        socket.emit("newStudyMaterial", broadcastData);
+        if (socket) {
+          socket.emit("newStudyMaterial", broadcastData);
+        }
 
         // Navigate to preview page
         navigate(
@@ -433,24 +455,101 @@ const CreateStudyMaterial = () => {
   const handleDiscard = () => {
     if (editMode && studyMaterialId) {
       // If coming from edit mode, return to the view page for that specific material
-      navigate(`/dashboard/study-material/view/${studyMaterialId}`);
+      navigate(`/dashboard/study-material/view${studyMaterialId}`);
     } else {
       // Otherwise, just go back to the previous page
       navigate(-1);
     }
   };
 
-  const handleUploadFile = () => {
+  const handleUploadFile = async () => {
     const input = document.createElement("input");
     input.type = "file";
     input.accept = ".pdf, .docx, .jpg, .jpeg, .png, .gif";
-    input.onchange = (e: Event) => {
+    input.onchange = async (e: Event) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
-        console.log("Uploaded file:", file);
+        console.log("Uploading file:", file);
+
+        try {
+          // Create a FormData object to send the file
+          const formData = new FormData();
+          formData.append("file", file);
+
+          // Step 1: Show loading state
+          handleShowSnackbar("Processing your document...");
+
+          // Step 2: Extract text with OCR
+          const ocrResponse = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-text`,
+            {
+              method: "POST",
+              body: formData,
+            }
+          );
+
+          if (!ocrResponse.ok) {
+            throw new Error(`OCR server responded with ${ocrResponse.status}`);
+          }
+
+          const ocrData = await ocrResponse.json();
+          console.log("Extracted text:", ocrData.text);
+
+          if (!ocrData.text || ocrData.text.trim() === "") {
+            handleShowSnackbar("No text could be extracted from the image");
+            return;
+          }
+
+          // Step 3: Process text into term-definition pairs with AI
+          handleShowSnackbar("Identifying terms and definitions...");
+          const aiResponse = await fetch(
+            `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-pairs`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text: ocrData.text }),
+            }
+          );
+
+          if (!aiResponse.ok) {
+            throw new Error(`AI server responded with ${aiResponse.status}`);
+          }
+
+          const aiData = await aiResponse.json();
+          console.log("Term-definition pairs:", aiData.pairs);
+
+          // Step 4: Create study material items from the pairs
+          if (aiData.pairs && aiData.pairs.length > 0) {
+            const newItems = aiData.pairs.map(
+              (pair: TermDefinitionPair, index: number) => ({
+                id: items.length + index + 1,
+                term: pair.term || "",
+                definition: pair.definition || "",
+                image: null,
+                item_number: items.length + index + 1,
+              })
+            );
+
+            // Add the new items to the existing ones
+            setItems([...items, ...newItems]);
+            handleShowSnackbar(
+              `Added ${newItems.length} new terms and definitions!`
+            );
+          } else {
+            handleShowSnackbar("No term-definition pairs could be identified");
+          }
+        } catch (error) {
+          console.error("Error processing document:", error);
+          handleShowSnackbar("Failed to process the document");
+        }
       }
     };
     input.click();
+  };
+
+  const resizeTextarea = (input: HTMLTextAreaElement | HTMLInputElement) => {
+    input.style.width = "auto"; // Reset height
+    input.style.width = input.scrollWidth + "px"; // Set height to fit content
   };
 
   // Add a handler for the visibility change
@@ -479,14 +578,24 @@ const CreateStudyMaterial = () => {
               >
                 <TextField
                   id="title"
-                  label="Title"
+                  label={title ? "" : "Enter your title here..."}
                   variant="standard"
-                  value={title} // <-- Bind to state
-                  onChange={(e) => setTitle(e.target.value)} // <-- Update state on change
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  onInput={(e) => resizeTextarea(e.target as HTMLInputElement)}
                   sx={{
-                    width: "32rem",
-                    "& .MuiInputLabel-root": { color: "#3B354D" },
-                    "& .MuiInputLabel-root.Mui-focused": { color: "#381898" },
+                    minWidth: "32rem", // Set minimum width
+                    maxWidth: "80%", // Prevent it from growing too wide
+                    "& .MuiInputLabel-root": {
+                      color: "#3B354D",
+                      transform: title
+                        ? "translate(0, -1.5px) scale(0.75)"
+                        : "translate(0, 20px) scale(1)",
+                    },
+                    "& .MuiInputLabel-root.Mui-focused": {
+                      color: "#A38CE6",
+                      transform: "translate(0, -1.5px) scale(0.75)",
+                    },
                     "& .MuiInput-root": {
                       color: "#E2DDF3",
                       fontWeight: 500,
@@ -499,11 +608,24 @@ const CreateStudyMaterial = () => {
                       borderBottomColor: "#A38CE6",
                     },
                     "& .MuiInput-underline:after": {
-                      borderBottomColor: "#381898",
+                      borderBottomColor: "#A38CE6",
+                    },
+                    "& .MuiInputBase-input::placeholder": {
+                      color: "#9F9BAE",
+                      opacity: 0.7,
+                      // Hide placeholder when input is focused or has value
+                      transition: "opacity 0.2s ease-in-out",
+                    },
+                    "& .MuiInputBase-input:focus::placeholder": {
+                      opacity: 0,
+                    },
+                  }}
+                  InputProps={{
+                    style: {
+                      transition: "all 0.3s ease",
                     },
                   }}
                 />
-
                 <Box flexGrow={1} />
                 <Stack direction={"row"} spacing={1}>
                   <Button
@@ -515,7 +637,7 @@ const CreateStudyMaterial = () => {
                       color: "#E2DDF3",
                       height: "fit-content",
                       borderRadius: "0.8rem",
-                      padding: "0.4rem 2rem",
+                      width: "6vw",
                       fontSize: "0.8rem",
                       transition: "all 0.3s ease",
                       "&:hover": {
@@ -529,9 +651,8 @@ const CreateStudyMaterial = () => {
                     variant="contained"
                     sx={{
                       borderRadius: "0.8rem",
-                      padding: "0.4rem 2rem",
                       display: "flex",
-                      width: "full",
+                      width: "6vw",
                       height: "fit-content",
                       borderColor: "#E2DDF3",
                       color: "#E2DDF3",
@@ -554,22 +675,20 @@ const CreateStudyMaterial = () => {
             <Box className="flex items-center">
               <Stack spacing={1} className="flex">
                 <Typography variant="subtitle1" className="text-[#3B354D]">
-                  Tags
+                  Tags:
                 </Typography>
                 <Box
                   sx={{
-                    display: "inline-flex", // Make the Box adjust based on content size
+                    display: "inline-flex", // Make the Box adjust based on content si
                     alignItems: "center",
                     flexWrap: "wrap",
                     gap: 0.5,
-                    padding: "0.6rem",
+                    padding: "0.8rem",
+                    width: "fit-content",
                     border: "1px solid #3B354D",
                     borderRadius: "0.8rem",
                     backgroundColor: "#3B354D",
-                    transition: "all 0.3s ease", // Smooth transition for hover and active
-                    minWidth: "200px", // Set the minimum width for the Box
-                    maxWidth: "100%", // Let the Box expand up to 100% of its container width
-                    width: "auto", // Allow Box to take the width of its content
+                    transition: "all 0.3s ease-in-out", // Smooth transition for hover and active
                     "&:hover": {
                       backgroundColor: "#4A435C", // Hover styles
                       borderColor: "#A38CE6",
@@ -587,9 +706,12 @@ const CreateStudyMaterial = () => {
                       label={tag}
                       onDelete={() => handleDeleteTag(tag)}
                       sx={{
-                        backgroundColor: "#4D18E8",
+                        backgroundColor: "#4D18E8 !important",
                         color: "#E2DDF3",
+                        width: "fit-content",
+                        height: "fit-content",
                         padding: "0.4rem",
+                        borderRadius: "0.6rem",
                         "& .MuiChip-deleteIcon": { color: "#E2DDF3" },
                       }}
                     />
@@ -602,12 +724,15 @@ const CreateStudyMaterial = () => {
                     onChange={(e) => setCurrentTag(e.target.value)}
                     onKeyDown={handleAddTag}
                     placeholder="Press enter"
+                    onInput={(e) =>
+                      resizeTextarea(e.target as HTMLTextAreaElement)
+                    }
                     style={{
                       border: "none",
                       outline: "none",
                       background: "transparent",
+                      width: "fit-content",
                       color: "#E2DDF3",
-                      width: "5.5rem", // Input should not be too small
                       fontSize: "1rem", // Adjust font size as needed
                       paddingLeft: 6, // Remove any default right padding that may create the extra space
                       textAlign: "left", // Ensure text is aligned properly
@@ -640,7 +765,7 @@ const CreateStudyMaterial = () => {
                     width: "auto",
                     justifyContent: "center",
                     color: "#3B354D",
-                    height: "fit-content",
+                    height: "2.8rem",
                     border: "0.15rem solid #3B354D",
                     textTransform: "none",
                     transition: "all 0.3s ease-in-out",
@@ -662,6 +787,7 @@ const CreateStudyMaterial = () => {
                   ]}
                   value={visibility}
                   onChange={handleVisibilityChange}
+                  hoverOpen
                 />
               </Stack>
             </Box>

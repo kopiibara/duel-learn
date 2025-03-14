@@ -1,50 +1,77 @@
 import { useState, useEffect } from "react";
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { getDoc, doc } from "firebase/firestore";
+import { db } from "../services/firebase";
 
-const useEmailTimestamp = (email: string) => {
+const useEmailTimestamp = (email: string, firebase_uid?: string) => {
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [isButtonDisabled, setIsButtonDisabled] = useState(true);
 
   const checkTimestamp = async () => {
     try {
-      const db = getFirestore();
-      const usersRef = collection(db, "users");
-      const q = query(usersRef, where("email", "==", email));
-      const querySnapshot = await getDocs(q);
-
-      if (!querySnapshot.empty) {
-        const userDoc = querySnapshot.docs[0];
-        const userData = userDoc.data();
-
-        let emailTimestamp = userData.emailTimestamp?.toDate();
-        if (!emailTimestamp) {
-          emailTimestamp = new Date(localStorage.getItem("emailTimestamp") || "");
-        }
-
-        if (emailTimestamp) {
+      if (firebase_uid) {
+        // Try to get timestamp from Firestore first
+        const userDoc = await getDoc(doc(db, "temp_users", firebase_uid));
+        const firestoreTimestamp = userDoc.data()?.emailTimestamp;
+        
+        if (firestoreTimestamp) {
+          const timestampDate = firestoreTimestamp.toDate();
           const now = new Date();
-          const elapsed = now.getTime() - emailTimestamp.getTime();
-          const remaining = 5 * 60 * 1000 - elapsed;
+          const elapsed = now.getTime() - timestampDate.getTime();
+          const remaining = 5 * 60 * 1000 - elapsed; // 5 minutes
 
-          if (remaining > 1) {
+          if (remaining > 0) {
             setTimeRemaining(remaining);
             setIsButtonDisabled(true);
             return false;
           }
         }
       }
+
+      // Fallback to localStorage if Firestore check fails or user not found
+      const localTimestamp = localStorage.getItem("emailTimestamp");
+      if (localTimestamp) {
+        const timestampDate = new Date(localTimestamp);
+        const now = new Date();
+        const elapsed = now.getTime() - timestampDate.getTime();
+        const remaining = 5 * 60 * 1000 - elapsed;
+
+        if (remaining > 0) {
+          setTimeRemaining(remaining);
+          setIsButtonDisabled(true);
+          return false;
+        }
+      }
+
       setIsButtonDisabled(false);
       return true;
-    } catch (err) {
-      console.error("Error checking email timestamp:", err);
-      setIsButtonDisabled(false);
-      return false;
+    } catch (error) {
+      console.error("Error checking timestamp:", error);
+      // Fallback to localStorage on error
+      return checkLocalTimestamp();
     }
+  };
+
+  const checkLocalTimestamp = () => {
+    const localTimestamp = localStorage.getItem("emailTimestamp");
+    if (localTimestamp) {
+      const timestampDate = new Date(localTimestamp);
+      const now = new Date();
+      const elapsed = now.getTime() - timestampDate.getTime();
+      const remaining = 5 * 60 * 1000 - elapsed;
+
+      if (remaining > 0) {
+        setTimeRemaining(remaining);
+        setIsButtonDisabled(true);
+        return false;
+      }
+    }
+    setIsButtonDisabled(false);
+    return true;
   };
 
   useEffect(() => {
     checkTimestamp();
-  }, [email]);
+  }, [email, firebase_uid]);
 
   useEffect(() => {
     if (timeRemaining !== null) {

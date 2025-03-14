@@ -29,7 +29,7 @@ const DiscoverMore = () => {
     : cards.length === 1
     ? 100 // Single card: 60%
     : isMediumScreen && cardsToShow === 2
-    ? 50 // Medium screen with 2 cards: 50% each
+    ? 70 // Medium screen with 2 cards: 50% each
     : 100 / maxCardsToShow; // Default distribution
 
   useEffect(() => {
@@ -148,7 +148,7 @@ const DiscoverMore = () => {
               key={index}
               sx={{
                 flex: `0 0 ${cardWidth}%`,
-                padding: "0 0.5rem",
+                padding: "0 0.4vw",
               }}
             >
               <CardComponent

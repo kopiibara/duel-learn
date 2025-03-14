@@ -170,7 +170,7 @@ const FindFriends: React.FC = () => {
             value={searchQuery}
             autoFocus
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full px-4 py-3 rounded-[0.8rem] bg-[#2A2A3B] border border-[#3B354C] focus:outline-none focus:border-[#6F658D]"
+            className="w-full px-4 py-3 rounded-[0.8rem] bg-[#3B354D] border border-[#3B354C] focus:outline-none focus:border-[#6F658D]"
           />
         </div>
         {users.length === 0 ? (
@@ -208,7 +208,18 @@ const FindFriends: React.FC = () => {
                     <button
                       className="bg-[#5CA654] text-white py-2 px-4 rounded-md hover:scale-105 transition-all duration-300"
                       onClick={() => {
-                        if (!user?.firebase_uid || !user?.username) return;
+                        if (
+                          !user?.firebase_uid ||
+                          !user?.username ||
+                          !otherUser?.username
+                        ) {
+                          setSnackbar({
+                            open: true,
+                            message:
+                              "Missing user information. Please try again.",
+                          });
+                          return;
+                        }
 
                         // Update UI states first
                         setPendingRequests((prev) => ({
@@ -221,7 +232,7 @@ const FindFriends: React.FC = () => {
                           [otherUser.firebase_uid]: otherUser.username,
                         }));
 
-                        // Prepare request data with consistent property names
+                        // Prepare request data with all required fields
                         const requestData = {
                           sender_id: user.firebase_uid,
                           sender_username: user.username,
@@ -254,7 +265,20 @@ const FindFriends: React.FC = () => {
                           setSnackbar({
                             open: true,
                             message:
-                              "You've already sent a friend request to this user!",
+                              "Failed to send friend request. Please try again.",
+                          });
+
+                          // Clean up UI state if the request failed
+                          setPendingRequests((prev) => {
+                            const { [otherUser.firebase_uid]: _, ...rest } =
+                              prev;
+                            return rest;
+                          });
+
+                          setSentRequests((prev) => {
+                            const { [otherUser.firebase_uid]: _, ...rest } =
+                              prev;
+                            return rest;
                           });
                         });
                       }}
@@ -282,7 +306,6 @@ const FindFriends: React.FC = () => {
         open={snackbar.open}
         message={snackbar.message}
         onClose={handleCloseSnackbar}
-        // Increase auto-hide duration to give user more time to see the notification
         autoHideDuration={6000}
       />
     </>

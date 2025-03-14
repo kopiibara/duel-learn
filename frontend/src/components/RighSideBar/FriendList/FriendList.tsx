@@ -10,14 +10,11 @@ import { useFriendList } from "../../../hooks/friends.hooks/useFriendList";
 import { useFriendSocket } from "../../../hooks/friends.hooks/useFriendSocket";
 import { usePendingFriendRequests } from "../../../hooks/friends.hooks/usePendingFriendRequests";
 import axios from "axios";
-import {
-  SnackbarState,
-  FriendRequestData,
-  Friend,
-} from "../../../types/friendObject";
+import { SnackbarState, FriendRequestData } from "../../../types/friendObject";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import noFriend from "../../../assets/images/NoFriend.svg";
+import { Friend } from "../../../contexts/UserContext";
 
 const FriendList: React.FC = () => {
   const { user } = useUser();
@@ -89,14 +86,15 @@ const FriendList: React.FC = () => {
     if (!user?.firebase_uid) return;
 
     try {
-      const response = await axios.get(
+      const response = await axios.get<{ count: number }>(
         `${import.meta.env.VITE_BACKEND_URL}/api/friend/requests-count/${
           user.firebase_uid
         }`
       );
 
-      if (response.data && typeof response.data.count === "number") {
-        setPendingCount(response.data.count);
+      const { count } = response.data;
+      if (typeof count === "number") {
+        setPendingCount(count);
       }
     } catch (error) {
       console.error("Error fetching pending request count:", error);
@@ -153,7 +151,10 @@ const FriendList: React.FC = () => {
       // Refresh the friend list
       fetchFriends();
 
-      // Update the pending count
+      // Update the pending count directly - this ensures immediate UI update
+      setPendingCount((prev) => Math.max(0, prev - 1));
+
+      // Update the pending count from server as a backup
       fetchPendingRequestCount();
     } catch (error: any) {
       console.error("Error accepting friend request:", error);
@@ -166,7 +167,6 @@ const FriendList: React.FC = () => {
       });
     }
   };
-
   const handleDeclineFriendRequest = async (senderId: string) => {
     try {
       await handleRejectRequest(senderId);
@@ -194,22 +194,26 @@ const FriendList: React.FC = () => {
 
   return (
     <>
-      <Box className="rounded-[1rem] shadow-md border-[0.2rem] border-[#3B354C]">
-        <div className="px-8 pt-8 pb-3">
-          <div className="flex flex-row items-center mb-6 gap-4">
-            <img src="/bunny.png" className="w-[41px] h-[35px]" alt="icon" />
-            <h2 className="text-[1.1rem] text-[#FFFFFF] font-semibold">
+      <Box className="rounded-[0.8rem] border-[0.2rem] border-[#3B354C] max-h-[80vh]">
+        <div className="px-[2vw] pt-[4vh] pb-[2vh]">
+          <div className="flex flex-row items-center mb-[2vh] gap-[0.8vw]">
+            <img
+              src="/bunny.png"
+              className="min-w-[40px] w-[2.5vw] max-w-[56px] h-auto"
+              alt="icon"
+            />
+            <p className="text-[clamp(1rem,1vw,2rem)] font-semibold">
               Friend List
-            </h2>
+            </p>
           </div>
-          <hr className="border-t-2 border-[#3B354D] mb-7" />
+          <hr className="border-t-2 border-[#3B354D] mb-[2vh]" />
 
           {loading ? (
             <Box display="flex" justifyContent="center" alignItems="center">
               <img
                 src={cauldronGif}
                 alt="Loading..."
-                style={{ width: "4rem", height: "auto" }}
+                style={{ width: "4vw", maxWidth: "4rem", height: "auto" }}
               />
             </Box>
           ) : error ? (
@@ -220,27 +224,28 @@ const FriendList: React.FC = () => {
               display="flex"
               justifyContent="center"
               alignItems="center"
-              paddingY={2}
+              paddingY="2vh"
             >
               <Box display="flex" justifyContent="center" alignItems="center">
                 <img
                   src={noFriend}
                   alt="noFriend"
-                  style={{ width: "8rem", height: "auto", opacity: 0.75 }}
+                  style={{
+                    width: "8vw",
+                    maxWidth: "8rem",
+                    height: "auto",
+                    opacity: 0.75,
+                  }}
                 />
               </Box>
-              <p className=" text-[#6F658D] font-semibold text-[0.85rem]">
+              <p className="text-[#6F658D] font-semibold text-[1.5vh]">
                 {" "}
                 Add friends and share the magic!
               </p>
             </Stack>
           ) : (
             localFriendList.map((friend: Friend) => (
-              <FriendListItem
-                key={friend.firebase_uid}
-                friend={friend}
-                onInvite={handleInvite}
-              />
+              <FriendListItem key={friend.firebase_uid} friend={friend} />
             ))
           )}
         </div>
