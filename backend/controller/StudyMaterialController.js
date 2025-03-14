@@ -96,9 +96,7 @@ const studyMaterialController = {
           console.error("Error rolling back transaction:", rollbackError);
         }
       }
-      res
-        .status(500)
-        .json({ error: "Internal server error", details: error.message });
+      res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
       if (connection) connection.release();
     }
@@ -161,10 +159,7 @@ const studyMaterialController = {
       );
 
       if (creatorInfo.length > 0) {
-        invalidateCachesForUser(
-          creatorInfo[0].created_by,
-          creatorInfo[0].created_by_id
-        );
+        invalidateCachesForUser(creatorInfo[0].created_by, creatorInfo[0].created_by_id);
       }
 
       studyMaterialCache.del(`study_material_${studyMaterialId}`);
@@ -172,7 +167,7 @@ const studyMaterialController = {
       res.status(200).json({
         message: "Study material updated successfully",
         studyMaterialId,
-        updated_at: updatedTimestamp,
+        updated_at: updatedTimestamp
       });
     } catch (error) {
       console.error("Error editing study material:", error);
@@ -218,7 +213,7 @@ const studyMaterialController = {
 
       res.status(200).json({
         message: "Study material archived successfully",
-        studyMaterialId,
+        studyMaterialId
       });
     } catch (error) {
       console.error("Error archiving study material:", error);
@@ -254,7 +249,7 @@ const studyMaterialController = {
 
       res.status(200).json({
         message: "Study material restored successfully",
-        studyMaterialId,
+        studyMaterialId
       });
     } catch (error) {
       console.error("Error restoring study material:", error);
@@ -309,7 +304,7 @@ const studyMaterialController = {
 
       res.status(200).json({
         message: "Study material deleted successfully",
-        studyMaterialId,
+        studyMaterialId
       });
     } catch (error) {
       console.error("Error deleting study material:", error);
@@ -360,12 +355,12 @@ const studyMaterialController = {
         created_at: rows[0].created_at,
         status: rows[0].status,
         visibility: rows[0].visibility,
-        items: rows.map((row) => ({
+        items: rows.map(row => ({
           term: row.term,
           definition: row.definition,
           image: formatImageToBase64(row.image),
-          item_number: row.item_number,
-        })),
+          item_number: row.item_number
+        }))
       };
 
       // Cache the result
@@ -374,9 +369,7 @@ const studyMaterialController = {
       res.status(200).json(result);
     } catch (error) {
       console.error("Error fetching study material:", error);
-      res
-        .status(500)
-        .json({ error: "Internal server error", details: error.message });
+      res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -448,9 +441,7 @@ const studyMaterialController = {
       res.status(200).json(studyMaterials);
     } catch (error) {
       console.error("Error fetching study materials by creator:", error);
-      res
-        .status(500)
-        .json({ error: "Internal server error", details: error.message });
+      res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -495,13 +486,14 @@ const studyMaterialController = {
       // Fetch study materials with matching tags
       const [infoRows] = await connection.execute(
         `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
-         FROM study_material_info 
-         WHERE created_by != ?`,
+                 FROM study_material_info 
+                 WHERE created_by != ?; `,
         [username]
       );
 
       if (infoRows.length === 0) {
-        return res.json({ message: "No study materials found with matching tags" });
+        return res
+          .json({ message: "No study materials found with matching tags" });
       }
 
       // Process study materials in parallel
@@ -548,9 +540,7 @@ const studyMaterialController = {
       res.status(200).json(filteredMaterials);
     } catch (error) {
       console.error("Error fetching recommended cards:", error);
-      res
-        .status(500)
-        .json({ error: "Internal server error", details: error.message });
+      res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -573,13 +563,11 @@ const studyMaterialController = {
       res.status(200).json({
         message: "Visibility updated successfully",
         studyMaterialId,
-        visibility,
+        visibility
       });
     } catch (error) {
       console.error("Error updating visibility:", error);
-      res
-        .status(500)
-        .json({ error: "Internal server error", details: error.message });
+      res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -598,9 +586,7 @@ const studyMaterialController = {
       res.status(200).json({ message: "View count updated successfully" });
     } catch (error) {
       console.error("Error updating total views:", error);
-      res
-        .status(500)
-        .json({ error: "Internal server error", details: error.message });
+      res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -621,12 +607,12 @@ const studyMaterialController = {
       // Optimized query with LIMIT for better performance
       const [rows] = await connection.execute(
         `SELECT
-          i.study_material_id, i.title, i.tags, i.total_items,
-          i.created_by, i.total_views, i.created_at
-         FROM study_material_info i
-         WHERE i.status = 'active' AND i.visibility = 0
-         ORDER BY i.total_views DESC
-         LIMIT 9`
+      i.study_material_id, i.title, i.tags, i.total_items,
+        i.created_by, i.total_views, i.created_at
+        FROM study_material_info i
+        WHERE i.status = 'active' AND i.visibility = 0
+        ORDER BY i.total_views DESC
+        LIMIT 9; `
       );
 
       if (rows.length === 0) {
@@ -652,11 +638,11 @@ const studyMaterialController = {
             created_by: info.created_by,
             total_views: info.total_views,
             created_at: info.created_at,
-            items: contentRows.map((item) => ({
+            items: contentRows.map(item => ({
               term: item.term,
               definition: item.definition,
-              image: formatImageToBase64(item.image),
-            })),
+              image: formatImageToBase64(item.image)
+            }))
           };
         })
       );
@@ -669,9 +655,7 @@ const studyMaterialController = {
       res.status(200).json(studyMaterials);
     } catch (error) {
       console.error("Error fetching top picks:", error);
-      res
-        .status(500)
-        .json({ error: "Internal server error", details: error.message });
+      res.status(500).json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -698,19 +682,42 @@ const studyMaterialController = {
             WHEN sender_id = ? THEN receiver_id 
             WHEN receiver_id = ? THEN sender_id 
           END AS friend_id
-         FROM friend_requests
-         WHERE (sender_id = ? OR receiver_id = ?) 
-         AND status = 'accepted'`,
+        FROM friend_requests
+      WHERE(sender_id = ? OR receiver_id = ?) 
+        AND status = 'accepted'`,
         [userId, userId, userId, userId]
       );
+
+      console.log(`Found ${friendsQuery.length} friends with accepted status`);
+      console.log("Friend IDs:", friendsQuery.map(row => row.friend_id));
 
       if (friendsQuery.length === 0) {
         return res.status(200).json([]);
       }
 
-      // Extract friend IDs and create placeholders
+      // Extract friend IDs
       const friendIds = friendsQuery.map(row => row.friend_id);
+
+      // Use IN clause with prepared statement
       const placeholders = friendIds.map(() => '?').join(',');
+
+      // Enhanced direct query for debugging
+      const [directCheckQuery] = await connection.execute(
+        `SELECT friend_id, COUNT(*) as study_count
+      FROM(
+        SELECT ? as friend_id, study_material_id
+           FROM study_material_info
+           WHERE created_by_id = ?
+         ) as subquery
+         GROUP BY friend_id`,
+        [friendIds[0], friendIds[0]]
+      );
+
+      console.log("Direct check results:", directCheckQuery);
+
+      // Log the query that will be executed
+      console.log(`Query to execute: SELECT * FROM study_material_info WHERE created_by IN(${placeholders})`);
+      console.log("With parameters:", friendIds);
 
       // Fetch study materials created by friends
       const [infoRows] = await connection.execute(
@@ -720,6 +727,9 @@ const studyMaterialController = {
          ORDER BY created_at DESC`,
         [...friendIds]
       );
+
+      console.log(`Found ${infoRows.length} study materials from friends`);
+      console.log("Created_by values:", infoRows.map(row => row.created_by));
 
       if (infoRows.length === 0) {
         return res.status(200).json([]);
@@ -784,17 +794,20 @@ const studyMaterialController = {
 
       // Parse and flatten user's tags
       const userTags = userTagRows
-        .flatMap((row) => JSON.parse(row.tags))
-        .map((tag) => tag.toLowerCase());
+        .flatMap(row => JSON.parse(row.tags))
+        .map(tag => tag.toLowerCase());
+
+      console.log("User's tags:", userTags);
 
       // Get study materials not created by the user
       const [materials] = await connection.execute(
         `SELECT study_material_id, title, tags, total_items, created_by,
-         total_views, created_at, visibility
-         FROM study_material_info 
-         WHERE created_by != ? AND visibility = 0
-         ORDER BY created_at DESC
-         LIMIT 10`,
+        total_views, created_at, visibility
+             FROM study_material_info 
+             WHERE created_by != ?
+        AND visibility = 0
+             ORDER BY created_at DESC
+             LIMIT 10`,
         [username]
       );
 
@@ -840,10 +853,18 @@ const studyMaterialController = {
         .sort((a, b) => b.uniqueness_score - a.uniqueness_score)
         .slice(0, 10);
 
-      res.status(200).json(sortedMaterials.length ? sortedMaterials : []);
+      if (sortedMaterials.length === 0) {
+        return res.status(200).json([]); // Return empty array instead of 404
+      }
+
+      res.status(200).json(sortedMaterials);
+
     } catch (error) {
       console.error("Error in discover endpoint:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res.status(500).json({
+        error: "Internal server error",
+        details: error.message
+      });
     } finally {
       connection.release();
     }
@@ -854,11 +875,14 @@ const studyMaterialController = {
     try {
       const { study_material_id, bookmarked_by_id } = req.body;
 
+      console.log("Received bookmark request:", { study_material_id, bookmarked_by_id });
+
       if (!study_material_id || !bookmarked_by_id) {
         return res.status(400).json({ error: "Missing required parameters" });
       }
 
-      const bookmarked_at = manilacurrentTimestamp;
+      // Get current timestamp - Make sure this is formatted correctly
+      const bookmarked_at = manilacurrentTimestamp;  // If this is a function, call it
 
       // Check if study material exists
       const [studyMaterialRows] = await connection.execute(
@@ -996,6 +1020,8 @@ const studyMaterialController = {
         [bookmarked_by_id]
       );
 
+      console.log(`Found ${bookmarkIds.length} bookmarked materials for user ${bookmarked_by_id}`);
+
       if (bookmarkIds.length === 0) {
         return res.status(200).json([]);
       }
@@ -1008,6 +1034,8 @@ const studyMaterialController = {
       for (let i = 0; i < bookmarkIds.length; i += batchSize) {
         const batchIds = bookmarkIds.slice(i, i + batchSize).map(item => item.study_material_id);
         const placeholders = batchIds.map(() => '?').join(',');
+
+        console.log(`Processing batch ${i / batchSize + 1} with IDs: `, batchIds);
 
         // Fetch info for this batch
         const [infoRows] = await connection.execute(
@@ -1071,6 +1099,7 @@ const studyMaterialController = {
         studyMaterialCache.set(cacheKey, validStudyMaterials, 300);
       }
 
+      console.log(`Returning ${validStudyMaterials.length} bookmarked study materials`);
       res.status(200).json(validStudyMaterials);
     } catch (error) {
       console.error("Error fetching bookmarks by user:", error);
@@ -1125,6 +1154,9 @@ const studyMaterialController = {
       connection.release();
     }
   }
+
+
+
 };
 
 export default studyMaterialController;

@@ -46,9 +46,10 @@ app.use("/api/friend", friendRoutes);
 app.use("/api/user-info", userInfoRoutes);
 app.use("/api/lobby", lobbyRoutes);
 app.use("/api/search", searchRoutes);
+app.use("/api/search", searchRoutes);
 app.use("/api/battle", battleRoutes);
 app.use("/api/openai", openAiRoutes);
-app.use("/api/admin", adminRoutes); // Mount admin routes under /api/admin
+app.use("/api/admin", adminRoutes);
 app.use("/api/ocr", ocrRoutes);
 
 export default app;

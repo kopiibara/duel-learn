@@ -51,9 +51,10 @@ const setupSocket = (server) => {
       methods: ["GET", "POST"],
       credentials: true,
     },
-    pingTimeout: 30000, // Reduce to detect dead connections faster
-    connectTimeout: 5000,
-    transports: ["websocket", "polling"],
+    pingTimeout: 60000, // Increase from 30000 to 60000
+    pingInterval: 25000, // Add explicit ping interval 
+    connectTimeout: 10000, // Increase from 5000 to 10000
+    transports: ["websocket", "polling"], // Prefer websocket first
     allowUpgrades: true, // Allow transport upgrades
     maxHttpBufferSize: 1e6, // 1MB
     path: "/socket.io/", // Explicit path
@@ -103,74 +104,85 @@ const setupSocket = (server) => {
     });
 
     // Friend system handlers
-    createEventHandler(
-      socket,
-      "sendFriendRequest",
-      ["sender_id", "receiver_id", "sender_username"],
-      "📨",
-      (data) => {
-        const { sender_id, receiver_id, sender_username, receiver_username } = data;
+    const createFriendEventHandler = (socket) => {
+      // Handle friend request sending
+      createEventHandler(
+        socket,
+        "sendFriendRequest",
+        ["sender_id", "receiver_id", "sender_username"],
+        "📨",
+        (data) => {
+          const { sender_id, receiver_id, sender_username, receiver_username } = data;
 
-        io.to(receiver_id).emit("newFriendRequest", {
-          sender_id, sender_username, receiver_id, receiver_username
-        });
+          io.to(receiver_id).emit("newFriendRequest", {
+            sender_id, sender_username, receiver_id, receiver_username
+          });
 
-        socket.emit("friendRequestSent", {
-          success: true, receiver_id, receiver_username
-        });
-      }
-    );
-
-    createEventHandler(
-      socket,
-      "acceptFriendRequest",
-      ["sender_id", "receiver_id"],
-      "✅",
-      (data) => {
-        const { sender_id, receiver_id, senderInfo, receiverInfo } = data;
-
-        // Notify sender if active
-        if (activeUsers.has(sender_id)) {
-          io.to(sender_id).emit("friendRequestAccepted", {
-            newFriend: receiverInfo || { firebase_uid: receiver_id }
+          socket.emit("friendRequestSent", {
+            success: true, receiver_id, receiver_username
           });
         }
+      );
 
-        // Notify receiver if active
-        if (activeUsers.has(receiver_id)) {
-          io.to(receiver_id).emit("friendRequestAccepted", {
-            newFriend: senderInfo || { firebase_uid: sender_id }
-          });
+      // Handle friend request acceptance
+      createEventHandler(
+        socket,
+        "acceptFriendRequest",
+        ["sender_id", "receiver_id"],
+        "✅",
+        (data) => {
+          const { sender_id, receiver_id, senderInfo, receiverInfo } = data;
+
+          // Notify sender if active
+          if (activeUsers.has(sender_id)) {
+            io.to(sender_id).emit("friendRequestAccepted", {
+              newFriend: receiverInfo || { firebase_uid: receiver_id },
+              otherUser: receiverInfo || { firebase_uid: receiver_id }
+            });
+          }
+
+          // Notify receiver if active
+          if (activeUsers.has(receiver_id)) {
+            io.to(receiver_id).emit("friendRequestAccepted", {
+              newFriend: senderInfo || { firebase_uid: sender_id },
+              otherUser: senderInfo || { firebase_uid: sender_id }
+            });
+          }
         }
-      }
-    );
+      );
 
-    createEventHandler(
-      socket,
-      "rejectFriendRequest",
-      ["sender_id", "receiver_id"],
-      "❌",
-      (data) => {
-        const { sender_id, receiver_id } = data;
-        const notificationData = { sender_id, receiver_id };
+      // Handle friend request rejection
+      createEventHandler(
+        socket,
+        "rejectFriendRequest",
+        ["sender_id", "receiver_id"],
+        "❌",
+        (data) => {
+          const { sender_id, receiver_id } = data;
+          const notificationData = { sender_id, receiver_id };
 
-        io.to(sender_id).emit("friendRequestRejected", notificationData);
-        io.to(receiver_id).emit("friendRequestRejected", notificationData);
-      }
-    );
+          io.to(sender_id).emit("friendRequestRejected", notificationData);
+          io.to(receiver_id).emit("friendRequestRejected", notificationData);
+        }
+      );
 
-    createEventHandler(
-      socket,
-      "removeFriend",
-      ["sender_id", "receiver_id"],
-      "❌",
-      (data) => {
-        const { sender_id, receiver_id } = data;
+      // Handle friend removal
+      createEventHandler(
+        socket,
+        "removeFriend",
+        ["sender_id", "receiver_id"],
+        "❌",
+        (data) => {
+          const { sender_id, receiver_id } = data;
 
-        io.to(sender_id).emit("friendRemoved", { removedFriendId: receiver_id });
-        io.to(receiver_id).emit("friendRemoved", { removedFriendId: sender_id });
-      }
-    );
+          io.to(sender_id).emit("friendRemoved", { removedFriendId: receiver_id });
+          io.to(receiver_id).emit("friendRemoved", { removedFriendId: sender_id });
+        }
+      );
+    };
+
+    // Register all friend event handlers at once
+    createFriendEventHandler(socket);
 
     // Study material handler
     socket.on("newStudyMaterial", (data) => {
