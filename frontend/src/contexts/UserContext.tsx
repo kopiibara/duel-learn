@@ -56,8 +56,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     return userData ? JSON.parse(userData) : null;
   });
 
-  const [loading] = useState(true);
-  const [loading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const { fetchAndUpdateUserData } = useUserData();
 
   // 🟢 Update user state and localStorage/sessionStorage
@@ -101,14 +100,16 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         const userData = await fetchAndUpdateUserData(uid, token);
         if (userData) {
           console.log("User found in main database:", userData);
-          
+
           // Ensure we update localStorage immediately for admin users
           if (userData.account_type === "admin") {
-            console.log("Admin user detected in UserContext, updating localStorage");
+            console.log(
+              "Admin user detected in UserContext, updating localStorage"
+            );
             localStorage.setItem("userData", JSON.stringify(userData));
             localStorage.setItem("userToken", token);
           }
-          
+
           setUser(userData);
           return userData;
         }
@@ -193,32 +194,40 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [user, fetchAndUpdateUserData, updateUserState]);
 
-  /*
-  // ✅ Auth state listener (alternative approach using Firestore)
+  // ✅ Uncomment and update the auth state listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const token = await firebaseUser.getIdToken();
-        try {
-          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-          if (userDoc.exists()) {
-            const userData = userDoc.data() as User;
+    console.log("Setting up auth state listener");
+    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
+      try {
+        if (firebaseUser) {
+          console.log("User is authenticated in Firebase:", firebaseUser.uid);
+          const token = await firebaseUser.getIdToken();
+
+          // Refresh user data from database on initial load
+          const userData = await fetchAndUpdateUserData(
+            firebaseUser.uid,
+            token
+          );
+          if (userData) {
             updateUserState(userData);
             localStorage.setItem("userToken", token);
           }
-        } catch (error) {
-          console.error("Error fetching user data from Firestore:", error);
+        } else {
+          console.log("No authenticated user in Firebase");
+          setUser(null);
+          localStorage.removeItem("userToken");
+          localStorage.removeItem("userData");
         }
-      } else {
+      } catch (error) {
+        console.error("Error in auth state listener:", error);
         setUser(null);
-        localStorage.removeItem("userToken");
-        localStorage.removeItem("userData");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     });
+
     return () => unsubscribe();
-  }, [updateUserState]);
-  */
+  }, [fetchAndUpdateUserData, updateUserState]);
 
   return (
     <UserContext.Provider
