@@ -9,10 +9,13 @@ import lobbyRoutes from "./routes/lobby.routes.js";
 import battleRoutes from "./routes/battle.routes.js";
 import openAiRoutes from "./routes/OpenAiRoutes.js";
 import searchRoutes from "./routes/SearchRoutes.js"; // Import search routes
+import battleRoutes from "./routes/battle.routes.js";
+import openAiRoutes from "./routes/OpenAiRoutes.js";
+import searchRoutes from "./routes/SearchRoutes.js"; // Import search routes
 import adminRoutes from "./routes/admin/AdminRoutes.js"; // Import admin routes
+import ocrRoutes from "./routes/OcrRoutes.js"; // Import OCR routes
 import { corsMiddleware } from "./middleware/CorsMiddleware.js"; // Import CORS middleware
 import { coopMiddleware } from "./middleware/CoopMiddleware.js"; // Import COOP middleware
-import ocrRoutes from "./routes/OCRRoutes.js";
 // Load environment variables
 dotenv.config();
 
@@ -49,7 +52,7 @@ app.use("/api/search", searchRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/battle", battleRoutes);
 app.use("/api/openai", openAiRoutes);
-app.use("/api/admin", adminRoutes);
-app.use("/api/ocr", ocrRoutes);
+app.use("/api/admin", adminRoutes); // Mount admin routes under /api/admin
+app.use("/api/ocr", ocrRoutes); // Mount OCR routes under /api/ocr
 
 export default app;

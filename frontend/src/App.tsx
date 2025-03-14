@@ -9,13 +9,23 @@ import GlobalSnackbar from "./components/GlobalSnackbar";
 import SnackbarConnector from "./components/SnackbarConnector";
 import theme from "../../frontend/src/contexts/ThemeContext";
 import "./index.css";
-import InvitationLobbySnackbar from './components/InvitationLobbySnackbar';
+import InvitationLobbySnackbar from "./components/InvitationLobbySnackbar";
+import AudioStopper from "./components/AudioStopper";
 
 function App() {
   return (
     <Router>
       <UserProvider>
         <AudioProvider>
+          <AudioStopper
+            stopOnRoutes={[
+              "/dashboard/home",
+              "/dashboard/session-complete",
+              "/dashboard/profile",
+              "/dashboard/deck-gallery",
+              "/dashboard/decks",
+            ]}
+          />
           <SnackbarProvider>
             <HelmetProvider>
               <ThemeProvider theme={theme}>
