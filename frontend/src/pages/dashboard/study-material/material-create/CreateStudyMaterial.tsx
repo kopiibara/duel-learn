@@ -11,7 +11,13 @@ import {
   Divider,
   TextField,
   Chip,
+  Modal,
+  Paper,
+  IconButton,
+  CircularProgress,
 } from "@mui/material";
+import CloseIcon from "@mui/icons-material/Close";
+import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { nanoid } from "nanoid";
 import { motion, AnimatePresence } from "framer-motion"; // Importing from Framer Motion
 import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
@@ -35,6 +41,12 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { SortableItem } from "../types/SortableItem";
+
+// Add this interface for term-definition pairs
+interface TermDefinitionPair {
+  term: string;
+  definition: string;
+}
 
 const MAX_IMAGE_SIZE_MB = 10;
 const MAX_TOTAL_PAYLOAD_MB = 50;
@@ -70,6 +82,11 @@ const CreateStudyMaterial = () => {
 
   // Properly type the socket state
   const [socket, setSocket] = useState<Socket | null>(null);
+
+  // Add modal state and file handling state
+  const [scanModalOpen, setScanModalOpen] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Check if we're in edit mode
   const editMode = location.state?.editMode || false;
@@ -456,17 +473,158 @@ const CreateStudyMaterial = () => {
     }
   };
 
-  const handleUploadFile = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".pdf, .docx, .jpg, .jpeg, .png, .gif";
-    input.onchange = (e: Event) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (file) {
-        console.log("Uploaded file:", file);
+  // Function to handle opening the scan notes modal
+  const handleOpenScanModal = () => {
+    setScanModalOpen(true);
+  };
+
+  // Function to handle closing the scan notes modal
+  const handleCloseScanModal = () => {
+    setScanModalOpen(false);
+    setUploadedFile(null);
+  };
+
+  // Function to handle file drag and drop or selection
+  const handleFileChange = (
+    event: React.ChangeEvent<HTMLInputElement> | React.DragEvent<HTMLDivElement>
+  ) => {
+    event.preventDefault();
+
+    // Handle both drag and drop events and file input events
+    let file: File | null = null;
+
+    if ("dataTransfer" in event) {
+      // This is a drag event
+      file = event.dataTransfer.files[0];
+    } else if (event.target.files && event.target.files.length > 0) {
+      // This is a file input event
+      file = event.target.files[0];
+    }
+
+    if (file) {
+      // Check file type
+      const validTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "application/pdf",
+      ];
+      if (!validTypes.includes(file.type)) {
+        handleShowSnackbar("Only JPG, PNG, and PDF files are accepted");
+        return;
       }
-    };
-    input.click();
+
+      // Check file size
+      if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+        handleShowSnackbar(
+          `File too large. Maximum size is ${MAX_IMAGE_SIZE_MB}MB`
+        );
+        return;
+      }
+
+      setUploadedFile(file);
+    }
+  };
+
+  // Process the uploaded file with OCR and AI
+  const handleProcessFile = async () => {
+    if (!uploadedFile) {
+      handleShowSnackbar("Please upload a file first");
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+
+      // Create a FormData object to send the file
+      const formData = new FormData();
+      formData.append("file", uploadedFile);
+
+      // Step 1: Show loading state
+      handleShowSnackbar("Processing your document...");
+
+      // Step 2: Extract text with OCR
+      console.log(
+        "Sending OCR request to:",
+        `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-text`
+      );
+      const ocrResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-text`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!ocrResponse.ok) {
+        throw new Error(`OCR server responded with ${ocrResponse.status}`);
+      }
+
+      const ocrData = await ocrResponse.json();
+      console.log("Extracted text:", ocrData.text);
+
+      if (!ocrData.text || ocrData.text.trim() === "") {
+        handleShowSnackbar("No text could be extracted from the image");
+        setIsProcessing(false);
+        return;
+      }
+
+      // Step 3: Process text into term-definition pairs with AI
+      handleShowSnackbar("Identifying terms and definitions...");
+      console.log(
+        "Sending AI request to:",
+        `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-pairs`
+      );
+      const aiResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-pairs`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text: ocrData.text }),
+        }
+      );
+
+      if (!aiResponse.ok) {
+        throw new Error(`AI server responded with ${aiResponse.status}`);
+      }
+
+      const aiData = await aiResponse.json();
+      console.log("Term-definition pairs:", aiData.pairs);
+
+      // Step 4: Create study material items from the pairs
+      if (aiData.pairs && aiData.pairs.length > 0) {
+        const newItems = aiData.pairs.map(
+          (pair: TermDefinitionPair, index: number) => ({
+            id: Date.now() + index,
+            term: pair.term || "",
+            definition: pair.definition || "",
+            image: null,
+            item_number: items.length + index + 1,
+          })
+        );
+
+        // Add the new items to the existing ones
+        setItems([...items, ...newItems]);
+        handleShowSnackbar(
+          `Added ${newItems.length} new terms and definitions!`
+        );
+
+        // Close the modal after processing
+        handleCloseScanModal();
+      } else {
+        handleShowSnackbar("No term-definition pairs could be identified");
+      }
+    } catch (error) {
+      console.error("Error processing document:", error);
+      handleShowSnackbar("Failed to process the document");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  // Update the handleUploadFile function to open the modal instead
+  const handleUploadFile = () => {
+    handleOpenScanModal();
   };
 
   const resizeTextarea = (input: HTMLTextAreaElement | HTMLInputElement) => {
@@ -699,7 +857,7 @@ const CreateStudyMaterial = () => {
                   }}
                   onClick={handleUploadFile}
                 >
-                  Upload File
+                  Scan Notes
                 </Button>
                 <Box flex={1} />
                 <Filter
@@ -779,6 +937,132 @@ const CreateStudyMaterial = () => {
           </Stack>
         </Box>
       </PageTransition>
+
+      {/* Scan Notes Modal */}
+      <Modal
+        open={scanModalOpen}
+        onClose={handleCloseScanModal}
+        aria-labelledby="scan-notes-modal"
+        aria-describedby="modal-to-scan-and-process-notes"
+      >
+        <Paper
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 500,
+            maxWidth: "90%",
+            bgcolor: "#292639",
+            boxShadow: 24,
+            p: 4,
+            borderRadius: "1rem",
+            outline: "none",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: 2,
+            }}
+          >
+            <Typography variant="h6" component="h2" sx={{ color: "#E2DDF3" }}>
+              Scan Your Notes
+            </Typography>
+            <IconButton
+              onClick={handleCloseScanModal}
+              sx={{ color: "#E2DDF3" }}
+            >
+              <CloseIcon />
+            </IconButton>
+          </Box>
+
+          <Typography variant="body2" sx={{ mb: 3, color: "#9F9BAE" }}>
+            Upload a file (max 10MB) in JPG, PNG, or PDF format. We'll use OCR
+            to extract text and AI to identify terms and definitions.
+          </Typography>
+
+          {/* File Upload Area */}
+          <Box
+            sx={{
+              border: "2px dashed #4D18E8",
+              borderRadius: "1rem",
+              p: 3,
+              textAlign: "center",
+              backgroundColor: "#3B354D",
+              mb: 3,
+              cursor: "pointer",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                backgroundColor: "#4A435C",
+                borderColor: "#A38CE6",
+              },
+            }}
+            onClick={() => document.getElementById("file-upload")?.click()}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={handleFileChange}
+          >
+            <input
+              type="file"
+              id="file-upload"
+              accept=".jpg,.jpeg,.png,.pdf"
+              style={{ display: "none" }}
+              onChange={handleFileChange}
+            />
+
+            <CloudUploadIcon sx={{ fontSize: 48, color: "#A38CE6", mb: 1 }} />
+
+            {uploadedFile ? (
+              <Typography variant="body1" sx={{ color: "#E2DDF3", mt: 1 }}>
+                Selected: {uploadedFile.name}
+              </Typography>
+            ) : (
+              <>
+                <Typography variant="body1" sx={{ color: "#E2DDF3", mt: 1 }}>
+                  Drag & drop or click to upload
+                </Typography>
+                <Typography variant="body2" sx={{ color: "#9F9BAE", mt: 0.5 }}>
+                  JPG, PNG, PDF only (max 10MB)
+                </Typography>
+              </>
+            )}
+          </Box>
+
+          <Button
+            variant="contained"
+            fullWidth
+            disabled={!uploadedFile || isProcessing}
+            onClick={handleProcessFile}
+            sx={{
+              backgroundColor: "#4D18E8",
+              color: "#E2DDF3",
+              borderRadius: "0.8rem",
+              padding: "0.8rem",
+              transition: "all 0.3s ease",
+              "&:hover": {
+                backgroundColor: "#6939FF",
+                transform: "scale(1.02)",
+              },
+              "&.Mui-disabled": {
+                backgroundColor: "#3B354D",
+                color: "#9F9BAE",
+              },
+            }}
+          >
+            {isProcessing ? (
+              <>
+                <CircularProgress size={24} sx={{ color: "#E2DDF3", mr: 1 }} />
+                Processing...
+              </>
+            ) : (
+              "Generate Flashcards"
+            )}
+          </Button>
+        </Paper>
+      </Modal>
+
       <AutoHideSnackbar
         message={snackbarMessage}
         open={snackbarOpen}
