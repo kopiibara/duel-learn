@@ -203,7 +203,7 @@ const Leaderboards = () => {
   const top3Players = leaderboardData.filter((player) => player.rank <= 3);
 
   return (
-    <Box className="rounded-[1rem] shadow-md border-[0.2rem] border-[#3B354C]">
+    <Box className="rounded-[0.8rem] shadow-md border-[0.2rem] border-[#3B354C]">
       <div className="px-[1.5vw] pt-[3vh] pb-[1vh]">
         <div className="pl-[0.5vw] flex flex-row items-center mb-[2vh] gap-[1vw]">
           <img

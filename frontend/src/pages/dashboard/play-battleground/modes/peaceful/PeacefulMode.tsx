@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
 import { useGameLogic } from "../../hooks/useGameLogic";
 import FlashCard from "../../components/common/FlashCard";
 import Header from "../../components/common/Header";
 import Timer from "../../components/common/Timer";
 import axios from "axios";
+import { useAudio } from "../../../../../contexts/AudioContext";
 
 interface PeacefulModeProps {
   mode: string;
@@ -17,11 +17,10 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
   material,
   selectedTypes,
 }) => {
-  const location = useLocation();
   const [isGeneratingAI, setIsGeneratingAI] = useState(true);
   const [aiQuestions, setAiQuestions] = useState<any[]>([]);
-  const { timeLimit } = location.state || {};
-  
+  const { playCorrectAnswerSound, playIncorrectAnswerSound } = useAudio();
+
   // Generate AI questions when component mounts
   useEffect(() => {
     const generateAIQuestions = async () => {
@@ -32,28 +31,40 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
       try {
         for (const type of selectedTypes) {
           console.log(`Generating questions for type: ${type}`);
-          
+
           for (const item of material.items) {
             console.log(`Requesting ${type} question for term: "${item.term}"`);
-            
-            const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
+
+            const endpoint = `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/openai/generate-${type}`;
             console.log(`Making API request to: ${endpoint}`);
-            
+
             const requestPayload = {
               term: item.term,
               definition: item.definition,
-              numberOfItems: 1
+              numberOfItems: 1,
             };
-            
-            const response = await axios.post<{ data: any[] }>(endpoint, requestPayload);
-            console.log(`Response received for ${type} question:`, response.data);
-            
-            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+
+            const response = await axios.post<{ data: any[] }>(
+              endpoint,
+              requestPayload
+            );
+            console.log(
+              `Response received for ${type} question:`,
+              response.data
+            );
+
+            if (
+              response.data &&
+              Array.isArray(response.data) &&
+              response.data.length > 0
+            ) {
               generatedQuestions.push(...response.data);
             }
           }
         }
-        
+
         console.log("All AI questions generated:", generatedQuestions);
         setAiQuestions(generatedQuestions);
       } catch (error) {
@@ -70,7 +81,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     currentQuestion,
     isFlipped,
     handleFlip,
-    handleAnswerSubmit,
+    handleAnswerSubmit: originalHandleAnswerSubmit,
     masteredCount,
     unmasteredCount,
     showResult,
@@ -81,16 +92,39 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     handleMastered,
     getButtonStyle,
     handleNextQuestion,
-    handleRevealAnswer, // Add this
-    cardDisabled, // Add this
-  } = useGameLogic({ 
-    mode, 
-    material, 
-    selectedTypes, 
-    aiQuestions
+    handleRevealAnswer,
+    cardDisabled,
+  } = useGameLogic({
+    mode,
+    material,
+    selectedTypes,
+    aiQuestions,
   });
 
   const [startTime] = useState(new Date());
+
+  // Custom answer submit handler with sound effects
+  const handleAnswerSubmit = (answer: string) => {
+    let isAnswerCorrect = false;
+
+    if (currentQuestion?.questionType === "identification") {
+      isAnswerCorrect =
+        answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+    } else {
+      isAnswerCorrect =
+        answer.toLowerCase() === currentQuestion?.correctAnswer.toLowerCase();
+    }
+
+    // Play appropriate sound using AudioContext
+    if (isAnswerCorrect) {
+      playCorrectAnswerSound();
+    } else {
+      playIncorrectAnswerSound();
+    }
+
+    // Call the original handler
+    originalHandleAnswerSubmit(answer);
+  };
 
   // Show loading state while AI questions are being generated
   if (isGeneratingAI) {
@@ -98,7 +132,9 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-4">Generating Questions...</h1>
-          <p className="text-lg">Please wait while our AI prepares your study content.</p>
+          <p className="text-lg">
+            Please wait while our AI prepares your study content.
+          </p>
         </div>
       </div>
     );
@@ -143,8 +179,8 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
               className={`w-full p-4 rounded-lg bg-transparent py-10 px-10 border-2 text-center
                                 ${
                                   showResult
-                                    ? isCorrect 
-                                      ? "border-[#52A647]" // Use isCorrect instead of direct comparison
+                                    ? isCorrect
+                                      ? "border-[#52A647]"
                                       : "border-[#FF3B3F]"
                                     : "border-gray-600"
                                 }
@@ -194,9 +230,9 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
             correctAnswer={currentQuestion?.correctAnswer || ""}
             isFlipped={isFlipped}
             onFlip={handleFlip}
-            onReveal={handleRevealAnswer} // Add this line
+            onReveal={handleRevealAnswer}
             type={currentQuestion?.type}
-            disabled={cardDisabled} // Add this line
+            disabled={cardDisabled}
           />
           {renderQuestionContent()}
           <Timer

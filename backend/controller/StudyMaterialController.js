@@ -96,7 +96,9 @@ const studyMaterialController = {
           console.error("Error rolling back transaction:", rollbackError);
         }
       }
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       if (connection) connection.release();
     }
@@ -159,7 +161,10 @@ const studyMaterialController = {
       );
 
       if (creatorInfo.length > 0) {
-        invalidateCachesForUser(creatorInfo[0].created_by, creatorInfo[0].created_by_id);
+        invalidateCachesForUser(
+          creatorInfo[0].created_by,
+          creatorInfo[0].created_by_id
+        );
       }
 
       studyMaterialCache.del(`study_material_${studyMaterialId}`);
@@ -167,7 +172,7 @@ const studyMaterialController = {
       res.status(200).json({
         message: "Study material updated successfully",
         studyMaterialId,
-        updated_at: updatedTimestamp
+        updated_at: updatedTimestamp,
       });
     } catch (error) {
       console.error("Error editing study material:", error);
@@ -213,7 +218,7 @@ const studyMaterialController = {
 
       res.status(200).json({
         message: "Study material archived successfully",
-        studyMaterialId
+        studyMaterialId,
       });
     } catch (error) {
       console.error("Error archiving study material:", error);
@@ -249,7 +254,7 @@ const studyMaterialController = {
 
       res.status(200).json({
         message: "Study material restored successfully",
-        studyMaterialId
+        studyMaterialId,
       });
     } catch (error) {
       console.error("Error restoring study material:", error);
@@ -304,7 +309,7 @@ const studyMaterialController = {
 
       res.status(200).json({
         message: "Study material deleted successfully",
-        studyMaterialId
+        studyMaterialId,
       });
     } catch (error) {
       console.error("Error deleting study material:", error);
@@ -355,12 +360,12 @@ const studyMaterialController = {
         created_at: rows[0].created_at,
         status: rows[0].status,
         visibility: rows[0].visibility,
-        items: rows.map(row => ({
+        items: rows.map((row) => ({
           term: row.term,
           definition: row.definition,
           image: formatImageToBase64(row.image),
-          item_number: row.item_number
-        }))
+          item_number: row.item_number,
+        })),
       };
 
       // Cache the result
@@ -369,7 +374,9 @@ const studyMaterialController = {
       res.status(200).json(result);
     } catch (error) {
       console.error("Error fetching study material:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -441,7 +448,9 @@ const studyMaterialController = {
       res.status(200).json(studyMaterials);
     } catch (error) {
       console.error("Error fetching study materials by creator:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -539,7 +548,9 @@ const studyMaterialController = {
       res.status(200).json(filteredMaterials);
     } catch (error) {
       console.error("Error fetching recommended cards:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -562,11 +573,13 @@ const studyMaterialController = {
       res.status(200).json({
         message: "Visibility updated successfully",
         studyMaterialId,
-        visibility
+        visibility,
       });
     } catch (error) {
       console.error("Error updating visibility:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -585,7 +598,9 @@ const studyMaterialController = {
       res.status(200).json({ message: "View count updated successfully" });
     } catch (error) {
       console.error("Error updating total views:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -637,11 +652,11 @@ const studyMaterialController = {
             created_by: info.created_by,
             total_views: info.total_views,
             created_at: info.created_at,
-            items: contentRows.map(item => ({
+            items: contentRows.map((item) => ({
               term: item.term,
               definition: item.definition,
-              image: formatImageToBase64(item.image)
-            }))
+              image: formatImageToBase64(item.image),
+            })),
           };
         })
       );
@@ -654,7 +669,9 @@ const studyMaterialController = {
       res.status(200).json(studyMaterials);
     } catch (error) {
       console.error("Error fetching top picks:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -726,7 +743,7 @@ const studyMaterialController = {
             created_by: info.created_by,
             total_views: info.total_views,
             created_at: info.created_at,
-            items: contentRows.map(item => ({
+            items: contentRows.map((item) => ({
               term: item.term,
               definition: item.definition,
               image: formatImageToBase64(item.image),
@@ -743,7 +760,9 @@ const studyMaterialController = {
       res.status(200).json(studyMaterials);
     } catch (error) {
       console.error("Error fetching study materials from friends:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -753,7 +772,7 @@ const studyMaterialController = {
     const connection = await pool.getConnection();
     try {
       let { username } = req.params;
-      if (username.includes('%')) {
+      if (username.includes("%")) {
         username = decodeURIComponent(username);
       }
 
@@ -765,8 +784,8 @@ const studyMaterialController = {
 
       // Parse and flatten user's tags
       const userTags = userTagRows
-        .flatMap(row => JSON.parse(row.tags))
-        .map(tag => tag.toLowerCase());
+        .flatMap((row) => JSON.parse(row.tags))
+        .map((tag) => tag.toLowerCase());
 
       // Get study materials not created by the user
       const [materials] = await connection.execute(
@@ -787,7 +806,7 @@ const studyMaterialController = {
 
           // Calculate tag difference score
           const uniqueTags = materialTags.filter(
-            tag => !userTags.includes(tag.toLowerCase())
+            (tag) => !userTags.includes(tag.toLowerCase())
           ).length;
 
           // Get content for this material
@@ -807,11 +826,11 @@ const studyMaterialController = {
             total_views: material.total_views,
             created_at: material.created_at,
             uniqueness_score: uniqueTags,
-            items: contentRows.map(item => ({
+            items: contentRows.map((item) => ({
               term: item.term,
               definition: item.definition,
               image: formatImageToBase64(item.image),
-            }))
+            })),
           };
         })
       );
@@ -872,7 +891,7 @@ const studyMaterialController = {
 
         return res.status(200).json({
           message: "Bookmark removed successfully",
-          bookmarked: false
+          bookmarked: false,
         });
       }
 
@@ -893,7 +912,14 @@ const studyMaterialController = {
         `INSERT INTO bookmarked_study_material
         (study_material_id, created_by, created_by_id, bookmarked_by, bookmarked_by_id, bookmarked_at)
       VALUES(?, ?, ?, ?, ?, ?)`,
-        [study_material_id, created_by, created_by_id, bookmarked_by, bookmarked_by_id, bookmarked_at]
+        [
+          study_material_id,
+          created_by,
+          created_by_id,
+          bookmarked_by,
+          bookmarked_by_id,
+          bookmarked_at,
+        ]
       );
 
       res.status(201).json({
@@ -905,12 +931,14 @@ const studyMaterialController = {
           created_by_id,
           bookmarked_by,
           bookmarked_by_id,
-          bookmarked_at
-        }
+          bookmarked_at,
+        },
       });
     } catch (error) {
       console.error("Error bookmarking study material:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -933,11 +961,13 @@ const studyMaterialController = {
       );
 
       res.status(200).json({
-        isBookmarked: existingBookmark.length > 0
+        isBookmarked: existingBookmark.length > 0,
       });
     } catch (error) {
       console.error("Error checking bookmark status:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -1002,7 +1032,7 @@ const studyMaterialController = {
 
           // Find the bookmark info for this material
           const bookmarkInfo = bookmarkIds.find(
-            b => b.study_material_id === info.study_material_id
+            (b) => b.study_material_id === info.study_material_id
           );
 
           if (bookmarkInfo) {
@@ -1012,7 +1042,7 @@ const studyMaterialController = {
                 created_by: info.created_by,
                 created_by_id: info.created_by_id,
                 bookmarked_by_id: bookmarked_by_id,
-                bookmarked_at: bookmarkInfo.bookmarked_at
+                bookmarked_at: bookmarkInfo.bookmarked_at,
               },
               study_material_info: {
                 study_material_id: info.study_material_id,
@@ -1025,12 +1055,12 @@ const studyMaterialController = {
                 created_at: info.created_at,
                 visibility: info.visibility,
                 status: info.status,
-                items: contentRows.map(item => ({
+                items: contentRows.map((item) => ({
                   term: item.term,
                   definition: item.definition,
-                  image: formatImageToBase64(item.image)
-                }))
-              }
+                  image: formatImageToBase64(item.image),
+                })),
+              },
             });
           }
         }
@@ -1044,7 +1074,9 @@ const studyMaterialController = {
       res.status(200).json(validStudyMaterials);
     } catch (error) {
       console.error("Error fetching bookmarks by user:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
@@ -1076,17 +1108,19 @@ const studyMaterialController = {
       );
 
       // Clear related caches
-      studyMaterialCache.del('top_picks');
+      studyMaterialCache.del("top_picks");
 
       // Clear user-specific cache keys that match pattern
       const keys = studyMaterialCache.keys();
-      const userKeys = keys.filter(key => key.includes(created_by_id));
-      userKeys.forEach(key => studyMaterialCache.del(key));
+      const userKeys = keys.filter((key) => key.includes(created_by_id));
+      userKeys.forEach((key) => studyMaterialCache.del(key));
 
       res.status(200).json({ message: "Study materials updated successfully" });
     } catch (error) {
       console.error("Error updating study materials:", error);
-      res.status(500).json({ error: "Internal server error", details: error.message });
+      res
+        .status(500)
+        .json({ error: "Internal server error", details: error.message });
     } finally {
       connection.release();
     }
