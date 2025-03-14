@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 const useUserData = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAndUpdateUserData = async (firebase_uid: string, token: string) => {
+  const fetchAndUpdateUserData = async (
+    firebase_uid: string,
+    token: string
+  ) => {
     setLoading(true);
     setError(null);
 
@@ -12,23 +15,25 @@ const useUserData = () => {
       const response = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/user/info/${firebase_uid}`,
         {
-          method: 'GET',
+          method: "GET",
           headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
           },
         }
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to fetch user data');
+        throw new Error("Failed to fetch user data");
       }
 
       const { user: userData } = await response.json();
       return userData;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred while fetching user data';
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "An error occurred while fetching user data";
       setError(errorMessage);
       throw err;
     } finally {
@@ -39,8 +44,8 @@ const useUserData = () => {
   return {
     fetchAndUpdateUserData,
     loading,
-    error
+    error,
   };
 };
 
-export default useUserData; 
+export default useUserData;
