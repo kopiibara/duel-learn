@@ -22,12 +22,11 @@ const setupSocket = (server) => {
     console.log(`Connection error due to ${err.message}`);
   });
 
-
   io.on("connection", (socket) => {
     console.log("🔌 New client connected:", socket.id);
 
     // Set max listeners for this socket if needed
-    socket.setMaxListeners(15);
+    socket.setMaxListeners(30);
 
     // Add user to a room based on their firebase_uid
     socket.on("setup", (userId) => {
@@ -109,15 +108,15 @@ const setupSocket = (server) => {
           receiver_id,
           senderInfo: senderInfo
             ? {
-              username: senderInfo.username,
-              uid: senderInfo.firebase_uid || senderInfo.uid,
-            }
+                username: senderInfo.username,
+                uid: senderInfo.firebase_uid || senderInfo.uid,
+              }
             : "missing",
           receiverInfo: receiverInfo
             ? {
-              username: receiverInfo.username,
-              uid: receiverInfo.firebase_uid || receiverInfo.uid,
-            }
+                username: receiverInfo.username,
+                uid: receiverInfo.firebase_uid || receiverInfo.uid,
+              }
             : "missing",
         });
 
@@ -450,7 +449,8 @@ const setupSocket = (server) => {
         // Notify the host specifically
         if (hostId) {
           console.log(
-            `Notifying host ${hostId} about player ${playerName || playerId
+            `Notifying host ${hostId} about player ${
+              playerName || playerId
             } joining`
           );
           io.to(hostId).emit("player_joined_lobby", {
@@ -593,15 +593,16 @@ const setupSocket = (server) => {
           return;
         }
 
-        console.log(`🎮 Player ${playerId} ready state changed to ${isReady} in lobby ${lobbyCode}`);
+        console.log(
+          `🎮 Player ${playerId} ready state changed to ${isReady} in lobby ${lobbyCode}`
+        );
 
         // Broadcast to everyone in the lobby
         socket.to(lobbyCode).emit("player_ready_state_changed", {
           lobbyCode,
           playerId,
-          isReady
+          isReady,
         });
-
       } catch (error) {
         console.error("Error in player_ready_state_changed handler:", error);
       }

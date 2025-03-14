@@ -14,6 +14,9 @@ interface AudioContextType {
   playLoopAudio: () => Promise<void>;
   playPeacefulModeAudio: () => Promise<void>;
   playUserOnboardingAudio: () => Promise<void>;
+  playCorrectAnswerSound: () => Promise<void>;
+  playIncorrectAnswerSound: () => Promise<void>;
+  playSessionCompleteSound: () => Promise<void>;
   pauseAudio: () => void;
   isPlaying: boolean;
 }
@@ -35,16 +38,26 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const loopAudioRef = useRef<HTMLAudioElement | null>(null);
   const peacefulModeAudioRef = useRef<HTMLAudioElement | null>(null);
   const userOnboardingAudioRef = useRef<HTMLAudioElement | null>(null);
+  const correctAnswerSoundRef = useRef<HTMLAudioElement | null>(null);
+  const incorrectAnswerSoundRef = useRef<HTMLAudioElement | null>(null);
+  const sessionCompleteSoundRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const location = useLocation();
 
-  useEffect(() => {
-    startAudioRef.current = new Audio("/sounds-sfx/WELCOME_START.mp3");
-    loopAudioRef.current = new Audio("/sounds-sfx/WELCOME_LOOP.mp3");
-    peacefulModeAudioRef.current = new Audio("/sounds-sfx/peacefulMode.mp3");
+  // Initialize audio elements
+  const initializeAudio = () => {
+    startAudioRef.current = new Audio("/sounds-sfx/welcome-start.mp3");
+    loopAudioRef.current = new Audio("/sounds-sfx/welcome-loop.mp3");
+    peacefulModeAudioRef.current = new Audio("/sounds-sfx/peaceful-mode.mp3");
     userOnboardingAudioRef.current = new Audio(
-      "/sounds-sfx/user_onboarding.mp3"
+      "/sounds-sfx/user-onboarding.mp3"
     );
+    correctAnswerSoundRef.current = new Audio("/sounds-sfx/right-answer.mp3");
+    incorrectAnswerSoundRef.current = new Audio("/sounds-sfx/wrong-answer.mp3");
+    sessionCompleteSoundRef.current = new Audio(
+      "/sounds-sfx/session-report-completed.mp3"
+    );
+
     loopAudioRef.current.loop = true;
     peacefulModeAudioRef.current.loop = true;
     userOnboardingAudioRef.current.loop = true;
@@ -60,13 +73,14 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     if (startAudioRef.current) {
       startAudioRef.current.addEventListener("ended", handleStartAudioEnded);
     }
+  };
+
+  useEffect(() => {
+    initializeAudio();
 
     return () => {
+      // Cleanup function
       if (startAudioRef.current) {
-        startAudioRef.current.removeEventListener(
-          "ended",
-          handleStartAudioEnded
-        );
         startAudioRef.current.pause();
         startAudioRef.current = null;
       }
@@ -81,6 +95,18 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       if (userOnboardingAudioRef.current) {
         userOnboardingAudioRef.current.pause();
         userOnboardingAudioRef.current = null;
+      }
+      if (correctAnswerSoundRef.current) {
+        correctAnswerSoundRef.current.pause();
+        correctAnswerSoundRef.current = null;
+      }
+      if (incorrectAnswerSoundRef.current) {
+        incorrectAnswerSoundRef.current.pause();
+        incorrectAnswerSoundRef.current = null;
+      }
+      if (sessionCompleteSoundRef.current) {
+        sessionCompleteSoundRef.current.pause();
+        sessionCompleteSoundRef.current = null;
       }
       setIsPlaying(false);
     };
@@ -130,6 +156,46 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [isPlaying]);
 
+  const playCorrectAnswerSound = useCallback(async () => {
+    if (correctAnswerSoundRef.current) {
+      try {
+        correctAnswerSoundRef.current.currentTime = 0;
+        await correctAnswerSoundRef.current.play();
+      } catch (error) {
+        console.error("Error playing correct answer sound:", error);
+      }
+    }
+  }, []);
+
+  const playIncorrectAnswerSound = useCallback(async () => {
+    if (incorrectAnswerSoundRef.current) {
+      try {
+        incorrectAnswerSoundRef.current.currentTime = 0;
+        await incorrectAnswerSoundRef.current.play();
+      } catch (error) {
+        console.error("Error playing incorrect answer sound:", error);
+      }
+    }
+  }, []);
+
+  const playSessionCompleteSound = useCallback(async () => {
+    if (sessionCompleteSoundRef.current) {
+      try {
+        // Ensure the audio is properly initialized
+        if (!sessionCompleteSoundRef.current.src) {
+          sessionCompleteSoundRef.current = new Audio(
+            "/sounds-sfx/session-report-completed.mp3"
+          );
+        }
+        sessionCompleteSoundRef.current.currentTime = 0;
+        sessionCompleteSoundRef.current.volume = 1;
+        await sessionCompleteSoundRef.current.play();
+      } catch (error) {
+        console.error("Error playing session complete sound:", error);
+      }
+    }
+  }, []);
+
   const fadeOutAudio = (
     audioRef: React.MutableRefObject<HTMLAudioElement | null>,
     duration: number
@@ -151,26 +217,39 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
             audioRef.current.pause();
             audioRef.current.volume = 1; // Reset volume for next play
           }
-          setIsPlaying(false); // Reset isPlaying state
         }
       }, fadeOutInterval);
     }
   };
 
   const pauseAudio = useCallback(() => {
-    fadeOutAudio(startAudioRef, 1000);
-    fadeOutAudio(loopAudioRef, 1000);
-    fadeOutAudio(peacefulModeAudioRef, 1000);
-    fadeOutAudio(userOnboardingAudioRef, 1000);
+    // Quick fade out for background music
+    fadeOutAudio(startAudioRef, 300);
+    fadeOutAudio(loopAudioRef, 300);
+    fadeOutAudio(peacefulModeAudioRef, 300);
+    fadeOutAudio(userOnboardingAudioRef, 300);
+
+    // Stop sound effects immediately
+    if (correctAnswerSoundRef.current) {
+      correctAnswerSoundRef.current.pause();
+      correctAnswerSoundRef.current.currentTime = 0;
+    }
+    if (incorrectAnswerSoundRef.current) {
+      incorrectAnswerSoundRef.current.pause();
+      incorrectAnswerSoundRef.current.currentTime = 0;
+    }
+    // Don't stop session complete sound in pauseAudio
     setIsPlaying(false);
   }, []);
 
   useEffect(() => {
     if (location.pathname === "/welcome") {
+      initializeAudio(); // Reinitialize audio when returning to welcome
       playStartAudio();
     } else if (location.pathname === "/my-preferences") {
-      fadeOutAudio(startAudioRef, 1000);
+      pauseAudio();
     } else if (location.pathname === "/tutorial/step-two") {
+      initializeAudio(); // Reinitialize audio when starting tutorial
       playUserOnboardingAudio();
     } else if (location.pathname === "/dashboard/home") {
       pauseAudio();
@@ -184,6 +263,9 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         playLoopAudio,
         playPeacefulModeAudio,
         playUserOnboardingAudio,
+        playCorrectAnswerSound,
+        playIncorrectAnswerSound,
+        playSessionCompleteSound,
         pauseAudio,
         isPlaying,
       }}

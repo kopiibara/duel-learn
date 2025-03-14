@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
 import { useGameLogic } from "../../hooks/useGameLogic";
 import FlashCard from "../../components/common/FlashCard";
 import Header from "../../components/common/Header";
 import Timer from "../../components/common/Timer";
 import axios from "axios";
 import "./../../styles/setupques.css";
+import { useAudio } from "../../../../../contexts/AudioContext";
 
 interface TimePressuredModeProps {
   mode: string;
@@ -20,10 +20,10 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   selectedTypes,
   timeLimit,
 }) => {
-  const location = useLocation();
   const [isGeneratingAI, setIsGeneratingAI] = useState(true);
   const [aiQuestions, setAiQuestions] = useState<any[]>([]);
-  
+  const { playCorrectAnswerSound, playIncorrectAnswerSound } = useAudio();
+
   // Fix whitespace and case sensitivity issues
   const normalizedMode = String(mode).trim();
 
@@ -41,28 +41,33 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
       try {
         for (const type of selectedTypes) {
           console.log(`Generating questions for type: ${type}`);
-          
+
           for (const item of material.items) {
             console.log(`Requesting ${type} question for term: "${item.term}"`);
-            
-            const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
+
+            const endpoint = `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/openai/generate-${type}`;
             console.log(`Making API request to: ${endpoint}`);
-            
+
             const requestPayload = {
               term: item.term,
               definition: item.definition,
-              numberOfItems: 1
+              numberOfItems: 1,
             };
-            
+
             const response = await axios.post(endpoint, requestPayload);
-            console.log(`Response received for ${type} question:`, response.data);
-            
+            console.log(
+              `Response received for ${type} question:`,
+              response.data
+            );
+
             if (Array.isArray(response.data) && response.data.length > 0) {
               generatedQuestions.push(...response.data);
             }
           }
         }
-        
+
         console.log("All AI questions generated:", generatedQuestions);
         setAiQuestions(generatedQuestions);
       } catch (error) {
@@ -79,7 +84,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     currentQuestion,
     isFlipped,
     handleFlip,
-    handleAnswerSubmit,
+    handleAnswerSubmit: originalHandleAnswerSubmit,
     correctCount,
     incorrectCount,
     showResult,
@@ -94,15 +99,38 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     highestStreak,
     masteredCount,
     unmasteredCount,
-    handleRevealAnswer, // Add this
-    cardDisabled, // Add this
-  } = useGameLogic({ 
-    mode, 
-    material, 
+    handleRevealAnswer,
+    cardDisabled,
+  } = useGameLogic({
+    mode,
+    material,
     selectedTypes,
-    timeLimit, 
-    aiQuestions
+    timeLimit,
+    aiQuestions,
   });
+
+  // Custom answer submit handler with sound effects
+  const handleAnswerSubmit = (answer: string) => {
+    let isAnswerCorrect = false;
+
+    if (currentQuestion?.questionType === "identification") {
+      isAnswerCorrect =
+        answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+    } else {
+      isAnswerCorrect =
+        answer.toLowerCase() === currentQuestion?.correctAnswer.toLowerCase();
+    }
+
+    // Play appropriate sound using AudioContext
+    if (isAnswerCorrect) {
+      playCorrectAnswerSound();
+    } else {
+      playIncorrectAnswerSound();
+    }
+
+    // Call the original handler
+    originalHandleAnswerSubmit(answer);
+  };
 
   const [startTime] = useState(new Date());
 
@@ -112,7 +140,9 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
       <div className="flex items-center justify-center h-screen">
         <div className="text-center">
           <h1 className="text-4xl font-bold mb-4">Generating Questions...</h1>
-          <p className="text-lg">Please wait while our AI prepares your timed challenge.</p>
+          <p className="text-lg">
+            Please wait while our AI prepares your timed challenge.
+          </p>
         </div>
       </div>
     );
@@ -157,10 +187,10 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
               className={`w-full p-4 rounded-lg bg-transparent py-10 px-10 border-2 text-center
                                 ${
                                   showResult
-                                    ? currentQuestion?.isCorrect 
+                                    ? currentQuestion?.isCorrect
                                       ? "border-[#52A647]" // Green border for correct answers
                                       : "border-[#FF3B3F]" // Red border for incorrect answers
-                                    : "border-gray-600"    // Default gray border
+                                    : "border-gray-600" // Default gray border
                                 }
                                 text-white focus:outline-none placeholder:text-[#6F658D]`}
               placeholder="Type your answer here..."
@@ -247,10 +277,10 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
                 correctAnswer={currentQuestion?.correctAnswer || ""}
                 isFlipped={isFlipped}
                 onFlip={handleFlip}
-                onReveal={handleRevealAnswer} // Add this line
+                onReveal={handleRevealAnswer}
                 timeRemaining={questionTimer}
                 type={currentQuestion?.type}
-                disabled={cardDisabled} // Add this line
+                disabled={cardDisabled}
               />
             </div>
             {renderQuestionContent()}

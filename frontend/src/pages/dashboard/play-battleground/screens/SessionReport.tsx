@@ -5,6 +5,7 @@ import ManaIcon from "../../../../assets/ManaIcon.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import AutoConfettiAnimation from "../../../../pages/dashboard/play-battleground/components/common/AutoConfettiAnimation";
 import { useAudio } from "../../../../contexts/AudioContext"; // Import the useAudio hook
+import { useEffect } from "react"; // Remove useRef since we don't need it anymore
 
 interface SessionReportProps {
   timeSpent: string;
@@ -54,7 +55,27 @@ const SessionReport = () => {
     masteredCount,
     unmasteredCount,
   } = location.state as SessionReportProps;
-  const { pauseAudio } = useAudio(); // Use the pauseAudio function
+  const { pauseAudio, playSessionCompleteSound } = useAudio();
+
+  // Play session complete sound on mount if session was completed
+  useEffect(() => {
+    const playSound = async () => {
+      if (!earlyEnd) {
+        await playSessionCompleteSound();
+      }
+    };
+    playSound();
+  }, [earlyEnd, playSessionCompleteSound]);
+
+  // Stop background music with fade out after a delay to ensure session sound plays
+  useEffect(() => {
+    const delay = mode !== "Peaceful" ? 1000 : 0; // 1 second delay for non-Peaceful modes
+    const timer = setTimeout(() => {
+      pauseAudio();
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [pauseAudio, mode]);
 
   // Add console log to check the value of highestStreak after destructuring it from location.state
   console.log("Received highestStreak:", highestStreak);

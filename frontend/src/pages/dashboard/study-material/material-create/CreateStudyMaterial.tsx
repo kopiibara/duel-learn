@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { io } from "socket.io-client";
+import { io, Socket } from "socket.io-client";
 import { useNavigate, useLocation } from "react-router-dom"; // Add useLocation import
 import DocumentHead from "../../../../components/DocumentHead";
 import PageTransition from "../../../../styles/PageTransition";
@@ -73,7 +73,9 @@ const CreateStudyMaterial = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Add this line
   const { user } = useUser();
-  const socket = io(import.meta.env.VITE_BACKEND_URL);
+
+  // Properly type the socket state
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   // Check if we're in edit mode
   const editMode = location.state?.editMode || false;
@@ -233,6 +235,18 @@ const CreateStudyMaterial = () => {
     setSnackbarOpen(false);
   };
 
+  // Set up socket connection with proper cleanup
+  useEffect(() => {
+    // Initialize socket connection
+    const socketInstance = io(import.meta.env.VITE_BACKEND_URL);
+    setSocket(socketInstance);
+
+    // Clean up on component unmount
+    return () => {
+      socketInstance.disconnect();
+    };
+  }, []);
+
   // Update the save button handler to preserve item_number values
   // Update the handleSaveButton function
 
@@ -374,9 +388,11 @@ const CreateStudyMaterial = () => {
           items: savedData.items || transformedItems,
         };
 
-        // Emit the transformed data
+        // Emit the transformed data (now with null check for socket)
         console.log("Emitting new study material event:", broadcastData);
-        socket.emit("newStudyMaterial", broadcastData);
+        if (socket) {
+          socket.emit("newStudyMaterial", broadcastData);
+        }
 
         // Navigate to preview page
         navigate(
