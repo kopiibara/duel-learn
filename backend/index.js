@@ -9,9 +9,6 @@ import lobbyRoutes from "./routes/lobby.routes.js";
 import battleRoutes from "./routes/battle.routes.js";
 import openAiRoutes from "./routes/OpenAiRoutes.js";
 import searchRoutes from "./routes/SearchRoutes.js"; // Import search routes
-import battleRoutes from "./routes/battle.routes.js";
-import openAiRoutes from "./routes/OpenAiRoutes.js";
-import searchRoutes from "./routes/SearchRoutes.js"; // Import search routes
 import adminRoutes from "./routes/admin/AdminRoutes.js"; // Import admin routes
 import ocrRoutes from "./routes/OcrRoutes.js"; // Import OCR routes
 import { corsMiddleware } from "./middleware/CorsMiddleware.js"; // Import CORS middleware
