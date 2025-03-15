@@ -7,7 +7,7 @@ import "./styles/HostModeSelection.css";
 import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
 import "../../../../../user-onboarding/styles/EffectUserOnboarding.css";
 import CardBackImg from "../../../../../../assets/General/CardDesignBack.png";
-import DefaultBackHoverCard from "../../../../../../assets/General/DefaultBackHoverCard.png";
+import DefaultBackHoverCard from "../../../../../../assets/cards/DefaultCardInside.png";
 
 export default function Player2ModeSelection() {
   const location = useLocation();

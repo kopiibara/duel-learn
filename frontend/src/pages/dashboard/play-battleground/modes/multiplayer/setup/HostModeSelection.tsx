@@ -7,12 +7,16 @@ import "./styles/HostModeSelection.css";
 import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
 import "../../../../../user-onboarding/styles/EffectUserOnboarding.css";
 import CardBackImg from "../../../../../../assets/General/CardDesignBack.png";
-import DefaultBackHoverCard from "../../../../../../assets/General/DefaultBackHoverCard.png";
+import DefaultBackHoverCard from "../../../../../../assets/cards/DefaultCardInside.png";
 
 export default function HostModeSelection() {
   const location = useLocation();
   const navigate = useNavigate();
   const { lobbyCode, hostUsername, guestUsername } = location.state || {};
+
+  // Debug log to check what's being received
+  console.log('HostModeSelection state:', { lobbyCode, hostUsername, guestUsername, locationState: location.state });
+
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null);
 
   const handleStartGame = async () => {
