@@ -190,7 +190,7 @@ export default function PvpBattle() {
   useEffect(() => {
     if (playerAnimationState === "picking" && !playerPickingIntroComplete) {
       // Set a timer for the exact duration of the characterPicking.gif
-      const introDuration = 2400; // Duration in ms - adjust to match your actual GIF duration
+      const introDuration = 400; // Duration in ms - adjust to match your actual GIF duration
 
       const introTimer = setTimeout(() => {
         // After intro animation completes exactly once, switch to the looping animation
@@ -206,7 +206,7 @@ export default function PvpBattle() {
   useEffect(() => {
     if (enemyAnimationState === "picking" && !enemyPickingIntroComplete) {
       // Set a timer for the exact duration of the characterPicking.gif
-      const introDuration = 2400; // Duration in ms - adjust to match your actual GIF duration
+      const introDuration = 400; // Duration in ms - adjust to match your actual GIF duration
 
       const introTimer = setTimeout(() => {
         // After intro animation completes exactly once, switch to the looping animation
