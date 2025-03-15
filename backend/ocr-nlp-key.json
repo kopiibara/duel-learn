@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "lunar-goal-452311-e6",
+  "private_key_id": "5ec930038607a2ad5b55ed12d0ae52b1f9dc416f",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQCGTJOwzZLIZuya\n4tzOgXIj4QwZCLatcCwS/u9V+U1EyFZUqO5Px04SNIn9BH8JrKMH2+lzvhxdSHqg\nOXWPJgWkzW3087L3eefufmk5JsiRhIEYgjl7i+8oFqwSg/73gFtEQgfN8u4yjKqC\nBE9Fz65KzG6qtCKve4UcPdASlseuHBIqH4hy1Ib1UvKtHJ78Rb2+8Z0egN6EPL7a\nDXK92H5xhwe9v6h0V3RZWxmHHFZZ9xG5ZoTJ6bPaABuQYTZn2Vmds8Qimds8g3Nf\n/O5VJIaqlaHArkSwLupF5ZFSDsQvivot4BFa675kLK9mSWNx9ukoWw1p7C0qlrYq\nJKNmNx1bAgMBAAECggEAAJSMdNCb6EAYQ0kPUYMaAPwEHIg+8HvnbNjreXsfcYMj\nawU51mAS6cg5VRMJENEio9zi4tb48hGR72b1fOivUI7PVqYblAR+Uzek8RQbp2lO\nUif0jfXvqBmE+nrV21roygrg/sD5yip1GCUNn0xuQTDQmkM3UnvIT57CwI8kjg+G\nYwpYdbntL5cQk+QCVWFioz1pW0WcIHIIK2xGCO9oN1eiMSBktP0FrtyiI8ZSANAp\nM1IGw9qzcADnfdB9BqIGD5qMEk4ymrf4o1VYlUCkyiHtV4JDlvHGhHXFlkJy3Ou1\nbH34O2RfZ26cGZSAsCAdX9HfBX8fx5tle9VZLMxqpQKBgQC5bTYC5boHkc1Wrx2O\nb/SgGTBNbbBbu6fsgvYrDh7XRfx1FXJsLuKe1QUotzuDaI7K/blrj8FgOOoytk52\nbxtUIhYaCSXHKoDaDvdIluYyoVBDO4poTsN3FLH2JtgjPGLiUr6v7X6o09L8n7uD\nVdaSV00Z/RoA5QKP6f9I+UACBwKBgQC5adRtOi7rG5K3mzl5q3W2xc4IGp66e+Tg\nsgAdKFGzJkC11NMv3z2umLE/2Y7BWAVE8RysPrVl07STrCKQjKmBOV75o66fXxae\nKgLcMva3/JGiiIKMLsN60IHD0rvd8Pt7ksBK828ToYPb47FX7szdR5Dhw8fT6rZF\nYjM1OfQlDQKBgBERxaQUo8Boop91NWJUWg+W4gRusYpwRvAVyjWCckJc9fWNSOA+\nnKwEbhoma/sX1/VF0BjfvexusNiEQcrTRY/EJ4a0Ct8/wWbRc+AhzAUjJnFZ/M7H\nWWUP6aYAQ2tS9sNg3J7zXPKLtWN+DNP1RfBoyvc2fntQmaDH6LE+CK9nAoGAZe/Q\nMWkeqHXVWQqHM+RXaHAh0QTJpZ89+2cBdwZWvJbYVt+2aAhlQhuCv6bdvGCnLPse\nl3g2hNA65EFsE2qyOnCPTdJ2y/ocVkKkpemDCS5b5y8EDwwavufpn/64+NFngc3x\n2IMz22geNYNeWgjZKwMQnX7k2xactVLC8o11M/UCgYB7vUW3W5CkN+DejWNX5YEB\nPzH8wp2bWDJQjnF4WPsu8LTfQxRBFW6J4JpbH3us6yx9xnGXmq18uwKP38jXnnAf\nXAZyp48vnX9/fAU4BsvxHG+UylxTvO6XFfkxGBWI2LZ7pPr2mkG7EzCf3BYFoqWa\nueejIQQmf3y0aoZZG2nlLA==\n-----END PRIVATE KEY-----\n",
+  "client_email": "ocr-gemini@lunar-goal-452311-e6.iam.gserviceaccount.com",
+  "client_id": "115405532412092376155",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/ocr-gemini%40lunar-goal-452311-e6.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

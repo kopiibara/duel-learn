@@ -9,6 +9,7 @@ import PersonIcon from "@mui/icons-material/Person";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import "../../styles/custom-scrollbar.css";
 import { useNavigate } from "react-router-dom";
+import ProfileModal from "../modals/ProfileModal"; // Import ProfileModal
 
 // Define a union type for search results
 type SearchResult = UserInfo | StudyMaterial;
@@ -19,6 +20,12 @@ export default function SearchField() {
   const [isFocused, setIsFocused] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Add state for ProfileModal
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [selectedUsername, setSelectedUsername] = useState<
+    string | undefined
+  >();
 
   // Handle API search
   useEffect(() => {
@@ -33,7 +40,9 @@ export default function SearchField() {
         const response = await axios.get<{
           users: UserInfo[];
           study_materials: StudyMaterial[];
-        }>(`http://localhost:5000/api/search/global/${inputValue}`);
+        }>(
+          `${import.meta.env.VITE_BACKEND_URL}/api/search/global/${inputValue}`
+        );
 
         setResults([...response.data.users, ...response.data.study_materials]);
       } catch (error) {
@@ -49,8 +58,14 @@ export default function SearchField() {
   }, [inputValue]);
 
   // Handle Enter key press to navigate to search page
+  // Handle Enter key press to navigate to search page
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && inputValue.trim()) {
+      // First close the modal if it's open
+      setProfileModalOpen(false);
+      setSelectedUsername(undefined);
+
+      // Then navigate to search page
       navigate(`/dashboard/search?query=${encodeURIComponent(inputValue)}`);
       setIsFocused(false);
     }
@@ -59,13 +74,20 @@ export default function SearchField() {
   // Handle item selection
   const handleSelectItem = (item: SearchResult) => {
     if ("username" in item) {
-      // Navigate to user profile
-      navigate(`/dashboard/profile/${item.username}`);
+      // Open ProfileModal for users instead of navigating
+      setSelectedUsername(item.username);
+      setProfileModalOpen(true);
     } else {
       // Navigate to study material details
-      navigate(`/dashboard/studymaterial/${item.study_material_id}`);
+      navigate(`/dashboard/study-material/view/${item.study_material_id}`);
     }
     setIsFocused(false);
+  };
+
+  // Handle closing the profile modal
+  const handleCloseProfileModal = () => {
+    setProfileModalOpen(false);
+    setSelectedUsername(undefined);
   };
 
   return (
@@ -134,6 +156,13 @@ export default function SearchField() {
           </Box>
         )}
       </Box>
+
+      {/* Profile Modal */}
+      <ProfileModal
+        open={profileModalOpen}
+        onClose={handleCloseProfileModal}
+        username={selectedUsername}
+      />
     </Box>
   );
 }

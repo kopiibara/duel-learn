@@ -9,6 +9,8 @@ import cauldronGif from "../../../../assets/General/Cauldron.gif";
 import { Friend } from "../../../../types/friendObject";
 import noFriend from "../../../../assets/images/NoFriend.svg";
 import defaultPicture from "../../../../assets/profile-picture/default-picture.svg";
+import VisibilityIcon from "@mui/icons-material/Visibility";
+import ProfileModal from "../../../modals/ProfileModal";
 
 const YourFriends: React.FC = () => {
   const { user } = useUser();
@@ -17,6 +19,8 @@ const YourFriends: React.FC = () => {
     message: "",
     isError: false,
   });
+  const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
 
   const { friendList, handleRemoveFriend, loading, fetchFriends } =
     useFriendList(user?.firebase_uid);
@@ -69,6 +73,11 @@ const YourFriends: React.FC = () => {
     }
   };
 
+  const handleViewProfile = (friendId: string) => {
+    setSelectedFriend(friendId);
+    setProfileModalOpen(true);
+  };
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center">
@@ -88,6 +97,14 @@ const YourFriends: React.FC = () => {
         message={snackbar.message}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       />
+
+      {/* Profile Modal */}
+      <ProfileModal
+        open={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        userId={selectedFriend || undefined}
+      />
+
       {friendList.length === 0 ? (
         <Stack
           spacing={2}
@@ -102,7 +119,7 @@ const YourFriends: React.FC = () => {
               style={{ width: "12rem", height: "auto", opacity: 0.75 }}
             />
           </Box>
-          <p className=" text-[#6F658D] font-bold text-[0.95rem]">
+          <p className="text-[#6F658D] font-bold text-[0.95rem]">
             {" "}
             No friends yet. Add friends and share the magic!
           </p>
@@ -111,20 +128,31 @@ const YourFriends: React.FC = () => {
         friendList.map((friend) => (
           <Box
             key={friend.firebase_uid}
-            className="flex items-center justify-between mb-4 border-b border-[#3B354C] pb-4 last:border-none"
+            className="flex items-center justify-between gap-2 mb-4 border-b border-[#3B354C] pb-4 last:border-none"
           >
-            <div className="flex items-center cursor-pointer">
+            <div
+              className="flex items-center cursor-pointer"
+              onClick={() => handleViewProfile(friend.firebase_uid)}
+            >
               <img
                 src={friend.display_picture || defaultPicture}
                 alt="Avatar"
                 className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
               />
               <div>
-                <p className=" font-medium">{friend.username}</p>
+                <p className="font-medium">{friend.username}</p>
                 <p className="text-sm text-[#9F9BAE]">Level {friend.level}</p>
               </div>
             </div>
-
+            <Box flex={1} />
+            <Tooltip title="View Profile" enterDelay={100} arrow>
+              <button
+                className="bg-[#3A3A8B] text-xs text-white py-2 px-4 rounded-md hover:scale-105 transition-all duration-300"
+                onClick={() => handleViewProfile(friend.firebase_uid)}
+              >
+                <VisibilityIcon sx={{ fontSize: 18 }} />
+              </button>
+            </Tooltip>
             <Tooltip title="Remove Friend" enterDelay={100} arrow>
               <button
                 className="bg-[#E03649] text-xs text-white py-2 px-4 rounded-md hover:bg-[#E84040] hover:scale-105 transition-all duration-300"

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { useLocation } from "react-router-dom";
 import { useGameLogic } from "../../hooks/useGameLogic";
 import FlashCard from "../../components/common/FlashCard";
 import Header from "../../components/common/Header";
 import Timer from "../../components/common/Timer";
 import axios from "axios";
 import "./../../styles/setupques.css";
+import { useAudio } from "../../../../../contexts/AudioContext";
 
 interface TimePressuredModeProps {
   mode: string;
@@ -20,10 +20,10 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   selectedTypes,
   timeLimit,
 }) => {
-  const location = useLocation();
   const [isGeneratingAI, setIsGeneratingAI] = useState(true);
   const [aiQuestions, setAiQuestions] = useState<any[]>([]);
-  
+  const { playCorrectAnswerSound, playIncorrectAnswerSound } = useAudio();
+
   // Fix whitespace and case sensitivity issues
   const normalizedMode = String(mode).trim();
 
@@ -35,36 +35,87 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   useEffect(() => {
     const generateAIQuestions = async () => {
       console.log("Starting AI question generation in TimePressuredMode");
+      console.log("Selected question types:", selectedTypes);
       setIsGeneratingAI(true);
       const generatedQuestions = [];
 
       try {
+        // Create an array of items and shuffle it
+        const items = [...material.items];
+        const shuffledItems = items.sort(() => Math.random() - 0.5);
+
+        // Calculate how many questions of each type we need
+        const totalItems = items.length;
+        const typesCount = selectedTypes.length;
+        
+        // Validate selected types
+        const validTypes = ['identification', 'multiple-choice', 'true-false'];
+        selectedTypes.forEach(type => {
+          if (!validTypes.includes(type)) {
+            console.warn(`Warning: Unknown question type "${type}"`);
+          }
+        });
+
+        const distribution = selectedTypes.reduce((acc, type, index) => {
+          // For the last type, assign all remaining items
+          if (index === typesCount - 1) {
+            acc[type] = totalItems - Object.values(acc).reduce((sum, val) => sum + val, 0);
+          } else {
+            // Otherwise, distribute items evenly with a minimum of 1
+            acc[type] = Math.max(1, Math.floor(totalItems / typesCount));
+          }
+          return acc;
+        }, {} as Record<string, number>);
+
+        console.log("Question distribution for", totalItems, "items:");
+        Object.entries(distribution).forEach(([type, count]) => {
+          console.log(`- ${type}: ${count} questions`);
+        });
+
+        // Validate total matches number of items
+        const totalQuestions = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+        console.log(`Total questions to generate: ${totalQuestions} (should equal number of items: ${totalItems})`);
+
+        // Keep track of which items have been used
+        let currentItemIndex = 0;
+
+        // Generate questions according to the distribution
         for (const type of selectedTypes) {
-          console.log(`Generating questions for type: ${type}`);
-          
-          for (const item of material.items) {
-            console.log(`Requesting ${type} question for term: "${item.term}"`);
-            
+          const questionsOfThisType = distribution[type];
+          console.log(`\nGenerating ${questionsOfThisType} questions of type "${type}":`);
+
+          for (let i = 0; i < questionsOfThisType; i++) {
+            const item = shuffledItems[currentItemIndex];
+            console.log(`[${type}] Question ${i + 1}/${questionsOfThisType} using item: "${item.term}"`);
+
             const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
-            console.log(`Making API request to: ${endpoint}`);
-            
             const requestPayload = {
               term: item.term,
               definition: item.definition,
               numberOfItems: 1
             };
+
+            const response = await axios.post<{ data: any[] }>(endpoint, requestPayload);
             
-            const response = await axios.post(endpoint, requestPayload);
-            console.log(`Response received for ${type} question:`, response.data);
-            
-            if (Array.isArray(response.data) && response.data.length > 0) {
+            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
               generatedQuestions.push(...response.data);
+              console.log(`✓ Successfully generated ${type} question for "${item.term}"`);
+            } else {
+              console.warn(`⚠ No question generated for "${item.term}" of type ${type}`);
             }
+
+            currentItemIndex++;
           }
         }
-        
-        console.log("All AI questions generated:", generatedQuestions);
-        setAiQuestions(generatedQuestions);
+
+        console.log("\nQuestion generation summary:");
+        console.log(`- Total items: ${totalItems}`);
+        console.log(`- Questions generated: ${generatedQuestions.length}`);
+        console.log(`- Types distribution:`, distribution);
+
+        // Shuffle the questions for final presentation
+        const shuffledQuestions = generatedQuestions.sort(() => Math.random() - 0.5);
+        setAiQuestions(shuffledQuestions);
       } catch (error) {
         console.error("Error generating AI questions:", error);
       } finally {
@@ -79,7 +130,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     currentQuestion,
     isFlipped,
     handleFlip,
-    handleAnswerSubmit,
+    handleAnswerSubmit: originalHandleAnswerSubmit,
     correctCount,
     incorrectCount,
     showResult,
@@ -94,28 +145,44 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     highestStreak,
     masteredCount,
     unmasteredCount,
-    handleRevealAnswer, // Add this
-    cardDisabled, // Add this
-  } = useGameLogic({ 
-    mode, 
-    material, 
+    handleRevealAnswer,
+    cardDisabled,
+  } = useGameLogic({
+    mode,
+    material,
     selectedTypes,
-    timeLimit, 
-    aiQuestions
+    timeLimit,
+    aiQuestions,
   });
+
+  // Custom answer submit handler with sound effects
+  const handleAnswerSubmit = (answer: string) => {
+    let isAnswerCorrect = false;
+
+    if (currentQuestion?.questionType === "identification") {
+      isAnswerCorrect =
+        answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+    } else {
+      isAnswerCorrect =
+        answer.toLowerCase() === currentQuestion?.correctAnswer.toLowerCase();
+    }
+
+    // Play appropriate sound using AudioContext
+    if (isAnswerCorrect) {
+      playCorrectAnswerSound();
+    } else {
+      playIncorrectAnswerSound();
+    }
+
+    // Call the original handler
+    originalHandleAnswerSubmit(answer);
+  };
 
   const [startTime] = useState(new Date());
 
-  // Show loading state while AI questions are being generated
+  // Remove the custom loading UI since LoadingScreen.tsx is already handling this
   if (isGeneratingAI) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold mb-4">Generating Questions...</h1>
-          <p className="text-lg">Please wait while our AI prepares your timed challenge.</p>
-        </div>
-      </div>
-    );
+    return null; // Return null to let the parent component handle loading state
   }
 
   const renderQuestionContent = () => {
@@ -157,10 +224,10 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
               className={`w-full p-4 rounded-lg bg-transparent py-10 px-10 border-2 text-center
                                 ${
                                   showResult
-                                    ? currentQuestion?.isCorrect 
+                                    ? currentQuestion?.isCorrect
                                       ? "border-[#52A647]" // Green border for correct answers
                                       : "border-[#FF3B3F]" // Red border for incorrect answers
-                                    : "border-gray-600"    // Default gray border
+                                    : "border-gray-600" // Default gray border
                                 }
                                 text-white focus:outline-none placeholder:text-[#6F658D]`}
               placeholder="Type your answer here..."
@@ -247,10 +314,10 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
                 correctAnswer={currentQuestion?.correctAnswer || ""}
                 isFlipped={isFlipped}
                 onFlip={handleFlip}
-                onReveal={handleRevealAnswer} // Add this line
+                onReveal={handleRevealAnswer}
                 timeRemaining={questionTimer}
                 type={currentQuestion?.type}
-                disabled={cardDisabled} // Add this line
+                disabled={cardDisabled}
               />
             </div>
             {renderQuestionContent()}
