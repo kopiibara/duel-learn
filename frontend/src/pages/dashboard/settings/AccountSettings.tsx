@@ -1,15 +1,19 @@
-import sampleAvatar from "../../../assets/profile-picture/bunny-picture.png";
+import sampleAvatar from "../../../assets/profile-picture/default-picture.svg";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import useAccountSettings from "../../../hooks/useAccountSettings";
 import ProfilePictureModal from "../../../components/ProfilePictureModal";
 import useProfilePicture from "../../../hooks/useProfilePicture";
 import DeleteAccountModal from "../../../components/DeleteAccountModal";
 import { CircularProgress } from "@mui/material";
 import { useUser } from "../../../contexts/UserContext";
+import { useState } from "react";
 
 export default function AccountSettings() {
-  const { user } = useUser();
+  const { user, refreshUserData } = useUser();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  
   const {
     formik,
     isEditing,
@@ -52,10 +56,43 @@ export default function AccountSettings() {
     handleProfilePictureChange(newPicture);
   };
 
+  const handleRefresh = async () => {
+    if (isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      await refreshUserData();
+      formik.resetForm({
+        values: {
+          username: user?.username || "",
+          newpassword: "",
+          confirmPassword: "",
+          display_picture: user?.display_picture || "",
+        }
+      });
+    } catch (error) {
+      console.error("Error refreshing user data:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <div className="h-auto w-full">
       <main className="px-8">
-        <h1 className="text-2xl font-semibold mb-6">Account Settings</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-semibold">Account Settings</h1>
+          
+          <button
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="flex items-center gap-2 px-4 py-2 bg-[#381898] text-white rounded-[0.8rem] hover:bg-[#4D18E8] transition-colors disabled:bg-[#2a2435] disabled:text-[#6F658D]"
+          >
+            <RefreshIcon fontSize="small" className={isRefreshing ? "animate-spin" : ""} />
+            {isRefreshing ? "Refreshing..." : "Refresh Data"}
+          </button>
+        </div>
+        
         <div className="flex items-start">
           <form
             onSubmit={formik.handleSubmit}

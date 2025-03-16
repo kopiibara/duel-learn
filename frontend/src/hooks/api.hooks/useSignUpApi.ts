@@ -1,18 +1,12 @@
 import { useState } from "react";
 import { auth } from "../../services/firebase";
-
-interface StoredUserData {
-  user: {
-    username: string;
-    email: string;
-    password: string;
-    account_type: "free" | "premium" | "admin";
-  }
-}
+import userService from "../../api/userService";
+import authService from "../../api/authService";
 
 interface SignUpResponse {
-  message: string;
-  firebase_uid: string;
+  success: boolean;
+  message?: string;
+  error?: string;
 }
 
 const useSignUpApi = () => {
@@ -24,8 +18,7 @@ const useSignUpApi = () => {
     email_verified: boolean
   ): Promise<SignUpResponse> => {
     try {
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) throw new Error("No authentication token available");
+      if (!auth.currentUser) throw new Error("No current user found");
 
       console.log("SignUpApi received params:", {
         firebase_uid,
@@ -36,23 +29,7 @@ const useSignUpApi = () => {
       });
 
       // 1. Get stored user data
-      const storedUserResponse = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/user/store-user/${firebase_uid}`,
-        {
-          method: "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          }
-        }
-      );
-
-      if (!storedUserResponse.ok) {
-        const errorData = await storedUserResponse.json();
-        throw new Error(errorData.error || "Failed to fetch stored user data");
-      }
-
-      const storedUserData: StoredUserData = await storedUserResponse.json();
+      const storedUserData = await userService.getStoredUserData(firebase_uid);
       console.log("Stored user data:", storedUserData);
       
       // 2. Verify data consistency
@@ -60,37 +37,35 @@ const useSignUpApi = () => {
         throw new Error("User data verification failed");
       }
 
-      // 3. Sign up user
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/user/sign-up`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            uid: firebase_uid,
-            username: storedUserData.user.username,
-            email: storedUserData.user.email,
-            password: storedUserData.user.password,
-            isSSO: false,
-            email_verified,
-            account_type: storedUserData.user.account_type
-          }), 
-        }
-      );
+      // 3. Create account in database using combined information
+      try {
+        // Get current username from stored data
+        const userData = {
+          firebase_uid,
+          username: storedUserData.user.username,
+          email: storedUserData.user.email,
+          password: storedUserData.user.password,
+          account_type: storedUserData.user.account_type,
+          email_verified,
+          updated_at: new Date().toISOString(),
+          isSSO: auth.currentUser.providerData[0]?.providerId === "google.com",
+        };
 
-      console.log("Sign-up response status:", response.status);
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to sign up user");
+        // Use authService for sign up
+        const result = await authService.signUpUser(userData);
+        
+        return {
+          success: true,
+          message: result.message || "User signed up successfully"
+        };
+      } catch (error: any) {
+        console.error("Error in sign up API:", error);
+        setApiError(error.message);
+        return {
+          success: false,
+          error: error.message
+        };
       }
-
-      const responseData = await response.json();
-      console.log("Sign-up response data:", responseData);
-      return responseData;
     } catch (error) {
       const message = error instanceof Error ? error.message : "An unexpected error occurred";
       setApiError(message);

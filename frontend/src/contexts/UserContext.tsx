@@ -5,11 +5,10 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { auth } from "../services/firebase";
-//import { User as FirebaseUser, onAuthStateChanged } from "firebase/auth";
 import { getDoc, doc } from "firebase/firestore";
 import { db } from "../services/firebase";
 import useUserData from "../hooks/api.hooks/useUserData";
+import { useAuth } from "./AuthContext";
 
 interface User {
   firebase_uid: string;
@@ -38,15 +37,15 @@ export interface Friend {
 interface UserContextProps {
   user: User | null;
   setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  logout: () => Promise<void>;
-  loginAndSetUserData: (firebase_uid: string, token: string) => Promise<User>;
   loading: boolean;
+  loadUserData: (firebase_uid: string) => Promise<User | null>;
   updateUser: (updates: Partial<User>) => void;
+  clearUserData: () => void;
+  loginAndSetUserData: (firebase_uid: string, token: string) => Promise<User | null>;
+  refreshUserData: () => Promise<void>;
 }
 
 const UserContext = createContext<UserContextProps | undefined>(undefined);
-
-const REFRESH_INTERVAL = 60000; // 1 minute
 
 export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
@@ -58,6 +57,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const [loading, setLoading] = useState(true);
   const { fetchAndUpdateUserData } = useUserData();
+  const auth = useAuth(); // Use the AuthContext
+
+  // Clear user data (used when logging out)
+  const clearUserData = useCallback(() => {
+    setUser(null);
+    localStorage.removeItem("userData");
+    sessionStorage.removeItem("userData");
+  }, []);
 
   // 🟢 Update user state and localStorage/sessionStorage
   const updateUserState = useCallback((userData: any) => {
@@ -89,52 +96,52 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     return updatedUser;
   }, []);
 
-  // 🔑 Handle login and fetch user data
-  const loginAndSetUserData = async (uid: string, token: string) => {
+  // Load user data from database
+  const loadUserData = async (firebase_uid: string): Promise<User | null> => {
     try {
-      // First try to fetch from main database (users who have completed verification)
+      setLoading(true);
+      console.log(`Attempting to load user data for: ${firebase_uid}`);
+      
+      // Skip loading for new users that haven't verified email yet
+      if (auth.currentUser && !auth.currentUser.emailVerified && 
+          auth.currentUser.metadata.creationTime === auth.currentUser.metadata.lastSignInTime) {
+        console.log("New unverified user - skipping database fetch");
+        return null;
+      }
+      
+      // Try to fetch verified user data first
       try {
-        console.log(
-          "Attempting to fetch verified user data from main database"
-        );
-        const userData = await fetchAndUpdateUserData(uid, token);
+        console.log("Fetching user data from main database...");
+        const userData = await fetchAndUpdateUserData(firebase_uid);
         if (userData) {
-          console.log("User found in main database:", userData);
-
-          // Ensure we update localStorage immediately for admin users
-          if (userData.account_type === "admin") {
-            console.log(
-              "Admin user detected in UserContext, updating localStorage"
-            );
-            localStorage.setItem("userData", JSON.stringify(userData));
-            localStorage.setItem("userToken", token);
-          }
-
-          setUser(userData);
-          return userData;
+          console.log("User found in main database:", userData.username);
+          // Update state with user data
+          const updatedUser = updateUserState(userData);
+          return updatedUser;
         }
-      } catch (dbError) {
-        console.log(
-          "User not found in main database, checking temp_users",
-          dbError
-        );
-        // If not found in main database, continue to check temp_users
+      } catch (dbError: any) {
+        console.log(`Error fetching from main database: ${dbError.message}`);
+        
+        // Don't keep looking in temp_users if the error is something other than "not found"
+        if (dbError.message && !dbError.message.includes("not found")) {
+          throw dbError;
+        }
+        
+        console.log("Checking temp_users collection...");
       }
 
-      // For users not found in main database, check temp_users
-      console.log("Checking temp_users collection for unverified user");
-      const tempUserDoc = await getDoc(doc(db, "temp_users", uid));
-
+      // Check temp_users for unverified users
+      const tempUserDoc = await getDoc(doc(db, "temp_users", firebase_uid));
       if (!tempUserDoc.exists()) {
-        console.error("User not found in temp_users collection");
-        throw new Error("User not found in temp_users collection");
+        console.error("User not found in temp_users collection either");
+        throw new Error("User not found in any database. You may need to complete registration.");
       }
 
       // Handle unverified user from temp_users
       const tempUserData = tempUserDoc.data();
       const userDataWithDefaults = {
         ...tempUserData,
-        firebase_uid: uid,
+        firebase_uid,
         email_verified: false,
         isNew: true,
         display_picture: null,
@@ -149,95 +156,108 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         email: tempUserData.email || null,
       };
 
-      console.log("User found in temp_users:", userDataWithDefaults);
-      setUser(userDataWithDefaults);
-
-      return userDataWithDefaults;
+      const updatedUser = updateUserState(userDataWithDefaults);
+      return updatedUser;
     } catch (error) {
-      console.error("Error during login and data setup:", error);
-      setUser(null);
-      throw error;
+      console.error("Error loading user data:", error);
+      return null;
+    } finally {
+      setLoading(false);
     }
   };
 
-  // 🚪 Logout function
-  const logout = useCallback(async () => {
-    try {
-      await auth.signOut();
-      setUser(null);
-      localStorage.removeItem("userData");
-      sessionStorage.removeItem("userData");
-    } catch (error) {
-      console.error("Error during logout:", error);
-    }
-  }, []);
-
-  // 🔄 Refresh user data periodically
+  // Effect to load user data on auth state change
   useEffect(() => {
-    if (user) {
-      const intervalId = setInterval(async () => {
+    const loadData = async () => {
+      if (auth.currentUser && auth.isAuthenticated) {
+        setLoading(true);
         try {
-          const token = await auth.currentUser?.getIdToken(true);
-          if (token) {
-            const userData = await fetchAndUpdateUserData(
-              user.firebase_uid,
-              token
-            );
-            updateUserState(userData);
+          // Check if this is a newly created user in the signup process
+          const isNewUserSignup = 
+            auth.currentUser.metadata.creationTime === auth.currentUser.metadata.lastSignInTime && 
+            !auth.currentUser.emailVerified;
+            
+          // Skip loading user data during initial signup - will be loaded after email verification
+          if (isNewUserSignup) {
+            console.log("New user in signup process - skipping initial user data fetch");
+            setLoading(false);
+            return;
           }
+          
+          await loadUserData(auth.currentUser.uid);
         } catch (error) {
-          console.error("Error refreshing user data:", error);
+          console.error("Error loading initial user data:", error);
+        } finally {
+          setLoading(false);
         }
-      }, REFRESH_INTERVAL);
-
-      return () => clearInterval(intervalId);
-    }
-  }, [user, fetchAndUpdateUserData, updateUserState]);
-
-  // ✅ Uncomment and update the auth state listener
-  useEffect(() => {
-    console.log("Setting up auth state listener");
-    const unsubscribe = auth.onAuthStateChanged(async (firebaseUser) => {
-      try {
-        if (firebaseUser) {
-          console.log("User is authenticated in Firebase:", firebaseUser.uid);
-          const token = await firebaseUser.getIdToken();
-
-          // Refresh user data from database on initial load
-          const userData = await fetchAndUpdateUserData(
-            firebaseUser.uid,
-            token
-          );
-          if (userData) {
-            updateUserState(userData);
-            localStorage.setItem("userToken", token);
-          }
-        } else {
-          console.log("No authenticated user in Firebase");
-          setUser(null);
-          localStorage.removeItem("userToken");
-          localStorage.removeItem("userData");
-        }
-      } catch (error) {
-        console.error("Error in auth state listener:", error);
-        setUser(null);
-      } finally {
+      } else if (!auth.isLoading && !auth.currentUser) {
+        // Clear user data if not authenticated
+        clearUserData();
         setLoading(false);
       }
-    });
+    };
 
-    return () => unsubscribe();
-  }, [fetchAndUpdateUserData, updateUserState]);
+    loadData();
+  }, [auth.currentUser, auth.isAuthenticated, auth.isLoading]);
+
+  // Effect to clear user data on logout
+  useEffect(() => {
+    if (!auth.isAuthenticated && !auth.isLoading) {
+      clearUserData();
+    }
+  }, [auth.isAuthenticated, auth.isLoading, clearUserData]);
+
+  // Function to manually refresh user data - will be called after relevant actions
+  const refreshUserData = useCallback(async () => {
+    if (user && auth.currentUser && auth.currentUser.emailVerified) {
+      try {
+        console.log("Manually refreshing user data");
+        const userData = await fetchAndUpdateUserData(user.firebase_uid);
+        updateUserState(userData);
+      } catch (error) {
+        console.error("Error refreshing user data:", error);
+      }
+    }
+  }, [user, auth.currentUser, updateUserState, fetchAndUpdateUserData]);
+
+  // Login and set user data in one operation - used after email verification
+  const loginAndSetUserData = async (firebase_uid: string, token: string): Promise<User | null> => {
+    try {
+      console.log(`Loading user data after verification for: ${firebase_uid}`);
+      setLoading(true);
+      
+      // Set the token in auth context if possible
+      if (auth.token !== token) {
+        console.log("Updating token in auth context");
+        // This is a way to set the token directly if needed
+        // The setAuthToken function from apiClient would be called automatically
+        // through the AuthTokenSynchronizer
+      }
+      
+      // Load the user data using the regular function
+      const userData = await loadUserData(firebase_uid);
+      console.log("User data loaded after verification:", userData);
+      
+      return userData;
+    } catch (error) {
+      console.error("Error loading user data after verification:", error);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <UserContext.Provider
       value={{
         user,
         setUser,
-        logout,
-        loginAndSetUserData,
         loading,
+        loadUserData,
         updateUser: updateUserState,
+        clearUserData,
+        loginAndSetUserData,
+        refreshUserData
       }}
     >
       {children}

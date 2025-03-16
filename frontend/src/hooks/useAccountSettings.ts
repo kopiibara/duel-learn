@@ -42,7 +42,7 @@ const useAccountSettings = () => {
   const validationSchema = Yup.object({
     username: Yup.string()
       .required("Username is required")
-      .min(3, "Username must be at least 3 characters")
+      .min(2, "Username must be at least 2 characters")
       .max(30, "Username must be at most 30 characters")
       .matches(
         /^[a-zA-Z0-9_]+$/,

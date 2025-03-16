@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
+import { updateProfile } from "firebase/auth";
 import { auth } from "../../services/firebase";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import "../../index.css";
 import PageTransition from "../../styles/PageTransition";
 import useCombinedErrorHandler from "../../hooks/validation.hooks/useCombinedErrorHandler";
@@ -13,7 +13,10 @@ import * as Yup from "yup";
 import useGoogleAuth from "../../hooks/auth.hooks/useGoogleAuth";
 import { useStoreUser } from '../../hooks/api.hooks/useStoreUser';
 import { useUser } from "../../contexts/UserContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { setAuthToken } from "../../api/apiClient";
+import PasswordValidationTooltip from "../../components/PasswordValidationTooltip";
 
 const SignUp = () => {
   const { handleError, combinedError } = useCombinedErrorHandler();
@@ -23,7 +26,16 @@ const SignUp = () => {
   const [loading, setLoading] = useState(false);
   const { storeUser } = useStoreUser();
   const { handleGoogleAuth, loading: googleLoading } = useGoogleAuth();
-  const { loginAndSetUserData } = useUser();
+  const { loadUserData } = useUser();
+  const { signup, error: authError } = useAuth();
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+
+  // Handle auth errors
+  useEffect(() => {
+    if (authError) {
+      handleError(new Error(authError));
+    }
+  }, [authError, handleError]);
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
@@ -49,7 +61,7 @@ const SignUp = () => {
   const validationSchema = Yup.object({
     username: Yup.string()
       .required("Username is required.")
-      .min(8, "Username must be at least 8 characters.")
+      .min(2, "Username must be at least 2 characters.")
       .max(20, "Username cannot exceed 20 characters.")
       .matches(/^[a-zA-Z0-9_]+$/, "Username can only contain alphanumeric characters and underscores.")
       .test("unique", "Username is already taken", async function(value) {
@@ -94,23 +106,63 @@ const SignUp = () => {
     validationSchema,
     onSubmit: async (values) => {
       setLoading(true);
+      let firebaseUser = null; // Variable to track if we need to delete Firebase user on error
+      
       try {
         console.log("=== Starting SignUp Process ===");
         console.log("Creating Firebase user...");
-        const result = await createUserWithEmailAndPassword(auth, values.email, values.password);
-        console.log("Firebase user created:", result.user.uid);
         
-        await updateProfile(result.user, { displayName: values.username });
+        // Use AuthContext signup instead of direct Firebase call
+        const user = await signup(values.email, values.password);
+        firebaseUser = user; // Store reference for cleanup in case of error
+        console.log("Firebase user created:", user.uid);
+        
+        await updateProfile(user, { displayName: values.username });
         console.log("Firebase profile updated");
     
-        const token = await result.user.getIdToken();
-        console.log("Got Firebase token");
+        // Get a fresh token and make sure it's set in apiClient
+        console.log("Getting fresh token and setting up authentication...");
+
+        // Multiple attempts to get a fresh token if needed
+        let token = null;
+        let tokenAttempts = 0;
+        const MAX_TOKEN_ATTEMPTS = 3;
+
+        while (!token && tokenAttempts < MAX_TOKEN_ATTEMPTS) {
+          try {
+            tokenAttempts++;
+            console.log(`Token attempt ${tokenAttempts}/${MAX_TOKEN_ATTEMPTS}`);
+            
+            // Force refresh token
+            token = await user.getIdToken(true);
+            console.log(`Got Firebase token (attempt ${tokenAttempts}):`, token.substring(0, 10) + "...");
+            
+            // Explicitly set the token to ensure it's available for the API call
+            setAuthToken(token);
+            console.log("Token explicitly set in apiClient");
+          } catch (tokenError) {
+            console.error(`Failed to get token on attempt ${tokenAttempts}:`, tokenError);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+
+        if (!token) {
+          throw new Error("Failed to obtain authentication token after multiple attempts. Please try again.");
+        }
+
+        // Increase the delay to ensure token is properly set
+        console.log("Waiting for token to propagate...");
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Ready to proceed with API call
+        console.log("Proceeding with storeUser API call...");
         
         // Store user data in backend
         console.log("Calling storeUser with data:", {
           username: values.username,
           email: values.email,
-          password: "***"
+          password: "***",
+          account_type: "free",
         });
 
         const storeUserResult = await storeUser({
@@ -118,21 +170,17 @@ const SignUp = () => {
           email: values.email,
           password: values.password,
           account_type: "free",
-        }, token);
+          isNew: user.metadata.creationTime === user.metadata.lastSignInTime,
+          isSSO: false,
+        });
         console.log("Store user result:", storeUserResult);
 
         if (!storeUserResult.success) {
           throw new Error(storeUserResult.error);
         }
     
-        const userData = {
-          email: values.email,
-          username: values.username,
-          email_verified: false,
-          firebase_uid: result.user.uid,
-          isNew: true,
-        };
-        localStorage.setItem("userData", JSON.stringify(userData));
+        // Remove the loadUserData call as it should only happen after email verification
+        // await loadUserData(user.uid);
 
         setSuccessMessage("Account created! Please verify your email.");
 
@@ -143,6 +191,19 @@ const SignUp = () => {
 
       } catch (error) {
         console.error("Registration error:", error);
+        
+        // Clean up Firebase user if it was created but subsequent steps failed
+        if (firebaseUser) {
+          try {
+            console.log("Cleaning up Firebase user due to registration error");
+            await firebaseUser.delete();
+            console.log("Firebase user deleted successfully");
+          } catch (deleteError) {
+            console.error("Error deleting Firebase user:", deleteError);
+            // Continue with error handling even if deletion fails
+          }
+        }
+        
         handleError(error);
         setLoading(false);
       }
@@ -153,8 +214,11 @@ const SignUp = () => {
     try {
       const authResult = await handleGoogleAuth("free");
       
-      // Fetch and update user data using the new hook
-      await loginAndSetUserData(authResult.userData.uid, authResult.token);
+      // Google users are pre-verified, so load user data for them
+      // Google auth typically verifies email automatically
+      if (auth.currentUser && auth.currentUser.emailVerified) {
+        await loadUserData(authResult.userData.uid);
+      }
 
       if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
@@ -234,7 +298,11 @@ const SignUp = () => {
                 required
                 value={formik.values.password}
                 onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
+                onBlur={(e) => {
+                  formik.handleBlur(e);
+                  setIsPasswordFocused(false);
+                }}
+                onFocus={() => setIsPasswordFocused(true)}
                 onCopy={(e) => e.preventDefault()}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
                   formik.touched.password && formik.errors.password
@@ -252,6 +320,12 @@ const SignUp = () => {
                   <VisibilityOffRoundedIcon />
                 )}
               </span>
+              
+              <PasswordValidationTooltip 
+                password={formik.values.password} 
+                isVisible={isPasswordFocused || !!(formik.touched.password && formik.errors.password)}
+              />
+              
               {formik.touched.password && formik.errors.password && (
                 <p className="text-red-500 mt-1 text-sm">{formik.errors.password}</p>
               )}
