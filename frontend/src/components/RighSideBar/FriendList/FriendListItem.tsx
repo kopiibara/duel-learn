@@ -19,29 +19,26 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   };
   return (
     <>
-      <div className="flex items-center justify-between mb-[2vh]">
+      <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <img
             src={friend.display_picture || defaultPicture}
             onClick={() => handleViewProfile(friend.firebase_uid)}
             alt="Avatar"
-            className="min-w-[44px] w-[2.8vw] max-w-[60px] cursor-pointer h-auto mr-[0.8vw]  rounded-[5px] hover:scale-110 transition-all duration-300"
+            className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
           />
 
           {/* Text content */}
           <div className="min-w-0 flex-1">
-            <p className="text-[clamp(1rem,0.8vw,2rem)]  text-[#E2DDF3] truncate">
+            <p className="text-sm sm:text-base text-[#E2DDF3] truncate">
               {friend.username}
             </p>
-            <div className="flex items-center gap-[0.5vw]">
-              {" "}
-              <p className="text-[clamp(0.8rem,0.5vw,1.5rem)]  min-text-[12px] text-[#9F9BAE]">
+            <div className="flex items-center gap-2">
+              <p className="text-xs sm:text-sm text-[#9F9BAE]">
                 Level {friend.level}
               </p>
-              <p className="text-[#9F9BAE] text-[clamp(0.6rem,0.7vw,2rem)]">
-                •
-              </p>
-              <p className="text-[clamp(0.8rem,0.5vw,1.5rem)]  min-text-[12px] text-[#9F9BAE]">
+              <p className="text-[#9F9BAE] text-xs">•</p>
+              <p className="text-xs sm:text-sm text-[#9F9BAE]">
                 EXP {friend.exp}
               </p>
             </div>
@@ -54,15 +51,20 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
           sx={{
             borderRadius: "0.6rem",
             padding: {
-              xs: "0.5vh 1vw", // Smaller padding on very small screens
-              sm: "0.6vh 1.2vw", // Original padding for larger screens
+              xs: "0.25rem 0.5rem", // Smaller padding on very small screens
+              sm: "0.3rem 0.75rem", // Medium padding
+              md: "0.4rem 1rem", // Larger padding
             },
             marginLeft: "8px",
             display: "flex",
             width: "fit-content",
             minWidth: "60px",
             height: "fit-content",
-            fontSize: "clamp(0.7rem, 1vh, 1rem)",
+            fontSize: {
+              xs: "0.7rem",
+              sm: "0.75rem",
+              md: "0.8rem",
+            },
             justifyContent: "center",
             alignItems: "center",
             transition: "all 0.3s ease",

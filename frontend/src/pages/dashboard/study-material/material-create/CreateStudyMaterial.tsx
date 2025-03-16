@@ -36,6 +36,11 @@ import {
 } from "@dnd-kit/sortable";
 import { SortableItem } from "../types/SortableItem";
 
+// Add constant for maximum tags
+const MAX_TAGS = 5;
+const MAX_TITLE_LENGTH = 50;
+const MAX_TERM_LENGTH = 50;
+const MAX_DEFINITION_LENGTH = 500;
 const MAX_IMAGE_SIZE_MB = 10;
 const MAX_TOTAL_PAYLOAD_MB = 50;
 
@@ -141,6 +146,13 @@ const CreateStudyMaterial = () => {
   const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && currentTag.trim()) {
       e.preventDefault(); // Prevent form submission on Enter
+
+      // Check if max tags limit is reached
+      if (tags.length >= MAX_TAGS) {
+        handleShowSnackbar(`Maximum ${MAX_TAGS} tags allowed`);
+        return;
+      }
+
       if (!tags.includes(currentTag.trim())) {
         setTags([...tags, currentTag.trim()]);
       }
@@ -218,6 +230,27 @@ const CreateStudyMaterial = () => {
         );
         return; // Don't update the item with this image
       }
+    }
+
+    // Add validation for term and definition length
+    if (
+      field === "term" &&
+      typeof value === "string" &&
+      value.length > MAX_TERM_LENGTH
+    ) {
+      handleShowSnackbar(`Term cannot exceed ${MAX_TERM_LENGTH} characters`);
+      return;
+    }
+
+    if (
+      field === "definition" &&
+      typeof value === "string" &&
+      value.length > MAX_DEFINITION_LENGTH
+    ) {
+      handleShowSnackbar(
+        `Definition cannot exceed ${MAX_DEFINITION_LENGTH} characters`
+      );
+      return;
     }
 
     // Update the item if validation passes
@@ -454,8 +487,8 @@ const CreateStudyMaterial = () => {
 
   const handleDiscard = () => {
     if (editMode && studyMaterialId) {
-      // If coming from edit mode, return to the view page for that specific material
-      navigate(`/dashboard/study-material/view${studyMaterialId}`);
+      // Add the missing forward slash between "view" and studyMaterialId
+      navigate(`/dashboard/study-material/view/${studyMaterialId}`);
     } else {
       // Otherwise, just go back to the previous page
       navigate(-1);
@@ -557,10 +590,46 @@ const CreateStudyMaterial = () => {
     setVisibility(value.toString());
   };
 
+  // Add this useEffect after your existing useEffect hooks
+
+  useEffect(() => {
+    // Handle initial textarea sizing for all items when in edit mode
+    if (editMode && items.length > 0) {
+      // Use a small timeout to ensure the textareas are rendered
+      const timer = setTimeout(() => {
+        // Get all textareas in the document and adjust their height
+        const textareas = document.querySelectorAll("textarea");
+        textareas.forEach((textarea) => {
+          // Reset height first
+          textarea.style.height = "auto";
+          // Set height to fit content
+          textarea.style.height = textarea.scrollHeight + "px";
+        });
+      }, 100); // Small delay to ensure components are rendered
+
+      return () => clearTimeout(timer);
+    }
+  }, [editMode, items]); // Depend on editMode and items
+
+  // Add this useEffect near your other useEffect hooks
+
+  useEffect(() => {
+    // Resize the title textarea when it's loaded with initial data
+    if (title && editMode) {
+      const titleInput = document.getElementById("title") as HTMLInputElement;
+      if (titleInput) {
+        // Use a small timeout to ensure the DOM is ready
+        setTimeout(() => {
+          resizeTextarea(titleInput);
+        }, 100);
+      }
+    }
+  }, [title, editMode]);
+
   return (
     <>
       <PageTransition>
-        <Box className="h-full w-full px-8">
+        <Box className="h-full w-full px-2 sm:px-4 md:px-8">
           <DocumentHead
             title={
               editMode
@@ -568,66 +637,101 @@ const CreateStudyMaterial = () => {
                 : title || "Create Study Material"
             }
           />
-          <Stack spacing={2.5}>
+          <Stack spacing={{ xs: 1.5, sm: 2, md: 2.5 }}>
             {/* Title Input */}
             <Box className="sticky top-4">
               <Stack
-                direction={"row"}
-                spacing={2}
-                className="flex items-center"
+                direction={{ xs: "column", sm: "row" }}
+                spacing={{ xs: 1, sm: 2 }}
+                className="flex items-start sm:items-center"
               >
-                <TextField
-                  id="title"
-                  label={title ? "" : "Enter your title here..."}
-                  variant="standard"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  onInput={(e) => resizeTextarea(e.target as HTMLInputElement)}
-                  sx={{
-                    minWidth: "32rem", // Set minimum width
-                    maxWidth: "80%", // Prevent it from growing too wide
-                    "& .MuiInputLabel-root": {
-                      color: "#3B354D",
-                      transform: title
-                        ? "translate(0, -1.5px) scale(0.75)"
-                        : "translate(0, 20px) scale(1)",
-                    },
-                    "& .MuiInputLabel-root.Mui-focused": {
-                      color: "#A38CE6",
-                      transform: "translate(0, -1.5px) scale(0.75)",
-                    },
-                    "& .MuiInput-root": {
-                      color: "#E2DDF3",
-                      fontWeight: 500,
-                      fontSize: "1.3rem",
-                    },
-                    "& .MuiInput-underline:before": {
-                      borderBottomColor: "#3B354D",
-                    },
-                    "& .MuiInput-underline:hover:not(.Mui-disabled):before": {
-                      borderBottomColor: "#A38CE6",
-                    },
-                    "& .MuiInput-underline:after": {
-                      borderBottomColor: "#A38CE6",
-                    },
-                    "& .MuiInputBase-input::placeholder": {
-                      color: "#9F9BAE",
-                      opacity: 0.7,
-                      // Hide placeholder when input is focused or has value
-                      transition: "opacity 0.2s ease-in-out",
-                    },
-                    "& .MuiInputBase-input:focus::placeholder": {
-                      opacity: 0,
-                    },
-                  }}
-                  InputProps={{
-                    style: {
-                      transition: "all 0.3s ease",
-                    },
-                  }}
-                />
+                <Stack sx={{ width: { xs: "100%", sm: "auto" } }}>
+                  <TextField
+                    id="title"
+                    label={title ? "" : "Enter your title here..."}
+                    variant="standard"
+                    value={title}
+                    onChange={(e) => {
+                      // Limit title to MAX_TITLE_LENGTH characters
+                      if (e.target.value.length <= MAX_TITLE_LENGTH) {
+                        setTitle(e.target.value);
+                      } else {
+                        handleShowSnackbar(
+                          `Title cannot exceed ${MAX_TITLE_LENGTH} characters`
+                        );
+                      }
+                    }}
+                    onInput={(e) =>
+                      resizeTextarea(e.target as HTMLInputElement)
+                    }
+                    sx={{
+                      width: "100%",
+                      minWidth: { xs: "100%", sm: "20rem", md: "32rem" },
+                      maxWidth: "100%",
+                      "& .MuiInputLabel-root": {
+                        color: "#3B354D",
+                        transform: title
+                          ? "translate(0, -1.5px) scale(0.75)"
+                          : "translate(0, 20px) scale(1)",
+                      },
+                      "& .MuiInputLabel-root.Mui-focused": {
+                        color: "#A38CE6",
+                        transform: "translate(0, -1.5px) scale(0.75)",
+                      },
+                      "& .MuiInput-root": {
+                        color: "#E2DDF3",
+                        fontWeight: 500,
+                        fontSize: { xs: "1.1rem", sm: "1.2rem", md: "1.3rem" },
+                      },
+                      "& .MuiInput-underline:before": {
+                        borderBottomColor: "#3B354D",
+                      },
+                      "& .MuiInput-underline:hover:not(.Mui-disabled):before": {
+                        borderBottomColor: "#A38CE6",
+                      },
+                      "& .MuiInput-underline:after": {
+                        borderBottomColor: "#A38CE6",
+                      },
+                      "& .MuiInputBase-input::placeholder": {
+                        color: "#9F9BAE",
+                        opacity: 0.7,
+                        transition: "opacity 0.2s ease-in-out",
+                      },
+                      "& .MuiInputBase-input:focus::placeholder": {
+                        opacity: 0,
+                      },
+                    }}
+                    InputProps={{
+                      style: {
+                        transition: "all 0.3s ease",
+                      },
+                    }}
+                  />
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color:
+                        title.length >= MAX_TITLE_LENGTH
+                          ? "#E57373"
+                          : "#6F658D",
+                      transition: "color 0.3s ease-in-out",
+                      marginTop: "0.2rem",
+                      fontSize: "0.75rem",
+                      textAlign: "right",
+                    }}
+                  >
+                    {title.length}/{MAX_TITLE_LENGTH} characters
+                  </Typography>
+                </Stack>
                 <Box flexGrow={1} />
-                <Stack direction={"row"} spacing={1}>
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  sx={{
+                    width: { xs: "100%", sm: "auto" },
+                    justifyContent: { xs: "space-between", sm: "flex-end" },
+                  }}
+                >
                   <Button
                     variant="outlined"
                     onClick={handleDiscard}
@@ -637,8 +741,9 @@ const CreateStudyMaterial = () => {
                       color: "#E2DDF3",
                       height: "fit-content",
                       borderRadius: "0.8rem",
-                      width: "6vw",
-                      fontSize: "0.8rem",
+                      width: { xs: "45%", sm: "6rem", md: "7rem" },
+                      fontSize: { xs: "0.75rem", sm: "0.8rem" },
+                      padding: { xs: "0.4rem 0.6rem", sm: "0.5rem 0.8rem" },
                       transition: "all 0.3s ease",
                       "&:hover": {
                         transform: "scale(1.05)",
@@ -652,11 +757,12 @@ const CreateStudyMaterial = () => {
                     sx={{
                       borderRadius: "0.8rem",
                       display: "flex",
-                      width: "6vw",
+                      width: { xs: "45%", sm: "6rem", md: "7rem" },
                       height: "fit-content",
                       borderColor: "#E2DDF3",
                       color: "#E2DDF3",
-                      fontSize: "0.8rem",
+                      fontSize: { xs: "0.75rem", sm: "0.8rem" },
+                      padding: { xs: "0.4rem 0.6rem", sm: "0.5rem 0.8rem" },
                       backgroundColor: "#4D18E8",
                       transition: " all 0.3s ease",
                       "&:hover": {
@@ -673,28 +779,29 @@ const CreateStudyMaterial = () => {
 
             {/* Tags Input */}
             <Box className="flex items-center">
-              <Stack spacing={1} className="flex">
+              <Stack spacing={1} sx={{ width: "100%" }}>
                 <Typography variant="subtitle1" className="text-[#3B354D]">
                   Tags:
                 </Typography>
                 <Box
                   sx={{
-                    display: "inline-flex", // Make the Box adjust based on content si
+                    display: "inline-flex",
                     alignItems: "center",
                     flexWrap: "wrap",
                     gap: 0.5,
-                    padding: "0.8rem",
-                    width: "fit-content",
+                    padding: { xs: "0.5rem", sm: "0.8rem" },
+                    width: { xs: "100%", sm: "fit-content" }, // Full width on mobile
+                    maxWidth: "100%", // Prevent overflow
                     border: "1px solid #3B354D",
                     borderRadius: "0.8rem",
                     backgroundColor: "#3B354D",
-                    transition: "all 0.3s ease-in-out", // Smooth transition for hover and active
+                    transition: "all 0.3s ease-in-out",
                     "&:hover": {
-                      backgroundColor: "#4A435C", // Hover styles
+                      backgroundColor: "#4A435C",
                       borderColor: "#A38CE6",
                     },
                     "&:active": {
-                      backgroundColor: "#2F283A", // Active styles
+                      backgroundColor: "#2F283A",
                       borderColor: "#9B85E1",
                     },
                   }}
@@ -712,34 +819,64 @@ const CreateStudyMaterial = () => {
                         height: "fit-content",
                         padding: "0.4rem",
                         borderRadius: "0.6rem",
+                        margin: "0.15rem",
                         "& .MuiChip-deleteIcon": { color: "#E2DDF3" },
                       }}
                     />
                   ))}
 
-                  <input
-                    id="tags"
-                    type="text"
-                    value={currentTag}
-                    onChange={(e) => setCurrentTag(e.target.value)}
-                    onKeyDown={handleAddTag}
-                    placeholder="Press enter"
-                    onInput={(e) =>
-                      resizeTextarea(e.target as HTMLTextAreaElement)
-                    }
-                    style={{
-                      border: "none",
-                      outline: "none",
-                      background: "transparent",
-                      width: "fit-content",
-                      color: "#E2DDF3",
-                      fontSize: "1rem", // Adjust font size as needed
-                      paddingLeft: 6, // Remove any default right padding that may create the extra space
-                      textAlign: "left", // Ensure text is aligned properly
-                    }}
-                    className="tag-input-placeholder"
-                  />
+                  {tags.length < MAX_TAGS && (
+                    <input
+                      id="tags"
+                      type="text"
+                      value={currentTag}
+                      onChange={(e) => setCurrentTag(e.target.value)}
+                      onKeyDown={handleAddTag}
+                      placeholder="Press enter"
+                      onInput={(e) => {
+                        const target = e.target as HTMLInputElement;
+                        const contentLength = target.value.length;
+                        const placeholderLength = target.placeholder.length;
+                        const textWidth = Math.max(
+                          contentLength,
+                          placeholderLength
+                        );
+                        target.style.width = `${Math.max(
+                          textWidth * 0.9,
+                          10
+                        )}ch`;
+                      }}
+                      style={{
+                        border: "none",
+                        outline: "none",
+                        background: "transparent",
+                        width: "10ch",
+                        flex: "0 0 auto",
+                        color: "#E2DDF3",
+                        fontSize: "1rem",
+                        paddingLeft: 6,
+                        textAlign: "left",
+                        cursor: "text",
+                        overflow: "hidden",
+                      }}
+                      className="tag-input-placeholder"
+                    />
+                  )}
                 </Box>
+                {/* Tag counter */}
+                <Typography
+                  variant="caption"
+                  sx={{
+                    color: tags.length >= MAX_TAGS ? "#E57373" : "#6F658D",
+                    transition: "color 0.3s ease-in-out",
+                    marginTop: "0.2rem",
+                    fontSize: "0.75rem",
+                    textAlign: "left",
+                    maxWidth: "100%", // Changed from specific percentages
+                  }}
+                >
+                  {tags.length}/{MAX_TAGS} tags used
+                </Typography>
               </Stack>
             </Box>
 
@@ -755,17 +892,23 @@ const CreateStudyMaterial = () => {
 
             {/* Upload File */}
             <Box>
-              <Stack direction={"row"} spacing={2} alignItems="center">
+              <Stack
+                direction="row" // Changed from responsive to always row
+                spacing={2}
+                alignItems="center" // Always center aligned
+                flexWrap={{ xs: "wrap", sm: "nowrap" }} // Added flexWrap for mobile
+                sx={{ gap: { xs: 2, sm: 2 } }} // Maintain gap on wrap
+              >
                 <Button
                   variant="outlined"
                   sx={{
                     borderRadius: "0.8rem",
-                    paddingX: "2rem",
+                    paddingX: { xs: "1rem", sm: "2rem" },
                     display: "flex",
-                    width: "auto",
+                    width: "auto", // Changed from responsive width
                     justifyContent: "center",
                     color: "#3B354D",
-                    height: "2.8rem",
+                    height: { xs: "2.5rem", sm: "2.8rem" },
                     border: "0.15rem solid #3B354D",
                     textTransform: "none",
                     transition: "all 0.3s ease-in-out",
@@ -780,15 +923,19 @@ const CreateStudyMaterial = () => {
                   Upload File
                 </Button>
                 <Box flex={1} />
-                <Filter
-                  menuItems={[
-                    { value: "0", label: "Private" },
-                    { value: "1", label: "Public" },
-                  ]}
-                  value={visibility}
-                  onChange={handleVisibilityChange}
-                  hoverOpen
-                />
+                <Box sx={{ width: "auto" }}>
+                  {" "}
+                  {/* Changed from responsive width */}
+                  <Filter
+                    menuItems={[
+                      { value: "0", label: "Private" },
+                      { value: "1", label: "Public" },
+                    ]}
+                    value={visibility}
+                    onChange={handleVisibilityChange}
+                    hoverOpen
+                  />
+                </Box>
               </Stack>
             </Box>
 
@@ -831,10 +978,10 @@ const CreateStudyMaterial = () => {
                   variant="outlined"
                   sx={{
                     borderRadius: "0.8rem",
-                    padding: "0.6rem 2rem",
+                    padding: { xs: "0.5rem 1rem", sm: "0.6rem 2rem" },
                     display: "flex",
-                    width: "full",
-                    fontSize: "1rem",
+                    width: "100%",
+                    fontSize: { xs: "0.9rem", sm: "1rem" },
                     justifyContent: "center",
                     color: "#3B354D",
                     border: "2px solid #3B354D",

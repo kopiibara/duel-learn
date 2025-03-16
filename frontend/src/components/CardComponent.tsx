@@ -52,9 +52,9 @@ const CardComponent: React.FC<CardComponentProps> = ({
     flexDirection: "column",
     justifyContent: "flex-end",
     alignItems: "flex-start",
-    borderRadius: isXsScreen ? "0.75rem" : "1rem",
-    height: isXsScreen ? "20vh" : "11vw",
-    width: isXsScreen ? "32.5vh" : "auto",
+    borderRadius: "0.8rem",
+    height: isXsScreen ? "180px" : isSmScreen ? "180px" : "220px",
+    width: isXsScreen ? "100%" : "100%",
     cursor: "pointer",
     maxHeight: "100%",
     background: "#E2DDF3",
@@ -82,16 +82,16 @@ const CardComponent: React.FC<CardComponentProps> = ({
           display: "flex",
           flexDirection: "column",
           justifyContent: "flex-end",
-          padding: isXsScreen ? "12px" : "16px",
+          padding: isXsScreen ? "12px" : isSmScreen ? "14px" : "16px",
         }}
       >
         <Box
           sx={{
             position: "absolute",
-            bottom: isXsScreen ? 20 : 30,
-            left: isXsScreen ? 20 : 30,
+            bottom: isXsScreen ? 16 : isSmScreen ? 24 : 30,
+            left: isXsScreen ? 16 : isSmScreen ? 24 : 30,
             textAlign: "left",
-            maxWidth: "85%",
+            maxWidth: isXsScreen ? "80%" : "85%",
           }}
         >
           <Stack spacing={0} className="flex items-baseline justify-end">
@@ -104,11 +104,12 @@ const CardComponent: React.FC<CardComponentProps> = ({
                 sx={{
                   color: "#080511",
                   fontSize: isXsScreen
-                    ? "1.2vh"
+                    ? "0.7rem"
                     : isSmScreen
-                    ? "0.6vw"
-                    : "0.6vw",
+                    ? "0.75rem"
+                    : "0.8rem",
                   fontWeight: "650",
+                  lineHeight: 1.4,
                 }}
               >
                 {totalItems} Items
@@ -117,10 +118,10 @@ const CardComponent: React.FC<CardComponentProps> = ({
                 sx={{
                   color: "#080511",
                   fontSize: isXsScreen
-                    ? "1.2vh"
+                    ? "0.7rem"
                     : isSmScreen
-                    ? "0.6vw"
-                    : "0.6vw",
+                    ? "0.75rem"
+                    : "0.8rem",
                   fontWeight: "65",
                 }}
               >
@@ -130,26 +131,33 @@ const CardComponent: React.FC<CardComponentProps> = ({
                 sx={{
                   color: "#080511",
                   fontSize: isXsScreen
-                    ? "1.2vh"
+                    ? "0.7rem"
                     : isSmScreen
-                    ? "0.6vw"
-                    : "0.6vw",
+                    ? "0.75rem"
+                    : "0.8rem",
                   fontWeight: "650",
+                  lineHeight: 1.4,
                 }}
               >
                 {totalViews} Views
               </Typography>
             </Stack>{" "}
             <Typography
-              className="text-[#080511] pb-[0.2rem]"
+              className="text-[#080511]"
               fontWeight="bold"
               sx={{
-                fontSize: isXsScreen ? "2vh" : isSmScreen ? "1vw" : "1.1vw",
+                fontSize: isXsScreen
+                  ? "0.9rem"
+                  : isSmScreen
+                  ? "1rem"
+                  : "1.1rem",
+                lineHeight: isXsScreen ? 1.3 : 1.4,
                 overflow: "hidden",
                 textOverflow: "ellipsis",
                 display: "-webkit-box",
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: "vertical",
+                mb: 0.5,
               }}
             >
               {title}
@@ -157,9 +165,11 @@ const CardComponent: React.FC<CardComponentProps> = ({
             <Stack
               direction="row"
               spacing={0.5}
-              className="w-auto mb-3"
-              sx={{ flexWrap: "wrap" }}
-              gap={0.5}
+              sx={{
+                flexWrap: "wrap",
+                gap: 0.5,
+                mb: isXsScreen ? 1 : 1.5,
+              }}
             >
               {safeTags.map((tag, index) => (
                 <Chip
@@ -170,24 +180,24 @@ const CardComponent: React.FC<CardComponentProps> = ({
                     color: "#E2DDF3 !important", // Force text color
                     borderRadius: "0.8rem",
                     width: "fit-content",
-                    height: "fit-content",
-                    py: isXsScreen ? "0.2rem" : "0.3rem",
-                    px: "0.5rem",
+                    height: "1.75rem",
+                    py: isXsScreen ? "0.15rem" : "0.2rem",
+                    px: isXsScreen ? "0.4rem" : "0.5rem",
                     fontSize: isXsScreen
-                      ? "0.7rem"
+                      ? "0.6rem"
                       : isSmScreen
                       ? "0.65rem"
                       : "0.7rem",
                     fontWeight: "600",
-                    mb: 0.5,
                     display: "inline-flex",
                     alignItems: "center",
                     "& .MuiChip-label": {
-                      padding: "0 4px",
+                      padding: isXsScreen ? "0 2px" : "0 4px",
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
                       color: "#E2DDF3 !important", // Force label text color
+                      lineHeight: 1.2,
                     },
                   }}
                 />
@@ -197,12 +207,13 @@ const CardComponent: React.FC<CardComponentProps> = ({
               sx={{
                 color: "#000000",
                 fontSize: isXsScreen
-                  ? "1.2vh"
-                  : isSmScreen
                   ? "0.65rem"
-                  : "0.7rem",
+                  : isSmScreen
+                  ? "0.7rem"
+                  : "0.75rem",
                 fontWeight: "600",
                 paddingLeft: "1px",
+                lineHeight: 1.3,
               }}
             >
               Made by <strong>{createdBy}</strong>
@@ -217,7 +228,7 @@ const CardComponent: React.FC<CardComponentProps> = ({
             top: 0,
             right: 0,
             zIndex: -1,
-            width: isXsScreen ? "9rem" : isSmScreen ? "10rem" : "12rem",
+            width: isXsScreen ? "7rem" : isSmScreen ? "9rem" : "12rem",
             height: "100%",
             objectFit: "cover",
           }}

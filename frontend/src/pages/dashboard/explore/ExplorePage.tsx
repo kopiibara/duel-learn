@@ -132,12 +132,29 @@ const ExplorePage = () => {
     [user?.username, user?.firebase_uid]
   );
 
-  // Function to fetch study materials based on selected category
+  // Last fetch timestamps to prevent duplicates within a short timeframe
+  const lastFetchTimestamp = useRef<{ [key: number]: number }>({});
+
+  // Optimized fetch function
   const fetchData = useCallback(
     async (tabIndex = selected, force = false) => {
       // Get the URL for this tab
       const url = getUrlForTab(tabIndex, force);
       if (!url) return;
+
+      // Prevent duplicate fetches within 500ms unless forced
+      const now = Date.now();
+      if (
+        !force &&
+        lastFetchTimestamp.current[tabIndex] &&
+        now - lastFetchTimestamp.current[tabIndex] < 500
+      ) {
+        console.log(`Ignoring duplicate fetch for tab ${tabIndex} - too soon`);
+        return;
+      }
+
+      // Record this fetch attempt
+      lastFetchTimestamp.current[tabIndex] = now;
 
       // If we have cached data for this tab and it's recent, use it unless forced refresh
       if (
@@ -305,47 +322,78 @@ const ExplorePage = () => {
     }
   }, [fetchData, selected, user?.username, showTemporaryUpdateLabel]);
 
-  // Initial load and refresh intervals - REMOVED PRELOADING HERE
+  // Create a stable reference to track if initial data was loaded
+  const initialLoadRef = useRef<{ [key: number]: boolean }>({});
+
+  // Memoize the initial data fetch
+  const initialData = useMemo(() => {
+    if (!user?.username) return null;
+
+    console.log(`Initial data load for tab ${selected}`);
+
+    // Only fetch if we haven't loaded this tab's data yet
+    if (!initialLoadRef.current[selected]) {
+      initialLoadRef.current[selected] = true;
+
+      // If we have cached data that's not stale, use it
+      if (cachedTabData.current[selected] && !needsRefresh(selected)) {
+        setCards(cachedTabData.current[selected]);
+        setFilteredCards(cachedTabData.current[selected]);
+        setIsLoading(false);
+        return cachedTabData.current[selected];
+      }
+    }
+
+    return null;
+  }, [user?.username, selected, fetchData, needsRefresh]);
+
+  // Set up the background refresh interval only once
   useEffect(() => {
     if (!user?.username) return;
 
     // Reset the component mounted flag
     isMounted.current = true;
 
-    // Only fetch data for the current tab on initial load
-    fetchData(selected);
-
-    // Set up background refresh interval - align better with backend's cache TTL
-    // Backend cache is 10 minutes, so refresh every 5 minutes
+    // Set up background refresh interval - align with backend's cache TTL
     const refreshInterval = setInterval(backgroundRefresh, 300000);
 
     return () => {
       isMounted.current = false;
       clearInterval(refreshInterval);
     };
-  }, [user?.username, fetchData, selected, backgroundRefresh]);
+  }, [user?.username, backgroundRefresh]);
 
-  // Handle tab changes
+  // Simplified tab change handler - only handle actual tab changes
   useEffect(() => {
-    console.log(`Tab selected: ${selected}`);
+    // Skip the initial render since it's handled by useMemo
+    if (initialLoadRef.current[selected]) {
+      console.log(`Tab changed to: ${selected}`);
 
-    // Reset updates available indicator when changing tabs
-    setUpdatesAvailable(false);
+      // Reset updates available indicator when changing tabs
+      setUpdatesAvailable(false);
 
-    // If we have cached data for this tab, use it immediately
-    if (cachedTabData.current[selected]) {
-      setCards(cachedTabData.current[selected]);
-      setFilteredCards(cachedTabData.current[selected]);
+      // If we have cached data for this tab, use it immediately
+      if (cachedTabData.current[selected]) {
+        setCards(cachedTabData.current[selected]);
+        setFilteredCards(cachedTabData.current[selected]);
 
-      // If data is stale, refresh in background
-      if (needsRefresh(selected)) {
-        // Just trigger loading for this tab
-        fetchData(selected, true);
+        // If data is stale, refresh in background
+        if (needsRefresh(selected)) {
+          fetchData(selected, true);
+        }
+      } else {
+        fetchData(selected);
       }
-    } else {
-      fetchData(selected);
     }
   }, [selected, fetchData, needsRefresh]);
+
+  // Make sure initialData is used somewhere to avoid it being tree-shaken
+  useEffect(() => {
+    if (initialData) {
+      // This is just to ensure the useMemo hook runs
+      console.log("Initial data available");
+    }
+  }, [initialData]);
 
   // Socket connection for real-time updates
   useEffect(() => {
@@ -384,92 +432,150 @@ const ExplorePage = () => {
 
   return (
     <PageTransition>
-      <Box className="h-full w-auto">
+      <Box className="h-full w-full">
         <DocumentHead title="Explore | Duel Learn" />
-        <Stack className="px-5" spacing={2}>
-          <Stack direction="row">
-            {["Top picks", "Recommended for you", "Made by friends"].map(
-              (label, index) => (
-                <Button
-                  key={index}
-                  sx={{
-                    textTransform: "none",
-                    borderRadius: "0.8rem",
-                    padding: "0.5rem 1rem",
-                    color: selected === index ? "#E2DDF3" : "#3B354D",
-                    transition: "all 0.3s ease",
-                    "&:hover": {
-                      color: "inherit",
-                      transform: "scale(1.01)",
-                      backgroundColor: "#3B354C",
-                    },
-                  }}
-                  onClick={() => setSelected(index)}
-                >
-                  <Typography variant="h6">{label}</Typography>
-                </Button>
-              )
-            )}
-            <Box flex={1} />
-
-            {/* Improved refresh button with status indicators */}
-            <Box sx={{ display: "flex", alignItems: "center", mr: 1 }}>
-              {lastUpdated && (
-                <Typography
-                  variant="caption"
-                  sx={{
-                    mr: 1,
-                    color: "#6F658D",
-                    opacity:
-                      isBackgroundRefreshing ||
-                      updatesAvailable ||
-                      showUpdateLabel
-                        ? 1
-                        : 0,
-                    transition: "opacity 0.3s ease-in-out",
-                  }}
-                >
-                  {isBackgroundRefreshing
-                    ? "Refreshing..."
-                    : `Updated ${formattedLastUpdated()}`}
-                </Typography>
-              )}
-
-              <Tooltip
-                title={updatesAvailable ? "New content available" : "Refresh"}
-              >
-                <Box sx={{ position: "relative", display: "inline-flex" }}>
-                  {isBackgroundRefreshing ? (
-                    <CircularProgress size={24} color="primary" />
-                  ) : (
-                    <RefreshIcon
-                      onClick={refreshData}
+        <Stack spacing={2} className="px-3 sm:px-5 md:px-8">
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={{ xs: 1, sm: 1 }}
+            sx={{
+              alignItems: { xs: "flex-start", sm: "center" },
+              justifyContent: "space-between",
+              mb: { xs: 2, sm: 0 },
+            }}
+          >
+            {/* Title with tab navigation */}
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                alignItems: "center",
+                flexWrap: { xs: "wrap", sm: "nowrap" },
+                mb: { xs: 1, sm: 0 },
+              }}
+            >
+              {["Top picks", "Recommended for you", "Made by friends"].map(
+                (label, index) => (
+                  <Button
+                    key={index}
+                    sx={{
+                      textTransform: "none",
+                      borderRadius: "0.8rem",
+                      padding: {
+                        xs: "0.4rem 0.6rem",
+                        sm: "0.5rem 0.8rem",
+                        md: "0.5rem 1rem",
+                      },
+                      // Fix the font size scaling
+                      fontSize: "inherit",
+                      color: selected === index ? "#E2DDF3" : "#3B354D",
+                      transition: "all 0.3s ease",
+                      backgroundColor:
+                        selected === index ? "#3B354C" : "transparent",
+                      "&:hover": {
+                        color: "inherit",
+                        transform: "scale(1.01)",
+                        backgroundColor: "#3B354C",
+                      },
+                      // Add margin bottom for better mobile layout when wrapped
+                      mb: { xs: 0.5, sm: 0 },
+                      minWidth: { xs: "auto", sm: "auto" },
+                    }}
+                    onClick={() => setSelected(index)}
+                  >
+                    <Typography
+                      variant="h6"
                       sx={{
-                        cursor: "pointer",
-                        fontSize: "1.4rem",
-                        color: updatesAvailable ? "#6F4CAF" : "#3B354D",
-                        animation: updatesAvailable
-                          ? "pulse 2s infinite"
-                          : "none",
-                        "@keyframes pulse": {
-                          "0%": { opacity: 0.6 },
-                          "50%": { opacity: 1 },
-                          "100%": { opacity: 0.6 },
+                        fontSize: {
+                          xs: "0.8rem",
+                          sm: "0.9rem",
+                          md: "1.1rem",
+                          lg: "1.25rem",
                         },
+                        whiteSpace: { xs: "normal", sm: "nowrap" },
+                        textAlign: "center",
                       }}
-                    />
-                  )}
-                </Box>
-              </Tooltip>
-            </Box>
+                    >
+                      {label}
+                    </Typography>
+                  </Button>
+                )
+              )}
+            </Stack>
+            {/* Actions section */}
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{
+                width: { xs: "100%", sm: "auto" },
+                justifyContent: { xs: "flex-end", sm: "flex-end" },
+                mt: { xs: 1, sm: 0 },
+              }}
+            >
+              {/* Refresh button/indicator */}
+              <Box className="flex items-center">
+                {lastUpdated && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      mr: 1,
+                      color: "#6F658D",
+                      opacity:
+                        isBackgroundRefreshing ||
+                        updatesAvailable ||
+                        showUpdateLabel
+                          ? 1
+                          : 0,
+                      transition: "opacity 0.3s ease-in-out",
+                      display: { xs: "none", sm: "block" },
+                    }}
+                  >
+                    {isBackgroundRefreshing
+                      ? "Refreshing..."
+                      : `Updated ${formattedLastUpdated()}`}
+                  </Typography>
+                )}
+
+                <Tooltip
+                  title={updatesAvailable ? "New content available" : "Refresh"}
+                >
+                  <Box sx={{ position: "relative", display: "inline-flex" }}>
+                    {isBackgroundRefreshing ? (
+                      <CircularProgress size={20} color="primary" />
+                    ) : (
+                      <RefreshIcon
+                        onClick={refreshData}
+                        sx={{
+                          cursor: "pointer",
+                          fontSize: { xs: "1.2rem", sm: "1.4rem" },
+                          color: updatesAvailable ? "#6F4CAF" : "#3B354D",
+                          animation: updatesAvailable
+                            ? "pulse 2s infinite"
+                            : "none",
+                          "@keyframes pulse": {
+                            "0%": { opacity: 0.6 },
+                            "50%": { opacity: 1 },
+                            "100%": { opacity: 0.6 },
+                          },
+                        }}
+                      />
+                    )}
+                  </Box>
+                </Tooltip>
+              </Box>
+            </Stack>
           </Stack>
 
           {isLoading ? (
             <Box
               sx={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
-                gap: 2,
+                gridTemplateColumns: {
+                  xs: "repeat(auto-fill, minmax(250px, 1fr))",
+                  sm: "repeat(auto-fill, minmax(290px, 1fr))",
+                },
+                gap: { xs: 1, sm: 2 },
               }}
             >
               {[...Array(Math.max(filteredCards.length || 3))].map(
@@ -492,14 +598,19 @@ const ExplorePage = () => {
               flexDirection="column"
               justifyContent="center"
               alignItems="center"
-              minHeight="60vh"
+              minHeight={{ xs: "40vh", sm: "60vh" }}
             >
               <img
                 src={noStudyMaterial}
                 alt="No Study Materials"
-                style={{ width: "20rem", height: "auto", opacity: 0.75 }}
+                style={{
+                  width: "100%",
+                  maxWidth: "20rem",
+                  height: "auto",
+                  opacity: 0.75,
+                }}
               />
-              <p className="text-[#6F658D] font-bold text-[1rem] mt-4 pr-7 text-center">
+              <p className="text-[#6F658D] font-bold text-[0.9rem] sm:text-[1rem] mt-4 px-2 sm:px-0 text-center">
                 {selected === 1
                   ? "No recommended study materials found for you yet."
                   : selected === 2

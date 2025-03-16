@@ -194,26 +194,26 @@ const FriendList: React.FC = () => {
 
   return (
     <>
-      <Box className="rounded-[0.8rem] border-[0.2rem] border-[#3B354C] max-h-[80vh]">
-        <div className="px-[2vw] pt-[4vh] pb-[2vh]">
-          <div className="flex flex-row items-center mb-[2vh] gap-[0.8vw]">
+      <Box className="rounded-[0.8rem] border-[0.2rem] border-[#3B354C] max-h-[80%]">
+        <div className="px-8 pt-8 pb-4">
+          <div className="flex flex-row items-center mb-4 gap-3">
             <img
               src="/bunny.png"
-              className="min-w-[40px] w-[2.5vw] max-w-[56px] h-auto"
+              className="w-8 sm:w-10 md:w-12 h-auto"
               alt="icon"
             />
-            <p className="text-[clamp(1rem,1vw,2rem)] font-semibold">
+            <p className="text-base sm:text-lg md:text-xl font-semibold">
               Friend List
             </p>
           </div>
-          <hr className="border-t-2 border-[#3B354D] mb-[2vh]" />
+          <hr className="border-t-2 border-[#3B354D] mb-4" />
 
           {loading ? (
             <Box display="flex" justifyContent="center" alignItems="center">
               <img
                 src={cauldronGif}
                 alt="Loading..."
-                style={{ width: "4vw", maxWidth: "4rem", height: "auto" }}
+                style={{ width: "3rem", height: "auto" }}
               />
             </Box>
           ) : error ? (
@@ -224,21 +224,20 @@ const FriendList: React.FC = () => {
               display="flex"
               justifyContent="center"
               alignItems="center"
-              paddingY="2vh"
+              padding="1rem 0"
             >
               <Box display="flex" justifyContent="center" alignItems="center">
                 <img
                   src={noFriend}
                   alt="noFriend"
                   style={{
-                    width: "8vw",
-                    maxWidth: "8rem",
+                    width: "6rem",
                     height: "auto",
                     opacity: 0.75,
                   }}
                 />
               </Box>
-              <p className="text-[#6F658D] font-semibold text-[1.5vh]">
+              <p className="text-[#6F658D] font-semibold text-sm">
                 {" "}
                 Add friends and share the magic!
               </p>

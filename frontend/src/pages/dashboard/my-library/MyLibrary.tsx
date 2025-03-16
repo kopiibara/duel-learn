@@ -6,6 +6,7 @@ import {
   Skeleton,
   Badge,
   CircularProgress,
+  Divider,
 } from "@mui/material";
 import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
@@ -44,6 +45,12 @@ const MyLibraryPage = () => {
   // Add these two state variables inside your component
   const [showUpdateLabel, setShowUpdateLabel] = useState(false);
   const updateLabelTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Add this state to store grouped cards
+  const [groupedCards, setGroupedCards] = useState<
+    Record<string, StudyMaterial[]>
+  >({});
+  const [monthsOrder, setMonthsOrder] = useState<string[]>([]);
 
   // Create optimized fetch functions with caching
   const fetchStudyMaterials = useCallback(
@@ -344,14 +351,12 @@ const MyLibraryPage = () => {
     if (sort === "most recent") {
       filteredData.sort(
         (a, b) =>
-          new Date(b.updated_at || b.created_at).getTime() -
-          new Date(a.updated_at || a.created_at).getTime()
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       );
     } else if (sort === "least recent") {
       filteredData.sort(
         (a, b) =>
-          new Date(a.updated_at || a.created_at).getTime() -
-          new Date(b.updated_at || b.created_at).getTime()
+          new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
       );
     } else if (sort === "A-Z") {
       filteredData.sort((a, b) => a.title.localeCompare(b.title));
@@ -359,91 +364,147 @@ const MyLibraryPage = () => {
       filteredData.sort((a, b) => b.title.localeCompare(a.title));
     }
 
+    // Group cards by month and year
+    const grouped = groupCardsByMonthYear(filteredData);
+
+    // Get months in chronological order (newest to oldest)
+    const months = Object.keys(grouped).sort((a, b) => {
+      const dateA = new Date(a);
+      const dateB = new Date(b);
+      return dateB.getTime() - dateA.getTime();
+    });
+
     setFilteredCards(filteredData);
+    setGroupedCards(grouped);
+    setMonthsOrder(months);
     setCount(filteredData.length);
   }, [filter, sort, cards, bookmarkedCards]);
+
+  const groupCardsByMonthYear = (cards: StudyMaterial[]) => {
+    // Create object to store cards by month/year
+    const groupedCards: Record<string, StudyMaterial[]> = {};
+
+    cards.forEach((card) => {
+      // Parse the created_at date
+      const createdDate = new Date(card.updated_at);
+
+      // Format the month and year as a string key: "January 2025"
+      const monthYear = createdDate.toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      });
+
+      // Initialize array if this month/year doesn't exist yet
+      if (!groupedCards[monthYear]) {
+        groupedCards[monthYear] = [];
+      }
+
+      // Add the card to its corresponding month/year group
+      groupedCards[monthYear].push(card);
+    });
+
+    return groupedCards;
+  };
 
   return (
     <PageTransition>
       <Box className="h-full w-full">
         <DocumentHead title="My Library | Duel Learn" />
-        <Stack spacing={2} className="px-8">
+        <Stack spacing={2} className="px-3 sm:px-5 md:px-8">
           <Stack
-            direction={"row"}
-            spacing={1}
-            className="flex items-center justify-center"
+            direction={{ xs: "column", sm: "row" }}
+            spacing={{ xs: 1, sm: 1 }}
+            sx={{
+              alignItems: { xs: "flex-start", sm: "center" },
+              justifyContent: "space-between",
+              mb: { xs: 2, sm: 0 },
+            }}
           >
-            <Typography variant="h6" color="inherit">
-              My Library
-            </Typography>
-            <Typography variant="subtitle2">—</Typography>
-            <Typography variant="h6">{count}</Typography>
-            <Box flexGrow={1} />
-
-            {/* Add refresh button with indicator */}
-            <Box className="flex items-center pr-2">
-              <Typography
-                variant="caption"
-                sx={{
-                  mr: 1,
-                  color: "#6F658D",
-                  opacity: isBackgroundRefreshing || showUpdateLabel ? 1 : 0,
-                  transition: "opacity 0.5s ease-in-out",
-                }}
-              >
-                {isBackgroundRefreshing
-                  ? "Refreshing..."
-                  : `Updated ${formattedLastUpdated()}`}
+            {/* Title section */}
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="h6" color="inherit">
+                My Library
               </Typography>
-              {isBackgroundRefreshing ? (
-                <CircularProgress size={20} color="primary" sx={{ mr: 1 }} />
-              ) : (
-                <Badge
-                  color="primary"
-                  variant="dot"
-                  invisible={
-                    lastUserMaterialsFetch.current > Date.now() - 300000
-                  }
-                >
-                  <RefreshIcon
-                    onClick={handleRefresh}
-                    sx={{
-                      cursor: "pointer",
-                      fontSize: "1.2rem",
-                      color: "#6F658D",
-                    }}
-                  />
-                </Badge>
-              )}
-            </Box>
+              <Typography variant="subtitle2">—</Typography>
+              <Typography variant="h6">{count}</Typography>
+            </Stack>
 
-            <Stack direction={"row"} spacing={1}>
-              <Filter
-                menuItems={[
-                  { value: "all", label: "All" },
-                  { value: "public", label: "Public" },
-                  { value: "private", label: "Private" },
-                  { value: "bookmark", label: "Bookmark" },
-                  { value: "archive", label: "Archive" },
-                ]}
-                value={filter}
-                onChange={setFilter}
-                hoverOpen={true}
-              />
-              <Filter
-                menuItems={[
-                  { value: "most recent", label: "Most Recent" },
-                  { value: "least recent", label: "Least Recent" },
-                  { value: "A-Z", label: "A-Z" },
-                  { value: "Z-A", label: "Z-A" },
-                ]}
-                value={sort}
-                onChange={setSort}
-                hoverOpen={true}
-              />
+            {/* Actions section */}
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{
+                width: { xs: "100%", sm: "auto" },
+                justifyContent: { xs: "space-between", sm: "flex-end" },
+              }}
+            >
+              {/* Refresh button/indicator */}
+              <Box className="flex items-center">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    mr: 1,
+                    color: "#6F658D",
+                    opacity: isBackgroundRefreshing || showUpdateLabel ? 1 : 0,
+                    transition: "opacity 0.5s ease-in-out",
+                    display: { xs: "none", sm: "block" },
+                  }}
+                >
+                  {isBackgroundRefreshing
+                    ? "Refreshing..."
+                    : `Updated ${formattedLastUpdated()}`}
+                </Typography>
+                {isBackgroundRefreshing ? (
+                  <CircularProgress size={20} color="primary" sx={{ mr: 1 }} />
+                ) : (
+                  <Badge
+                    color="primary"
+                    variant="dot"
+                    invisible={
+                      lastUserMaterialsFetch.current > Date.now() - 300000
+                    }
+                  >
+                    <RefreshIcon
+                      onClick={handleRefresh}
+                      sx={{
+                        cursor: "pointer",
+                        fontSize: { xs: "1rem", sm: "1.2rem" },
+                        color: "#6F658D",
+                      }}
+                    />
+                  </Badge>
+                )}
+              </Box>
+
+              {/* Filters */}
+              <Stack direction={"row"} spacing={1} sx={{ flexShrink: 0 }}>
+                <Filter
+                  menuItems={[
+                    { value: "all", label: "All" },
+                    { value: "public", label: "Public" },
+                    { value: "private", label: "Private" },
+                    { value: "bookmark", label: "Bookmark" },
+                    { value: "archive", label: "Archive" },
+                  ]}
+                  value={filter}
+                  onChange={setFilter}
+                  hoverOpen={false} // Disable hover on mobile
+                />
+                <Filter
+                  menuItems={[
+                    { value: "most recent", label: "Most Recent" },
+                    { value: "least recent", label: "Least Recent" },
+                    { value: "A-Z", label: "A-Z" },
+                    { value: "Z-A", label: "Z-A" },
+                  ]}
+                  value={sort}
+                  onChange={setSort}
+                  hoverOpen={false} // Disable hover on mobile
+                />
+              </Stack>
             </Stack>
           </Stack>
-
           {isLoading ? (
             <Box
               sx={{
@@ -488,11 +549,48 @@ const MyLibraryPage = () => {
             </Box>
           ) : (
             created_by && (
-              <MyLibraryCards
-                cards={filteredCards}
-                createdBy={created_by}
-                onRefreshNeeded={handleRefresh}
-              />
+              <>
+                {monthsOrder.map((monthYear) => (
+                  <Box key={monthYear} sx={{ mb: { xs: 3, sm: 4 } }}>
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      spacing={2}
+                      sx={{
+                        width: "100%",
+                        mb: { xs: 1, sm: 2 },
+                        mt: { xs: 2, sm: 3 },
+                      }}
+                    >
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          whiteSpace: "nowrap",
+                          color: "#6F658D",
+                          fontSize: { xs: "0.875rem", sm: "1rem" },
+                        }}
+                      >
+                        {monthYear}
+                      </Typography>
+                      <Box sx={{ width: "100%" }}>
+                        <Divider
+                          sx={{
+                            height: { xs: "1px", sm: "2px" },
+                            backgroundColor: "#3B354C",
+                            width: "100%",
+                          }}
+                        />
+                      </Box>
+                    </Stack>
+
+                    <MyLibraryCards
+                      cards={groupedCards[monthYear]}
+                      createdBy={created_by}
+                      onRefreshNeeded={handleRefresh}
+                    />
+                  </Box>
+                ))}
+              </>
             )
           )}
         </Stack>
