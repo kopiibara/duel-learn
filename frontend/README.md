@@ -85,20 +85,53 @@ The application uses a centralized authentication architecture:
 
 The application uses an explicit refresh approach for user data:
 
-1. **Manual Refresh** - Instead of periodic polling:
-   - User data is refreshed through explicit user actions
-   - Refresh buttons are available in the Profile and Account Settings pages
-   - The `refreshUserData()` function in UserContext can be called after actions that modify user data
+1. **localStorage First**:
+   - User data is always stored in localStorage after being fetched
+   - When navigating between pages, localStorage data is used first
+   - API calls are only made when necessary (e.g., on initial login or explicit refresh)
+   - Static pages (like Privacy Policy, Terms & Conditions) never trigger API calls
 
-2. **Benefits**:
+2. **Manual Refresh Mechanism**:
+   - The `refreshUserData()` function in UserContext explicitly refreshes data
+   - Refresh buttons are available in the Profile and Account Settings pages
+   - Refresh is triggered after actions that modify user data
+
+3. **Optimization for MySQL Backend**:
+   - No real-time listeners that would increase database load
+   - No polling intervals that generate unnecessary API calls
+   - Explicit control over when data is refreshed
+
+4. **Performance Benefits**:
    - Reduced server load - API calls only happen when needed
    - Lower bandwidth usage - no unnecessary data transfers
-   - Better control over when data is refreshed
-   - Improved user experience - users know when data is being refreshed
+   - Better mobile performance - fewer background processes
+   - Improved user experience - data loads instantly from localStorage
 
-3. **Implementation**:
-   - The UserContext provides a `refreshUserData()` function that any component can call
-   - Profile and settings pages have refresh buttons that give visual feedback during refresh
+### Usage Examples:
+
+```jsx
+// To add a refresh button to a component:
+const { refreshUserData } = useUser();
+const [refreshing, setRefreshing] = useState(false);
+
+const handleRefresh = async () => {
+  setRefreshing(true);
+  try {
+    await refreshUserData();
+    toast.success("Data refreshed successfully");
+  } catch (error) {
+    toast.error("Failed to refresh data");
+  } finally {
+    setRefreshing(false);
+  }
+};
+
+// After modifying user data:
+const handleSaveProfile = async () => {
+  await userService.updateUserProfile(data);
+  await refreshUserData(); // Refresh to get the latest data
+};
+```
 
 ### Benefits:
 

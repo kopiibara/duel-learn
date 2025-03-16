@@ -9,10 +9,12 @@ import DeleteAccountModal from "../../../components/DeleteAccountModal";
 import { CircularProgress } from "@mui/material";
 import { useUser } from "../../../contexts/UserContext";
 import { useState } from "react";
+import { Button, Typography } from "@mui/material";
+import { toast } from "react-hot-toast";
 
 export default function AccountSettings() {
   const { user, refreshUserData } = useUser();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   
   const {
     formik,
@@ -57,23 +59,16 @@ export default function AccountSettings() {
   };
 
   const handleRefresh = async () => {
-    if (isRefreshing) return;
+    if (refreshing) return;
     
-    setIsRefreshing(true);
+    setRefreshing(true);
     try {
       await refreshUserData();
-      formik.resetForm({
-        values: {
-          username: user?.username || "",
-          newpassword: "",
-          confirmPassword: "",
-          display_picture: user?.display_picture || "",
-        }
-      });
+      toast.success("User data refreshed successfully");
     } catch (error) {
-      console.error("Error refreshing user data:", error);
+      toast.error("Failed to refresh user data");
     } finally {
-      setIsRefreshing(false);
+      setRefreshing(false);
     }
   };
 
@@ -83,14 +78,16 @@ export default function AccountSettings() {
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold">Account Settings</h1>
           
-          <button
+          <Button
             onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-[#381898] text-white rounded-[0.8rem] hover:bg-[#4D18E8] transition-colors disabled:bg-[#2a2435] disabled:text-[#6F658D]"
+            disabled={refreshing}
+            variant="contained"
+            color="primary"
+            startIcon={<RefreshIcon className={refreshing ? "animate-spin" : ""} />}
+            sx={{ backgroundColor: "#4D18E8" }}
           >
-            <RefreshIcon fontSize="small" className={isRefreshing ? "animate-spin" : ""} />
-            {isRefreshing ? "Refreshing..." : "Refresh Data"}
-          </button>
+            {refreshing ? "Refreshing..." : "Refresh Data"}
+          </Button>
         </div>
         
         <div className="flex items-start">
