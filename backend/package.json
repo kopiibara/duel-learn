@@ -12,9 +12,11 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@google-cloud/documentai": "^8.12.0",
     "@google-cloud/storage": "^7.15.2",
     "@google-cloud/vision": "^4.3.3",
     "bcrypt": "^5.1.1",
+    "canvas": "^3.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
@@ -27,6 +29,12 @@
     "nanoid": "^5.1.0",
     "node-cache": "^5.1.2",
     "openai": "^4.86.2",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^1.1.1",
+    "pdf-poppler": "^0.2.1",
+    "pdf-to-img": "^4.4.0",
+    "pdf2pic": "^3.1.4",
+    "pdfjs-dist": "^5.0.375",
     "socket.io": "^4.8.1"
   },
   "devDependencies": {

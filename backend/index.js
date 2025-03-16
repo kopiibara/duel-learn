@@ -9,9 +9,6 @@ import lobbyRoutes from "./routes/lobby.routes.js";
 import battleRoutes from "./routes/battle.routes.js";
 import openAiRoutes from "./routes/OpenAiRoutes.js";
 import searchRoutes from "./routes/SearchRoutes.js"; // Import search routes
-import battleRoutes from "./routes/battle.routes.js";
-import openAiRoutes from "./routes/OpenAiRoutes.js";
-import searchRoutes from "./routes/SearchRoutes.js"; // Import search routes
 import adminRoutes from "./routes/admin/AdminRoutes.js"; // Import admin routes
 import ocrRoutes from "./routes/OcrRoutes.js"; // Import OCR routes
 import { corsMiddleware } from "./middleware/CorsMiddleware.js"; // Import CORS middleware
@@ -38,7 +35,7 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 // Add this before your routes
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
+  //console.log(`${req.method} ${req.url}`);
   next();
 });
 
