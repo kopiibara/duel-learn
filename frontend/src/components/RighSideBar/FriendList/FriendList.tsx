@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Box, IconButton, Stack } from "@mui/material";
 import { useUser } from "../../../contexts/UserContext";
 import cauldronGif from "../../../assets/General/Cauldron.gif";
@@ -22,6 +22,11 @@ const FriendList: React.FC = () => {
   const [activeTab, setActiveTab] = useState("");
   const [localFriendList, setLocalFriendList] = useState<Friend[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [lastFetchTime, setLastFetchTime] = useState(0);
+  const [pendingCountCache, setPendingCountCache] = useState<{
+    count: number;
+    timestamp: number;
+  }>({ count: 0, timestamp: 0 });
   const [snackbar, setSnackbar] = useState<SnackbarState>({
     open: false,
     message: "",
@@ -59,16 +64,14 @@ const FriendList: React.FC = () => {
         senderId: data.sender_id,
       });
 
-      // Force an update of the pending count
-      fetchPendingRequestCount();
+      // Update pending count cache on socket notification
+      setPendingCountCache((prev) => ({
+        count: prev.count + 1,
+        timestamp: Date.now(),
+      }));
+      setPendingCount((prev) => prev + 1);
     },
     onFriendRequestAccepted: (data) => {
-      // Update UI to show the new friend
-      fetchFriends();
-
-      // Update the pending count
-      fetchPendingRequestCount();
-
       // Show notification
       setSnackbar({
         open: true,
@@ -81,32 +84,55 @@ const FriendList: React.FC = () => {
     },
   });
 
-  // Function to fetch pending request count directly
-  const fetchPendingRequestCount = async () => {
-    if (!user?.firebase_uid) return;
+  // Optimized function to fetch pending request count with caching
+  const fetchPendingRequestCount = useCallback(
+    async (force = false) => {
+      if (!user?.firebase_uid) return;
 
-    try {
-      const response = await axios.get<{ count: number }>(
-        `${import.meta.env.VITE_BACKEND_URL}/api/friend/requests-count/${
-          user.firebase_uid
-        }`
-      );
+      const now = Date.now();
+      const cacheAge = now - pendingCountCache.timestamp;
 
-      const { count } = response.data;
-      if (typeof count === "number") {
-        setPendingCount(count);
+      // Use cached value if it's recent (less than 30 seconds old) and not forced
+      if (!force && cacheAge < 30000 && pendingCountCache.count >= 0) {
+        console.log(
+          "Using cached pending request count:",
+          pendingCountCache.count
+        );
+        setPendingCount(pendingCountCache.count);
+        return;
       }
-    } catch (error) {
-      console.error("Error fetching pending request count:", error);
-    }
-  };
 
-  // Fetch the pending count on mount
+      try {
+        setLastFetchTime(now);
+        const response = await axios.get<{ count: number }>(
+          `${import.meta.env.VITE_BACKEND_URL}/api/friend/requests-count/${
+            user.firebase_uid
+          }`
+        );
+
+        const { count } = response.data;
+        if (typeof count === "number") {
+          setPendingCount(count);
+          setPendingCountCache({ count, timestamp: now });
+          console.log("Updated pending request count from API:", count);
+        }
+      } catch (error) {
+        console.error("Error fetching pending request count:", error);
+      }
+    },
+    [user?.firebase_uid, pendingCountCache]
+  );
+
+  // Fetch the pending count on mount only
   useEffect(() => {
-    if (user?.firebase_uid) {
-      fetchPendingRequestCount();
+    if (user?.firebase_uid && pendingCountCache.timestamp === 0) {
+      fetchPendingRequestCount(true); // Force initial fetch only if no cache
     }
-  }, [user?.firebase_uid]);
+  }, [
+    user?.firebase_uid,
+    fetchPendingRequestCount,
+    pendingCountCache.timestamp,
+  ]);
 
   const handleInvite = async (receiverId: string) => {
     if (!user?.firebase_uid || !user?.username) return;
@@ -142,20 +168,14 @@ const FriendList: React.FC = () => {
 
   const onAcceptFriendRequest = async (senderId: string) => {
     try {
-      // Use handleAcceptRequest from usePendingFriendRequests
       await handleAcceptRequest(senderId);
-
-      // Close the snackbar
       setSnackbar({ ...snackbar, open: false });
 
-      // Refresh the friend list
-      fetchFriends();
-
-      // Update the pending count directly - this ensures immediate UI update
+      // Optimistically update UI
       setPendingCount((prev) => Math.max(0, prev - 1));
 
-      // Update the pending count from server as a backup
-      fetchPendingRequestCount();
+      // No need to call fetchFriends() or fetchPendingRequestCount()
+      // Socket events will trigger the necessary updates
     } catch (error: any) {
       console.error("Error accepting friend request:", error);
       setSnackbar({
@@ -167,11 +187,16 @@ const FriendList: React.FC = () => {
       });
     }
   };
+
   const handleDeclineFriendRequest = async (senderId: string) => {
     try {
       await handleRejectRequest(senderId);
       setSnackbar({ ...snackbar, open: false });
-      fetchPendingRequestCount();
+
+      // Optimistically update UI
+      setPendingCount((prev) => Math.max(0, prev - 1));
+
+      // No need to call fetchPendingRequestCount() here
     } catch (error) {
       console.error("Error declining friend request:", error);
     }
@@ -181,9 +206,15 @@ const FriendList: React.FC = () => {
     setActiveTab(tab);
     setModalOpen(true);
 
-    // If opening the pending requests, refresh the count
-    if (tab === "pending") {
-      fetchPendingRequestCount();
+    // Only fetch pending request count when opening that tab and if cache is stale
+    if (tab === "FRIEND REQUESTS") {
+      const now = Date.now();
+      const cacheAge = now - pendingCountCache.timestamp;
+
+      // Only fetch if cache is older than 30 seconds
+      if (cacheAge > 30000) {
+        fetchPendingRequestCount(true);
+      }
     }
   };
 

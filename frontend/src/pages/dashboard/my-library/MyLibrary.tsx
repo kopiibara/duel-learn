@@ -52,69 +52,84 @@ const MyLibraryPage = () => {
   >({});
   const [monthsOrder, setMonthsOrder] = useState<string[]>([]);
 
+  // Create a function to handle update notifications
+  const showTemporaryUpdateLabel = useCallback(() => {
+    // Clear any existing timer
+    if (updateLabelTimer.current) {
+      clearTimeout(updateLabelTimer.current);
+    }
+
+    // Show the label
+    setShowUpdateLabel(true);
+
+    // Set timer to hide it after 5 seconds
+    updateLabelTimer.current = setTimeout(() => {
+      setShowUpdateLabel(false);
+    }, 1000);
+  }, []);
+
   // Create optimized fetch functions with caching
   const fetchStudyMaterials = useCallback(
     async (force = false) => {
       if (!created_by) return;
 
       const now = Date.now();
-      // Reduce cache invalidation time to better match backend's cache TTL (10 minutes)
+      // Extend cache time from 9 minutes to 15 minutes to reduce unnecessary calls
       const needsRefresh =
-        force || now - lastUserMaterialsFetch.current > 540000; // 9 minutes
+        force || now - lastUserMaterialsFetch.current > 900000; // 15 minutes
 
       if (!needsRefresh && cachedUserMaterials.current.length > 0) {
         console.log("Using cached user materials");
         setCards(cachedUserMaterials.current);
-        return;
+        return cachedUserMaterials.current;
       }
 
-      const fetchingUserMaterials = async () => {
-        try {
-          // Use the timestamp parameter to signal the backend to skip its cache when forced
-          const queryParam = force ? `?timestamp=${now}` : "";
-          const response = await fetch(
-            `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/study-material/get-by-user/${created_by}${queryParam}`,
-            {
-              headers: {
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                Pragma: "no-cache",
-              },
-            }
-          );
+      // Don't fetch if already in progress (prevent duplicate requests)
+      if (isBackgroundRefreshing && !force) {
+        return cachedUserMaterials.current;
+      }
 
-          if (!response.ok) {
-            throw new Error(
-              `Failed to fetch study materials: ${response.status}`
-            );
+      try {
+        // Use the timestamp parameter to signal the backend to skip its cache when forced
+        const queryParam = force ? `?timestamp=${now}` : "";
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/study-material/get-by-user/${created_by}${queryParam}`,
+          {
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+            },
           }
+        );
 
-          const data = await response.json();
-          console.log("Fetched study materials:", data.length);
-
-          // Update cache with new data
-          cachedUserMaterials.current = data;
-          lastUserMaterialsFetch.current = now;
-
-          // Update state
-          setCards(data);
-          setLastUpdated(new Date());
-          showTemporaryUpdateLabel();
-        } catch (error) {
-          console.error("Error fetching study materials:", error);
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch study materials: ${response.status}`
+          );
         }
-      };
 
-      if (!isBackgroundRefreshing) {
-        setIsLoading(true);
-        await fetchingUserMaterials();
-        setIsLoading(false);
-      } else {
-        await fetchingUserMaterials();
+        const data = await response.json();
+        console.log("Fetched study materials:", data.length);
+
+        // Update cache with new data
+        cachedUserMaterials.current = data;
+        lastUserMaterialsFetch.current = now;
+
+        // Update state
+        setCards(data);
+        setLastUpdated(new Date());
+        if (!isBackgroundRefreshing) {
+          showTemporaryUpdateLabel();
+        }
+        return data;
+      } catch (error) {
+        console.error("Error fetching study materials:", error);
+        return cachedUserMaterials.current;
       }
     },
-    [created_by, isBackgroundRefreshing]
+    [created_by, isBackgroundRefreshing, showTemporaryUpdateLabel]
   );
 
   const fetchBookmarkedStudyMaterials = useCallback(
@@ -122,71 +137,75 @@ const MyLibraryPage = () => {
       if (!firebase_uid) return;
 
       const now = Date.now();
-      const needsRefresh = force || now - lastBookmarksFetch.current > 540000; // 9 minutes
+      const needsRefresh = force || now - lastBookmarksFetch.current > 900000; // 15 minutes
 
       if (!needsRefresh && cachedBookmarks.current.length > 0) {
         console.log("Using cached bookmarks");
         setBookmarkedCards(cachedBookmarks.current);
-        return;
+        return cachedBookmarks.current;
       }
 
-      const fetchingBookmarks = async () => {
-        try {
-          // Only use timestamp parameter when forcing refresh
-          const queryParam = force ? `?timestamp=${now}` : "";
-          const response = await fetch(
-            `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/study-material/get-bookmarks-by-user/${firebase_uid}${queryParam}`,
-            {
-              headers: {
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                Pragma: "no-cache",
-              },
-            }
-          );
+      // Don't fetch if already in progress (prevent duplicate requests)
+      if (isBackgroundRefreshing && !force) {
+        return cachedBookmarks.current;
+      }
 
-          if (!response.ok) {
-            throw new Error("Failed to fetch bookmarked study materials");
+      try {
+        // Only use timestamp parameter when forcing refresh
+        const queryParam = force ? `?timestamp=${now}` : "";
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/study-material/get-bookmarks-by-user/${firebase_uid}${queryParam}`,
+          {
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+            },
           }
+        );
 
-          const data = await response.json();
-          console.log("Fetched bookmarked materials:", data.length);
-
-          // Transform the bookmarked study materials to match the StudyMaterial format
-          interface BookmarkInfo {
-            bookmarked_at: string;
-          }
-
-          interface BookmarkedStudyMaterialResponse {
-            study_material_info: StudyMaterial;
-            bookmark_info: BookmarkInfo;
-          }
-
-          const formattedBookmarks: StudyMaterial[] = data.map(
-            (item: BookmarkedStudyMaterialResponse) => ({
-              ...item.study_material_info,
-              bookmarked: true,
-              bookmarked_at: item.bookmark_info.bookmarked_at,
-            })
-          );
-
-          // Update cache
-          cachedBookmarks.current = formattedBookmarks;
-          lastBookmarksFetch.current = now;
-
-          // Update state
-          setBookmarkedCards(formattedBookmarks);
-          setLastUpdated(new Date());
-          showTemporaryUpdateLabel();
-        } catch (error) {
-          console.error("Error fetching bookmarked study materials:", error);
+        if (!response.ok) {
+          throw new Error("Failed to fetch bookmarked study materials");
         }
-      };
 
-      await fetchingBookmarks();
+        const data = await response.json();
+        console.log("Fetched bookmarked materials:", data.length);
+
+        // Transform the bookmarked study materials to match the StudyMaterial format
+        interface BookmarkInfo {
+          bookmarked_at: string;
+        }
+
+        interface BookmarkedStudyMaterialResponse {
+          study_material_info: StudyMaterial;
+          bookmark_info: BookmarkInfo;
+        }
+
+        const formattedBookmarks: StudyMaterial[] = data.map(
+          (item: BookmarkedStudyMaterialResponse) => ({
+            ...item.study_material_info,
+            bookmarked: true,
+            bookmarked_at: item.bookmark_info.bookmarked_at,
+          })
+        );
+
+        // Update cache
+        cachedBookmarks.current = formattedBookmarks;
+        lastBookmarksFetch.current = now;
+
+        // Update state
+        setBookmarkedCards(formattedBookmarks);
+        if (!isBackgroundRefreshing) {
+          showTemporaryUpdateLabel();
+        }
+        return formattedBookmarks;
+      } catch (error) {
+        console.error("Error fetching bookmarked study materials:", error);
+        return cachedBookmarks.current;
+      }
     },
-    [firebase_uid]
+    [firebase_uid, isBackgroundRefreshing, showTemporaryUpdateLabel]
   );
 
   // Background refresh function
@@ -200,6 +219,7 @@ const MyLibraryPage = () => {
       fetchBookmarkedStudyMaterials(true),
     ]).finally(() => {
       setIsBackgroundRefreshing(false);
+      setLastUpdated(new Date());
     });
   }, [
     fetchStudyMaterials,
@@ -211,29 +231,50 @@ const MyLibraryPage = () => {
   useEffect(() => {
     if (!created_by || !firebase_uid) return;
 
-    setIsLoading(true);
-    setPreviousCardCount(cards.length || 3);
+    let isMounted = true;
+    const initialLoad = async () => {
+      setIsLoading(true);
+      setPreviousCardCount(cards.length || 3);
 
-    // Fetch both types of data - don't force refresh on initial load
-    // to take advantage of backend preloaded cache
-    Promise.all([
-      fetchStudyMaterials(false),
-      fetchBookmarkedStudyMaterials(false),
-    ]).finally(() => {
-      setIsLoading(false);
-      setLastUpdated(new Date());
-    });
+      // Check if we already have cached data to show immediately
+      if (cachedUserMaterials.current.length > 0) {
+        setCards(cachedUserMaterials.current);
+      }
 
-    // Set up background refresh interval - align with backend's cache TTL (10 minutes)
-    const refreshInterval = setInterval(backgroundRefresh, 300000); // Every 5 minutes
+      if (cachedBookmarks.current.length > 0) {
+        setBookmarkedCards(cachedBookmarks.current);
+      }
 
-    return () => clearInterval(refreshInterval);
+      // Then fetch fresh data if needed
+      try {
+        await Promise.all([
+          fetchStudyMaterials(false),
+          fetchBookmarkedStudyMaterials(false),
+        ]);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+          setLastUpdated(new Date());
+        }
+      }
+    };
+
+    initialLoad();
+
+    // Set up background refresh interval - increase to 10 minutes from 5
+    const refreshInterval = setInterval(backgroundRefresh, 600000); // Every 10 minutes
+
+    return () => {
+      isMounted = false;
+      clearInterval(refreshInterval);
+    };
   }, [
     created_by,
     firebase_uid,
     fetchStudyMaterials,
     fetchBookmarkedStudyMaterials,
     backgroundRefresh,
+    cards.length,
   ]);
 
   // Handle manual refresh request from child components or refresh button
@@ -267,22 +308,6 @@ const MyLibraryPage = () => {
     if (diffHours === 1) return "1 hour ago";
     return `${diffHours} hrs ago`;
   }, [lastUpdated]);
-
-  // Create a function to handle update notifications
-  const showTemporaryUpdateLabel = useCallback(() => {
-    // Clear any existing timer
-    if (updateLabelTimer.current) {
-      clearTimeout(updateLabelTimer.current);
-    }
-
-    // Show the label
-    setShowUpdateLabel(true);
-
-    // Set timer to hide it after 5 seconds
-    updateLabelTimer.current = setTimeout(() => {
-      setShowUpdateLabel(false);
-    }, 1000);
-  }, []);
 
   // Make sure to clean up the timer in useEffect
   useEffect(() => {

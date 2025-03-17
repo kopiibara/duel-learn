@@ -47,7 +47,7 @@ export default function Header() {
       {/* Search Field */}
       <Box
         className={`flex-1 ${
-          isVerySmall ? "px-1" : isMobile ? "sm:pl-2" : "sm:pl-4 lg:pl-10"
+          isVerySmall ? "px-1" : isMobile ? "sm:pl-2" : "sm:pl-4 lg:pl-16"
         }`}
       >
         <SearchField />

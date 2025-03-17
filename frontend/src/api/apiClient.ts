@@ -1,5 +1,4 @@
 import axios, { AxiosResponse, AxiosError } from 'axios';
-import { auth } from '../services/firebase';
 
 // Type definition for response with message
 interface ApiResponse {
@@ -12,6 +11,22 @@ interface ApiResponse {
 // Create this as a singleton that can be imported where needed
 type SnackbarFunction = (message: string, severity?: 'error' | 'warning' | 'info' | 'success') => void;
 let showSnackbarFunction: SnackbarFunction | null = null;
+
+// Auth token management
+let authToken: string | null = null;
+let tokenUpdateCallback: ((token: string | null) => void) | null = null;
+
+// Function to set the token from outside (to be called by AuthContext)
+export const setAuthToken = (token: string | null) => {
+  authToken = token;
+  if (tokenUpdateCallback) {
+    tokenUpdateCallback(token);
+  }
+};
+
+export const setTokenUpdateCallback = (callback: (token: string | null) => void) => {
+  tokenUpdateCallback = callback;
+};
 
 export const setSnackbarFunction = (fn: SnackbarFunction) => {
   showSnackbarFunction = fn;
@@ -30,21 +45,22 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   async (config) => {
     try {
-      // Try to get current Firebase user token
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        const token = await currentUser.getIdToken(true);
-        config.headers.Authorization = `Bearer ${token}`;
-        console.log(`Adding token to ${config.url} request (first 10 chars): ${token.substring(0, 10)}...`);
+      console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+      
+      // Use the stored token instead of directly accessing Firebase
+      if (authToken) {
+        config.headers.Authorization = `Bearer ${authToken}`;
+        console.log(`Token attached: ${authToken.substring(0, 10)}...`);
       } else {
-        console.warn('No current user found for authentication');
+        console.warn('⚠️ No auth token available for request to:', config.url);
       }
     } catch (error) {
-      console.error('Error getting auth token:', error);
+      console.error('❌ Error setting auth token in request:', error);
     }
     return config;
   },
   (error) => {
+    console.error('❌ Request interceptor error:', error);
     return Promise.reject(error);
   }
 );
@@ -74,9 +90,18 @@ apiClient.interceptors.response.use(
     });
     
     if (error.response?.data) {
-      if (error.response.data.message) {
+      // Check for error message in various formats that the API might return
+      if (error.response.data.error) {
+        // Some endpoints return errors as { error: "message" }
+        message = error.response.data.error;
+      } else if (error.response.data.message) {
+        // While others use { message: "message" }
         message = error.response.data.message;
+      } else if (typeof error.response.data === 'string') {
+        // Handle case where the entire response is a string error
+        message = error.response.data;
       }
+      
       if (error.response.data.severity) {
         severity = error.response.data.severity as 'error' | 'warning';
       }
@@ -101,11 +126,25 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 403) {
       message = 'You do not have permission to access this resource. Admin privileges required.';
       
-      // Log details about the current user for debugging
-      const currentUser = auth.currentUser;
-      console.log('403 Forbidden Error - Current user:', currentUser?.email);
-      console.log('403 Forbidden Error - User UID:', currentUser?.uid);
+      // Log details for debugging
       console.log('403 Forbidden Error - Request URL:', error.config?.url);
+    }
+    
+    // Special case for 404 Not Found
+    if (error.response?.status === 404) {
+      // If there's no specific error message, use a default one based on context
+      if (!error.response.data?.error && !error.response.data?.message) {
+        // Extract the last part of the URL to identify what wasn't found
+        const urlParts = error.config?.url?.split('/') || [];
+        const resource = urlParts[urlParts.length - 1] || 'resource';
+        
+        // Distinguish between user not found and other resources
+        if (urlParts.includes('user') || urlParts.includes('users')) {
+          message = `User not found. The account may not exist or may need to be registered.`;
+        } else {
+          message = `The requested ${resource} was not found.`;
+        }
+      }
     }
     
     // Display the error message

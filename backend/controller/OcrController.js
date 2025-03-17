@@ -12,7 +12,7 @@ const upload = multer({ dest: os.tmpdir() });
 
 // Create a Vision client
 const visionClient = new ImageAnnotatorClient({
-  keyFilename: "./ocr-nlp-key.json", // Path to your credentials file
+  keyFilename: "./lunar-goal-452311-e6-1af8037708ca.json", // Path to your credentials file
 });
 
 const ocrController = {

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import { useFriendSocket } from "./useFriendSocket";
 import { PendingRequest } from "../../types/friendObject";
@@ -8,6 +8,14 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [requestsCount, setRequestsCount] = useState(0);
+
+  // Add cache control
+  const requestsCache = useRef<{
+    data: PendingRequest[];
+    count: number;
+    timestamp: number;
+  }>({ data: [], count: 0, timestamp: 0 });
+  const isFetchingRef = useRef(false);
 
   const { socket, isConnected } = useFriendSocket({
     userId,
@@ -28,12 +36,29 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
       };
       addPendingRequest(newRequest);
       setRequestsCount((prev) => prev + 1);
+
+      // Update cache
+      requestsCache.current = {
+        data: [...requestsCache.current.data, newRequest],
+        count: requestsCache.current.count + 1,
+        timestamp: Date.now(),
+      };
     },
     onFriendRequestAccepted: (data) => {
       console.log("Socket: Friend request accepted", data);
       if (data.newFriend) {
         removePendingRequest(data.newFriend.firebase_uid);
-        setRequestsCount((prev) => Math.max(0, prev - 1)); // Fixed: subtract 1 instead of adding 1
+        setRequestsCount((prev) => Math.max(0, prev - 1));
+
+        // Update cache
+        const updatedRequests = requestsCache.current.data.filter(
+          (req) => req.sender_id !== data.newFriend.firebase_uid
+        );
+        requestsCache.current = {
+          data: updatedRequests,
+          count: Math.max(0, requestsCache.current.count - 1),
+          timestamp: Date.now(),
+        };
       }
     },
     onFriendRequestRejected: (data) => {
@@ -41,6 +66,16 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
       if (data.sender_id) {
         removePendingRequest(data.sender_id);
         setRequestsCount((prev) => Math.max(0, prev - 1));
+
+        // Update cache
+        const updatedRequests = requestsCache.current.data.filter(
+          (req) => req.sender_id !== data.sender_id
+        );
+        requestsCache.current = {
+          data: updatedRequests,
+          count: Math.max(0, requestsCache.current.count - 1),
+          timestamp: Date.now(),
+        };
       }
     },
   });
@@ -67,32 +102,84 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
     );
   }, []);
 
-  const fetchPendingRequests = useCallback(async () => {
-    if (!userId) return;
+  const fetchPendingRequests = useCallback(
+    async (force = false) => {
+      if (!userId) return;
 
-    try {
-      setLoading(true);
-      const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/friend/pending/${userId}`
-      );
-      const requests = Array.isArray(response.data) ? response.data : [];
-      console.log("Fetched pending requests:", requests);
-      setPendingRequests(requests);
-      setRequestsCount(requests.length);
-      setError("");
-    } catch (err) {
-      setError("Failed to load pending friend requests");
-      console.error("Error fetching pending requests:", err);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
+      // Prevent concurrent fetches
+      if (isFetchingRef.current) {
+        console.log(
+          "Already fetching pending requests, skipping duplicate call"
+        );
+        return;
+      }
+
+      const now = Date.now();
+      const cacheAge = now - requestsCache.current.timestamp;
+
+      // Use cache if it's recent and not empty and not forced
+      if (
+        !force &&
+        cacheAge < 30000 &&
+        requestsCache.current.data.length >= 0
+      ) {
+        console.log("Using cached pending requests data");
+        setPendingRequests(requestsCache.current.data);
+        setRequestsCount(requestsCache.current.count);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        isFetchingRef.current = true;
+        setLoading(true);
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/friend/pending/${userId}`
+        );
+        const requests = Array.isArray(response.data) ? response.data : [];
+        console.log("Fetched pending requests:", requests);
+
+        setPendingRequests(requests);
+        setRequestsCount(requests.length);
+        setError("");
+
+        // Update cache
+        requestsCache.current = {
+          data: requests,
+          count: requests.length,
+          timestamp: now,
+        };
+      } catch (err) {
+        setError("Failed to load pending friend requests");
+        console.error("Error fetching pending requests:", err);
+      } finally {
+        setLoading(false);
+        isFetchingRef.current = false;
+      }
+    },
+    [userId]
+  );
 
   const handleRejectRequest = async (senderId: string) => {
     if (!userId) return;
 
     try {
       console.log("Rejecting friend request from:", senderId);
+
+      // Optimistic UI update
+      removePendingRequest(senderId);
+      setRequestsCount((prev) => Math.max(0, prev - 1));
+
+      // Update cache optimistically
+      const updatedRequests = requestsCache.current.data.filter(
+        (req) => req.sender_id !== senderId
+      );
+      requestsCache.current = {
+        data: updatedRequests,
+        count: Math.max(0, requestsCache.current.count - 1),
+        timestamp: Date.now(),
+      };
+
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/api/friend/reject`,
         {
@@ -100,10 +187,6 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
           receiver_id: userId,
         }
       );
-
-      // Update local state immediately
-      removePendingRequest(senderId);
-      setRequestsCount((prev) => Math.max(0, prev - 1));
 
       // Emit socket event for real-time update
       if (socket && isConnected) {
@@ -121,6 +204,9 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
     } catch (err) {
       setError("Failed to reject friend request");
       console.error("Error rejecting friend request:", err);
+
+      // Restore cache and UI state on error
+      fetchPendingRequests(true);
       throw err;
     }
   };
@@ -193,8 +279,17 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
   };
 
   useEffect(() => {
-    if (userId) {
-      fetchPendingRequests();
+    if (userId && !isFetchingRef.current) {
+      // Only fetch if cache is empty or stale (older than 30 seconds)
+      const cacheAge = Date.now() - requestsCache.current.timestamp;
+      if (cacheAge > 30000 || requestsCache.current.data.length === 0) {
+        fetchPendingRequests();
+      } else {
+        // Use cache
+        setPendingRequests(requestsCache.current.data);
+        setRequestsCount(requestsCache.current.count);
+        setLoading(false);
+      }
     }
   }, [userId, fetchPendingRequests]);
 
@@ -206,5 +301,6 @@ export const usePendingFriendRequests = (userId: string | undefined) => {
     handleRejectRequest,
     requestsCount,
     isConnected,
+    fetchPendingRequests, // Export this so components can refresh when needed
   };
 };

@@ -100,7 +100,7 @@ export default function SearchField() {
           onFocus={() => setIsFocused(true)}
           onBlur={() => setTimeout(() => setIsFocused(false), 100)}
           onKeyDown={handleKeyDown}
-          className="peer w-full h-[48px]  pl-11 pr-10 text-[18px] bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#6F658D] placeholder-transparent sm:max-w-full [&::-webkit-search-cancel-button]:appearance-none"
+          className="peer w-full h-[48px]  pl-16 pr-10 text-[18px] bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#6F658D] placeholder-transparent sm:max-w-full [&::-webkit-search-cancel-button]:appearance-none"
           placeholder="Search input"
         />
         {/* Hide default clear button and add custom one */}

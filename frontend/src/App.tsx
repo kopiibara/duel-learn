@@ -3,32 +3,49 @@ import { ThemeProvider, CssBaseline } from "@mui/material";
 import { BrowserRouter as Router } from "react-router-dom";
 import AppRoutes from "./routes/AppRoutes";
 import { UserProvider } from "./contexts/UserContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import { AudioProvider } from "./contexts/AudioContext";
 import { SnackbarProvider } from "./contexts/SnackbarContext";
-import GlobalSnackbar from "./components/GlobalSnackbar";
-import SnackbarConnector from "./components/SnackbarConnector";
+import { 
+  GlobalSnackbar, 
+  SnackbarConnector, 
+  AuthTokenSynchronizer,
+  InvitationLobbySnackbar,
+  AudioStopper 
+} from "./components";
 import theme from "../../frontend/src/contexts/ThemeContext";
 import "./index.css";
-import InvitationLobbySnackbar from './components/InvitationLobbySnackbar';
 
 function App() {
   return (
     <Router>
-      <UserProvider>
-        <AudioProvider>
-          <SnackbarProvider>
-            <HelmetProvider>
-              <ThemeProvider theme={theme}>
-                <CssBaseline />
-                <AppRoutes />
-                <GlobalSnackbar />
-                <SnackbarConnector />
-                <InvitationLobbySnackbar />
-              </ThemeProvider>
-            </HelmetProvider>
-          </SnackbarProvider>
-        </AudioProvider>
-      </UserProvider>
+      <AuthProvider>
+        <AuthTokenSynchronizer />
+        <UserProvider>
+          <AudioProvider>
+            <AudioStopper
+              stopOnRoutes={[
+                "/dashboard/home",
+                "/dashboard/session-complete",
+                "/dashboard/profile",
+                "/dashboard/deck-gallery",
+                "/dashboard/decks",
+              ]}
+            />
+            <SnackbarProvider>
+              <HelmetProvider>
+                <ThemeProvider theme={theme}>
+                  <CssBaseline />
+                  <AppRoutes />
+                  <GlobalSnackbar />
+                  <SnackbarConnector />
+                  <InvitationLobbySnackbar />
+                </ThemeProvider>
+              </HelmetProvider>
+            </SnackbarProvider>
+          </AudioProvider>
+        </UserProvider>
+      </AuthProvider>
     </Router>
   );
 }
