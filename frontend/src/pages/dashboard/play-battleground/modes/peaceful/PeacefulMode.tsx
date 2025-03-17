@@ -26,10 +26,63 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     const generateAIQuestions = async () => {
       console.log("Starting AI question generation in PeacefulMode");
       console.log("Selected question types:", selectedTypes);
+      console.log("Material received:", material);
+      console.log("Selected question types:", selectedTypes);
       setIsGeneratingAI(true);
       const generatedQuestions = [];
 
       try {
+        // Validate material and items
+        if (!material) {
+          console.error("No material provided");
+          return;
+        }
+
+        if (!Array.isArray(material.items) || material.items.length === 0) {
+          console.error("Material has no valid items array:", material);
+          return;
+        }
+
+        // Create an array of items and shuffle it
+        const items = [...material.items];
+        const shuffledItems = items.sort(() => Math.random() - 0.5);
+
+        // Calculate how many questions of each type we need
+        const totalItems = items.length;
+        const typesCount = selectedTypes.length;
+        
+        // Validate selected types
+        const validTypes = ['identification', 'multiple-choice', 'true-false'];
+        selectedTypes.forEach(type => {
+          if (!validTypes.includes(type)) {
+            console.warn(`Warning: Unknown question type "${type}"`);
+          }
+        });
+
+        const distribution = selectedTypes.reduce((acc, type, index) => {
+          // For the last type, assign all remaining items
+          if (index === typesCount - 1) {
+            acc[type] = totalItems - Object.values(acc).reduce((sum, val) => sum + val, 0);
+          } else {
+            // Otherwise, distribute items evenly with a minimum of 1
+            acc[type] = Math.max(1, Math.floor(totalItems / typesCount));
+          }
+          return acc;
+        }, {} as Record<string, number>);
+
+        console.log("Question distribution for", totalItems, "items:");
+        Object.entries(distribution).forEach(([type, count]) => {
+          console.log(`- ${type}: ${count} questions`);
+        });
+
+        // Validate total matches number of items
+        const totalQuestions = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+        console.log(`Total questions to generate: ${totalQuestions} (should equal number of items: ${totalItems})`);
+
+        // Keep track of which items have been used
+        let currentItemIndex = 0;
+
+        // Generate questions according to the distribution
         // Create an array of items and shuffle it
         const items = [...material.items];
         const shuffledItems = items.sort(() => Math.random() - 0.5);
@@ -76,6 +129,11 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
 
           for (let i = 0; i < questionsOfThisType; i++) {
             const item = shuffledItems[currentItemIndex];
+            if (!item || !item.term || !item.definition) {
+              console.error(`Invalid item at index ${currentItemIndex}:`, item);
+              continue;
+            }
+
             console.log(`[${type}] Question ${i + 1}/${questionsOfThisType} using item: "${item.term}"`);
 
             const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
@@ -83,15 +141,33 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
               term: item.term,
               definition: item.definition,
               numberOfItems: 1
+              studyMaterialId: material.study_material_id,
+              itemId: currentItemIndex + 1,
+              gameMode: "peaceful",
+              timestamp: new Date().getTime()
             };
 
-            const response = await axios.post<{ data: any[] }>(endpoint, requestPayload);
-            
-            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-              generatedQuestions.push(...response.data);
-              console.log(`✓ Successfully generated ${type} question for "${item.term}"`);
-            } else {
-              console.warn(`⚠ No question generated for "${item.term}" of type ${type}`);
+            try {
+              const response = await axios.post<any[]>(endpoint, requestPayload);
+              
+              if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+                // Add the item information to each question for reference
+                const questionsWithItemInfo = response.data.map(q => ({
+                  ...q,
+                  itemInfo: {
+                    term: item.term,
+                    definition: item.definition,
+                    itemId: currentItemIndex + 1
+                  }
+                }));
+                
+                generatedQuestions.push(...questionsWithItemInfo);
+                console.log(`✓ Successfully generated ${type} question for "${item.term}"`);
+              } else {
+                console.warn(`⚠ No question generated for "${item.term}" of type ${type}`);
+              }
+            } catch (error) {
+              console.error(`Error generating ${type} question for "${item.term}":`, error);
             }
 
             currentItemIndex++;
@@ -105,9 +181,12 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
 
         // Shuffle the questions for final presentation
         const shuffledQuestions = generatedQuestions.sort(() => Math.random() - 0.5);
+        console.log("Setting AI questions:", shuffledQuestions);
         setAiQuestions(shuffledQuestions);
       } catch (error) {
         console.error("Error generating AI questions:", error);
+        // Set empty array to prevent undefined errors
+        setAiQuestions([]);
       } finally {
         setIsGeneratingAI(false);
       }
