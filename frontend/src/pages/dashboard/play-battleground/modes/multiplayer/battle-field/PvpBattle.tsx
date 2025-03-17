@@ -21,7 +21,7 @@ import WaitingOverlay from "./components/WaitingOverlay";
 import CardSelection from "./components/CardSelection";
 
 interface BattleState {
-  current_turn: string;
+  current_turn: string | null;
   round_number: number;
   total_rounds: number;
   host_card: string | null;
@@ -78,6 +78,11 @@ export default function PvpBattle() {
   const [enemyPickingIntroComplete, setEnemyPickingIntroComplete] = useState(false);
   const [playerPickingIntroComplete, setPlayerPickingIntroComplete] = useState(false);
 
+  // New states for turn randomizer
+  const [showRandomizer, setShowRandomizer] = useState(false);
+  const [randomizing, setRandomizing] = useState(false);
+  const [randomizationDone, setRandomizationDone] = useState(false);
+
   // Check for both players and battle start
   useEffect(() => {
     const checkBattleStatus = async () => {
@@ -95,19 +100,25 @@ export default function PvpBattle() {
             if (battleState.host_in_battle && battleState.guest_in_battle) {
               setWaitingForPlayer(false);
 
-              // If battle has started, check if current_turn is set
-              if (battleState.battle_started) {
+              // Show randomizer to host if battle started but no current_turn set
+              // Only show if randomization hasn't been done yet
+              if (battleState.battle_started && !battleState.current_turn && isHost && !randomizationDone) {
+                setShowRandomizer(true);
+              } else if (battleState.battle_started && !battleState.current_turn && !randomizationDone) {
+                // Guest just waits for host to randomize
+                console.log("Waiting for host to determine who goes first...");
+              } else if (battleState.battle_started && battleState.current_turn) {
+                // Turn has been decided, start the game
+                setShowRandomizer(false);
+
                 if (!gameStarted) {
                   setGameStarted(true);
                   setShowGameStart(true);
 
-                  // Default to host_id if current_turn is not set
-                  const effectiveTurn = battleState.current_turn || battleState.host_id;
-
-                  // Determine if it's the current player's turn based on effectiveTurn
+                  // Determine if it's the current player's turn
                   const isCurrentPlayerTurn = isHost
-                    ? effectiveTurn === battleState.host_id
-                    : effectiveTurn === battleState.guest_id;
+                    ? battleState.current_turn === hostUsername
+                    : battleState.current_turn === guestUsername;
 
                   // Set the game start text based on whose turn it is
                   if (isCurrentPlayerTurn) {
@@ -155,7 +166,7 @@ export default function PvpBattle() {
     const interval = setInterval(checkBattleStatus, 1200);
 
     return () => clearInterval(interval);
-  }, [lobbyCode, hostUsername, guestUsername, isHost, gameStarted]);
+  }, [lobbyCode, hostUsername, guestUsername, isHost, gameStarted, randomizationDone]);
 
   // Handle card selection
   const handleCardSelected = (cardId: string) => {
@@ -252,6 +263,115 @@ export default function PvpBattle() {
     return () => clearTimeout(timer);
   }, [timeLeft, waitingForPlayer]);
 
+  // Function to handle the randomizer button click
+  const handleRandomizeTurn = async () => {
+    if (!battleState || randomizing) return;
+
+    setRandomizing(true);
+
+    // Visual randomization effect (alternating between host and guest)
+    let duration = 3000; // 3 seconds of animation
+    let toggleInterval = 100; // Start fast (100ms)
+    let currentTime = 0;
+
+    // Start with a random player
+    let currentTurn = Math.random() < 0.5 ? hostUsername : guestUsername;
+
+    // Set initial game start text
+    setGameStartText(`${currentTurn} will go first!`);
+
+    // Create a div to show the alternating names
+    const turnInterval = setInterval(() => {
+      currentTime += toggleInterval;
+
+      // Slow down the toggle as we approach the end
+      if (currentTime > duration / 2) {
+        toggleInterval = 200; // Slow down midway
+      }
+      if (currentTime > duration * 0.75) {
+        toggleInterval = 300; // Slow down further
+      }
+
+      // Toggle between host and guest
+      currentTurn = currentTurn === hostUsername ? guestUsername : hostUsername;
+
+      // Update UI to show current selection
+      setGameStartText(`${currentTurn} will go first!`);
+
+      // End the animation after duration
+      if (currentTime >= duration) {
+        clearInterval(turnInterval);
+
+        // Make a final decision - this ensures we don't get stuck on a rapidly changing value
+        const finalSelection = currentTurn;
+        setGameStartText(`${finalSelection} will go first!`);
+
+        finalizeRandomization(finalSelection);
+      }
+    }, toggleInterval);
+  };
+
+  // Function to finalize the random selection
+  const finalizeRandomization = async (selectedPlayer: string) => {
+    try {
+      // Use the actual username as the current_turn value
+      console.log(`Finalizing turn randomization: selected ${selectedPlayer}`);
+
+      // Set randomizationDone immediately to prevent further randomization attempts
+      setRandomizationDone(true);
+
+      // Hide the randomizer UI immediately, don't wait for the polling
+      setShowRandomizer(false);
+
+      // Show the final selection in the game start text
+      setShowGameStart(true);
+
+      // Instead of just updating turn, do a full initialization to also set battle_started=true
+      // This helps both host and guest get synchronized quickly
+      await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-turn`,
+        {
+          lobby_code: lobbyCode,
+          current_turn: selectedPlayer
+        }
+      );
+
+      // Optionally, we could extend our state to include who was selected to go first
+      // This would let us start rendering things even before the polling catches up
+      if (isHost) {
+        const isPlayerFirst = selectedPlayer === hostUsername;
+        // Setup initial game state based on who goes first
+        setGameStarted(true);
+        setIsMyTurn(isPlayerFirst);
+
+        if (isPlayerFirst) {
+          setPlayerAnimationState("picking");
+          setPlayerPickingIntroComplete(false);
+          setEnemyAnimationState("idle");
+        } else {
+          setEnemyAnimationState("picking");
+          setEnemyPickingIntroComplete(false);
+          setPlayerAnimationState("idle");
+        }
+
+        // Hide the initial game start screen after 2.5 seconds and show cards
+        setTimeout(() => {
+          setShowGameStart(false);
+          setShowCards(true);
+        }, 2500);
+      }
+
+      setRandomizing(false);
+
+      // The next polling cycle will detect the turn is set and proceed with the game
+    } catch (error) {
+      console.error("Error setting turn:", error);
+      setRandomizing(false);
+      // If there's an error, allow retrying
+      setRandomizationDone(false);
+    }
+  };
+
   return (
     <div className="w-full h-screen flex flex-col">
       {/* Top UI Bar */}
@@ -298,6 +418,49 @@ export default function PvpBattle() {
           isRight
         />
 
+        {/* Randomizer Overlay (only shown to host when both players are ready but no turn decided) */}
+        {showRandomizer && isHost && (
+          <div className="fixed inset-0 bg-black/80 z-40 flex flex-col items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-purple-300 text-4xl font-bold mb-8">Ready to Battle!</h2>
+              <p className="text-white text-xl mb-12">Both players have joined. Who will go first?</p>
+
+              {randomizing ? (
+                <div className="mb-8">
+                  <div className="text-white text-3xl font-bold animate-pulse mb-4">
+                    Randomizing...
+                  </div>
+                  <div className="text-white text-4xl font-bold">
+                    {gameStartText}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={handleRandomizeTurn}
+                  className="px-8 py-4 bg-purple-700 hover:bg-purple-600 text-white text-xl font-bold rounded-lg transition-colors"
+                >
+                  Randomize First Turn
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Waiting for host to randomize (shown to guest) */}
+        {!waitingForPlayer && battleState?.battle_started && !battleState?.current_turn && !isHost && !randomizationDone && (
+          <div className="fixed inset-0 bg-black/80 z-40 flex flex-col items-center justify-center">
+            <div className="text-center">
+              <h2 className="text-purple-300 text-4xl font-bold mb-8">Ready to Battle!</h2>
+              <p className="text-white text-xl mb-12">Waiting for host to determine who goes first...</p>
+              <div className="flex space-x-4 justify-center">
+                <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Game Start Animation */}
         <AnimatePresence>
           {showGameStart && (
@@ -333,10 +496,10 @@ export default function PvpBattle() {
           </div>
         )}
 
-        {/* Waiting overlay - now only checks for players and battle started */}
+        {/* Waiting overlay - now checks only if either player isn't in battle yet */}
         <WaitingOverlay
-          isVisible={waitingForPlayer || !battleState?.battle_started}
-          message={!battleState?.battle_started ? "Waiting for game to start..." : undefined}
+          isVisible={waitingForPlayer}
+          message="Waiting for your opponent to connect..."
         />
       </div>
     </div>

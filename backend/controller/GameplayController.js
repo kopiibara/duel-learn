@@ -37,10 +37,13 @@ export const initializeBattle = async (req, res) => {
                 WHERE lobby_code = ? AND is_active = true
             `;
 
-            await pool.query(updateQuery, [
-                host_in_battle ? host_username : guest_username,
-                lobby_code
-            ]);
+            const updateParams = [
+                host_in_battle ? host_username : guest_username
+            ];
+
+            updateParams.push(lobby_code);
+
+            await pool.query(updateQuery, updateParams);
 
             // Check if both players are now in battle
             const [updatedBattle] = await pool.query(
@@ -50,14 +53,14 @@ export const initializeBattle = async (req, res) => {
             );
 
             if (updatedBattle[0].host_in_battle && updatedBattle[0].guest_in_battle) {
-                // Both players are in, set battle as started and set initial turn to host
+                // Both players are in, set battle as started
+                // But do NOT set current_turn - it will be set by the host's randomizer
                 await pool.query(
                     `UPDATE battle_gameplay 
                      SET battle_started = true,
-                         current_turn = ?,
                          updated_at = CURRENT_TIMESTAMP
                      WHERE lobby_code = ? AND is_active = true`,
-                    [host_id, lobby_code]
+                    [lobby_code]
                 );
 
                 return res.json({
@@ -65,7 +68,7 @@ export const initializeBattle = async (req, res) => {
                     data: {
                         battle_id: updatedBattle[0].id,
                         lobby_code,
-                        current_turn: host_id,
+                        current_turn: updatedBattle[0].current_turn,
                         battle_started: true
                     }
                 });
@@ -82,7 +85,7 @@ export const initializeBattle = async (req, res) => {
             });
         }
 
-        // Initialize new battle
+        // Initialize new battle with NULL for current_turn
         const query = `
             INSERT INTO battle_gameplay 
             (lobby_code, host_id, host_username, guest_id, guest_username, current_turn, round_number, 
@@ -97,7 +100,7 @@ export const initializeBattle = async (req, res) => {
             host_username,
             guest_id,
             guest_username,
-            host_id, // Always set initial turn to host_id instead of null
+            null, // Set current_turn to NULL - will be set by host randomizer
             1, // Starting round
             30, // Total rounds
             0, // Initial host score
@@ -192,7 +195,7 @@ export const playCard = async (req, res) => {
 
         const battle = currentBattle[0];
 
-        // Verify it's the player's turn
+        // Verify it's the player's turn (now using username)
         if (battle.current_turn !== player_id) {
             return res.status(400).json({
                 success: false,
@@ -202,7 +205,7 @@ export const playCard = async (req, res) => {
 
         // Update the appropriate card field and switch turns
         const cardField = is_host ? 'host_card' : 'guest_card';
-        const nextTurn = is_host ? battle.guest_id : battle.host_id;
+        const nextTurn = is_host ? battle.guest_username : battle.host_username;
 
         const updateQuery = `
             UPDATE battle_gameplay 
@@ -322,6 +325,56 @@ export const getBattleStatus = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to get battle status",
+            error: error.message
+        });
+    }
+};
+
+export const updateTurn = async (req, res) => {
+    try {
+        const { lobby_code, current_turn } = req.body;
+
+        if (!lobby_code || !current_turn) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields"
+            });
+        }
+
+        console.log(`Updating turn for lobby ${lobby_code} to ${current_turn}`);
+
+        // Update the current_turn in the database
+        const query = `
+            UPDATE battle_gameplay 
+            SET current_turn = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE lobby_code = ? AND is_active = true
+        `;
+
+        const [result] = await pool.query(query, [current_turn, lobby_code]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle not found"
+            });
+        }
+
+        console.log(`Successfully updated turn to ${current_turn}`);
+
+        res.json({
+            success: true,
+            message: "Turn updated successfully",
+            data: {
+                current_turn
+            }
+        });
+
+    } catch (error) {
+        console.error('Error updating turn:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update turn",
             error: error.message
         });
     }

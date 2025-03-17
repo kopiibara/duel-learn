@@ -35,7 +35,7 @@ export default function Player2ModeSelection() {
             guest_id: guestUsername,
             host_username: hostUsername,
             guest_username: guestUsername,
-            guest_in_battle: true // Mark guest as entered
+            guest_in_battle: true // Mark guest as entered (don't set current_turn - use the one set by host)
           });
 
           // Navigate to battle

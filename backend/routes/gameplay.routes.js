@@ -4,7 +4,8 @@ import {
     getBattleState,
     playCard,
     getCurrentTurn,
-    getBattleStatus
+    getBattleStatus,
+    updateTurn
 } from '../controller/GameplayController.js';
 
 const router = express.Router();
@@ -23,5 +24,8 @@ router.get('/battle/turn/:lobby_code', getCurrentTurn);
 
 // Get battle status (active, ended, etc)
 router.get('/battle/status/:lobby_code', getBattleStatus);
+
+// Update the current turn
+router.put('/battle/update-turn', updateTurn);
 
 export default router; 
