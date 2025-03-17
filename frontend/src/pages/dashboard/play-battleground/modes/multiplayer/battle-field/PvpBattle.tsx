@@ -20,6 +20,24 @@ import Character from "./components/Character";
 import WaitingOverlay from "./components/WaitingOverlay";
 import CardSelection from "./components/CardSelection";
 
+interface BattleState {
+  current_turn: string;
+  round_number: number;
+  total_rounds: number;
+  host_card: string | null;
+  guest_card: string | null;
+  host_score: number;
+  guest_score: number;
+  host_health: number;
+  guest_health: number;
+  is_active: boolean;
+  winner_id: string | null;
+  battle_end_reason: string | null;
+  host_in_battle: boolean;
+  guest_in_battle: boolean;
+  battle_started: boolean;
+}
+
 /**
  * PvpBattle component - Main battle screen for player vs player mode
  */
@@ -35,6 +53,7 @@ export default function PvpBattle() {
   const [currentQuestion, setCurrentQuestion] = useState(1);
   const totalQuestions = 30;
   const [waitingForPlayer, setWaitingForPlayer] = useState(true);
+  const [battleState, setBattleState] = useState<BattleState | null>(null);
 
   // Turn-based gameplay state
   const [gameStarted, setGameStarted] = useState(false);
@@ -59,85 +78,70 @@ export default function PvpBattle() {
   const [enemyPickingIntroComplete, setEnemyPickingIntroComplete] = useState(false);
   const [playerPickingIntroComplete, setPlayerPickingIntroComplete] = useState(false);
 
-  // Check for player connection
+  // Check for both players and battle start
   useEffect(() => {
-    const checkPlayersConnected = async () => {
+    const checkBattleStatus = async () => {
       try {
         if (lobbyCode) {
           const response = await axios.get(
-            `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/status/${lobbyCode}`
+            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/state/${lobbyCode}`
           );
 
-          if (response.data?.data?.both_players_connected) {
-            setWaitingForPlayer(false);
+          if (response.data.success) {
+            const battleState = response.data.data;
+            setBattleState(battleState);
 
-            // Start the game once both players are connected
-            if (!gameStarted) {
-              startGame();
+            // Update waiting state based on both players being in battle
+            if (battleState.host_in_battle && battleState.guest_in_battle) {
+              setWaitingForPlayer(false);
+
+              // If battle has started, show game start animation
+              if (battleState.battle_started && !gameStarted) {
+                setGameStarted(true);
+                setShowGameStart(true);
+                setGameStartText(
+                  `${battleState.current_turn === hostUsername ? "Host" : "Guest"} will go first!`
+                );
+
+                // Hide the animation after 2.5 seconds
+                setTimeout(() => {
+                  setShowGameStart(false);
+                  setShowCards(true);
+                }, 2500);
+
+                // Set initial turn state
+                const isCurrentPlayerTurn = isHost
+                  ? battleState.current_turn === hostUsername
+                  : battleState.current_turn === guestUsername;
+                setIsMyTurn(isCurrentPlayerTurn);
+
+                // Set initial animations
+                if (isCurrentPlayerTurn) {
+                  setPlayerAnimationState("picking");
+                  setPlayerPickingIntroComplete(false);
+                  setEnemyAnimationState("idle");
+                } else {
+                  setEnemyAnimationState("picking");
+                  setEnemyPickingIntroComplete(false);
+                  setPlayerAnimationState("idle");
+                }
+              }
             }
           }
         }
       } catch (error) {
-        console.error("Error checking player connection status:", error);
+        console.error("Error checking battle status:", error);
       }
     };
 
-    // Poll for player connection status
-    const interval = setInterval(checkPlayersConnected, 1500);
-    checkPlayersConnected(); // Check immediately
+    // Check immediately
+    checkBattleStatus();
 
-    // For demo purposes, automatically set waiting to false after 18 seconds
-    const demoTimeout = setTimeout(() => {
-      setWaitingForPlayer(false);
+    // Then check every 1.2 seconds
+    const interval = setInterval(checkBattleStatus, 1200);
 
-      // Start the game once the demo timeout completes
-      if (!gameStarted) {
-        startGame();
-      }
-    }, 4000);
-
-    return () => {
-      clearInterval(interval);
-      clearTimeout(demoTimeout);
-    };
-  }, [lobbyCode, gameStarted]);
-
-  // Start the game and determine who goes first
-  const startGame = () => {
-    setGameStarted(true);
-
-    // Show game start animation
-    setShowGameStart(true);
-
-    // Randomly determine who goes first
-    const hostGoesFirst = Math.random() < 0.5;
-    const playerGoesFirst = hostGoesFirst === isHost;
-    setIsMyTurn(playerGoesFirst);
-
-    // Set text for who goes first
-    setGameStartText(`${playerGoesFirst ? "You" : opponentName} will go first!`);
-
-    // Hide the animation after 2.5 seconds
-    setTimeout(() => {
-      setShowGameStart(false);
-
-      // Show cards after game start animation finishes
-      setTimeout(() => {
-        setShowCards(true);
-
-        // Set initial animation states based on who goes first
-        if (playerGoesFirst) {
-          setPlayerAnimationState("picking");
-          setPlayerPickingIntroComplete(false);
-          setEnemyAnimationState("idle");
-        } else {
-          setEnemyAnimationState("picking");
-          setEnemyPickingIntroComplete(false);
-          setPlayerAnimationState("idle");
-        }
-      }, 500);
-    }, 2500);
-  };
+    return () => clearInterval(interval);
+  }, [lobbyCode, hostUsername, guestUsername, isHost, gameStarted]);
 
   // Handle card selection
   const handleCardSelected = (cardId: string) => {
@@ -309,6 +313,7 @@ export default function PvpBattle() {
             <CardSelection
               isMyTurn={isMyTurn}
               opponentName={opponentName}
+              playerName={playerName}
               onCardSelected={handleCardSelected}
             />
           </div>

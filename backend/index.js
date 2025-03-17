@@ -7,6 +7,7 @@ import friendRoutes from "./routes/FriendRoutes.js";
 import userInfoRoutes from "./routes/UserInfoRoutes.js";
 import lobbyRoutes from "./routes/lobby.routes.js";
 import battleRoutes from "./routes/battle.routes.js";
+import gameplayRoutes from "./routes/gameplay.routes.js";
 import openAiRoutes from "./routes/OpenAiRoutes.js";
 import searchRoutes from "./routes/SearchRoutes.js"; // Import search routes
 import adminRoutes from "./routes/admin/AdminRoutes.js"; // Import admin routes
@@ -47,6 +48,7 @@ app.use("/api/user-info", userInfoRoutes);
 app.use("/api/lobby", lobbyRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/battle", battleRoutes);
+app.use("/api/gameplay", gameplayRoutes);
 app.use("/api/openai", openAiRoutes);
 app.use("/api/admin", adminRoutes); // Mount admin routes under /api/admin
 app.use("/api/ocr", ocrRoutes);

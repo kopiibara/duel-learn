@@ -14,8 +14,9 @@ export default function Player2ModeSelection() {
   const navigate = useNavigate();
   const { hostUsername, guestUsername, lobbyCode } = location.state || {};
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Easy Mode");
+  const [hostSelectedDifficulty, setHostSelectedDifficulty] = useState<string | null>(null);
 
-  // Add polling effect to check for difficulty updates
+  // Poll for host's difficulty selection
   useEffect(() => {
     const checkDifficulty = async () => {
       try {
@@ -24,9 +25,18 @@ export default function Player2ModeSelection() {
         );
 
         if (response.data.success && response.data.data.difficulty) {
+          setHostSelectedDifficulty(response.data.data.difficulty);
           setSelectedDifficulty(response.data.data.difficulty);
 
-          // Navigate to battle when difficulty is received
+          // When host has selected, update battle_gameplay to mark guest as ready
+          await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize`, {
+            lobby_code: lobbyCode,
+            host_id: hostUsername,
+            guest_id: guestUsername,
+            guest_in_battle: true // Mark guest as entered
+          });
+
+          // Navigate to battle
           navigate("/dashboard/pvp-battle", {
             state: {
               lobbyCode,

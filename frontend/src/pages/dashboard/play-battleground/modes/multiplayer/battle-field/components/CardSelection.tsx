@@ -16,6 +16,7 @@ interface Card {
 export interface CardSelectionProps {
     isMyTurn: boolean;
     opponentName: string;
+    playerName: string;
     onCardSelected: (cardId: string) => void;
 }
 
@@ -25,6 +26,7 @@ export interface CardSelectionProps {
 const CardSelection: React.FC<CardSelectionProps> = ({
     isMyTurn,
     opponentName,
+    playerName,
     onCardSelected
 }) => {
     const [showBackCard, setShowBackCard] = useState(true);
@@ -47,16 +49,13 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             setBackCardExitComplete(false);
             setAnimationComplete(false);
 
-            // Start the card animation sequence - no need to coordinate with character animation
+            // Start the card animation sequence
             const flipTimer = setTimeout(() => {
                 setShowBackCard(false);
-                // showCardOptions will be set to true after back card exit animation completes
-
-                // Indicate that our animation sequence is complete
                 setTimeout(() => {
                     setAnimationComplete(true);
-                }, 500); // Allow time for the exit animation
-            }, 1000); // Just use a reasonable time for card animation
+                }, 500);
+            }, 1000);
 
             return () => clearTimeout(flipTimer);
         } else {
@@ -79,76 +78,78 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         setShowCardOptions(false);
     };
 
-    if (!isMyTurn) {
-        return (
-            <div className="absolute inset-0 flex items-center top-[100px] justify-center z-20">
-                <div className="text-white text-3xl font-bold animate-pulse">
-                    {opponentName}'s turn
-                </div>
-            </div>
-        );
-    }
+    // Show whose turn it is
+    const currentTurnText = `${isMyTurn ? playerName : opponentName}'s turn`;
 
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120">
-            <AnimatePresence onExitComplete={handleBackCardExitComplete}>
-                {showBackCard && (
-                    <motion.div
-                        className="w-[220px] h-[320px] overflow-hidden shadow-lg shadow-purple-500/30"
-                        initial={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1, rotateY: 0 }}
-                        exit={{ rotateY: 90, opacity: 0 }}
-                        transition={{
-                            duration: 0.7,
-                            exit: { duration: 0.5 }
-                        }}
-                    >
-                        <img
-                            src={cardBackImage}
-                            alt="Card Back"
-                            className="w-full h-full object-contain"
-                        />
-                    </motion.div>
-                )}
-            </AnimatePresence>
+            {/* Always show whose turn it is */}
+            <div className="absolute inset-0 flex items-center top-[100px] justify-center z-20">
+                <div className="text-white text-3xl font-bold animate-pulse">
+                    {currentTurnText}
+                </div>
+            </div>
 
-            <AnimatePresence>
-                {showCardOptions && backCardExitComplete && (
-                    <div className="flex gap-4">
-                        {cards.map((card, index) => (
+            {isMyTurn && (
+                <>
+                    <AnimatePresence onExitComplete={handleBackCardExitComplete}>
+                        {showBackCard && (
                             <motion.div
-                                key={card.id}
-                                className="w-[200px] h-[300px] rounded-xl overflow-hidden cursor-pointer shadow-md relative"
-                                initial={{ opacity: 0, y: 20, rotateY: -90 }}
-                                animate={{ opacity: 1, y: 0, rotateY: 0 }}
+                                className="w-[220px] h-[320px] overflow-hidden shadow-lg shadow-purple-500/30"
+                                initial={{ scale: 0.5, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1, rotateY: 0 }}
+                                exit={{ rotateY: 90, opacity: 0 }}
                                 transition={{
-                                    duration: 0.4,
-                                    delay: index * 0.15,
-                                    ease: "easeOut"
-                                }}
-                                onClick={() => handleCardSelect(card.id)}
-                                whileHover={{
-                                    y: -10,
-                                    transition: { duration: 0.2 }
+                                    duration: 0.7,
+                                    exit: { duration: 0.5 }
                                 }}
                             >
                                 <img
-                                    src={cardFrontImage}
-                                    alt={`${card.name} Card`}
+                                    src={cardBackImage}
+                                    alt="Card Back"
                                     className="w-full h-full object-contain"
                                 />
-
-                                {/* No need for text overlay as the card image already has the design */}
                             </motion.div>
-                        ))}
-                    </div>
-                )}
-            </AnimatePresence>
+                        )}
+                    </AnimatePresence>
 
-            {showCardOptions && backCardExitComplete && (
-                <div className="absolute bottom-[170px] text-white text-xl font-semibold">
-                    Choose a card to use in this round
-                </div>
+                    <AnimatePresence>
+                        {showCardOptions && backCardExitComplete && (
+                            <div className="flex gap-4">
+                                {cards.map((card, index) => (
+                                    <motion.div
+                                        key={card.id}
+                                        className="w-[200px] h-[300px] rounded-xl overflow-hidden cursor-pointer shadow-md relative"
+                                        initial={{ opacity: 0, y: 20, rotateY: -90 }}
+                                        animate={{ opacity: 1, y: 0, rotateY: 0 }}
+                                        transition={{
+                                            duration: 0.4,
+                                            delay: index * 0.15,
+                                            ease: "easeOut"
+                                        }}
+                                        onClick={() => handleCardSelect(card.id)}
+                                        whileHover={{
+                                            y: -10,
+                                            transition: { duration: 0.2 }
+                                        }}
+                                    >
+                                        <img
+                                            src={cardFrontImage}
+                                            alt={`${card.name} Card`}
+                                            className="w-full h-full object-contain"
+                                        />
+                                    </motion.div>
+                                ))}
+                            </div>
+                        )}
+                    </AnimatePresence>
+
+                    {showCardOptions && backCardExitComplete && (
+                        <div className="absolute bottom-[170px] text-white text-xl font-semibold">
+                            Choose a card to use in this round
+                        </div>
+                    )}
+                </>
             )}
         </div>
     );

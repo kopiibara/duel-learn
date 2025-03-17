@@ -47,9 +47,18 @@ export default function DifficultySelection() {
     if (!selectedDifficulty || !lobbyCode) return;
 
     try {
+      // First update difficulty in battle_invitations
       await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/difficulty`, {
         lobby_code: lobbyCode,
         difficulty: selectedDifficulty,
+      });
+
+      // Then initialize entry in battle_gameplay
+      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize`, {
+        lobby_code: lobbyCode,
+        host_id: hostUsername,
+        guest_id: guestUsername,
+        host_in_battle: true // Mark host as entered
       });
 
       navigate("/dashboard/pvp-battle", {
@@ -58,11 +67,11 @@ export default function DifficultySelection() {
           difficulty: selectedDifficulty,
           isHost: true,
           hostUsername,
-          guestUsername,
-        },
+          guestUsername
+        }
       });
     } catch (error) {
-      console.error("Error updating difficulty:", error);
+      console.error("Error starting game:", error);
     }
   };
 
