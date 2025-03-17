@@ -6,6 +6,8 @@ export const initializeBattle = async (req, res) => {
             lobby_code,
             host_id,
             guest_id,
+            host_username,
+            guest_username,
             host_in_battle,
             guest_in_battle
         } = req.body;
@@ -30,12 +32,15 @@ export const initializeBattle = async (req, res) => {
             const updateQuery = `
                 UPDATE battle_gameplay 
                 SET 
-                    ${host_in_battle ? 'host_in_battle = true' : 'guest_in_battle = true'},
+                    ${host_in_battle ? 'host_in_battle = true, host_username = ?' : 'guest_in_battle = true, guest_username = ?'},
                     updated_at = CURRENT_TIMESTAMP
                 WHERE lobby_code = ? AND is_active = true
             `;
 
-            await pool.query(updateQuery, [lobby_code]);
+            await pool.query(updateQuery, [
+                host_in_battle ? host_username : guest_username,
+                lobby_code
+            ]);
 
             // Check if both players are now in battle
             const [updatedBattle] = await pool.query(
@@ -45,16 +50,14 @@ export const initializeBattle = async (req, res) => {
             );
 
             if (updatedBattle[0].host_in_battle && updatedBattle[0].guest_in_battle) {
-                // Both players are in, randomly select first turn
-                const firstTurn = Math.random() < 0.5 ? host_id : guest_id;
-
+                // Both players are in, set battle as started and set initial turn to host
                 await pool.query(
                     `UPDATE battle_gameplay 
-                     SET current_turn = ?, 
-                         battle_started = true,
+                     SET battle_started = true,
+                         current_turn = ?,
                          updated_at = CURRENT_TIMESTAMP
                      WHERE lobby_code = ? AND is_active = true`,
-                    [firstTurn, lobby_code]
+                    [host_id, lobby_code]
                 );
 
                 return res.json({
@@ -62,7 +65,7 @@ export const initializeBattle = async (req, res) => {
                     data: {
                         battle_id: updatedBattle[0].id,
                         lobby_code,
-                        current_turn: firstTurn,
+                        current_turn: host_id,
                         battle_started: true
                     }
                 });
@@ -82,17 +85,19 @@ export const initializeBattle = async (req, res) => {
         // Initialize new battle
         const query = `
             INSERT INTO battle_gameplay 
-            (lobby_code, host_id, guest_id, current_turn, round_number, 
+            (lobby_code, host_id, host_username, guest_id, guest_username, current_turn, round_number, 
              total_rounds, host_score, guest_score, host_health, guest_health, 
              is_active, host_in_battle, guest_in_battle, battle_started)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const values = [
             lobby_code,
             host_id,
+            host_username,
             guest_id,
-            host_id, // Set initial turn to host_id instead of NULL
+            guest_username,
+            host_id, // Always set initial turn to host_id instead of null
             1, // Starting round
             30, // Total rounds
             0, // Initial host score

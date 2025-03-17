@@ -78,17 +78,16 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         setShowCardOptions(false);
     };
 
-    // Show whose turn it is
-    const currentTurnText = `${isMyTurn ? playerName : opponentName}'s turn`;
-
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120">
-            {/* Always show whose turn it is */}
-            <div className="absolute inset-0 flex items-center top-[100px] justify-center z-20">
-                <div className="text-white text-3xl font-bold animate-pulse">
-                    {currentTurnText}
+            {/* Only show turn indicator when it's NOT the player's turn */}
+            {!isMyTurn && (
+                <div className="absolute inset-0 flex items-center top-[100px] justify-center z-20">
+                    <div className="text-white text-3xl font-bold animate-pulse">
+                        {`${opponentName}'s turn`}
+                    </div>
                 </div>
-            </div>
+            )}
 
             {isMyTurn && (
                 <>

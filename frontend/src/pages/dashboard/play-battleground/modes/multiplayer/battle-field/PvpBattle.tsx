@@ -95,35 +95,49 @@ export default function PvpBattle() {
             if (battleState.host_in_battle && battleState.guest_in_battle) {
               setWaitingForPlayer(false);
 
-              // If battle has started, show game start animation
-              if (battleState.battle_started && !gameStarted) {
-                setGameStarted(true);
-                setShowGameStart(true);
-                setGameStartText(
-                  `${battleState.current_turn === hostUsername ? "Host" : "Guest"} will go first!`
-                );
+              // If battle has started, check if current_turn is set
+              if (battleState.battle_started) {
+                if (!gameStarted) {
+                  setGameStarted(true);
+                  setShowGameStart(true);
 
-                // Hide the animation after 2.5 seconds
-                setTimeout(() => {
-                  setShowGameStart(false);
-                  setShowCards(true);
-                }, 2500);
+                  // Default to host_id if current_turn is not set
+                  const effectiveTurn = battleState.current_turn || battleState.host_id;
 
-                // Set initial turn state
-                const isCurrentPlayerTurn = isHost
-                  ? battleState.current_turn === hostUsername
-                  : battleState.current_turn === guestUsername;
-                setIsMyTurn(isCurrentPlayerTurn);
+                  // Determine if it's the current player's turn based on effectiveTurn
+                  const isCurrentPlayerTurn = isHost
+                    ? effectiveTurn === battleState.host_id
+                    : effectiveTurn === battleState.guest_id;
 
-                // Set initial animations
-                if (isCurrentPlayerTurn) {
-                  setPlayerAnimationState("picking");
-                  setPlayerPickingIntroComplete(false);
-                  setEnemyAnimationState("idle");
-                } else {
-                  setEnemyAnimationState("picking");
-                  setEnemyPickingIntroComplete(false);
-                  setPlayerAnimationState("idle");
+                  // Set the game start text based on whose turn it is
+                  if (isCurrentPlayerTurn) {
+                    setGameStartText("You will go first!");
+                  } else {
+                    const opponentName = isHost
+                      ? battleState.guest_username || "Guest"
+                      : battleState.host_username || "Host";
+                    setGameStartText(`${opponentName} will go first!`);
+                  }
+
+                  // Hide the animation after 2.5 seconds
+                  setTimeout(() => {
+                    setShowGameStart(false);
+                    setShowCards(true);
+                  }, 2500);
+
+                  // Set initial turn state
+                  setIsMyTurn(isCurrentPlayerTurn);
+
+                  // Set initial animations
+                  if (isCurrentPlayerTurn) {
+                    setPlayerAnimationState("picking");
+                    setPlayerPickingIntroComplete(false);
+                    setEnemyAnimationState("idle");
+                  } else {
+                    setEnemyAnimationState("picking");
+                    setEnemyPickingIntroComplete(false);
+                    setPlayerAnimationState("idle");
+                  }
                 }
               }
             }
@@ -319,8 +333,11 @@ export default function PvpBattle() {
           </div>
         )}
 
-        {/* Waiting overlay */}
-        <WaitingOverlay isVisible={waitingForPlayer} />
+        {/* Waiting overlay - now only checks for players and battle started */}
+        <WaitingOverlay
+          isVisible={waitingForPlayer || !battleState?.battle_started}
+          message={!battleState?.battle_started ? "Waiting for game to start..." : undefined}
+        />
       </div>
     </div>
   );

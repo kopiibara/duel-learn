@@ -2,13 +2,26 @@ import React from "react";
 
 export interface WaitingOverlayProps {
     isVisible: boolean;
+    waitingForTurn?: boolean;
+    message?: string;
 }
 
 /**
  * WaitingOverlay component displays a waiting screen while looking for an opponent
  */
-const WaitingOverlay: React.FC<WaitingOverlayProps> = ({ isVisible }) => {
-    if (!isVisible) return null;
+const WaitingOverlay: React.FC<WaitingOverlayProps> = ({ isVisible, waitingForTurn = false, message }) => {
+    // If neither condition is true, don't render the overlay
+    if (!isVisible && !waitingForTurn) return null;
+
+    // Determine the appropriate message
+    const displayMessage = message || (
+        waitingForTurn
+            ? "Waiting for the game to start..."
+            : "Please stand by while we wait for your opponent to connect..."
+    );
+
+    // Determine the title
+    const title = waitingForTurn ? "PREPARING BATTLE" : "WAITING FOR OPPONENT";
 
     return (
         <div className="fixed inset-0 bg-black/60 z-30 flex flex-col items-center justify-center">
@@ -23,12 +36,12 @@ const WaitingOverlay: React.FC<WaitingOverlayProps> = ({ isVisible }) => {
 
                 {/* Waiting text */}
                 <h1 className="text-lg sm:text-2xl font-bold mb-2 sm:mb-3 text-purple-300 tracking-wide uppercase">
-                    WAITING FOR OPPONENT
+                    {title}
                 </h1>
 
                 {/* Status message */}
                 <p className="text-purple-200/80 text-xs sm:text-sm mb-4 sm:mb-8 max-w-xs mx-auto">
-                    Please stand by while we wait for your opponent to connect...
+                    {displayMessage}
                 </p>
 
                 {/* Loading animation dot */}

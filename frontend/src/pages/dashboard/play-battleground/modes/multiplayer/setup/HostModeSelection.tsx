@@ -58,6 +58,8 @@ export default function DifficultySelection() {
         lobby_code: lobbyCode,
         host_id: hostUsername,
         guest_id: guestUsername,
+        host_username: hostUsername,
+        guest_username: guestUsername,
         host_in_battle: true // Mark host as entered
       });
 
