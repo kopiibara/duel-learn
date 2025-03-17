@@ -22,14 +22,31 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 }) => {
   const [isGeneratingAI, setIsGeneratingAI] = useState(true);
   const [aiQuestions, setAiQuestions] = useState<any[]>([]);
-  const { playCorrectAnswerSound, playIncorrectAnswerSound } = useAudio();
+  const {
+    playCorrectAnswerSound,
+    playIncorrectAnswerSound,
+    playTimePressuredAudio,
+    pauseAudio,
+  } = useAudio();
 
   // Fix whitespace and case sensitivity issues
   const normalizedMode = String(mode).trim();
 
-  if (normalizedMode === "Time Pressured") {
-    // ...
-  }
+  // Initialize time-pressured audio when component mounts
+  useEffect(() => {
+    if (normalizedMode === "Time Pressured") {
+      // Pause any existing audio first
+      pauseAudio();
+      // Start with regular time-pressured audio (not speed-up)
+      // Using 30 as a default time remaining value to ensure we start with regular audio, not speed-up
+      playTimePressuredAudio(30);
+    }
+
+    // Clean up when component unmounts
+    return () => {
+      pauseAudio();
+    };
+  }, [normalizedMode, pauseAudio, playTimePressuredAudio]);
 
   // Generate AI questions when component mounts
   useEffect(() => {
@@ -154,6 +171,29 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     timeLimit,
     aiQuestions,
   });
+
+  // Effect to update time-pressured audio based on remaining time
+  useEffect(() => {
+    if (questionTimer !== null) {
+      // Only update audio if it's actually changed (i.e., crossed the 5-second threshold)
+      const isSpeedUpThreshold = questionTimer <= 5;
+      const shouldUpdateAudio =
+        (isSpeedUpThreshold && (previousTimerRef.current ?? Infinity) > 5) || // Just crossed below 5
+        (!isSpeedUpThreshold && (previousTimerRef.current ?? 0) <= 5) || // Just crossed above 5
+        previousTimerRef.current === null; // First time
+
+      if (shouldUpdateAudio) {
+        console.log(`Timer audio update: ${questionTimer} seconds remaining`);
+        playTimePressuredAudio(questionTimer);
+      }
+
+      // Store the current timer value for next comparison
+      previousTimerRef.current = questionTimer;
+    }
+  }, [questionTimer, playTimePressuredAudio]);
+
+  // Track previous timer value for optimized audio updates
+  const previousTimerRef = React.useRef<number | null>(null);
 
   // Custom answer submit handler with sound effects
   const handleAnswerSubmit = (answer: string) => {

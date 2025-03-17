@@ -7,14 +7,12 @@ import AdminDrawerSidebarMenu from "./AdminDrawerSidebarMenu";
 import AdminSearchField from "./AdminSearchField";
 import AdminStatsNProfile from "./AdminStatsNProfile";
 import { useNavigate } from "react-router-dom";
-import { useUser } from "../../contexts/UserContext";
 
 export default function AdminHeader() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [collapsed] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const { user } = useUser();
   const navigate = useNavigate();
 
   const toggleDrawer = (open: boolean) => {

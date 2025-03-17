@@ -11,6 +11,7 @@ import { styled } from "@mui/system";
 import { useState } from "react";
 import SelectStudyMaterialModal from "./modals/SelectStudyMaterialModal";
 import { StudyMaterial } from "../types/studyMaterialObject";
+import { useAudio } from "../contexts/AudioContext";
 
 // Using a function to make the styled component responsive with theme access
 const ModeCard = styled(Card)(({ theme }) => {
@@ -66,6 +67,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
   const [isLobby, setIsLobby] = useState(false); // Add this state
   const theme = useTheme();
   const isXsScreen = useMediaQuery(theme.breakpoints.down("sm"));
+  const { setActiveModeAudio } = useAudio();
 
   // Handler for material selection
   const handleMaterialSelect = (material: StudyMaterial) => {
@@ -90,6 +92,9 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
 
     // Set isLobby flag based on the mode
     setIsLobby(mode === "PvP Mode");
+
+    // Remove audio trigger from here - it should only play on the welcome page
+    // setActiveModeAudio(mode);
 
     setModalOpen(true);
   };

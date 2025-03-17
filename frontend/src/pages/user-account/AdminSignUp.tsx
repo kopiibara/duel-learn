@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
+import { updateProfile } from "firebase/auth";
 import { auth } from "../../services/firebase";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import "../../index.css";
 import PageTransition from "../../styles/PageTransition";
 import useCombinedErrorHandler from "../../hooks/validation.hooks/useCombinedErrorHandler";
@@ -13,17 +13,29 @@ import * as Yup from "yup";
 import useGoogleAuth from "../../hooks/auth.hooks/useGoogleAuth";
 import { useStoreUser } from '../../hooks/api.hooks/useStoreUser';
 import { useUser } from "../../contexts/UserContext";
+import { useAuth } from "../../contexts/AuthContext";
 import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { setAuthToken } from "../../api/apiClient";
+import PasswordValidationTooltip from "../../components/PasswordValidationTooltip";
 
 const AdminSignUp = () => {
   const { handleError, combinedError } = useCombinedErrorHandler();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const { storeUser } = useStoreUser();
   const { handleGoogleAuth, loading: googleLoading } = useGoogleAuth();
-  const { loginAndSetUserData } = useUser();
+  const { loadUserData } = useUser();
+  const { signup, error: authError } = useAuth();
+
+  // Handle auth errors
+  useEffect(() => {
+    if (authError) {
+      handleError(new Error(authError));
+    }
+  }, [authError, handleError]);
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
@@ -48,7 +60,7 @@ const AdminSignUp = () => {
   const validationSchema = Yup.object({
     username: Yup.string()
       .required("Username is required.")
-      .min(8, "Username must be at least 8 characters.")
+      .min(2, "Username must be at least 2 characters.")
       .max(20, "Username cannot exceed 20 characters.")
       .matches(/^[a-zA-Z0-9_]+$/, "Username can only contain alphanumeric characters and underscores.")
       .test("unique", "Username is already taken", async function(value) {
@@ -93,38 +105,87 @@ const AdminSignUp = () => {
     validationSchema,
     onSubmit: async (values) => {
       setLoading(true);
+      let firebaseUser = null; // Variable to track if we need to delete Firebase user on error
+      
       try {
-        const result = await createUserWithEmailAndPassword(auth, values.email, values.password);
-        await updateProfile(result.user, { displayName: values.username });
-        const token = await result.user.getIdToken();
+        // Use AuthContext signup instead of direct Firebase call
+        const user = await signup(values.email, values.password);
+        firebaseUser = user; // Store reference for cleanup in case of error
+        await updateProfile(user, { displayName: values.username });
+        
+        // Get a fresh token and make sure it's set in apiClient
+        console.log("Getting fresh token and setting up authentication...");
+        
+        // Multiple attempts to get a fresh token if needed
+        let token = null;
+        let tokenAttempts = 0;
+        const MAX_TOKEN_ATTEMPTS = 3;
+        
+        while (!token && tokenAttempts < MAX_TOKEN_ATTEMPTS) {
+          try {
+            tokenAttempts++;
+            console.log(`Token attempt ${tokenAttempts}/${MAX_TOKEN_ATTEMPTS}`);
+            
+            // Force refresh token
+            token = await user.getIdToken(true);
+            console.log(`Got Firebase token (attempt ${tokenAttempts}):`, token.substring(0, 10) + "...");
+            
+            // Explicitly set the token to ensure it's available for the API call
+            setAuthToken(token);
+            console.log("Token explicitly set in apiClient");
+          } catch (tokenError) {
+            console.error(`Failed to get token on attempt ${tokenAttempts}:`, tokenError);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+        
+        if (!token) {
+          throw new Error("Failed to obtain authentication token after multiple attempts. Please try again.");
+        }
+        
+        // Increase the delay to ensure token is properly set
+        console.log("Waiting for token to propagate...");
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Ready to proceed with API call
+        console.log("Proceeding with storeUser API call...");
 
+        // Store user data in backend
         const storeUserResult = await storeUser({
           username: values.username,
           email: values.email,
           password: values.password,
           account_type: "admin",
-        }, token);
+          isNew: user.metadata.creationTime === user.metadata.lastSignInTime,
+          isSSO: false,
+        });
 
         if (!storeUserResult.success) {
           throw new Error(storeUserResult.error);
         }
 
-        const userData = {
-          email: values.email,
-          username: values.username,
-          email_verified: false,
-          firebase_uid: result.user.uid,
-          isNew: true,
-        };
-        localStorage.setItem("userData", JSON.stringify(userData));
+        // Remove loadUserData as it should only happen after email verification
+        // await loadUserData(user.uid);
 
-        setSuccessMessage("Account created! Please verify your email.");
+        setSuccessMessage("Admin account created! Please verify your email.");
 
         setTimeout(() => {
           setLoading(true); navigate("/verify-email", { state: { token } });
         }, 2000);
 
       } catch (error) {
+        // Clean up Firebase user if it was created but subsequent steps failed
+        if (firebaseUser) {
+          try {
+            console.log("Cleaning up Firebase user due to registration error");
+            await firebaseUser.delete();
+            console.log("Firebase user deleted successfully");
+          } catch (deleteError) {
+            console.error("Error deleting Firebase user:", deleteError);
+            // Continue with error handling even if deletion fails
+          }
+        }
+        
         handleError(error);
         setLoading(false);
       }
@@ -134,7 +195,12 @@ const AdminSignUp = () => {
   const handleGoogleSubmit = async () => {
     try {
       const authResult = await handleGoogleAuth("admin");
-      await loginAndSetUserData(authResult.userData.uid, authResult.token);
+      
+      // Google users are pre-verified, so load user data for them
+      // Google auth typically verifies email automatically
+      if (auth.currentUser && auth.currentUser.emailVerified) {
+        await loadUserData(authResult.userData.uid);
+      }
 
       if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
@@ -214,7 +280,11 @@ const AdminSignUp = () => {
                 required
                 value={formik.values.password}
                 onChange={formik.handleChange}
-                onBlur={formik.handleBlur}
+                onBlur={(e) => {
+                  formik.handleBlur(e);
+                  setIsPasswordFocused(false);
+                }}
+                onFocus={() => setIsPasswordFocused(true)}
                 onCopy={(e) => e.preventDefault()}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
                   formik.touched.password && formik.errors.password
@@ -232,6 +302,12 @@ const AdminSignUp = () => {
                   <VisibilityOffRoundedIcon />
                 )}
               </span>
+              
+              <PasswordValidationTooltip 
+                password={formik.values.password} 
+                isVisible={isPasswordFocused || !!(formik.touched.password && formik.errors.password)}
+              />
+              
               {formik.touched.password && formik.errors.password && (
                 <p className="text-red-500 mt-1 text-sm">{formik.errors.password}</p>
               )}

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { auth } from "../../services/firebase";
+import userService from "../../api/userService";
+
 const useUpdateUserDetailsApi = () => {
   const [apiError, setApiError] = useState<string | null>(null);
 
@@ -10,31 +11,12 @@ const useUpdateUserDetailsApi = () => {
     display_picture?: string
   ) => {
     try {
-      const token = await auth.currentUser?.getIdToken();
-      const response = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/user/update-user-details`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            'Authorization': `Bearer ${token}`,
-          },
-
-          body: JSON.stringify({ 
-            firebase_uid, 
-            username, 
-            newpassword,
-            display_picture,
-            updated_at: new Date().toISOString()
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to update user details");
-      }
-
-      const data = await response.json();
+      const data = await userService.updateUserProfile({
+        firebase_uid,
+        username,
+        newpassword,
+        display_picture
+      });
       return data;
     } catch (error: any) {
       console.error('Error updating user details:', error);

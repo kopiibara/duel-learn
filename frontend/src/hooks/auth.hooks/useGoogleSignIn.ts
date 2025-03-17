@@ -15,18 +15,15 @@ const useGoogleSignIn = () => {
   const { handleLoginError } = useHandleError();
   const [loading, setLoading] = useState(false);
 
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = async (account_type: "free" | "premium" | "admin") => {
     setLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
-      const token = await result.user.getIdToken();
       const additionalUserInfo = getAdditionalInfo(result);
       const isNewUser = additionalUserInfo?.isNewUser ?? false;
 
       console.log("New User Status:", isNewUser);
       console.log("User Email Verified:", result.user.emailVerified);
-
-      localStorage.setItem("userToken", token);
 
       if (isNewUser) {
         try {
@@ -38,14 +35,15 @@ const useGoogleSignIn = () => {
             {
               creationTime: result.user.metadata.creationTime || null,
               lastSignInTime: result.user.metadata.lastSignInTime || null,
-            }
+            },
+            account_type
+
           );
         } catch (error) {
           console.error("Error during Google Sign Up:", error);
           if (error instanceof GoogleSignUpError) {
             if (error.code === 'EMAIL_IN_USE') {
               await auth.signOut();
-              localStorage.removeItem("userToken");
               handleLoginError(new Error(error.message));
               setLoading(false);
               return;

@@ -11,6 +11,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import ModalFriendList from "../../assets/General/ModalFriendList.png";
 import SelectStudyMaterialModal from "./SelectStudyMaterialModal"; // Assuming it's in the same folder
+import { useAudio } from "../../contexts/AudioContext";
 
 interface CustomModalProps {
   open: boolean;
@@ -34,6 +35,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const [selectedTypes, _setSelectedTypes] = useState<string[]>([]);
+  const { setActiveModeAudio } = useAudio();
 
   const buttonData: ButtonData[] = [
     {
@@ -71,6 +73,14 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
 
   const handleModeSelect = (_mode: string) => {
     // Handle the mode selection logic here
+  };
+
+  const handleModeClick = (mode: string) => {
+    setSelectedMode(mode);
+    setModalOpen(true);
+
+    // Remove audio trigger from here - it should only play on the welcome page
+    // setActiveModeAudio(mode);
   };
 
   return (
@@ -196,10 +206,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
                       backgroundColor: button.hoverBackground,
                     },
                   }}
-                  onClick={() => {
-                    setSelectedMode(button.label);
-                    setModalOpen(true);
-                  }}
+                  onClick={() => handleModeClick(button.label)}
                 >
                   {/* Background Image */}
                   <Box

@@ -5,12 +5,12 @@ const storeUserValidation = validate({
   body: Joi.object({
     username: Joi.string()
       .required()
-      .min(8)
+      .min(2)
       .max(20)
       .pattern(/^[a-zA-Z0-9_]+$/)
       .messages({
         'string.empty': 'Username is required.',
-        'string.min': 'Username must be at least 8 characters.',
+        'string.min': 'Username must be at least 2 characters.',
         'string.max': 'Username cannot exceed 20 characters.',
         'string.pattern.base': 'Username can only contain alphanumeric characters and underscores.',
       }),

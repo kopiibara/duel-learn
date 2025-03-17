@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { auth, sendEmail } from "../../services/firebase";
-import { signOut } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
@@ -9,32 +8,34 @@ import useEmailTimestamp from "../../hooks/useEmailTimestamp";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../../services/firebase";
 import { useUser } from "../../contexts/UserContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 const VerifyEmail = () => {
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
-  const { user } = useUser(); // Primary source from UserContext
+  const { user } = useUser(); // User data from UserContext
+  const { currentUser, logout } = useAuth(); // Auth state from AuthContext
   
-  // Use auth as primary, user context as fallback
-  const currentUser = auth.currentUser || {
+  // Use auth currentUser as primary, user context as fallback
+  const userInfo = currentUser || {
     email: user?.email,
     emailVerified: user?.email_verified,
     uid: user?.firebase_uid
   };
 
   const { timeRemaining, isButtonDisabled: isTimestampButtonDisabled, checkTimestamp } = 
-    useEmailTimestamp(currentUser.email || '', currentUser.uid);
+    useEmailTimestamp(userInfo.email || '', userInfo.uid);
 
   const handleSendVerificationEmail = async () => {
     try {
-      console.log("Email Verified:", currentUser.emailVerified);
+      console.log("Email Verified:", userInfo.emailVerified);
       if (auth.currentUser) {
         const actionCodeSettings = {
           url: `${
             import.meta.env.VITE_FRONTEND_URL
-          }/email-action-handler?mode=verifyEmail&firebase_uid=${currentUser.uid}&email=${currentUser.email}`,
+          }/email-action-handler?mode=verifyEmail&firebase_uid=${userInfo.uid}&email=${userInfo.email}`,
           handleCodeInApp: true,
         };
         await sendEmail(auth.currentUser, actionCodeSettings);
@@ -43,9 +44,9 @@ const VerifyEmail = () => {
         setIsEmailSent(true);
 
         // Update timestamp in Firestore
-        if (currentUser.uid) {
+        if (userInfo.uid) {
           try {
-            await updateDoc(doc(db, "temp_users", currentUser.uid), {
+            await updateDoc(doc(db, "temp_users", userInfo.uid), {
               emailTimestamp: serverTimestamp()
             });
           } catch (error) {
@@ -58,8 +59,8 @@ const VerifyEmail = () => {
 
         navigate("/check-your-mail", {
           state: {
-            email: currentUser.email,
-            firebase_uid: currentUser.uid,
+            email: userInfo.email,
+            firebase_uid: userInfo.uid,
             type: "verification",
           },
         });
@@ -85,8 +86,8 @@ const VerifyEmail = () => {
 
   const handleLogoutClick = async () => {
     try {
-      await signOut(auth);
-      localStorage.removeItem("userData");
+      // Use AuthContext logout instead of direct Firebase signOut
+      await logout();
       navigate("/login");
     } catch (error: any) {
       console.error("Error signing out:", error);
@@ -96,7 +97,7 @@ const VerifyEmail = () => {
 
   useEffect(() => {
     checkTimestamp();
-  }, [currentUser.email]);
+  }, [userInfo.email]);
 
   return (
     <PageTransition>
@@ -113,13 +114,13 @@ const VerifyEmail = () => {
           <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
             {errorMessage
               ? errorMessage
-              : currentUser.emailVerified
+              : userInfo.emailVerified
               ? "🌟 A Star Twinkles — Your Email Verification is Complete! 🌟"
               : isEmailSent
               ? "Email has been sent. Please check your inbox."
               : "Please verify your email to continue."}
           </p>
-          {!currentUser.emailVerified && (
+          {!userInfo.emailVerified && (
             <button
               type="button"
               className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"

@@ -1,15 +1,21 @@
-import sampleAvatar from "../../../assets/profile-picture/bunny-picture.png";
+import sampleAvatar from "../../../assets/profile-picture/default-picture.svg";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
+import RefreshIcon from "@mui/icons-material/Refresh";
 import useAccountSettings from "../../../hooks/useAccountSettings";
 import ProfilePictureModal from "../../../components/ProfilePictureModal";
 import useProfilePicture from "../../../hooks/useProfilePicture";
 import DeleteAccountModal from "../../../components/DeleteAccountModal";
 import { CircularProgress } from "@mui/material";
 import { useUser } from "../../../contexts/UserContext";
+import { useState } from "react";
+import { Button, Typography } from "@mui/material";
+import { toast } from "react-hot-toast";
 
 export default function AccountSettings() {
-  const { user } = useUser();
+  const { user, refreshUserData } = useUser();
+  const [refreshing, setRefreshing] = useState(false);
+  
   const {
     formik,
     isEditing,
@@ -52,10 +58,38 @@ export default function AccountSettings() {
     handleProfilePictureChange(newPicture);
   };
 
+  const handleRefresh = async () => {
+    if (refreshing) return;
+    
+    setRefreshing(true);
+    try {
+      await refreshUserData();
+      toast.success("User data refreshed successfully");
+    } catch (error) {
+      toast.error("Failed to refresh user data");
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   return (
     <div className="h-auto w-full">
       <main className="px-8">
-        <h1 className="text-2xl font-semibold mb-6">Account Settings</h1>
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl font-semibold">Account Settings</h1>
+          
+          <Button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            variant="contained"
+            color="primary"
+            startIcon={<RefreshIcon className={refreshing ? "animate-spin" : ""} />}
+            sx={{ backgroundColor: "#4D18E8" }}
+          >
+            {refreshing ? "Refreshing..." : "Refresh Data"}
+          </Button>
+        </div>
+        
         <div className="flex items-start">
           <form
             onSubmit={formik.handleSubmit}

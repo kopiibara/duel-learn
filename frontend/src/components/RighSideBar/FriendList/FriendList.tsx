@@ -151,7 +151,10 @@ const FriendList: React.FC = () => {
       // Refresh the friend list
       fetchFriends();
 
-      // Update the pending count
+      // Update the pending count directly - this ensures immediate UI update
+      setPendingCount((prev) => Math.max(0, prev - 1));
+
+      // Update the pending count from server as a backup
       fetchPendingRequestCount();
     } catch (error: any) {
       console.error("Error accepting friend request:", error);
@@ -164,7 +167,6 @@ const FriendList: React.FC = () => {
       });
     }
   };
-
   const handleDeclineFriendRequest = async (senderId: string) => {
     try {
       await handleRejectRequest(senderId);
