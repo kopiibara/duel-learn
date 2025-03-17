@@ -294,7 +294,7 @@ const PVPLobby: React.FC = () => {
     setOpenDialog(false); // Close the modal if canceled
   };
 
-  // Find the useEffect that handles battle started status for guest
+  // Update the useEffect for battle started status for guest
   useEffect(() => {
     // Only run this for guests, not for hosts
     if (!isCurrentUserGuest || !lobbyCode) return;
@@ -309,6 +309,10 @@ const PVPLobby: React.FC = () => {
           console.log("Battle has started! Navigating to difficulty selection...");
           setBattleStarted(true);
 
+          // Get host and guest IDs
+          const hostId = players[0]?.firebase_uid;
+          const guestId = user?.firebase_uid;
+
           // Navigate guest to their specific route with host username
           navigate("/dashboard/select-difficulty/pvp/player2", {
             state: {
@@ -317,7 +321,9 @@ const PVPLobby: React.FC = () => {
               questionTypes: selectedTypesFinal,
               isGuest: true,
               hostUsername: players[0]?.username,
-              guestUsername: user?.username
+              guestUsername: user?.username,
+              hostId: hostId, // Pass the actual host ID 
+              guestId: guestId  // Pass the actual guest ID
             }
           });
         }
@@ -333,7 +339,7 @@ const PVPLobby: React.FC = () => {
     const interval = setInterval(checkBattleStarted, 1500);
 
     return () => clearInterval(interval);
-  }, [isCurrentUserGuest, lobbyCode, navigate, selectedMaterial, selectedTypesFinal, players, user?.username]);
+  }, [isCurrentUserGuest, lobbyCode, navigate, selectedMaterial, selectedTypesFinal, players, user?.username, user?.firebase_uid]);
 
   // Update the handleBattleStart function
   const handleBattleStart = async () => {
@@ -366,6 +372,10 @@ const PVPLobby: React.FC = () => {
           setManaPoints((prev) => prev - 10);
           console.log("Battle Started!");
 
+          // Get the appropriate IDs
+          const hostId = user?.firebase_uid;
+          const guestId = invitedPlayer?.firebase_uid || players[1]?.firebase_uid;
+
           // Navigate host to their specific route with FIXED guest username
           navigate("/dashboard/select-difficulty/pvp", {
             state: {
@@ -374,7 +384,9 @@ const PVPLobby: React.FC = () => {
               questionTypes: selectedTypesFinal,
               isHost: true,
               hostUsername: user?.username,
-              guestUsername: invitedPlayer?.username || players[1]?.username || "Guest" // Use invited player username instead of host's
+              guestUsername: invitedPlayer?.username || players[1]?.username || "Guest",
+              hostId: hostId, // Pass the actual ID
+              guestId: guestId // Pass the actual ID
             }
           });
         }

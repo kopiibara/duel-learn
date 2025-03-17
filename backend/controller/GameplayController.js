@@ -1,7 +1,10 @@
 import { pool } from '../config/db.js';
 
 export const initializeBattle = async (req, res) => {
+    let connection;
     try {
+        connection = await pool.getConnection();
+
         const {
             lobby_code,
             host_id,
@@ -21,7 +24,7 @@ export const initializeBattle = async (req, res) => {
         }
 
         // Check if battle already exists
-        const [existingBattle] = await pool.query(
+        const [existingBattle] = await connection.query(
             `SELECT * FROM battle_gameplay 
              WHERE lobby_code = ? AND is_active = true`,
             [lobby_code]
@@ -29,24 +32,27 @@ export const initializeBattle = async (req, res) => {
 
         if (existingBattle.length > 0) {
             // Update existing battle with player entry status
+            // Also update IDs to ensure correct IDs are stored
             const updateQuery = `
                 UPDATE battle_gameplay 
                 SET 
                     ${host_in_battle ? 'host_in_battle = true, host_username = ?' : 'guest_in_battle = true, guest_username = ?'},
+                    ${host_in_battle ? 'host_id = ?' : 'guest_id = ?'},
                     updated_at = CURRENT_TIMESTAMP
                 WHERE lobby_code = ? AND is_active = true
             `;
 
             const updateParams = [
-                host_in_battle ? host_username : guest_username
+                host_in_battle ? host_username : guest_username,
+                host_in_battle ? host_id : guest_id
             ];
 
             updateParams.push(lobby_code);
 
-            await pool.query(updateQuery, updateParams);
+            await connection.query(updateQuery, updateParams);
 
             // Check if both players are now in battle
-            const [updatedBattle] = await pool.query(
+            const [updatedBattle] = await connection.query(
                 `SELECT * FROM battle_gameplay 
                  WHERE lobby_code = ? AND is_active = true`,
                 [lobby_code]
@@ -55,7 +61,7 @@ export const initializeBattle = async (req, res) => {
             if (updatedBattle[0].host_in_battle && updatedBattle[0].guest_in_battle) {
                 // Both players are in, set battle as started
                 // But do NOT set current_turn - it will be set by the host's randomizer
-                await pool.query(
+                await connection.query(
                     `UPDATE battle_gameplay 
                      SET battle_started = true,
                          updated_at = CURRENT_TIMESTAMP
@@ -69,7 +75,9 @@ export const initializeBattle = async (req, res) => {
                         battle_id: updatedBattle[0].id,
                         lobby_code,
                         current_turn: updatedBattle[0].current_turn,
-                        battle_started: true
+                        battle_started: true,
+                        host_id: updatedBattle[0].host_id,
+                        guest_id: updatedBattle[0].guest_id
                     }
                 });
             }
@@ -80,7 +88,9 @@ export const initializeBattle = async (req, res) => {
                     battle_id: existingBattle[0].id,
                     lobby_code,
                     host_in_battle: existingBattle[0].host_in_battle || host_in_battle,
-                    guest_in_battle: existingBattle[0].guest_in_battle || guest_in_battle
+                    guest_in_battle: existingBattle[0].guest_in_battle || guest_in_battle,
+                    host_id: existingBattle[0].host_id,
+                    guest_id: existingBattle[0].guest_id
                 }
             });
         }
@@ -113,7 +123,7 @@ export const initializeBattle = async (req, res) => {
             false // Battle not started until both players are in
         ];
 
-        const [result] = await pool.query(query, values);
+        const [result] = await connection.query(query, values);
 
         res.status(201).json({
             success: true,
@@ -121,7 +131,9 @@ export const initializeBattle = async (req, res) => {
                 battle_id: result.insertId,
                 lobby_code,
                 host_in_battle: host_in_battle || false,
-                guest_in_battle: guest_in_battle || false
+                guest_in_battle: guest_in_battle || false,
+                host_id,
+                guest_id
             }
         });
 
@@ -132,11 +144,16 @@ export const initializeBattle = async (req, res) => {
             message: "Failed to initialize battle",
             error: error.message
         });
+    } finally {
+        if (connection) connection.release(); // Always release the connection
     }
 };
 
 export const getBattleState = async (req, res) => {
+    let connection;
     try {
+        connection = await pool.getConnection();
+
         const { lobby_code } = req.params;
 
         const query = `
@@ -145,7 +162,7 @@ export const getBattleState = async (req, res) => {
             ORDER BY created_at DESC LIMIT 1
         `;
 
-        const [battles] = await pool.query(query, [lobby_code]);
+        const [battles] = await connection.query(query, [lobby_code]);
 
         if (battles.length === 0) {
             return res.status(404).json({
@@ -154,9 +171,17 @@ export const getBattleState = async (req, res) => {
             });
         }
 
+        // Ensure the response includes critical ID fields
+        const battleData = {
+            ...battles[0],
+            host_id: battles[0].host_id,
+            guest_id: battles[0].guest_id,
+            current_turn: battles[0].current_turn
+        };
+
         res.json({
             success: true,
-            data: battles[0]
+            data: battleData
         });
 
     } catch (error) {
@@ -166,11 +191,16 @@ export const getBattleState = async (req, res) => {
             message: "Failed to get battle state",
             error: error.message
         });
+    } finally {
+        if (connection) connection.release(); // Always release the connection
     }
 };
 
 export const playCard = async (req, res) => {
+    let connection;
     try {
+        connection = await pool.getConnection();
+
         const {
             lobby_code,
             player_id,
@@ -179,7 +209,7 @@ export const playCard = async (req, res) => {
         } = req.body;
 
         // First, verify it's the player's turn
-        const [currentBattle] = await pool.query(
+        const [currentBattle] = await connection.query(
             `SELECT * FROM battle_gameplay 
              WHERE lobby_code = ? AND is_active = true
              ORDER BY created_at DESC LIMIT 1`,
@@ -195,7 +225,7 @@ export const playCard = async (req, res) => {
 
         const battle = currentBattle[0];
 
-        // Verify it's the player's turn (now using username)
+        // Verify it's the player's turn (using player_id)
         if (battle.current_turn !== player_id) {
             return res.status(400).json({
                 success: false,
@@ -205,7 +235,8 @@ export const playCard = async (req, res) => {
 
         // Update the appropriate card field and switch turns
         const cardField = is_host ? 'host_card' : 'guest_card';
-        const nextTurn = is_host ? battle.guest_username : battle.host_username;
+        // Use IDs instead of usernames for turn tracking
+        const nextTurn = is_host ? battle.guest_id : battle.host_id;
 
         const updateQuery = `
             UPDATE battle_gameplay 
@@ -215,7 +246,7 @@ export const playCard = async (req, res) => {
             WHERE lobby_code = ? AND is_active = true
         `;
 
-        const [result] = await pool.query(updateQuery, [
+        const [result] = await connection.query(updateQuery, [
             card_id,
             nextTurn,
             lobby_code
@@ -243,21 +274,26 @@ export const playCard = async (req, res) => {
             message: "Failed to play card",
             error: error.message
         });
+    } finally {
+        if (connection) connection.release(); // Always release the connection
     }
 };
 
 export const getCurrentTurn = async (req, res) => {
+    let connection;
     try {
+        connection = await pool.getConnection();
+
         const { lobby_code } = req.params;
 
         const query = `
-            SELECT current_turn, host_id, guest_id, round_number 
+            SELECT current_turn, host_id, guest_id, round_number, host_username, guest_username 
             FROM battle_gameplay 
             WHERE lobby_code = ? AND is_active = true
             ORDER BY created_at DESC LIMIT 1
         `;
 
-        const [battles] = await pool.query(query, [lobby_code]);
+        const [battles] = await connection.query(query, [lobby_code]);
 
         if (battles.length === 0) {
             return res.status(404).json({
@@ -272,6 +308,8 @@ export const getCurrentTurn = async (req, res) => {
                 current_turn: battles[0].current_turn,
                 host_id: battles[0].host_id,
                 guest_id: battles[0].guest_id,
+                host_username: battles[0].host_username,
+                guest_username: battles[0].guest_username,
                 round_number: battles[0].round_number
             }
         });
@@ -283,11 +321,16 @@ export const getCurrentTurn = async (req, res) => {
             message: "Failed to get current turn",
             error: error.message
         });
+    } finally {
+        if (connection) connection.release(); // Always release the connection
     }
 };
 
 export const getBattleStatus = async (req, res) => {
+    let connection;
     try {
+        connection = await pool.getConnection();
+
         const { lobby_code } = req.params;
 
         const query = `
@@ -299,6 +342,10 @@ export const getBattleStatus = async (req, res) => {
                 guest_health,
                 host_score,
                 guest_score,
+                host_id,
+                guest_id,
+                host_username,
+                guest_username,
                 round_number,
                 total_rounds
             FROM battle_gameplay 
@@ -306,7 +353,7 @@ export const getBattleStatus = async (req, res) => {
             ORDER BY created_at DESC LIMIT 1
         `;
 
-        const [battles] = await pool.query(query, [lobby_code]);
+        const [battles] = await connection.query(query, [lobby_code]);
 
         if (battles.length === 0) {
             return res.status(404).json({
@@ -327,11 +374,16 @@ export const getBattleStatus = async (req, res) => {
             message: "Failed to get battle status",
             error: error.message
         });
+    } finally {
+        if (connection) connection.release(); // Always release the connection
     }
 };
 
 export const updateTurn = async (req, res) => {
+    let connection;
     try {
+        connection = await pool.getConnection();
+
         const { lobby_code, current_turn } = req.body;
 
         if (!lobby_code || !current_turn) {
@@ -341,9 +393,6 @@ export const updateTurn = async (req, res) => {
             });
         }
 
-        console.log(`Updating turn for lobby ${lobby_code} to ${current_turn}`);
-
-        // Update the current_turn in the database
         const query = `
             UPDATE battle_gameplay 
             SET current_turn = ?,
@@ -351,16 +400,14 @@ export const updateTurn = async (req, res) => {
             WHERE lobby_code = ? AND is_active = true
         `;
 
-        const [result] = await pool.query(query, [current_turn, lobby_code]);
+        const [result] = await connection.query(query, [current_turn, lobby_code]);
 
         if (result.affectedRows === 0) {
             return res.status(404).json({
                 success: false,
-                message: "Battle not found"
+                message: "No active battle found for this lobby"
             });
         }
-
-        console.log(`Successfully updated turn to ${current_turn}`);
 
         res.json({
             success: true,
@@ -377,5 +424,7 @@ export const updateTurn = async (req, res) => {
             message: "Failed to update turn",
             error: error.message
         });
+    } finally {
+        if (connection) connection.release(); // Always release the connection
     }
 }; 

@@ -12,9 +12,9 @@ const cn = (...classes: string[]) => classes.filter(Boolean).join(" ");
 export default function DifficultySelection() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { lobbyCode, hostUsername, guestUsername } = location.state || {};
+  const { lobbyCode, hostUsername, guestUsername, hostId, guestId } = location.state || {};
 
-  console.log("DifficultySelection state:", { lobbyCode, hostUsername, guestUsername, locationState: location.state });
+  console.log("DifficultySelection state:", { lobbyCode, hostUsername, guestUsername, hostId, guestId, locationState: location.state });
 
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Easy Mode");
   const [windowWidth, setWindowWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 0);
@@ -56,8 +56,8 @@ export default function DifficultySelection() {
       // Then initialize entry in battle_gameplay
       await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize`, {
         lobby_code: lobbyCode,
-        host_id: hostUsername,
-        guest_id: guestUsername,
+        host_id: hostId,
+        guest_id: guestId,
         host_username: hostUsername,
         guest_username: guestUsername,
         host_in_battle: true // Mark host as entered
@@ -69,7 +69,9 @@ export default function DifficultySelection() {
           difficulty: selectedDifficulty,
           isHost: true,
           hostUsername,
-          guestUsername
+          guestUsername,
+          hostId,
+          guestId
         }
       });
     } catch (error) {

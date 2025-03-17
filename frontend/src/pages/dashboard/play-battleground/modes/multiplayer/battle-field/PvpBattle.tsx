@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Settings } from "lucide-react";
 
 // Character animations
@@ -43,10 +43,13 @@ interface BattleState {
  */
 export default function PvpBattle() {
   const location = useLocation();
-  const { hostUsername, guestUsername, isHost, lobbyCode } = location.state || {};
+  const { hostUsername, guestUsername, isHost, lobbyCode, hostId, guestId } = location.state || {};
 
   // Debug the values received from location state
-  console.log('PvpBattle state:', { hostUsername, guestUsername, isHost, lobbyCode });
+  console.log('PvpBattle state:', { hostUsername, guestUsername, isHost, lobbyCode, hostId, guestId });
+
+  // Reference to track polling intervals
+  const pollingIntervalRef = useRef<number | null>(null);
 
   // Game state
   const [timeLeft, setTimeLeft] = useState(25);
@@ -65,12 +68,14 @@ export default function PvpBattle() {
   // Player info
   const playerName = isHost ? (hostUsername || "Host") : (guestUsername || "Guest");
   const opponentName = isHost ? (guestUsername || "Guest") : (hostUsername || "Host");
+  const currentUserId = isHost ? hostId : guestId;
+  const opponentId = isHost ? guestId : hostId;
   const playerHealth = 100;
   const opponentHealth = 100;
   const maxHealth = 100;
 
   // Debug the assigned player names
-  console.log('Assigned names:', { playerName, opponentName, isHost });
+  console.log('Assigned names:', { playerName, opponentName, isHost, currentUserId, opponentId });
 
   // Animation state for player and enemy
   const [enemyAnimationState, setEnemyAnimationState] = useState("idle");
@@ -83,8 +88,9 @@ export default function PvpBattle() {
   const [randomizing, setRandomizing] = useState(false);
   const [randomizationDone, setRandomizationDone] = useState(false);
 
-  // Check for both players and battle start
+  // Check for both players and battle start with dynamic polling
   useEffect(() => {
+    // Function to check the battle status
     const checkBattleStatus = async () => {
       try {
         if (lobbyCode) {
@@ -117,8 +123,8 @@ export default function PvpBattle() {
 
                   // Determine if it's the current player's turn
                   const isCurrentPlayerTurn = isHost
-                    ? battleState.current_turn === hostUsername
-                    : battleState.current_turn === guestUsername;
+                    ? battleState.current_turn === hostId
+                    : battleState.current_turn === guestId;
 
                   // Set the game start text based on whose turn it is
                   if (isCurrentPlayerTurn) {
@@ -162,11 +168,27 @@ export default function PvpBattle() {
     // Check immediately
     checkBattleStatus();
 
-    // Then check every 1.2 seconds
-    const interval = setInterval(checkBattleStatus, 1200);
+    // Dynamic polling interval based on game state
+    // Use a longer interval once game has started to reduce server load
+    const intervalTime = gameStarted ? 5000 : 2000; // 5 seconds if game started, 2 seconds otherwise
 
-    return () => clearInterval(interval);
-  }, [lobbyCode, hostUsername, guestUsername, isHost, gameStarted, randomizationDone]);
+    console.log(`Setting polling interval to ${intervalTime}ms (game started: ${gameStarted})`);
+
+    // Clear any existing interval
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+    }
+
+    // Set new interval
+    pollingIntervalRef.current = window.setInterval(checkBattleStatus, intervalTime);
+
+    // Cleanup
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
+    };
+  }, [lobbyCode, hostId, guestId, isHost, gameStarted, randomizationDone]);
 
   // Handle card selection
   const handleCardSelected = (cardId: string) => {
@@ -311,11 +333,13 @@ export default function PvpBattle() {
     }, toggleInterval);
   };
 
-  // Function to finalize the random selection
+  // Function to finalize the random selection - update this to use IDs
   const finalizeRandomization = async (selectedPlayer: string) => {
     try {
-      // Use the actual username as the current_turn value
-      console.log(`Finalizing turn randomization: selected ${selectedPlayer}`);
+      // Use the ID instead of username
+      const selectedPlayerId = selectedPlayer === hostUsername ? hostId : guestId;
+
+      console.log(`Finalizing turn randomization: selected ${selectedPlayer} (ID: ${selectedPlayerId})`);
 
       // Set randomizationDone immediately to prevent further randomization attempts
       setRandomizationDone(true);
@@ -326,13 +350,12 @@ export default function PvpBattle() {
       // Show the final selection in the game start text
       setShowGameStart(true);
 
-      // Instead of just updating turn, do a full initialization to also set battle_started=true
-      // This helps both host and guest get synchronized quickly
+      // Update turn with player ID, not username
       await axios.put(
         `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-turn`,
         {
           lobby_code: lobbyCode,
-          current_turn: selectedPlayer
+          current_turn: selectedPlayerId // Use ID instead of username
         }
       );
 
@@ -380,6 +403,7 @@ export default function PvpBattle() {
           name={playerName}
           health={playerHealth}
           maxHealth={maxHealth}
+          userId={currentUserId}
         />
 
         <QuestionTimer
@@ -393,6 +417,7 @@ export default function PvpBattle() {
           health={opponentHealth}
           maxHealth={maxHealth}
           isRightAligned
+          userId={opponentId}
         />
 
         {/* Settings button */}

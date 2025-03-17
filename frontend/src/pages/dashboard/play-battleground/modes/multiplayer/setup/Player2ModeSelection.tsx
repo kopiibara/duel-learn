@@ -12,9 +12,11 @@ import DefaultBackHoverCard from "../../../../../../assets/cards/DefaultCardInsi
 export default function Player2ModeSelection() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { hostUsername, guestUsername, lobbyCode } = location.state || {};
+  const { hostUsername, guestUsername, lobbyCode, hostId, guestId } = location.state || {};
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Easy Mode");
   const [hostSelectedDifficulty, setHostSelectedDifficulty] = useState<string | null>(null);
+
+  console.log("Player2ModeSelection state:", { hostUsername, guestUsername, hostId, guestId, lobbyCode });
 
   // Poll for host's difficulty selection
   useEffect(() => {
@@ -31,11 +33,11 @@ export default function Player2ModeSelection() {
           // When host has selected, update battle_gameplay to mark guest as ready
           await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize`, {
             lobby_code: lobbyCode,
-            host_id: hostUsername,
-            guest_id: guestUsername,
+            host_id: hostId,
+            guest_id: guestId,
             host_username: hostUsername,
             guest_username: guestUsername,
-            guest_in_battle: true // Mark guest as entered (don't set current_turn - use the one set by host)
+            guest_in_battle: true // Mark guest as entered
           });
 
           // Navigate to battle
@@ -45,7 +47,9 @@ export default function Player2ModeSelection() {
               difficulty: response.data.data.difficulty,
               isHost: false,
               hostUsername,
-              guestUsername
+              guestUsername,
+              hostId,
+              guestId
             }
           });
         }
@@ -61,7 +65,7 @@ export default function Player2ModeSelection() {
     const interval = setInterval(checkDifficulty, 1200);
 
     return () => clearInterval(interval);
-  }, [lobbyCode, navigate, hostUsername, guestUsername]);
+  }, [lobbyCode, navigate, hostUsername, guestUsername, hostId, guestId]);
 
   const handleManualSelection = (mode: string) => {
     setSelectedDifficulty(mode);
