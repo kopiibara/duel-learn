@@ -13,7 +13,9 @@ const WelcomeGameMode: React.FC = () => {
   const { mode, material } = location.state || {};
   const [fadeOut, setFadeOut] = useState(false);
   const [setupIsReady, setSetupIsReady] = useState(false);
-  const { playPeacefulModeAudio } = useAudio(); // Use the playPeacefulModeAudio function
+  const { setActiveModeAudio, stopAllAudio } = useAudio();
+  const [audioInitialized, setAudioInitialized] = useState(false);
+
   // Add console log to debug
   console.log("WelcomeGameMode received state:", { mode, material });
 
@@ -44,6 +46,42 @@ const WelcomeGameMode: React.FC = () => {
     checkSetupComponent();
   }, []);
 
+  // Play appropriate audio when the component mounts
+  useEffect(() => {
+    // Only initialize audio once
+    if (audioInitialized) return;
+
+    if (!mode) return;
+
+    // First make sure to stop any currently playing audio
+    stopAllAudio();
+
+    // Use larger delay to ensure audio context is ready
+    const audioTimer = setTimeout(() => {
+      try {
+        console.log("Initializing audio for mode:", mode);
+        // Create a temporary audio element to unblock audio context
+        const tempAudio = new Audio();
+        tempAudio.play().catch(() => {
+          /* Ignore error */
+        });
+
+        // Set the active mode audio
+        setActiveModeAudio(mode);
+        setAudioInitialized(true);
+      } catch (error) {
+        console.error("Error initializing audio:", error);
+      }
+    }, 500);
+
+    // Cleanup function
+    return () => {
+      clearTimeout(audioTimer);
+      // Do NOT stop audio when leaving this component
+      // This will allow audio to continue playing on next screens
+    };
+  }, [mode, setActiveModeAudio, stopAllAudio, audioInitialized]);
+
   // Only start transition when setup is ready
   useEffect(() => {
     if (setupIsReady) {
@@ -63,11 +101,6 @@ const WelcomeGameMode: React.FC = () => {
       }, 1500); // 1.5 second delay
     }
   }, [setupIsReady, navigate, mode, material]);
-
-  // Play peaceful mode audio when the component mounts
-  useEffect(() => {
-    playPeacefulModeAudio();
-  }, [playPeacefulModeAudio]);
 
   return (
     <motion.div
