@@ -55,6 +55,7 @@ const MAX_TERM_LENGTH = 50;
 const MAX_DEFINITION_LENGTH = 500;
 const MAX_IMAGE_SIZE_MB = 10;
 const MAX_TOTAL_PAYLOAD_MB = 50;
+const MIN_REQUIRED_ITEMS = 10;
 
 // Add this helper function to check file size
 const getFileSizeInMB = (base64String: string): number => {
@@ -313,6 +314,13 @@ const CreateStudyMaterial = () => {
 
     if (!title.trim() || items.length === 0) {
       handleShowSnackbar("Title and at least one item are required.");
+      return;
+    }
+
+    if (items.length < MIN_REQUIRED_ITEMS) {
+      handleShowSnackbar(
+        `At least ${MIN_REQUIRED_ITEMS} items are required. You currently have ${items.length} items.`
+      );
       return;
     }
 

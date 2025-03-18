@@ -4,6 +4,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { usePendingFriendRequests } from "../../../../hooks/friends.hooks/usePendingFriendRequests";
 import { useFriendList } from "../../../../hooks/friends.hooks/useFriendList";
 import { useUser } from "../../../../contexts/UserContext";
+import { useSnackbar } from "../../../../contexts/SnackbarContext"; // Import the context
 import cauldronGif from "../../../../assets/General/Cauldron.gif";
 import noFriend from "../../../../assets/images/NoFriend.svg";
 import ErrorSnackbar from "../../../ErrorsSnackbar";
@@ -18,6 +19,7 @@ const FriendRequests: React.FC<FriendRequestsProps> = ({
   onFriendRequestHandled,
 }) => {
   const { user } = useUser();
+  const { showSnackbar } = useSnackbar(); // Use the context
   const [successMessage, setSuccessMessage] = useState<string>("");
   const {
     pendingRequests,
@@ -46,8 +48,9 @@ const FriendRequests: React.FC<FriendRequestsProps> = ({
         onFriendRequestHandled();
       }
 
-      // Show success message
+      // Show success message in both local and global snackbars
       setSuccessMessage(`You are now friends with ${senderUsername}!`);
+      showSnackbar(`You are now friends with ${senderUsername}!`, "success");
 
       // Reset the message after a delay
       setTimeout(() => {
@@ -58,6 +61,7 @@ const FriendRequests: React.FC<FriendRequestsProps> = ({
       setSuccessMessage(
         `Failed to accept friend request from ${senderUsername}. Please try again.`
       );
+      showSnackbar(`Failed to accept friend request`, "error");
     }
   };
 

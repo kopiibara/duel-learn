@@ -5,20 +5,21 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import PersonSearchIcon from "@mui/icons-material/PersonSearch";
 import Badge from "@mui/material/Badge";
 import { useUser } from "../../../contexts/UserContext";
-import { usePendingFriendRequests } from "../../../hooks/friends.hooks/usePendingFriendRequests";
 
 interface FriendListActionsProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  pendingCount?: number;
+  pendingCount: number; // Use this prop instead of requestsCount from hook
 }
 
 const FriendListActions: React.FC<FriendListActionsProps> = ({
   activeTab,
   onTabChange,
+  pendingCount,
 }) => {
   const { user } = useUser();
-  const { requestsCount } = usePendingFriendRequests(user?.firebase_uid);
+  // Remove this line as we're using the prop instead
+  // const { requestsCount } = usePendingFriendRequests(user?.firebase_uid);
 
   return (
     <Stack
@@ -49,9 +50,9 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
               : "text-[#3B354D]"
           }`}
         >
-          {requestsCount > 0 ? (
+          {pendingCount > 0 ? (
             <Badge
-              badgeContent={requestsCount}
+              badgeContent={pendingCount}
               overlap="circular"
               sx={{
                 "& .MuiBadge-badge": {

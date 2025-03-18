@@ -22,7 +22,6 @@ const FriendList: React.FC = () => {
   const [activeTab, setActiveTab] = useState("");
   const [localFriendList, setLocalFriendList] = useState<Friend[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
-  const [lastFetchTime, setLastFetchTime] = useState(0);
   const [pendingCountCache, setPendingCountCache] = useState<{
     count: number;
     timestamp: number;
@@ -76,11 +75,34 @@ const FriendList: React.FC = () => {
       setSnackbar({
         open: true,
         message: `You are now friends with ${
-          data.otherUser.username || "a new user"
+          data.otherUser?.username || data.sender_username || "a new user"
         }!`,
         isSender: true,
         senderId: "",
       });
+
+      // Make sure to update the friend list if this user received the acceptance
+      if (data.newFriend) {
+        setLocalFriendList((prev) => {
+          // Check if friend already exists to prevent duplicates
+          if (
+            !prev.some((f) => f.firebase_uid === data.newFriend.firebase_uid)
+          ) {
+            return [...prev, data.newFriend];
+          }
+          return prev;
+        });
+      }
+
+      // Update the pending count if this was from accepting a request
+      // This is important for badge count
+      if (data.receiver_id === user?.firebase_uid) {
+        setPendingCount((prev) => Math.max(0, prev - 1));
+        setPendingCountCache((prev) => ({
+          count: Math.max(0, prev.count - 1),
+          timestamp: Date.now(),
+        }));
+      }
     },
   });
 
@@ -103,13 +125,11 @@ const FriendList: React.FC = () => {
       }
 
       try {
-        setLastFetchTime(now);
         const response = await axios.get<{ count: number }>(
           `${import.meta.env.VITE_BACKEND_URL}/api/friend/requests-count/${
             user.firebase_uid
           }`
         );
-
         const { count } = response.data;
         if (typeof count === "number") {
           setPendingCount(count);
@@ -168,14 +188,38 @@ const FriendList: React.FC = () => {
 
   const onAcceptFriendRequest = async (senderId: string) => {
     try {
+      // Get the friend's information before accepting
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/friend/user-info/${senderId}`
+      );
+      const friendInfo = response.data;
+
+      // Accept the friend request
       await handleAcceptRequest(senderId);
       setSnackbar({ ...snackbar, open: false });
 
-      // Optimistically update UI
+      // Optimistically update UI immediately
       setPendingCount((prev) => Math.max(0, prev - 1));
 
-      // No need to call fetchFriends() or fetchPendingRequestCount()
-      // Socket events will trigger the necessary updates
+      // Immediately update the friendList with the new friend
+      if (friendInfo) {
+        setLocalFriendList((prev) => {
+          // Check if friend already exists to prevent duplicates
+          if (!prev.some((f) => f.firebase_uid === friendInfo.firebase_uid)) {
+            return [...prev, friendInfo];
+          }
+          return prev;
+        });
+      }
+
+      // Fetch updated data anyway to ensure consistency
+      fetchFriends();
+
+      // Update the pending count cache
+      setPendingCountCache((prev) => ({
+        count: Math.max(0, prev.count - 1),
+        timestamp: Date.now(),
+      }));
     } catch (error: any) {
       console.error("Error accepting friend request:", error);
       setSnackbar({
