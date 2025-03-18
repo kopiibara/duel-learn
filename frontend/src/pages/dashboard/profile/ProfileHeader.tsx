@@ -26,33 +26,34 @@ const ProfileHeader = () => {
   });
   const [accountType, setAccountType] = useState<string | undefined>(undefined);
 
-  // Fetch user info from the API
+  // Extract fetchUserInfo to be reusable
+  const fetchUserInfo = useCallback(async () => {
+    if (!user?.firebase_uid) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/user-info/details/${
+          user.firebase_uid
+        }`
+      );
+      setUserInfo(response.data.user);
+      // Also update the accountType when we get userInfo
+      setAccountType(response.data.user.account_type);
+    } catch (err) {
+      console.error("Error fetching user info:", err);
+      setError("Failed to load user data");
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.firebase_uid, setLoading, setError]);
+
+  // Fetch user info from the API on component mount
   useEffect(() => {
-    const fetchUserInfo = async () => {
-      if (!user?.firebase_uid) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/user-info/details/${
-            user.firebase_uid
-          }`
-        );
-        setUserInfo(response.data.user);
-        // Also update the accountType when we get userInfo
-        setAccountType(response.data.user.account_type);
-      } catch (err) {
-        console.error("Error fetching user info:", err);
-        setError("Failed to load user data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchUserInfo();
-  }, [user?.firebase_uid]);
+  }, [fetchUserInfo]);
 
   // Fetch friend count
   const fetchFriendCount = useCallback(async () => {
@@ -70,16 +71,52 @@ const ProfileHeader = () => {
     }
   }, [user?.firebase_uid]);
 
-  // Initial fetch of friend count
+  // Initial fetch of friend count with optimized polling
   useEffect(() => {
+    // Fetch immediately on component mount
     fetchFriendCount();
 
-    // Set up polling for real-time updates (every 10 seconds)
-    const interval = setInterval(() => {
-      fetchFriendCount();
-    }, 10000);
+    // Set up polling with page visibility awareness
+    let interval: number | null = null;
 
-    return () => clearInterval(interval);
+    // Function to start polling
+    const startPolling = () => {
+      interval = window.setInterval(() => {
+        fetchFriendCount();
+      }, 30000); // Increased to 30 seconds instead of 10
+    };
+
+    // Function to stop polling
+    const stopPolling = () => {
+      if (interval) {
+        window.clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    // Handle visibility change
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        // Page is visible, fetch immediately and start polling
+        fetchFriendCount();
+        startPolling();
+      } else {
+        // Page is hidden, stop polling
+        stopPolling();
+      }
+    };
+
+    // Start initial polling
+    startPolling();
+
+    // Set up visibility change listener
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      // Clean up
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [fetchFriendCount]);
 
   // Update profile data when userInfo changes and check for level up

@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
+import { useAuth } from "../contexts/AuthContext";
 import DashboardLayout from "../layouts/DashboardLayout";
 import Home from "../pages/dashboard/home/HomePage";
 import Explore from "../pages/dashboard/explore/ExplorePage";
@@ -23,8 +24,6 @@ import WelcomeGameMode from "../pages/dashboard/play-battleground/screens/Welcom
 import SetUpTimeQuestion from "../pages/dashboard/play-battleground/components/setup/SetUpTimeQuestion";
 import PVPLobby from "../pages/dashboard/play-battleground/modes/multiplayer/PVPLobby";
 import { useState } from "react";
-import VerifyEmail from "../pages/user-account/VerifyEmail";
-import CheckYourMail from "../pages/user-account/CheckYourMail";
 import LoadingScreen from "../pages/dashboard/play-battleground/screens/LoadingScreen";
 import SessionReport from "../pages/dashboard/play-battleground/screens/SessionReport";
 import PeacefulMode from "../pages/dashboard/play-battleground/modes/peaceful/PeacefulMode";
@@ -34,22 +33,31 @@ import AccountSettings from "../pages/dashboard/settings/AccountSettings";
 import HostModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/HostModeSelection";
 import Player2ModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/Player2ModeSelection";
 import PvpBattle from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/PvpBattle";
+import SearchPage from "../pages/dashboard/search/SearchPage";
 
 const PrivateRoutes = () => {
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
+  const { isAuthenticated, isLoading: authLoading, currentUser } = useAuth();
   const [_selectedIndex, setSelectedIndex] = useState<number | null>(1);
 
-  const token = localStorage.getItem("userToken");
+  // Show loading screen if either auth or user data is still loading
+  if (authLoading || userLoading) {
+    return <LoadingScreen />;
+  }
 
-  if (!user || !token) {
+  // If not authenticated, redirect to landing page
+  if (!isAuthenticated || !currentUser) {
     return <Navigate to="/landing-page" />;
   }
 
-  if (user && token && !user.email_verified) {
-    return <Navigate to="/verify-email" />;
+  // If authenticated but no user data loaded yet, try to load it
+  if (!user) {
+    return <LoadingScreen />;
   }
-  if (user && token && user.isNew && user.email_verified) {
-    <Navigate to="/dashboard/welcome" />;
+
+  // If email not verified, redirect to verification page
+  if (!user.email_verified) {
+    return <Navigate to="/verify-email" />;
   }
 
   return (
@@ -80,12 +88,9 @@ const PrivateRoutes = () => {
           path="study-material/view/:studyMaterialId"
           element={<ViewStudyMaterial />}
         />
+        <Route path="search" element={<SearchPage />} />
         <Route path="account-settings" element={<AccountSettings />} />
       </Route>
-
-      {/* Authentication Routes */}
-      <Route path="verify-email" element={<VerifyEmail />} />
-      <Route path="/check-your-mail" element={<CheckYourMail />} />
 
       {/* Premium Routes */}
       <Route path="/buy-premium-account" element={<BuyPremium />} />

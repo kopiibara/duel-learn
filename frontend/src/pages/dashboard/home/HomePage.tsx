@@ -21,18 +21,35 @@ const HomePage = ({
 
   return (
     <PageTransition>
-      <Box className="h-full w-auto">
+      <Box className="h-full w-auto" sx={{ backgroundColor: "#080511" }}>
         <DocumentHead title="Home | Duel Learn" />
-        <Stack spacing={1} className="px-6 sm:px-6">
+        <Stack spacing={1} className="px-3 sm:px-5 md:px-8">
           <HomeBanner />
-          <Stack spacing={2} className="pb-6 pt-6">
+          <Stack spacing={2} className="pb-4 pt-4 sm:pb-6 sm:pt-6">
             <Stack
               direction={"row"}
               spacing={1.5}
               className="flex items-center justify-start pl-2"
             >
-              <img src="/book.png" className="w-8 h-6" alt="icon" />
-              <Typography variant="h6">Choose your Challenge</Typography>
+              <img
+                src="/book.png"
+                className="w-6 h-5 sm:w-8 sm:h-6"
+                alt="icon"
+              />
+              <Typography
+                variant="h6"
+                sx={{
+                  color: "#E2DDF3",
+                  fontSize: {
+                    xs: "1rem",
+                    sm: "1.1rem",
+                    md: "1.25rem",
+                  },
+                  fontWeight: 600,
+                }}
+              >
+                Choose your Challenge
+              </Typography>
             </Stack>
             <ChooseYourChallenge />
           </Stack>
@@ -44,10 +61,22 @@ const HomePage = ({
                 spacing={1.5}
                 className="flex items-center justify-start pl-2"
               >
-                <img src="/book.png" className="w-8 h-6" alt="icon" />
+                <img
+                  src="/book.png"
+                  className="w-6 h-5 sm:w-8 sm:h-6"
+                  alt="icon"
+                />
                 <Typography
                   variant="h6"
-                  className="text-base sm:text-lg md:text-xl"
+                  sx={{
+                    color: "#E2DDF3",
+                    fontSize: {
+                      xs: "1rem",
+                      sm: "1.1rem",
+                      md: "1.25rem",
+                    },
+                    fontWeight: 600,
+                  }}
                 >
                   Discover more materials
                 </Typography>
@@ -59,13 +88,21 @@ const HomePage = ({
                 sx={{
                   textTransform: "none",
                   borderRadius: "0.8rem",
-                  padding: "0.5rem 1rem",
-                  color: "#3B354D",
+                  padding: {
+                    xs: "0.4rem 0.8rem",
+                    sm: "0.5rem 1rem",
+                  },
+                  fontSize: {
+                    xs: "0.85rem",
+                    sm: "0.9rem",
+                    md: "1rem",
+                  },
+                  color: "#E2DDF3",
                   transition: "all 0.3s ease",
                   "&:hover": {
-                    color: "inherit",
+                    color: "#4D18E8",
                     transform: "scale(1.01)",
-                    backgroundColor: "#3B354C",
+                    backgroundColor: "rgba(77, 24, 232, 0.08)",
                   },
                 }}
               >
@@ -83,8 +120,21 @@ const HomePage = ({
               spacing={1.5}
               className="flex items-center justify-start pl-2"
             >
-              <img src="/book.png" className="w-8 h-6" alt="icon" />
-              <Typography variant="h6">Recently Opened</Typography>
+              <img src="/book.png" className="w-6 h-5 sm:w-8 sm:h-6" alt="icon" />
+              <Typography
+                variant="h6"
+                sx={{ 
+                  color: '#E2DDF3',
+                  fontSize: {
+                    xs: "1rem",
+                    sm: "1.1rem", 
+                    md: "1.25rem"
+                  },
+                  fontWeight: 600
+                }}
+              >
+                Recently Opened
+              </Typography>
             </Stack>
             <RecentlyOpened />
           </Stack> */}

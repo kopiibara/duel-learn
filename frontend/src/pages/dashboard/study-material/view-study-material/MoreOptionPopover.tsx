@@ -23,6 +23,8 @@ interface MoreOptionPopoverProps {
   open: boolean;
   onClose: () => void;
   studyMaterialId: string;
+  studyMaterialTitle: string;
+  studyMaterialVisibility: number;
   isOwner: boolean;
   status?: string; // Add this prop to track if material is archived
   studyMaterialData?: ExportData;
@@ -33,6 +35,8 @@ export default function MoreOptionPopover({
   open,
   onClose,
   studyMaterialId,
+  studyMaterialTitle,
+  studyMaterialVisibility,
   isOwner,
   status,
 }: MoreOptionPopoverProps) {
@@ -189,8 +193,7 @@ export default function MoreOptionPopover({
       if (response.ok) {
         console.log("Study material restored successfully");
         onClose();
-        // Refresh the current page to show updated status
-        window.location.reload();
+        navigate(`/dashboard/my-library`);
       } else {
         const errorData = await response.json();
         console.error("Error restoring study material:", errorData);
@@ -427,6 +430,8 @@ export default function MoreOptionPopover({
         open={shareModalOpen}
         onClose={handleShareModalClose}
         studyMaterialId={studyMaterialId}
+        studyMaterialTitle={studyMaterialTitle}
+        studyMaterialVisibility={studyMaterialVisibility}
       />
     </>
   );

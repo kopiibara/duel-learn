@@ -7,4 +7,11 @@ export interface UserInfo {
   exp: number;
   mana: number;
   coin: number;
+  is_friend?: boolean;
+  friendship_status?:
+    | "friend"
+    | "pending"
+    | "request_sent"
+    | "request_received"
+    | "not_friend";
 }

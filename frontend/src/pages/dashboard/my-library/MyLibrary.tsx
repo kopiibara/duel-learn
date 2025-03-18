@@ -6,6 +6,7 @@ import {
   Skeleton,
   Badge,
   CircularProgress,
+  Divider,
 } from "@mui/material";
 import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
@@ -45,69 +46,90 @@ const MyLibraryPage = () => {
   const [showUpdateLabel, setShowUpdateLabel] = useState(false);
   const updateLabelTimer = useRef<NodeJS.Timeout | null>(null);
 
+  // Add this state to store grouped cards
+  const [groupedCards, setGroupedCards] = useState<
+    Record<string, StudyMaterial[]>
+  >({});
+  const [monthsOrder, setMonthsOrder] = useState<string[]>([]);
+
+  // Create a function to handle update notifications
+  const showTemporaryUpdateLabel = useCallback(() => {
+    // Clear any existing timer
+    if (updateLabelTimer.current) {
+      clearTimeout(updateLabelTimer.current);
+    }
+
+    // Show the label
+    setShowUpdateLabel(true);
+
+    // Set timer to hide it after 5 seconds
+    updateLabelTimer.current = setTimeout(() => {
+      setShowUpdateLabel(false);
+    }, 1000);
+  }, []);
+
   // Create optimized fetch functions with caching
   const fetchStudyMaterials = useCallback(
     async (force = false) => {
       if (!created_by) return;
 
       const now = Date.now();
-      // Reduce cache invalidation time to better match backend's cache TTL (10 minutes)
+      // Extend cache time from 9 minutes to 15 minutes to reduce unnecessary calls
       const needsRefresh =
-        force || now - lastUserMaterialsFetch.current > 540000; // 9 minutes
+        force || now - lastUserMaterialsFetch.current > 900000; // 15 minutes
 
       if (!needsRefresh && cachedUserMaterials.current.length > 0) {
         console.log("Using cached user materials");
         setCards(cachedUserMaterials.current);
-        return;
+        return cachedUserMaterials.current;
       }
 
-      const fetchingUserMaterials = async () => {
-        try {
-          // Use the timestamp parameter to signal the backend to skip its cache when forced
-          const queryParam = force ? `?timestamp=${now}` : "";
-          const response = await fetch(
-            `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/study-material/get-by-user/${created_by}${queryParam}`,
-            {
-              headers: {
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                Pragma: "no-cache",
-              },
-            }
-          );
+      // Don't fetch if already in progress (prevent duplicate requests)
+      if (isBackgroundRefreshing && !force) {
+        return cachedUserMaterials.current;
+      }
 
-          if (!response.ok) {
-            throw new Error(
-              `Failed to fetch study materials: ${response.status}`
-            );
+      try {
+        // Use the timestamp parameter to signal the backend to skip its cache when forced
+        const queryParam = force ? `?timestamp=${now}` : "";
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/study-material/get-by-user/${created_by}${queryParam}`,
+          {
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+            },
           }
+        );
 
-          const data = await response.json();
-          console.log("Fetched study materials:", data.length);
-
-          // Update cache with new data
-          cachedUserMaterials.current = data;
-          lastUserMaterialsFetch.current = now;
-
-          // Update state
-          setCards(data);
-          setLastUpdated(new Date());
-          showTemporaryUpdateLabel();
-        } catch (error) {
-          console.error("Error fetching study materials:", error);
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch study materials: ${response.status}`
+          );
         }
-      };
 
-      if (!isBackgroundRefreshing) {
-        setIsLoading(true);
-        await fetchingUserMaterials();
-        setIsLoading(false);
-      } else {
-        await fetchingUserMaterials();
+        const data = await response.json();
+        console.log("Fetched study materials:", data.length);
+
+        // Update cache with new data
+        cachedUserMaterials.current = data;
+        lastUserMaterialsFetch.current = now;
+
+        // Update state
+        setCards(data);
+        setLastUpdated(new Date());
+        if (!isBackgroundRefreshing) {
+          showTemporaryUpdateLabel();
+        }
+        return data;
+      } catch (error) {
+        console.error("Error fetching study materials:", error);
+        return cachedUserMaterials.current;
       }
     },
-    [created_by, isBackgroundRefreshing]
+    [created_by, isBackgroundRefreshing, showTemporaryUpdateLabel]
   );
 
   const fetchBookmarkedStudyMaterials = useCallback(
@@ -115,71 +137,75 @@ const MyLibraryPage = () => {
       if (!firebase_uid) return;
 
       const now = Date.now();
-      const needsRefresh = force || now - lastBookmarksFetch.current > 540000; // 9 minutes
+      const needsRefresh = force || now - lastBookmarksFetch.current > 900000; // 15 minutes
 
       if (!needsRefresh && cachedBookmarks.current.length > 0) {
         console.log("Using cached bookmarks");
         setBookmarkedCards(cachedBookmarks.current);
-        return;
+        return cachedBookmarks.current;
       }
 
-      const fetchingBookmarks = async () => {
-        try {
-          // Only use timestamp parameter when forcing refresh
-          const queryParam = force ? `?timestamp=${now}` : "";
-          const response = await fetch(
-            `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/study-material/get-bookmarks-by-user/${firebase_uid}${queryParam}`,
-            {
-              headers: {
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                Pragma: "no-cache",
-              },
-            }
-          );
+      // Don't fetch if already in progress (prevent duplicate requests)
+      if (isBackgroundRefreshing && !force) {
+        return cachedBookmarks.current;
+      }
 
-          if (!response.ok) {
-            throw new Error("Failed to fetch bookmarked study materials");
+      try {
+        // Only use timestamp parameter when forcing refresh
+        const queryParam = force ? `?timestamp=${now}` : "";
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/study-material/get-bookmarks-by-user/${firebase_uid}${queryParam}`,
+          {
+            headers: {
+              "Cache-Control": "no-cache, no-store, must-revalidate",
+              Pragma: "no-cache",
+            },
           }
+        );
 
-          const data = await response.json();
-          console.log("Fetched bookmarked materials:", data.length);
-
-          // Transform the bookmarked study materials to match the StudyMaterial format
-          interface BookmarkInfo {
-            bookmarked_at: string;
-          }
-
-          interface BookmarkedStudyMaterialResponse {
-            study_material_info: StudyMaterial;
-            bookmark_info: BookmarkInfo;
-          }
-
-          const formattedBookmarks: StudyMaterial[] = data.map(
-            (item: BookmarkedStudyMaterialResponse) => ({
-              ...item.study_material_info,
-              bookmarked: true,
-              bookmarked_at: item.bookmark_info.bookmarked_at,
-            })
-          );
-
-          // Update cache
-          cachedBookmarks.current = formattedBookmarks;
-          lastBookmarksFetch.current = now;
-
-          // Update state
-          setBookmarkedCards(formattedBookmarks);
-          setLastUpdated(new Date());
-          showTemporaryUpdateLabel();
-        } catch (error) {
-          console.error("Error fetching bookmarked study materials:", error);
+        if (!response.ok) {
+          throw new Error("Failed to fetch bookmarked study materials");
         }
-      };
 
-      await fetchingBookmarks();
+        const data = await response.json();
+        console.log("Fetched bookmarked materials:", data.length);
+
+        // Transform the bookmarked study materials to match the StudyMaterial format
+        interface BookmarkInfo {
+          bookmarked_at: string;
+        }
+
+        interface BookmarkedStudyMaterialResponse {
+          study_material_info: StudyMaterial;
+          bookmark_info: BookmarkInfo;
+        }
+
+        const formattedBookmarks: StudyMaterial[] = data.map(
+          (item: BookmarkedStudyMaterialResponse) => ({
+            ...item.study_material_info,
+            bookmarked: true,
+            bookmarked_at: item.bookmark_info.bookmarked_at,
+          })
+        );
+
+        // Update cache
+        cachedBookmarks.current = formattedBookmarks;
+        lastBookmarksFetch.current = now;
+
+        // Update state
+        setBookmarkedCards(formattedBookmarks);
+        if (!isBackgroundRefreshing) {
+          showTemporaryUpdateLabel();
+        }
+        return formattedBookmarks;
+      } catch (error) {
+        console.error("Error fetching bookmarked study materials:", error);
+        return cachedBookmarks.current;
+      }
     },
-    [firebase_uid]
+    [firebase_uid, isBackgroundRefreshing, showTemporaryUpdateLabel]
   );
 
   // Background refresh function
@@ -193,6 +219,7 @@ const MyLibraryPage = () => {
       fetchBookmarkedStudyMaterials(true),
     ]).finally(() => {
       setIsBackgroundRefreshing(false);
+      setLastUpdated(new Date());
     });
   }, [
     fetchStudyMaterials,
@@ -204,29 +231,50 @@ const MyLibraryPage = () => {
   useEffect(() => {
     if (!created_by || !firebase_uid) return;
 
-    setIsLoading(true);
-    setPreviousCardCount(cards.length || 3);
+    let isMounted = true;
+    const initialLoad = async () => {
+      setIsLoading(true);
+      setPreviousCardCount(cards.length || 3);
 
-    // Fetch both types of data - don't force refresh on initial load
-    // to take advantage of backend preloaded cache
-    Promise.all([
-      fetchStudyMaterials(false),
-      fetchBookmarkedStudyMaterials(false),
-    ]).finally(() => {
-      setIsLoading(false);
-      setLastUpdated(new Date());
-    });
+      // Check if we already have cached data to show immediately
+      if (cachedUserMaterials.current.length > 0) {
+        setCards(cachedUserMaterials.current);
+      }
 
-    // Set up background refresh interval - align with backend's cache TTL (10 minutes)
-    const refreshInterval = setInterval(backgroundRefresh, 300000); // Every 5 minutes
+      if (cachedBookmarks.current.length > 0) {
+        setBookmarkedCards(cachedBookmarks.current);
+      }
 
-    return () => clearInterval(refreshInterval);
+      // Then fetch fresh data if needed
+      try {
+        await Promise.all([
+          fetchStudyMaterials(false),
+          fetchBookmarkedStudyMaterials(false),
+        ]);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+          setLastUpdated(new Date());
+        }
+      }
+    };
+
+    initialLoad();
+
+    // Set up background refresh interval - increase to 10 minutes from 5
+    const refreshInterval = setInterval(backgroundRefresh, 600000); // Every 10 minutes
+
+    return () => {
+      isMounted = false;
+      clearInterval(refreshInterval);
+    };
   }, [
     created_by,
     firebase_uid,
     fetchStudyMaterials,
     fetchBookmarkedStudyMaterials,
     backgroundRefresh,
+    cards.length,
   ]);
 
   // Handle manual refresh request from child components or refresh button
@@ -260,22 +308,6 @@ const MyLibraryPage = () => {
     if (diffHours === 1) return "1 hour ago";
     return `${diffHours} hrs ago`;
   }, [lastUpdated]);
-
-  // Create a function to handle update notifications
-  const showTemporaryUpdateLabel = useCallback(() => {
-    // Clear any existing timer
-    if (updateLabelTimer.current) {
-      clearTimeout(updateLabelTimer.current);
-    }
-
-    // Show the label
-    setShowUpdateLabel(true);
-
-    // Set timer to hide it after 5 seconds
-    updateLabelTimer.current = setTimeout(() => {
-      setShowUpdateLabel(false);
-    }, 1000);
-  }, []);
 
   // Make sure to clean up the timer in useEffect
   useEffect(() => {
@@ -344,14 +376,12 @@ const MyLibraryPage = () => {
     if (sort === "most recent") {
       filteredData.sort(
         (a, b) =>
-          new Date(b.updated_at || b.created_at).getTime() -
-          new Date(a.updated_at || a.created_at).getTime()
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
       );
     } else if (sort === "least recent") {
       filteredData.sort(
         (a, b) =>
-          new Date(a.updated_at || a.created_at).getTime() -
-          new Date(b.updated_at || b.created_at).getTime()
+          new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
       );
     } else if (sort === "A-Z") {
       filteredData.sort((a, b) => a.title.localeCompare(b.title));
@@ -359,91 +389,147 @@ const MyLibraryPage = () => {
       filteredData.sort((a, b) => b.title.localeCompare(a.title));
     }
 
+    // Group cards by month and year
+    const grouped = groupCardsByMonthYear(filteredData);
+
+    // Get months in chronological order (newest to oldest)
+    const months = Object.keys(grouped).sort((a, b) => {
+      const dateA = new Date(a);
+      const dateB = new Date(b);
+      return dateB.getTime() - dateA.getTime();
+    });
+
     setFilteredCards(filteredData);
+    setGroupedCards(grouped);
+    setMonthsOrder(months);
     setCount(filteredData.length);
   }, [filter, sort, cards, bookmarkedCards]);
+
+  const groupCardsByMonthYear = (cards: StudyMaterial[]) => {
+    // Create object to store cards by month/year
+    const groupedCards: Record<string, StudyMaterial[]> = {};
+
+    cards.forEach((card) => {
+      // Parse the created_at date
+      const createdDate = new Date(card.updated_at);
+
+      // Format the month and year as a string key: "January 2025"
+      const monthYear = createdDate.toLocaleDateString("en-US", {
+        month: "long",
+        year: "numeric",
+      });
+
+      // Initialize array if this month/year doesn't exist yet
+      if (!groupedCards[monthYear]) {
+        groupedCards[monthYear] = [];
+      }
+
+      // Add the card to its corresponding month/year group
+      groupedCards[monthYear].push(card);
+    });
+
+    return groupedCards;
+  };
 
   return (
     <PageTransition>
       <Box className="h-full w-full">
         <DocumentHead title="My Library | Duel Learn" />
-        <Stack spacing={2} className="px-8">
+        <Stack spacing={2} className="px-3 sm:px-5 md:px-8">
           <Stack
-            direction={"row"}
-            spacing={1}
-            className="flex items-center justify-center"
+            direction={{ xs: "column", sm: "row" }}
+            spacing={{ xs: 1, sm: 1 }}
+            sx={{
+              alignItems: { xs: "flex-start", sm: "center" },
+              justifyContent: "space-between",
+              mb: { xs: 2, sm: 0 },
+            }}
           >
-            <Typography variant="h6" color="inherit">
-              My Library
-            </Typography>
-            <Typography variant="subtitle2">•</Typography>
-            <Typography variant="h6">{count}</Typography>
-            <Box flexGrow={1} />
-
-            {/* Add refresh button with indicator */}
-            <Box className="flex items-center pr-2">
-              <Typography
-                variant="caption"
-                sx={{
-                  mr: 1,
-                  color: "#6F658D",
-                  opacity: isBackgroundRefreshing || showUpdateLabel ? 1 : 0,
-                  transition: "opacity 0.5s ease-in-out",
-                }}
-              >
-                {isBackgroundRefreshing
-                  ? "Refreshing..."
-                  : `Updated ${formattedLastUpdated()}`}
+            {/* Title section */}
+            <Stack direction="row" spacing={1} alignItems="center">
+              <Typography variant="h6" color="inherit">
+                My Library
               </Typography>
-              {isBackgroundRefreshing ? (
-                <CircularProgress size={20} color="primary" sx={{ mr: 1 }} />
-              ) : (
-                <Badge
-                  color="primary"
-                  variant="dot"
-                  invisible={
-                    lastUserMaterialsFetch.current > Date.now() - 300000
-                  }
-                >
-                  <RefreshIcon
-                    onClick={handleRefresh}
-                    sx={{
-                      cursor: "pointer",
-                      fontSize: "1.2rem",
-                      color: "#6F658D",
-                    }}
-                  />
-                </Badge>
-              )}
-            </Box>
+              <Typography variant="subtitle2">—</Typography>
+              <Typography variant="h6">{count}</Typography>
+            </Stack>
 
-            <Stack direction={"row"} spacing={1}>
-              <Filter
-                menuItems={[
-                  { value: "all", label: "All" },
-                  { value: "public", label: "Public" },
-                  { value: "private", label: "Private" },
-                  { value: "bookmark", label: "Bookmark" },
-                  { value: "archive", label: "Archive" },
-                ]}
-                value={filter}
-                onChange={setFilter}
-                hoverOpen={true}
-              />
-              <Filter
-                menuItems={[
-                  { value: "most recent", label: "Most Recent" },
-                  { value: "least recent", label: "Least Recent" },
-                  { value: "A-Z", label: "A-Z" },
-                  { value: "Z-A", label: "Z-A" },
-                ]}
-                value={sort}
-                onChange={setSort}
-                hoverOpen={true}
-              />
+            {/* Actions section */}
+            <Stack
+              direction="row"
+              spacing={1}
+              alignItems="center"
+              sx={{
+                width: { xs: "100%", sm: "auto" },
+                justifyContent: { xs: "space-between", sm: "flex-end" },
+              }}
+            >
+              {/* Refresh button/indicator */}
+              <Box className="flex items-center">
+                <Typography
+                  variant="caption"
+                  sx={{
+                    mr: 1,
+                    color: "#6F658D",
+                    opacity: isBackgroundRefreshing || showUpdateLabel ? 1 : 0,
+                    transition: "opacity 0.5s ease-in-out",
+                    display: { xs: "none", sm: "block" },
+                  }}
+                >
+                  {isBackgroundRefreshing
+                    ? "Refreshing..."
+                    : `Updated ${formattedLastUpdated()}`}
+                </Typography>
+                {isBackgroundRefreshing ? (
+                  <CircularProgress size={20} color="primary" sx={{ mr: 1 }} />
+                ) : (
+                  <Badge
+                    color="primary"
+                    variant="dot"
+                    invisible={
+                      lastUserMaterialsFetch.current > Date.now() - 300000
+                    }
+                  >
+                    <RefreshIcon
+                      onClick={handleRefresh}
+                      sx={{
+                        cursor: "pointer",
+                        fontSize: { xs: "1rem", sm: "1.2rem" },
+                        color: "#6F658D",
+                      }}
+                    />
+                  </Badge>
+                )}
+              </Box>
+
+              {/* Filters */}
+              <Stack direction={"row"} spacing={1} sx={{ flexShrink: 0 }}>
+                <Filter
+                  menuItems={[
+                    { value: "all", label: "All" },
+                    { value: "public", label: "Public" },
+                    { value: "private", label: "Private" },
+                    { value: "bookmark", label: "Bookmark" },
+                    { value: "archive", label: "Archive" },
+                  ]}
+                  value={filter}
+                  onChange={setFilter}
+                  hoverOpen={false} // Disable hover on mobile
+                />
+                <Filter
+                  menuItems={[
+                    { value: "most recent", label: "Most Recent" },
+                    { value: "least recent", label: "Least Recent" },
+                    { value: "A-Z", label: "A-Z" },
+                    { value: "Z-A", label: "Z-A" },
+                  ]}
+                  value={sort}
+                  onChange={setSort}
+                  hoverOpen={false} // Disable hover on mobile
+                />
+              </Stack>
             </Stack>
           </Stack>
-
           {isLoading ? (
             <Box
               sx={{
@@ -488,11 +574,48 @@ const MyLibraryPage = () => {
             </Box>
           ) : (
             created_by && (
-              <MyLibraryCards
-                cards={filteredCards}
-                createdBy={created_by}
-                onRefreshNeeded={handleRefresh}
-              />
+              <>
+                {monthsOrder.map((monthYear) => (
+                  <Box key={monthYear} sx={{ mb: { xs: 3, sm: 4 } }}>
+                    <Stack
+                      direction="row"
+                      alignItems="center"
+                      spacing={2}
+                      sx={{
+                        width: "100%",
+                        mb: { xs: 1, sm: 2 },
+                        mt: { xs: 2, sm: 3 },
+                      }}
+                    >
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          whiteSpace: "nowrap",
+                          color: "#6F658D",
+                          fontSize: { xs: "0.875rem", sm: "1rem" },
+                        }}
+                      >
+                        {monthYear}
+                      </Typography>
+                      <Box sx={{ width: "100%" }}>
+                        <Divider
+                          sx={{
+                            height: { xs: "1px", sm: "2px" },
+                            backgroundColor: "#3B354C",
+                            width: "100%",
+                          }}
+                        />
+                      </Box>
+                    </Stack>
+
+                    <MyLibraryCards
+                      cards={groupedCards[monthYear]}
+                      createdBy={created_by}
+                      onRefreshNeeded={handleRefresh}
+                    />
+                  </Box>
+                ))}
+              </>
             )
           )}
         </Stack>

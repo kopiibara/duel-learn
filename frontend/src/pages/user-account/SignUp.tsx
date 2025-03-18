@@ -1,152 +1,243 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
-
-import { auth, getAdditionalInfo, db } from "../../services/firebase";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { setDoc, doc, serverTimestamp } from "firebase/firestore";
+import { updateProfile } from "firebase/auth";
+import { auth } from "../../services/firebase";
 import "../../index.css";
-import useValidation from "../../hooks/validation.hooks/useValidation";
 import PageTransition from "../../styles/PageTransition";
-import useSignUpApi from "../../hooks/api.hooks/useSignUpApi";
 import useCombinedErrorHandler from "../../hooks/validation.hooks/useCombinedErrorHandler";
 import LoadingScreen from "../../components/LoadingScreen";
-import bcrypt from "bcryptjs";
-import useGoogleSignIn from "../../hooks/auth.hooks/useGoogleSignIn";
+import { useFormik } from "formik";
+import * as Yup from "yup";
+import useGoogleAuth from "../../hooks/auth.hooks/useGoogleAuth";
+import { useStoreUser } from '../../hooks/api.hooks/useStoreUser';
+import { useUser } from "../../contexts/UserContext";
+import { useAuth } from "../../contexts/AuthContext";
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { setAuthToken } from "../../api/apiClient";
+import PasswordValidationTooltip from "../../components/PasswordValidationTooltip";
 
 const SignUp = () => {
   const { handleError, combinedError } = useCombinedErrorHandler();
-  const [formData, setFormData] = useState({
-    username: "",
-    password: "",
-    confirmPassword: "",
-    email: "",
-    terms: false,
-  });
-
-  const { errors, validate, validateForm } = useValidation(formData); // Pass formData here
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
-  const { signUpApi } = useSignUpApi();
   const [loading, setLoading] = useState(false);
-  const { handleGoogleSignIn } = useGoogleSignIn();
+  const { storeUser } = useStoreUser();
+  const { handleGoogleAuth, loading: googleLoading } = useGoogleAuth();
+  const { loadUserData } = useUser();
+  const { signup, error: authError } = useAuth();
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+
+  // Handle auth errors
+  useEffect(() => {
+    if (authError) {
+      handleError(new Error(authError));
+    }
+  }, [authError, handleError]);
 
   const togglePassword = () => {
     setShowPassword((prev) => !prev);
   };
 
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setLoading(true);
+  // Add functions to check uniqueness
+  const checkUsernameUnique = async (username: string) => {
+    const db = getFirestore();
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("username", "==", username));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.empty;
+  };
 
-    const { username, password, confirmPassword, email, terms } = formData;
+  const checkEmailUnique = async (email: string) => {
+    const db = getFirestore();
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("email", "==", email));
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.empty;
+  };
 
-    if (
-      !(await validateForm({
-        username,
-        password,
-        confirmPassword,
-        email,
-        terms: terms.toString(),
-      }))
-    ) {
-      setLoading(false);
-      return;
-    }
+  const validationSchema = Yup.object({
+    username: Yup.string()
+      .required("Username is required.")
+      .min(2, "Username must be at least 2 characters.")
+      .max(20, "Username cannot exceed 20 characters.")
+      .matches(/^[a-zA-Z0-9_]+$/, "Username can only contain alphanumeric characters and underscores.")
+      .test("unique", "Username is already taken", async function(value) {
+        if (!value) return true; // Skip if empty as required() will handle it
+        try {
+          return await checkUsernameUnique(value);
+        } catch (error) {
+          return false;
+        }
+      }),
+    email: Yup.string()
+      .required("Email is required.")
+      .email("Please enter a valid email address.")
+      .test("unique", "Email is already in use", async function(value) {
+        if (!value) return true; // Skip if empty as required() will handle it
+        try {
+          return await checkEmailUnique(value);
+        } catch (error) {
+          return false;
+        }
+      }),
+    password: Yup.string()
+      .required("Password is required.")
+      .min(8, "Password must be at least 8 characters.")
+      .matches(/[A-Z]/, "Password must contain at least one uppercase letter.")
+      .matches(/[a-z]/, "Password must contain at least one lowercase letter.")
+      .matches(/[0-9]/, "Password must contain at least one number.")
+      .matches(/[!@#$%^&*(),.?":{}|<>]/, "Password must contain at least one special character."),
+    confirmPassword: Yup.string()
+      .oneOf([Yup.ref('password')], "Passwords must match").required("Please confirm your password."),
+    terms: Yup.boolean().oneOf([true], "You must agree to the terms and conditions."),
+  });
 
-    try {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      const result = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
-      const token = await result.user.getIdToken();
-      const additionalUserInfo = getAdditionalInfo(result);
-      const userData = {
-        firebaseToken: token,
-        firebase_uid: result.user.uid,
-
-        username: username,
-        email: email,
-        display_picture: null,
-        isNew: additionalUserInfo,
-        full_name: "",
-        email_verified: result.user.emailVerified,
-        isSSO: false,
-        account_type: "free" as "free" | "premium",
-      };
-
-      await setDoc(doc(db, "users", userData.firebase_uid), {
-        firebase_uid: userData.firebase_uid || "",
-        username: userData.username,
-        email: userData.email,
-        password_hash: hashedPassword, // Store the hashed password
-        created_at: serverTimestamp(),
-        updated_at: serverTimestamp(),
-        display_picture: userData.display_picture || "",
-        full_name: "",
-        email_verified: userData.email_verified,
-        isSSO: userData.isSSO,
-        account_type: userData.account_type,
-      });
-
-      // Call the API
+  const formik = useFormik({
+    initialValues: {
+      username: "",
+      password: "",
+      confirmPassword: "",
+      email: "",
+      terms: false,
+    },
+    validationSchema,
+    onSubmit: async (values) => {
+      setLoading(true);
+      let firebaseUser = null; // Variable to track if we need to delete Firebase user on error
+      
       try {
-        await signUpApi(
-          userData.firebase_uid,
-          username,
-          email,
-          password,
-          false,
-          false
-        );
-      } catch (apiError: any) {
-        console.error("API Error:", apiError);
-        handleError(apiError);
+        console.log("=== Starting SignUp Process ===");
+        console.log("Creating Firebase user...");
+        
+        // Use AuthContext signup instead of direct Firebase call
+        const user = await signup(values.email, values.password);
+        firebaseUser = user; // Store reference for cleanup in case of error
+        console.log("Firebase user created:", user.uid);
+        
+        await updateProfile(user, { displayName: values.username });
+        console.log("Firebase profile updated");
+    
+        // Get a fresh token and make sure it's set in apiClient
+        console.log("Getting fresh token and setting up authentication...");
+
+        // Multiple attempts to get a fresh token if needed
+        let token = null;
+        let tokenAttempts = 0;
+        const MAX_TOKEN_ATTEMPTS = 3;
+
+        while (!token && tokenAttempts < MAX_TOKEN_ATTEMPTS) {
+          try {
+            tokenAttempts++;
+            console.log(`Token attempt ${tokenAttempts}/${MAX_TOKEN_ATTEMPTS}`);
+            
+            // Force refresh token
+            token = await user.getIdToken(true);
+            console.log(`Got Firebase token (attempt ${tokenAttempts}):`, token.substring(0, 10) + "...");
+            
+            // Explicitly set the token to ensure it's available for the API call
+            setAuthToken(token);
+            console.log("Token explicitly set in apiClient");
+          } catch (tokenError) {
+            console.error(`Failed to get token on attempt ${tokenAttempts}:`, tokenError);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+
+        if (!token) {
+          throw new Error("Failed to obtain authentication token after multiple attempts. Please try again.");
+        }
+
+        // Increase the delay to ensure token is properly set
+        console.log("Waiting for token to propagate...");
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        
+        // Ready to proceed with API call
+        console.log("Proceeding with storeUser API call...");
+        
+        // Store user data in backend
+        console.log("Calling storeUser with data:", {
+          username: values.username,
+          email: values.email,
+          password: "***",
+          account_type: "free",
+        });
+
+        const storeUserResult = await storeUser({
+          username: values.username,
+          email: values.email,
+          password: values.password,
+          account_type: "free",
+          isNew: user.metadata.creationTime === user.metadata.lastSignInTime,
+          isSSO: false,
+        });
+        console.log("Store user result:", storeUserResult);
+
+        if (!storeUserResult.success) {
+          throw new Error(storeUserResult.error);
+        }
+    
+        // Remove the loadUserData call as it should only happen after email verification
+        // await loadUserData(user.uid);
+
+        setSuccessMessage("Account created! Please verify your email.");
+
+        setTimeout(() => {
+          console.log("Navigating to verify-email");
+          navigate("/verify-email", { state: { token } });
+        }, 2000);
+
+      } catch (error) {
+        console.error("Registration error:", error);
+        
+        // Clean up Firebase user if it was created but subsequent steps failed
+        if (firebaseUser) {
+          try {
+            console.log("Cleaning up Firebase user due to registration error");
+            await firebaseUser.delete();
+            console.log("Firebase user deleted successfully");
+          } catch (deleteError) {
+            console.error("Error deleting Firebase user:", deleteError);
+            // Continue with error handling even if deletion fails
+          }
+        }
+        
+        handleError(error);
         setLoading(false);
-        return; // Exit the function if API call fails
+      }
+    }
+  });
+
+  const handleGoogleSubmit = async () => {
+    try {
+      const authResult = await handleGoogleAuth("free");
+      
+      // Google users are pre-verified, so load user data for them
+      // Google auth typically verifies email automatically
+      if (auth.currentUser && auth.currentUser.emailVerified) {
+        await loadUserData(authResult.userData.uid);
       }
 
-      console.log("signUpApi", signUpApi);
-
-      setFormData({
-        username: "",
-        password: "",
-        confirmPassword: "",
-        email: "",
-        terms: false,
-      });
-      setSuccessMessage(
-        "Account successfully created! Redirecting to login..."
-      );
-      setTimeout(() => {
-        if (userData.isNew && userData.email_verified) {
-          navigate("/dashboard/welcome");
-        } else if (userData.isNew && userData.email_verified === false) {
-          navigate("/dashboard/verify-email");
-        } else if (userData.email_verified === false) {
-          navigate("/dashboard/verify-email");
-        } else {
-          navigate("/dashboard/home");
-        }
-      }, 2000);
+      if (authResult.isNewUser) {
+        setSuccessMessage("Account created successfully!");
+        setTimeout(() => {setLoading(true); navigate("/dashboard/welcome")}, 1500);
+      } else {
+        setSuccessMessage("Account already exists. Redirecting to login...");
+        setTimeout(() => {setLoading(true); navigate("/login")}, 1500);
+      }
     } catch (error) {
-      console.error("Registration error:", error);
       handleError(error);
-      setLoading(false);
     }
   };
 
-  if (loading) {
+  if (loading || googleLoading) {
     return (
       <PageTransition>
         <LoadingScreen />
       </PageTransition>
-    ); // Show the loading screen
+    );
   }
 
   return (
@@ -177,7 +268,7 @@ const SignUp = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={formik.handleSubmit}>
             <div className="relative mb-4">
               <input
                 type="text"
@@ -185,19 +276,17 @@ const SignUp = () => {
                 name="username"
                 placeholder="Enter your username"
                 required
-                value={formData.username}
-                onChange={(e) =>
-                  setFormData({ ...formData, username: e.target.value })
-                }
-                onBlur={(e) => validate("username", e.target.value)} // Validate on blur
+                value={formik.values.username}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
-                  errors.username
+                  formik.touched.username && formik.errors.username
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
                 }`}
               />
-              {errors.username && (
-                <p className="text-red-500 mt-1 text-sm">{errors.username}</p>
+              {formik.touched.username && formik.errors.username && (
+                <p className="text-red-500 mt-1 text-sm">{formik.errors.username}</p>
               )}
             </div>
             <div className="relative mb-4">
@@ -207,14 +296,16 @@ const SignUp = () => {
                 name="password"
                 placeholder="Enter your password"
                 required
-                value={formData.password}
-                onChange={(e) => {
-                  setFormData({ ...formData, password: e.target.value });
-                  validate("password", e.target.value);
+                value={formik.values.password}
+                onChange={formik.handleChange}
+                onBlur={(e) => {
+                  formik.handleBlur(e);
+                  setIsPasswordFocused(false);
                 }}
-                onCopy={(e) => e.preventDefault()} // Disable copy
+                onFocus={() => setIsPasswordFocused(true)}
+                onCopy={(e) => e.preventDefault()}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
-                  errors.password
+                  formik.touched.password && formik.errors.password
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
                 }`}
@@ -229,8 +320,14 @@ const SignUp = () => {
                   <VisibilityOffRoundedIcon />
                 )}
               </span>
-              {errors.password && (
-                <p className="text-red-500 mt-1 text-sm">{errors.password}</p>
+              
+              <PasswordValidationTooltip 
+                password={formik.values.password} 
+                isVisible={isPasswordFocused || !!(formik.touched.password && formik.errors.password)}
+              />
+              
+              {formik.touched.password && formik.errors.password && (
+                <p className="text-red-500 mt-1 text-sm">{formik.errors.password}</p>
               )}
             </div>
             <div className="relative mb-4">
@@ -240,22 +337,18 @@ const SignUp = () => {
                 name="confirmPassword"
                 placeholder="Confirm your password"
                 required
-                value={formData.confirmPassword}
-                onChange={(e) => {
-                  setFormData({ ...formData, confirmPassword: e.target.value });
-                  validate("confirmPassword", e.target.value, formData);
-                }}
-                onPaste={(e) => e.preventDefault()} // Disable paste
+                value={formik.values.confirmPassword}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
+                onPaste={(e) => e.preventDefault()}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
-                  errors.confirmPassword
+                  formik.touched.confirmPassword && formik.errors.confirmPassword
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
                 }`}
               />
-              {errors.confirmPassword && (
-                <p className="text-red-500 mt-1 text-sm">
-                  {errors.confirmPassword}
-                </p>
+              {formik.touched.confirmPassword && formik.errors.confirmPassword && (
+                <p className="text-red-500 mt-1 text-sm">{formik.errors.confirmPassword}</p>
               )}
             </div>
             <div className="relative mb-4">
@@ -265,31 +358,27 @@ const SignUp = () => {
                 name="email"
                 placeholder="Enter your email"
                 required
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                onBlur={(e) => validate("email", e.target.value)} // Validate on blur
+                value={formik.values.email}
+                onChange={formik.handleChange}
+                onBlur={formik.handleBlur}
                 className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
-                  errors.email
+                  formik.touched.email && formik.errors.email
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
                 }`}
               />
-              {errors.email && (
-                <p className="text-red-500 mt-1 text-sm">{errors.email}</p>
+              {formik.touched.email && formik.errors.email && (
+                <p className="text-red-500 mt-1 text-sm">{formik.errors.email}</p>
               )}
             </div>
             <div className="flex items-center mb-4">
               <input
                 type="checkbox"
                 id="terms"
+                name="terms"
                 className="w-4 h-4 text-[#4D18E8] bg-[#3B354D] border-gray-300 rounded focus:ring-2 focus:ring-[#4D18E8]"
-                checked={formData.terms}
-                onChange={(e) => {
-                  setFormData({ ...formData, terms: e.target.checked });
-                  validate("terms", e.target.checked.toString());
-                }}
+                checked={formik.values.terms}
+                onChange={formik.handleChange}
               />
               <label htmlFor="terms" className="ml-2 text-[#9F9BAE] text-sm">
                 I agree to {""}
@@ -302,8 +391,8 @@ const SignUp = () => {
                 </Link>
               </label>
             </div>
-            {errors.terms && (
-              <p className="text-red-500 mt-1 text-sm">{errors.terms}</p>
+            {formik.touched.terms && formik.errors.terms && (
+              <p className="text-red-500 mt-1 text-sm">{formik.errors.terms}</p>
             )}
             <button
               type="submit"
@@ -321,20 +410,20 @@ const SignUp = () => {
 
           <button
             className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors"
-            onClick={handleGoogleSignIn}
+            onClick={handleGoogleSubmit}
           >
             <img
               src="/google-logo.png"
               className="w-5 h-5 mr-3"
               alt="Google Icon"
-            ></img>
+            />
             Sign up with Google
           </button>
 
           <p className="mt-4 text-center text-sm text-[#9F9BAE]">
             Already have an account?{" "}
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => {setLoading(true); navigate("/login")}}
               className="text-[#4D18E8] hover:underline"
             >
               Log in

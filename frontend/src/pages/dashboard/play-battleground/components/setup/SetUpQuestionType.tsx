@@ -9,6 +9,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import PageTransition from "../../../../../styles/PageTransition";
 import { generateCode } from "../../utils/codeGenerator";
+import axios from "axios";
 
 const SetUpQuestionType: React.FC = () => {
   // Move all hooks to the top before any conditional logic
@@ -34,6 +35,7 @@ const SetUpQuestionType: React.FC = () => {
   const [openAlert, setOpenAlert] = useState(false); // State to control alert visibility
   const [manaPoints, _setManaPoints] = useState(10); // State for dynamic mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana alert
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Signal when component is fully ready
   useEffect(() => {
@@ -87,50 +89,43 @@ const SetUpQuestionType: React.FC = () => {
     // If no question type is selected, show the alert
     if (selectedTypes.length === 0) {
       setOpenAlert(true);
+      return;
     }
-    // If manaPoints are below 10 and mode is not "Time Pressured", show the mana alert
-    else if (mode !== "Time Pressured" && manaPoints < 10) {
-      setOpenManaAlert(true);
-    }
-    // If mode is "Time Pressured", navigate to Timer Setup
-    else if (mode === "Time Pressured") {
-      navigate("/dashboard/setup/timer", {
-        state: {
-          mode,
-          material,
-          selectedTypes,
-        },
-      });
-    }
-    // If the mode is "Peaceful", navigate to LoadingScreen
-    else if (mode === "Peaceful") {
-      navigate("/dashboard/loading-screen", {
-        state: {
-          mode,
-          material,
-          selectedTypes,
-          timeLimit: null,
-        },
-      });
-    }
-    // If the mode is not "Time Pressured" and not "Peaceful Mode", navigate to PvP Lobby
-    else if (mode !== "Time Pressured" && mode !== "Peaceful Mode") {
-      const generatedLobbyCode = generateCode(); // Generate a new lobby code
-      console.log("Generated lobby code:", generatedLobbyCode);
 
-      // Store the lobby code in state before navigating
-      navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
-        state: {
-          mode,
-          material,
-          selectedTypes,
-          lobbyCode: generatedLobbyCode, // Add lobby code to state
-        },
-      });
+    // If manaPoints are below 10 and mode is not "Time Pressured", show the mana alert
+    if (mode !== "Time Pressured" && manaPoints < 10) {
+      setOpenManaAlert(true);
+      return;
     }
-    // Default fallback logic
-    else {
-      console.log("Normal mode selected, staying on current flow.");
+
+    // Pass selectedTypes but don't generate AI questions yet
+    const navigationState = {
+      mode,
+      material,
+      selectedTypes,
+    };
+
+    console.log("Navigation state being passed:", navigationState);
+    console.log("Mode type:", typeof mode, "Mode value:", mode);
+
+    // Navigate based on mode with strict equality check
+    // Update this section of your handleStartLearning function:
+
+    // Navigate based on mode with more flexible mode checks
+    if (mode === "Time Pressured" || mode === "Time Pressured Mode") {
+      console.log("Navigating to timer setup");
+      navigate("/dashboard/setup/timer", { state: navigationState });
+    } else if (mode === "Peaceful" || mode === "Peaceful Mode") {
+      console.log("Navigating to peaceful mode");
+      navigate("/dashboard/loading-screen", {
+        state: { ...navigationState, timeLimit: null },
+      });
+    } else {
+      console.log("Navigating to PVP mode");
+      const generatedLobbyCode = generateCode();
+      navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
+        state: { ...navigationState, lobbyCode: generatedLobbyCode },
+      });
     }
   };
 
@@ -254,27 +249,30 @@ const SetUpQuestionType: React.FC = () => {
                       {/* Toggle Button */}
                       <div
                         onClick={() => toggleSelection(type.value)}
-                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all ${selectedTypes.includes(type.value)
-                          ? "bg-black"
-                          : "bg-black"
-                          }`}
+                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all ${
+                          selectedTypes.includes(type.value)
+                            ? "bg-black"
+                            : "bg-black"
+                        }`}
                       >
                         {/* Check Icon */}
                         <div
-                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md transition-all ${selectedTypes.includes(type.value)
-                            ? "bg-black text-[#461ABD]"
-                            : "bg-white text-[#461ABD]"
-                            } `}
+                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md transition-all ${
+                            selectedTypes.includes(type.value)
+                              ? "bg-black text-[#461ABD]"
+                              : "bg-white text-[#461ABD]"
+                          } `}
                         >
                           <CloseIcon />
                         </div>
 
                         {/* Uncheck Icon */}
                         <div
-                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded transition-all ${selectedTypes.includes(type.value)
-                            ? "bg-white text-[#461ABD]"
-                            : "bg-black text-[#461ABD]"
-                            }`}
+                          className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded transition-all ${
+                            selectedTypes.includes(type.value)
+                              ? "bg-white text-[#461ABD]"
+                              : "bg-black text-[#461ABD]"
+                          }`}
                         >
                           <CheckIcon />
                         </div>
@@ -287,13 +285,14 @@ const SetUpQuestionType: React.FC = () => {
                 <div className="flex justify-center">
                   <button
                     onClick={handleStartLearning}
+                    disabled={isGenerating}
                     className="mt-8 w-[240px] sm:w-[280px] md:w-[320px] py-2 sm:py-3 border-2 border-black text-black rounded-lg text-md sm:text-lg shadow-lg hover:bg-purple-700 hover:text-white hover:border-transparent flex items-center justify-center"
                   >
-                    {mode === "Time Pressured" ? (
-                      "Continue" // This will not check mana points
-                    ) : (
-                      <>START LEARNING!</>
-                    )}
+                    {isGenerating
+                      ? "Generating Questions..."
+                      : mode === "Time Pressured"
+                      ? "Continue"
+                      : "START LEARNING!"}
                   </button>
                 </div>
               </div>

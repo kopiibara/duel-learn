@@ -1,20 +1,126 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useGameLogic } from "../../hooks/useGameLogic";
 import FlashCard from "../../components/common/FlashCard";
 import Header from "../../components/common/Header";
-import { GameState } from "../../types";
 import Timer from "../../components/common/Timer";
+import axios from "axios";
+import { useAudio } from "../../../../../contexts/AudioContext";
 
-const PeacefulMode: React.FC<GameState> = ({
+interface PeacefulModeProps {
+  mode: string;
+  material: any;
+  selectedTypes: string[];
+}
+
+const PeacefulMode: React.FC<PeacefulModeProps> = ({
   mode,
   material,
   selectedTypes,
 }) => {
+  const [isGeneratingAI, setIsGeneratingAI] = useState(true);
+  const [aiQuestions, setAiQuestions] = useState<any[]>([]);
+  const { playCorrectAnswerSound, playIncorrectAnswerSound } = useAudio();
+
+  // Generate AI questions when component mounts
+  useEffect(() => {
+    const generateAIQuestions = async () => {
+      console.log("Starting AI question generation in PeacefulMode");
+      console.log("Selected question types:", selectedTypes);
+      setIsGeneratingAI(true);
+      const generatedQuestions = [];
+
+      try {
+        // Create an array of items and shuffle it
+        const items = [...material.items];
+        const shuffledItems = items.sort(() => Math.random() - 0.5);
+
+        // Calculate how many questions of each type we need
+        const totalItems = items.length;
+        const typesCount = selectedTypes.length;
+        
+        // Validate selected types
+        const validTypes = ['identification', 'multiple-choice', 'true-false'];
+        selectedTypes.forEach(type => {
+          if (!validTypes.includes(type)) {
+            console.warn(`Warning: Unknown question type "${type}"`);
+          }
+        });
+
+        const distribution = selectedTypes.reduce((acc, type, index) => {
+          // For the last type, assign all remaining items
+          if (index === typesCount - 1) {
+            acc[type] = totalItems - Object.values(acc).reduce((sum, val) => sum + val, 0);
+          } else {
+            // Otherwise, distribute items evenly with a minimum of 1
+            acc[type] = Math.max(1, Math.floor(totalItems / typesCount));
+          }
+          return acc;
+        }, {} as Record<string, number>);
+
+        console.log("Question distribution for", totalItems, "items:");
+        Object.entries(distribution).forEach(([type, count]) => {
+          console.log(`- ${type}: ${count} questions`);
+        });
+
+        // Validate total matches number of items
+        const totalQuestions = Object.values(distribution).reduce((sum, count) => sum + count, 0);
+        console.log(`Total questions to generate: ${totalQuestions} (should equal number of items: ${totalItems})`);
+
+        // Keep track of which items have been used
+        let currentItemIndex = 0;
+
+        // Generate questions according to the distribution
+        for (const type of selectedTypes) {
+          const questionsOfThisType = distribution[type];
+          console.log(`\nGenerating ${questionsOfThisType} questions of type "${type}":`);
+
+          for (let i = 0; i < questionsOfThisType; i++) {
+            const item = shuffledItems[currentItemIndex];
+            console.log(`[${type}] Question ${i + 1}/${questionsOfThisType} using item: "${item.term}"`);
+
+            const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
+            const requestPayload = {
+              term: item.term,
+              definition: item.definition,
+              numberOfItems: 1
+            };
+
+            const response = await axios.post<{ data: any[] }>(endpoint, requestPayload);
+            
+            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+              generatedQuestions.push(...response.data);
+              console.log(`✓ Successfully generated ${type} question for "${item.term}"`);
+            } else {
+              console.warn(`⚠ No question generated for "${item.term}" of type ${type}`);
+            }
+
+            currentItemIndex++;
+          }
+        }
+
+        console.log("\nQuestion generation summary:");
+        console.log(`- Total items: ${totalItems}`);
+        console.log(`- Questions generated: ${generatedQuestions.length}`);
+        console.log(`- Types distribution:`, distribution);
+
+        // Shuffle the questions for final presentation
+        const shuffledQuestions = generatedQuestions.sort(() => Math.random() - 0.5);
+        setAiQuestions(shuffledQuestions);
+      } catch (error) {
+        console.error("Error generating AI questions:", error);
+      } finally {
+        setIsGeneratingAI(false);
+      }
+    };
+
+    generateAIQuestions();
+  }, [material, selectedTypes]);
+
   const {
     currentQuestion,
     isFlipped,
     handleFlip,
-    handleAnswerSubmit,
+    handleAnswerSubmit: originalHandleAnswerSubmit,
     masteredCount,
     unmasteredCount,
     showResult,
@@ -25,9 +131,44 @@ const PeacefulMode: React.FC<GameState> = ({
     handleMastered,
     getButtonStyle,
     handleNextQuestion,
-  } = useGameLogic({ mode, material, selectedTypes });
+    handleRevealAnswer,
+    cardDisabled,
+  } = useGameLogic({
+    mode,
+    material,
+    selectedTypes,
+    aiQuestions,
+  });
 
   const [startTime] = useState(new Date());
+
+  // Custom answer submit handler with sound effects
+  const handleAnswerSubmit = (answer: string) => {
+    let isAnswerCorrect = false;
+
+    if (currentQuestion?.questionType === "identification") {
+      isAnswerCorrect =
+        answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+    } else {
+      isAnswerCorrect =
+        answer.toLowerCase() === currentQuestion?.correctAnswer.toLowerCase();
+    }
+
+    // Play appropriate sound using AudioContext
+    if (isAnswerCorrect) {
+      playCorrectAnswerSound();
+    } else {
+      playIncorrectAnswerSound();
+    }
+
+    // Call the original handler
+    originalHandleAnswerSubmit(answer);
+  };
+
+  // Remove the custom loading UI since LoadingScreen.tsx is already handling this
+  if (isGeneratingAI) {
+    return null; // Return null to let the parent component handle loading state
+  }
 
   const renderQuestionContent = () => {
     if (!currentQuestion) return null;
@@ -36,15 +177,15 @@ const PeacefulMode: React.FC<GameState> = ({
       case "multiple-choice":
         return (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-[1000px] mx-auto">
-            {currentQuestion.options?.map((option, index) => (
+            {currentQuestion.options?.map((option: string, index: number) => (
               <button
                 key={index}
                 onClick={() => handleAnswerSubmit(option)}
                 disabled={showResult}
                 className={`h-[100px] w-full bg-transparent 
-                                    ${getButtonStyle(option)}
-                                    rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                                    disabled:cursor-not-allowed px-4 text-center`}
+                          ${getButtonStyle(option)}
+                          rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                          disabled:cursor-not-allowed px-4 text-center`}
               >
                 {option}
               </button>
@@ -68,8 +209,7 @@ const PeacefulMode: React.FC<GameState> = ({
               className={`w-full p-4 rounded-lg bg-transparent py-10 px-10 border-2 text-center
                                 ${
                                   showResult
-                                    ? inputAnswer.toLowerCase() ===
-                                      currentQuestion.correctAnswer.toLowerCase()
+                                    ? isCorrect
                                       ? "border-[#52A647]"
                                       : "border-[#FF3B3F]"
                                     : "border-gray-600"
@@ -120,6 +260,9 @@ const PeacefulMode: React.FC<GameState> = ({
             correctAnswer={currentQuestion?.correctAnswer || ""}
             isFlipped={isFlipped}
             onFlip={handleFlip}
+            onReveal={handleRevealAnswer}
+            type={currentQuestion?.type}
+            disabled={cardDisabled}
           />
           {renderQuestionContent()}
           <Timer

@@ -1,107 +1,66 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { auth, sendEmail } from "../../services/firebase";
-import { signOut } from "firebase/auth";
 import { toast } from "react-hot-toast";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import PageTransition from "../../styles/PageTransition";
-import {
-  getFirestore,
-  collection,
-  query,
-  where,
-  getDocs,
-  setDoc,
-  doc,
-  serverTimestamp,
-} from "firebase/firestore";
 import useEmailTimestamp from "../../hooks/useEmailTimestamp";
-import firebaseEmailHandler from "../../services/firebaseEmailHandler";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../../services/firebase";
+import { useUser } from "../../contexts/UserContext";
+import { useAuth } from "../../contexts/AuthContext";
 
 const VerifyEmail = () => {
   const [isButtonDisabled, setIsButtonDisabled] = useState(false);
-  const [isEmailVerified, setIsEmailVerified] = useState(false);
   const [isEmailSent, setIsEmailSent] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const navigate = useNavigate();
-  const location = useLocation();
-  const userData = JSON.parse(localStorage.getItem("userData") || "{}");
-  const email = userData.email || "";
-  const {
-    timeRemaining,
-    isButtonDisabled: isTimestampButtonDisabled,
-    checkTimestamp,
-  } = useEmailTimestamp(email);
-  const { handleEmailAction } = firebaseEmailHandler();
+  const { user } = useUser(); // User data from UserContext
+  const { currentUser, logout } = useAuth(); // Auth state from AuthContext
+  
+  // Use auth currentUser as primary, user context as fallback
+  const userInfo = currentUser || {
+    email: user?.email,
+    emailVerified: user?.email_verified,
+    uid: user?.firebase_uid
+  };
 
-  useEffect(() => {
-    if (userData) {
-      setIsEmailVerified(userData.email_verified);
-      console.log("Email Verified:", userData.email_verified);
-      if (auth.currentUser) {
-        console.log("Email Verified:", auth.currentUser.emailVerified);
-      }
-    }
-  }, [userData]);
-
-  useEffect(() => {
-    const queryParams = new URLSearchParams(location.search);
-    const mode = queryParams.get("mode");
-    const oobCode = queryParams.get("oobCode");
-    const continueUrl = queryParams.get("continueUrl");
-
-    if (mode && oobCode && continueUrl) {
-      handleEmailAction(mode, oobCode, continueUrl)
-        .then((result) => {
-          if (result?.success && result.mode === "verifyEmail") {
-            navigate("/email-verified", {
-              state: { email, firebase_uid: result.firebase_uid },
-            });
-          }
-        })
-        .catch((err) => {
-          console.error("Error handling email action:", err);
-          setErrorMessage("The spell has faded — your magic link has expired.");
-        });
-    }
-  }, [location.search]);
+  const { timeRemaining, isButtonDisabled: isTimestampButtonDisabled, checkTimestamp } = 
+    useEmailTimestamp(userInfo.email || '', userInfo.uid);
 
   const handleSendVerificationEmail = async () => {
     try {
-      console.log("Email Verified:", userData.email_verified);
-      const firebase_uid = userData.firebase_uid;
+      console.log("Email Verified:", userInfo.emailVerified);
       if (auth.currentUser) {
         const actionCodeSettings = {
           url: `${
             import.meta.env.VITE_FRONTEND_URL
-          }/email-action-handler?mode=verifyEmail&firebase_uid=${firebase_uid}&email=${email}`,
+          }/email-action-handler?mode=verifyEmail&firebase_uid=${userInfo.uid}&email=${userInfo.email}`,
           handleCodeInApp: true,
         };
-        await sendEmail(auth.currentUser!, actionCodeSettings);
+        await sendEmail(auth.currentUser, actionCodeSettings);
         toast.success("Verification email sent.");
         setIsButtonDisabled(true);
         setIsEmailSent(true);
 
-        const db = getFirestore();
-        const usersRef = collection(db, "users");
-        const q = query(usersRef, where("email", "==", auth.currentUser.email));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-          const userDoc = querySnapshot.docs[0];
-          await setDoc(
-            doc(db, "users", userDoc.id),
-            {
-              emailTimestamp: serverTimestamp(),
-            },
-            { merge: true }
-          );
+        // Update timestamp in Firestore
+        if (userInfo.uid) {
+          try {
+            await updateDoc(doc(db, "temp_users", userInfo.uid), {
+              emailTimestamp: serverTimestamp()
+            });
+          } catch (error) {
+            console.error("Error updating Firestore timestamp:", error);
+            // Fallback to localStorage if Firestore update fails
+            const now = new Date();
+            localStorage.setItem("emailTimestamp", now.toISOString());
+          }
         }
 
         navigate("/check-your-mail", {
           state: {
-            email,
-            firebase_uid: auth.currentUser.uid,
+            email: userInfo.email,
+            firebase_uid: userInfo.uid,
             type: "verification",
           },
         });
@@ -119,24 +78,16 @@ const VerifyEmail = () => {
   };
 
   const handleButtonClick = async () => {
-    const canSendEmail = await checkTimestamp();
-    if (canSendEmail) {
-      await handleSendVerificationEmail();
-    } else {
-      navigate("/check-your-mail", {
-        state: {
-          email,
-          firebase_uid: auth.currentUser?.uid,
-          type: "verification",
-        },
-      });
-    }
+    if (isButtonDisabled || isTimestampButtonDisabled) return;
+    setIsButtonDisabled(true);
+    await handleSendVerificationEmail();
+    setIsButtonDisabled(false);
   };
 
   const handleLogoutClick = async () => {
     try {
-      await signOut(auth);
-      localStorage.removeItem("userData");
+      // Use AuthContext logout instead of direct Firebase signOut
+      await logout();
       navigate("/login");
     } catch (error: any) {
       console.error("Error signing out:", error);
@@ -145,12 +96,8 @@ const VerifyEmail = () => {
   };
 
   useEffect(() => {
-    if (timeRemaining !== null && timeRemaining > 0) {
-      setIsButtonDisabled(true);
-    } else {
-      setIsButtonDisabled(false);
-    }
-  }, [timeRemaining]);
+    checkTimestamp();
+  }, [userInfo.email]);
 
   return (
     <PageTransition>
@@ -167,29 +114,20 @@ const VerifyEmail = () => {
           <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
             {errorMessage
               ? errorMessage
-              : isEmailVerified
+              : userInfo.emailVerified
               ? "🌟 A Star Twinkles — Your Email Verification is Complete! 🌟"
               : isEmailSent
               ? "Email has been sent. Please check your inbox."
               : "Please verify your email to continue."}
           </p>
-          {!isEmailVerified && (
+          {!userInfo.emailVerified && (
             <button
               type="button"
               className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
               onClick={handleButtonClick}
               disabled={isButtonDisabled || isTimestampButtonDisabled}
             >
-              {isButtonDisabled ? (
-                <div className="relative flex justify-center items-center">
-                  <div className="loader w-6 h-6 rounded-full border-2 border-t-transparent border-white animate-spin"></div>
-                  <div className="absolute inset-0 w-6 h-6 rounded-full border-2 border-transparent border-t-[#D1C4E9] animate-pulse"></div>
-                </div>
-              ) : timeRemaining !== null && timeRemaining > 0 ? (
-                `Wait ${Math.ceil(timeRemaining / 1000)} seconds`
-              ) : (
-                "Send Verification Email"
-              )}
+              {isButtonDisabled ? `Sending...` : timeRemaining ? `Resend in ${Math.ceil(timeRemaining / 1000)}s` : "Send Verification Email"}
             </button>
           )}
           <button

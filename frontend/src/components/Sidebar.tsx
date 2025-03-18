@@ -111,10 +111,10 @@ const Sidebar: React.FC<SidebarProps> = ({
         sx={{
           textTransform: "none",
           borderRadius: "0.8rem",
-          padding: collapsed ? "0.6rem" : "0.6rem 2vw",
+          padding: collapsed ? "0.6rem" : "0.6rem 1rem", // Change from vw to rem
           display: "flex",
           width: "100%",
-          justifyContent: "center", // Always center
+          justifyContent: "center",
           alignItems: "center",
           transition: "all 0.3s ease",
           ...(variant === "contained" && {
@@ -130,8 +130,8 @@ const Sidebar: React.FC<SidebarProps> = ({
             transform: "scale(1.05)",
           },
           "& .MuiSvgIcon-root": {
-            fontSize: "clamp(1.3rem, 1vw, 1.7rem)",
-            margin: collapsed ? "0 auto" : "0", // Center icon when collapsed
+            fontSize: "1.3rem", // Change from clamp to rem
+            margin: collapsed ? "0 auto" : "0",
           },
         }}
       >
@@ -139,13 +139,14 @@ const Sidebar: React.FC<SidebarProps> = ({
         <Typography
           variant="subtitle1"
           className={clsx("transition-all duration-100", {
-            "opacity-0 w-0 absolute pointer-events-none": collapsed, // Add absolute and pointer-events-none
+            "opacity-0 w-0 absolute pointer-events-none": collapsed,
             "opacity-100 ": !collapsed,
           })}
           sx={{
             whiteSpace: "nowrap",
             overflow: "hidden",
-            fontSize: "clamp(0.8rem, 0.8vw, 1rem)",
+            fontSize: "0.875rem", // Change from clamp to rem
+            marginLeft: collapsed ? 0 : "0.5rem", // Add marginLeft for spacing
           }}
         >
           {text}
@@ -175,10 +176,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         className="h-full w-full flex flex-col justify-between"
         spacing={2}
         sx={{
-          width: collapsed ? "5vw" : "13vw",
+          width: collapsed ? "5rem" : "14rem", // Change from vw to rem
           minWidth: collapsed ? "4rem" : "12rem",
           maxWidth: collapsed ? "6rem" : "18rem",
-          padding: "6vh 1vw",
+          paddingY: "4rem",
+          paddingX: "0.5rem",
+          marginLeft: collapsed ? 0 : "0.3rem", // Change from vw to rem
           transition: "all 0.35s ease",
         }}
       >
@@ -198,8 +201,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               <img
                 src="/duel-learn-logo.svg"
                 style={{
-                  width: "clamp(2rem, 3vw, 2.5rem)",
-                  height: "clamp(2rem, 3vw, 2.5rem)",
+                  width: "2.5rem",
+                  height: "auto",
                 }}
                 alt="icon"
               />
@@ -213,7 +216,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   whiteSpace: "nowrap",
                   overflow: "hidden",
                   color: "#E2DDF3",
-                  fontSize: "clamp(1rem, 1.1vw, 1.5rem)",
+                  fontSize: "1.3rem", // Change from clamp to rem
                   marginLeft: { xs: "0.5rem", sm: "1rem" },
                 }}
               >
@@ -228,15 +231,12 @@ const Sidebar: React.FC<SidebarProps> = ({
               sx={{
                 backgroundColor: "inherit",
                 transition: "all 0.3s ease",
-                width: "fit-content",
-                height: "fit-content",
-                minHeight: 0,
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
                 "& .MuiSvgIcon-root": {
                   color: "#3B354D",
-                  fontSize: "clamp(1rem, 1vw, 1.5rem)",
+                  fontSize: "1rem", // Change from clamp to rem
                 },
                 "&:hover": {
                   backgroundColor: "#3B354D",
@@ -249,7 +249,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             </Fab>
           </Stack>
 
-          <Stack spacing={2} sx={{ marginTop: "5vh" }}>
+          <Stack spacing={2} sx={{ marginTop: "1.5rem" }}>
+            {" "}
+            {/* Change from vh to rem */}
             {renderButton(
               <AddIcon fontSize="small" />,
               "Create",
@@ -260,7 +262,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </Stack>
 
           <Divider
-            sx={{ height: "2px", backgroundColor: "#3B354C", margin: "2vh 0" }}
+            sx={{ height: "2px", backgroundColor: "#3B354C", margin: "1rem 0" }}
           />
         </Stack>
 
@@ -289,28 +291,28 @@ const Sidebar: React.FC<SidebarProps> = ({
                         fontWeight: "bold",
                       },
                       transition: "all 0.3s ease",
-                      justifyContent: collapsed ? "center" : "flex-start", // Changed from flex-center to center when collapsed
-                      alignItems: "center", // Add this to ensure vertical centering
-                      padding: collapsed ? "1vh" : "1vh 1vw", // Use vh for vertical padding too
+                      justifyContent: collapsed ? "center" : "flex-start",
+                      alignItems: "center",
+                      padding: collapsed ? "0.75rem" : "0.75rem 1.2rem",
                       color: "#E2DDF3",
                       borderColor: "#080511",
                       borderWidth: "2px",
                       borderStyle: "solid",
                       borderRadius: "0.8rem",
-                      width: "100%", // Ensure full width
+                      width: "100%",
                     }}
                     onMouseEnter={() => setHoveredIndex(index)}
                     onMouseLeave={() => setHoveredIndex(null)}
                   >
                     <ListItemIcon
                       sx={{
-                        minWidth: collapsed ? 0 : "2vw", // Zero minWidth when collapsed
-                        width: collapsed ? "auto" : "auto", // Auto width
+                        minWidth: collapsed ? 0 : "2rem", // Change from vw to rem
+                        width: collapsed ? "auto" : "auto",
                         justifyContent: "center",
                         display: "flex",
                         alignItems: "center",
-                        marginRight: collapsed ? 0 : "0.55vw",
-                        padding: collapsed ? "0" : "0", // No padding when collapsed
+                        marginRight: collapsed ? 0 : "0.5rem", // Change from vw to rem
+                        padding: collapsed ? "0" : "0",
                       }}
                     >
                       <img
@@ -320,10 +322,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                             : item.icon
                         }
                         style={{
-                          width: collapsed
-                            ? "clamp(1rem, 1.3vw, 2rem)"
-                            : "clamp(1rem, 1.3vw, 2rem)",
-                          margin: collapsed ? "0 auto" : "0", // Center the image when collapsed
+                          width: "1.5rem", // Change from clamp to rem
+                          margin: collapsed ? "0 auto" : "0",
                         }}
                         alt={`${item.title} icon`}
                       />
@@ -331,14 +331,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                     <ListItemText
                       primary={item.title}
                       className={clsx("transition-all duration-0", {
-                        "opacity-0 w-0 absolute": collapsed, // Added absolute positioning when collapsed
+                        "opacity-0 w-0 absolute": collapsed,
                         "opacity-100": !collapsed,
                       })}
                       primaryTypographyProps={{
                         sx: {
                           whiteSpace: "nowrap",
                           overflow: "hidden",
-                          fontSize: "clamp(0.8rem, 0.8vw, 1rem)",
+                          fontSize: "0.925rem", // Change from clamp to rem
                         },
                       }}
                     />

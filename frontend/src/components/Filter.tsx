@@ -68,7 +68,7 @@ const Filter: React.FC<FilterProps> = ({
     <Box
       sx={{
         minWidth: 120,
-        maxWidth: "full",
+        maxWidth: "100%", // Changed from "full" to "100%"
         position: "relative",
       }}
       ref={anchorRef}
@@ -77,6 +77,17 @@ const Filter: React.FC<FilterProps> = ({
     >
       <Box
         onClick={handleToggle}
+        role="button"
+        aria-haspopup="true"
+        aria-expanded={open}
+        aria-label="Select filter option"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            handleToggle();
+            e.preventDefault();
+          }
+        }}
         sx={{
           backgroundColor: "transparent",
           color: "#6F658D",
@@ -86,6 +97,7 @@ const Filter: React.FC<FilterProps> = ({
           border: "2px solid #3B354C",
           display: "flex",
           alignItems: "center",
+          height: "fit-content",
           justifyContent: "space-between",
           cursor: "pointer",
           transition: "all 0.3s ease-in-out",
@@ -96,13 +108,26 @@ const Filter: React.FC<FilterProps> = ({
           },
         }}
       >
-        {selectedLabel}
-        <ArrowDropDownIcon
+        <Box
           sx={{
-            transition: "transform 0.3s",
-            transform: open ? "rotate(180deg)" : "rotate(0deg)",
+            display: "flex",
+            alignItems: "center",
+            "& > span": {
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            },
           }}
-        />
+        >
+          <span>{selectedLabel}</span>
+          <ArrowDropDownIcon
+            sx={{
+              transition: "transform 0.3s",
+              transform: open ? "rotate(180deg)" : "rotate(0deg)",
+              flexShrink: 0, // Prevent icon from shrinking
+            }}
+          />
+        </Box>
       </Box>
 
       <Popper
@@ -111,7 +136,26 @@ const Filter: React.FC<FilterProps> = ({
         transition
         disablePortal
         placement="bottom-start"
-        style={{ zIndex: 1300, width: anchorRef.current?.clientWidth }}
+        modifiers={[
+          {
+            name: "flip",
+            enabled: true,
+            options: {
+              fallbackPlacements: ["top-start", "top-end", "bottom-end"],
+            },
+          },
+          {
+            name: "preventOverflow",
+            enabled: true,
+            options: {
+              boundary: "window",
+            },
+          },
+        ]}
+        style={{
+          zIndex: 1300,
+          width: anchorRef.current ? anchorRef.current.clientWidth : "auto",
+        }}
       >
         {({ TransitionProps }) => (
           <Grow
@@ -127,6 +171,7 @@ const Filter: React.FC<FilterProps> = ({
                 boxShadow: "0 8px 16px rgba(0, 0, 0, 0.5)",
                 mt: 1,
                 width: "100%",
+                minWidth: anchorRef.current?.clientWidth || 120,
               }}
             >
               <ClickAwayListener onClickAway={handleClose}>
@@ -139,7 +184,7 @@ const Filter: React.FC<FilterProps> = ({
                     },
                     "& .MuiMenuItem-root.Mui-focusVisible": {
                       outline: "none", // Also handle keyboard focus
-                      backgroundColor: "#3B354C", // Custom focus background
+                      backgroundColor: "rgba(59, 53, 76, 0.3)", // Custom focus background
                     },
                   }}
                 >
@@ -150,8 +195,9 @@ const Filter: React.FC<FilterProps> = ({
                       onClick={() => handleChange(item.value)}
                       sx={{
                         color: "#E2DDF3",
-                        padding: "0.6rem 1rem",
-                        margin: "0.2rem 0.5rem",
+                        padding: { xs: "0.4rem 0.7rem", sm: "0.6rem 1rem" },
+                        margin: { xs: "0.1rem 0.3rem", sm: "0.2rem 0.5rem" },
+                        fontSize: { xs: "0.875rem", sm: "1rem" },
                         transition: "all 0.3s ease-in-out",
                         borderRadius: "0.5rem",
                         "&:hover": {

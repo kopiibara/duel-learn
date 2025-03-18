@@ -31,35 +31,46 @@ const CardPage = ({ studyMaterial }: CardPageProps) => {
         studyMaterial.items.map((item, index) => (
           <Box
             key={index}
-            className="bg-[#E2DDF3] py-6 px-8 rounded-[0.8rem] shadow-lg"
+            className="bg-[#E2DDF3] py-4 px-4 md:py-6 md:px-8 rounded-[0.8rem] shadow-lg"
           >
             <Stack
-              direction="row"
-              spacing={4}
+              direction={{ xs: "column", md: "row" }}
+              spacing={2}
               justifyContent="space-between"
-              alignItems="center"
+              alignItems={{ xs: "flex-start", md: "center" }}
             >
               <Stack spacing={1} flex={1}>
                 <Typography
                   variant="h6"
                   fontWeight="bold"
-                  className="text-[#120F1D] text-lg"
+                  className="text-[#120F1D]"
+                  sx={{ fontSize: { xs: "1rem", sm: "1.1rem", md: "1.2rem" } }}
                 >
                   {item.term}
                 </Typography>
                 <Typography
                   variant="body1"
-                  className="text-[#120F1D] text-base"
+                  className="text-[#120F1D]"
+                  sx={{ fontSize: { xs: "0.9rem", md: "1rem" } }}
                 >
                   {item.definition}
                 </Typography>
               </Stack>
               {item.image && (
-                <Box className="w-48 h-48 flex-shrink-0">
+                <Box
+                  sx={{
+                    width: { xs: "100%", md: "12rem" },
+                    height: { xs: "10rem", md: "12rem" },
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    mt: { xs: 2, md: 0 },
+                  }}
+                >
                   <img
                     src={typeof item.image === "string" ? item.image : ""}
                     alt={item.term}
-                    className="w-full h-full object-cover rounded-lg"
+                    className="max-w-full max-h-full object-contain rounded-lg"
                   />
                 </Box>
               )}
@@ -69,7 +80,7 @@ const CardPage = ({ studyMaterial }: CardPageProps) => {
       ) : (
         // Fallback when no items are present or data is still loading
         <Box
-          className="bg-[#E2DDF3] p-8 rounded-[0.8rem] shadow-lg"
+          className="bg-[#E2DDF3] p-4 md:p-8 rounded-[0.8rem] shadow-lg"
           display="flex"
           justifyContent="center"
           alignItems="center"

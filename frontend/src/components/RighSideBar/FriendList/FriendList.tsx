@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Box, IconButton, Stack } from "@mui/material";
 import { useUser } from "../../../contexts/UserContext";
 import cauldronGif from "../../../assets/General/Cauldron.gif";
@@ -10,14 +10,11 @@ import { useFriendList } from "../../../hooks/friends.hooks/useFriendList";
 import { useFriendSocket } from "../../../hooks/friends.hooks/useFriendSocket";
 import { usePendingFriendRequests } from "../../../hooks/friends.hooks/usePendingFriendRequests";
 import axios from "axios";
-import {
-  SnackbarState,
-  FriendRequestData,
-  Friend,
-} from "../../../types/friendObject";
+import { SnackbarState, FriendRequestData } from "../../../types/friendObject";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import noFriend from "../../../assets/images/NoFriend.svg";
+import { Friend } from "../../../contexts/UserContext";
 
 const FriendList: React.FC = () => {
   const { user } = useUser();
@@ -25,6 +22,10 @@ const FriendList: React.FC = () => {
   const [activeTab, setActiveTab] = useState("");
   const [localFriendList, setLocalFriendList] = useState<Friend[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [pendingCountCache, setPendingCountCache] = useState<{
+    count: number;
+    timestamp: number;
+  }>({ count: 0, timestamp: 0 });
   const [snackbar, setSnackbar] = useState<SnackbarState>({
     open: false,
     message: "",
@@ -62,53 +63,96 @@ const FriendList: React.FC = () => {
         senderId: data.sender_id,
       });
 
-      // Force an update of the pending count
-      fetchPendingRequestCount();
+      // Update pending count cache on socket notification
+      setPendingCountCache((prev) => ({
+        count: prev.count + 1,
+        timestamp: Date.now(),
+      }));
+      setPendingCount((prev) => prev + 1);
     },
     onFriendRequestAccepted: (data) => {
-      // Update UI to show the new friend
-      fetchFriends();
-
-      // Update the pending count
-      fetchPendingRequestCount();
-
       // Show notification
       setSnackbar({
         open: true,
         message: `You are now friends with ${
-          data.otherUser.username || "a new user"
+          data.otherUser?.username || data.sender_username || "a new user"
         }!`,
         isSender: true,
         senderId: "",
       });
+
+      // Make sure to update the friend list if this user received the acceptance
+      if (data.newFriend) {
+        setLocalFriendList((prev) => {
+          // Check if friend already exists to prevent duplicates
+          if (
+            !prev.some((f) => f.firebase_uid === data.newFriend.firebase_uid)
+          ) {
+            return [...prev, data.newFriend];
+          }
+          return prev;
+        });
+      }
+
+      // Update the pending count if this was from accepting a request
+      // This is important for badge count
+      if (data.receiver_id === user?.firebase_uid) {
+        setPendingCount((prev) => Math.max(0, prev - 1));
+        setPendingCountCache((prev) => ({
+          count: Math.max(0, prev.count - 1),
+          timestamp: Date.now(),
+        }));
+      }
     },
   });
 
-  // Function to fetch pending request count directly
-  const fetchPendingRequestCount = async () => {
-    if (!user?.firebase_uid) return;
+  // Optimized function to fetch pending request count with caching
+  const fetchPendingRequestCount = useCallback(
+    async (force = false) => {
+      if (!user?.firebase_uid) return;
 
-    try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/friend/requests-count/${
-          user.firebase_uid
-        }`
-      );
+      const now = Date.now();
+      const cacheAge = now - pendingCountCache.timestamp;
 
-      if (response.data && typeof response.data.count === "number") {
-        setPendingCount(response.data.count);
+      // Use cached value if it's recent (less than 30 seconds old) and not forced
+      if (!force && cacheAge < 30000 && pendingCountCache.count >= 0) {
+        console.log(
+          "Using cached pending request count:",
+          pendingCountCache.count
+        );
+        setPendingCount(pendingCountCache.count);
+        return;
       }
-    } catch (error) {
-      console.error("Error fetching pending request count:", error);
-    }
-  };
 
-  // Fetch the pending count on mount
+      try {
+        const response = await axios.get<{ count: number }>(
+          `${import.meta.env.VITE_BACKEND_URL}/api/friend/requests-count/${
+            user.firebase_uid
+          }`
+        );
+        const { count } = response.data;
+        if (typeof count === "number") {
+          setPendingCount(count);
+          setPendingCountCache({ count, timestamp: now });
+          console.log("Updated pending request count from API:", count);
+        }
+      } catch (error) {
+        console.error("Error fetching pending request count:", error);
+      }
+    },
+    [user?.firebase_uid, pendingCountCache]
+  );
+
+  // Fetch the pending count on mount only
   useEffect(() => {
-    if (user?.firebase_uid) {
-      fetchPendingRequestCount();
+    if (user?.firebase_uid && pendingCountCache.timestamp === 0) {
+      fetchPendingRequestCount(true); // Force initial fetch only if no cache
     }
-  }, [user?.firebase_uid]);
+  }, [
+    user?.firebase_uid,
+    fetchPendingRequestCount,
+    pendingCountCache.timestamp,
+  ]);
 
   const handleInvite = async (receiverId: string) => {
     if (!user?.firebase_uid || !user?.username) return;
@@ -144,17 +188,38 @@ const FriendList: React.FC = () => {
 
   const onAcceptFriendRequest = async (senderId: string) => {
     try {
-      // Use handleAcceptRequest from usePendingFriendRequests
-      await handleAcceptRequest(senderId);
+      // Get the friend's information before accepting
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/friend/user-info/${senderId}`
+      );
+      const friendInfo = response.data;
 
-      // Close the snackbar
+      // Accept the friend request
+      await handleAcceptRequest(senderId);
       setSnackbar({ ...snackbar, open: false });
 
-      // Refresh the friend list
+      // Optimistically update UI immediately
+      setPendingCount((prev) => Math.max(0, prev - 1));
+
+      // Immediately update the friendList with the new friend
+      if (friendInfo) {
+        setLocalFriendList((prev) => {
+          // Check if friend already exists to prevent duplicates
+          if (!prev.some((f) => f.firebase_uid === friendInfo.firebase_uid)) {
+            return [...prev, friendInfo];
+          }
+          return prev;
+        });
+      }
+
+      // Fetch updated data anyway to ensure consistency
       fetchFriends();
 
-      // Update the pending count
-      fetchPendingRequestCount();
+      // Update the pending count cache
+      setPendingCountCache((prev) => ({
+        count: Math.max(0, prev.count - 1),
+        timestamp: Date.now(),
+      }));
     } catch (error: any) {
       console.error("Error accepting friend request:", error);
       setSnackbar({
@@ -171,7 +236,11 @@ const FriendList: React.FC = () => {
     try {
       await handleRejectRequest(senderId);
       setSnackbar({ ...snackbar, open: false });
-      fetchPendingRequestCount();
+
+      // Optimistically update UI
+      setPendingCount((prev) => Math.max(0, prev - 1));
+
+      // No need to call fetchPendingRequestCount() here
     } catch (error) {
       console.error("Error declining friend request:", error);
     }
@@ -181,9 +250,15 @@ const FriendList: React.FC = () => {
     setActiveTab(tab);
     setModalOpen(true);
 
-    // If opening the pending requests, refresh the count
-    if (tab === "pending") {
-      fetchPendingRequestCount();
+    // Only fetch pending request count when opening that tab and if cache is stale
+    if (tab === "FRIEND REQUESTS") {
+      const now = Date.now();
+      const cacheAge = now - pendingCountCache.timestamp;
+
+      // Only fetch if cache is older than 30 seconds
+      if (cacheAge > 30000) {
+        fetchPendingRequestCount(true);
+      }
     }
   };
 
@@ -194,22 +269,26 @@ const FriendList: React.FC = () => {
 
   return (
     <>
-      <Box className="rounded-[1rem] shadow-md border-[0.2rem] border-[#3B354C]">
-        <div className="px-8 pt-8 pb-3">
-          <div className="flex flex-row items-center mb-6 gap-4">
-            <img src="/bunny.png" className="w-[41px] h-[35px]" alt="icon" />
-            <h2 className="text-[1.1rem] text-[#FFFFFF] font-semibold">
+      <Box className="rounded-[0.8rem] border-[0.2rem] border-[#3B354C] max-h-[80%]">
+        <div className="px-8 pt-8 pb-4">
+          <div className="flex flex-row items-center mb-4 gap-3">
+            <img
+              src="/bunny.png"
+              className="w-8 sm:w-10 md:w-12 h-auto"
+              alt="icon"
+            />
+            <p className="text-base sm:text-lg md:text-xl font-semibold">
               Friend List
-            </h2>
+            </p>
           </div>
-          <hr className="border-t-2 border-[#3B354D] mb-7" />
+          <hr className="border-t-2 border-[#3B354D] mb-4" />
 
           {loading ? (
             <Box display="flex" justifyContent="center" alignItems="center">
               <img
                 src={cauldronGif}
                 alt="Loading..."
-                style={{ width: "4rem", height: "auto" }}
+                style={{ width: "3rem", height: "auto" }}
               />
             </Box>
           ) : error ? (
@@ -220,27 +299,27 @@ const FriendList: React.FC = () => {
               display="flex"
               justifyContent="center"
               alignItems="center"
-              paddingY={2}
+              padding="1rem 0"
             >
               <Box display="flex" justifyContent="center" alignItems="center">
                 <img
                   src={noFriend}
                   alt="noFriend"
-                  style={{ width: "8rem", height: "auto", opacity: 0.75 }}
+                  style={{
+                    width: "6rem",
+                    height: "auto",
+                    opacity: 0.75,
+                  }}
                 />
               </Box>
-              <p className=" text-[#6F658D] font-semibold text-[0.85rem]">
+              <p className="text-[#6F658D] font-semibold text-sm">
                 {" "}
                 Add friends and share the magic!
               </p>
             </Stack>
           ) : (
             localFriendList.map((friend: Friend) => (
-              <FriendListItem
-                key={friend.firebase_uid}
-                friend={friend}
-                onInvite={handleInvite}
-              />
+              <FriendListItem key={friend.firebase_uid} friend={friend} />
             ))
           )}
         </div>

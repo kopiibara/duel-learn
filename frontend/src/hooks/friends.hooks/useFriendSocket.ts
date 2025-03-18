@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Socket, io } from "socket.io-client";
 import { FriendRequestData } from "../../types/friendObject";
 
@@ -23,15 +23,20 @@ export const useFriendSocket = ({
   onFriendRemoved,
   onFriendRequestSent,
 }: UseFriendSocketProps) => {
-  const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const socketRef = useRef<Socket | null>(null);
 
+  // Prevent duplicate connections
   useEffect(() => {
-    if (userId) {
+    if (userId && !socketRef.current) {
       const newSocket = io(import.meta.env.VITE_BACKEND_URL, {
         reconnection: true,
         reconnectionAttempts: 5,
         reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
+        timeout: 10000,
+        // Explicitly request websocket transport first for better performance
+        transports: ["websocket", "polling"],
       });
 
       newSocket.on("connect", () => {
@@ -50,67 +55,48 @@ export const useFriendSocket = ({
         setIsConnected(false);
       });
 
-      setSocket(newSocket);
+      socketRef.current = newSocket;
 
       return () => {
         console.log("Cleaning up socket for user:", userId);
+        newSocket.disconnect();
         newSocket.close();
+        socketRef.current = null;
         setIsConnected(false);
       };
     }
   }, [userId]);
 
+  // Set up a single useEffect for all event listeners
   useEffect(() => {
-    if (!socket) return;
+    const currentSocket = socketRef.current;
+    if (!currentSocket) return;
 
     console.log("Setting up socket event listeners for user:", userId);
 
-    // Listen for incoming friend requests
+    // Set up event listeners
     if (onFriendRequest) {
-      socket.on("newFriendRequest", (data) => {
-        console.log("Socket received newFriendRequest event:", data);
-        onFriendRequest(data);
-      });
+      currentSocket.on("newFriendRequest", onFriendRequest);
     }
 
-    // Listen for friend request accepted events
     if (onFriendRequestAccepted) {
-      socket.on("friendRequestAccepted", (data) => {
-        console.log("Received friendRequestAccepted event:", data);
-        onFriendRequestAccepted(data);
-      });
+      currentSocket.on("friendRequestAccepted", onFriendRequestAccepted);
     }
 
-    // Listen for friend request rejected events
     if (onFriendRequestRejected) {
-      socket.on("friendRequestRejected", onFriendRequestRejected);
+      currentSocket.on("friendRequestRejected", onFriendRequestRejected);
     }
 
-    // Listen for friend removed events
     if (onFriendRemoved) {
-      socket.on("friendRemoved", onFriendRemoved);
+      currentSocket.on("friendRemoved", onFriendRemoved);
     }
 
-    // Listen for friend request sent confirmation
     if (onFriendRequestSent) {
-      socket.on("friendRequestSent", (data) => {
-        console.log("Received friendRequestSent event:", data);
-        onFriendRequestSent(data);
-      });
-    } else {
-      socket.on(
-        "friendRequestSent",
-        (data: { success: boolean; receiver_id: string }) => {
-          console.log("Received friendRequestSent event (no handler):", data);
-          if (data.success) {
-            console.log("Friend request sent successfully via socket");
-          }
-        }
-      );
+      currentSocket.on("friendRequestSent", onFriendRequestSent);
     }
 
-    // Listen for socket errors
-    socket.on(
+    // Generic error handler
+    currentSocket.on(
       "error",
       (error: { type: string; message: string; details: string }) => {
         console.error("Socket error for user:", userId, error);
@@ -118,45 +104,49 @@ export const useFriendSocket = ({
     );
 
     return () => {
-      console.log("Cleaning up socket event listeners for user:", userId);
-      socket.off("newFriendRequest");
-      socket.off("friendRequestAccepted");
-      socket.off("friendRequestRejected");
-      socket.off("friendRemoved");
-      socket.off("friendRequestSent");
-      socket.off("error");
+      // Clean up listeners
+      if (currentSocket) {
+        currentSocket.off("newFriendRequest");
+        currentSocket.off("friendRequestAccepted");
+        currentSocket.off("friendRequestRejected");
+        currentSocket.off("friendRemoved");
+        currentSocket.off("friendRequestSent");
+        currentSocket.off("error");
+      }
     };
   }, [
-    socket,
+    userId,
     onFriendRequest,
     onFriendRequestAccepted,
     onFriendRequestRejected,
     onFriendRemoved,
     onFriendRequestSent,
-    userId,
   ]);
 
-  // Update the sendFriendRequest function to ensure all required data is sent
+  // Socket action methods - only emit when connected
   const sendFriendRequest = (requestData: {
     sender_id: string;
     receiver_id: string;
     sender_username: string;
     receiver_username?: string;
   }) => {
-    if (socket?.connected) {
-      console.log("Sending friend request:", requestData);
-      socket.emit("sendFriendRequest", {
-        sender_id: requestData.sender_id,
-        receiver_id: requestData.receiver_id,
-        senderUsername: requestData.sender_username, // Key issue: Backend expects senderUsername, not sender_username
-        receiver_username: requestData.receiver_username,
-      });
-    } else {
+    if (!socketRef.current?.connected) {
       console.error("Socket not connected when trying to send friend request");
+      return;
     }
+
+    if (
+      !requestData.sender_id ||
+      !requestData.receiver_id ||
+      !requestData.sender_username
+    ) {
+      console.error("Missing required data for friend request:", requestData);
+      return;
+    }
+
+    socketRef.current.emit("sendFriendRequest", requestData);
   };
 
-  // Update the acceptFriendRequest function
   const acceptFriendRequest = (data: {
     sender_id: string;
     sender_username: string;
@@ -165,37 +155,25 @@ export const useFriendSocket = ({
     senderInfo?: any;
     receiverInfo?: any;
   }) => {
-    if (socket?.connected) {
-      console.log("Emitting acceptFriendRequest socket event:", data);
-      socket.emit("acceptFriendRequest", data);
-    } else {
-      console.error(
-        "Socket not connected when trying to accept friend request"
-      );
-    }
+    if (!socketRef.current?.connected) return;
+    socketRef.current.emit("acceptFriendRequest", data);
   };
 
   const rejectFriendRequest = (data: {
     sender_id: string;
     receiver_id: string;
   }) => {
-    if (socket?.connected) {
-      socket.emit("rejectFriendRequest", data);
-    } else {
-      console.error("Socket not connected");
-    }
+    if (!socketRef.current?.connected) return;
+    socketRef.current.emit("rejectFriendRequest", data);
   };
 
   const removeFriend = (data: { sender_id: string; receiver_id: string }) => {
-    if (socket?.connected) {
-      socket.emit("removeFriend", data);
-    } else {
-      console.error("Socket not connected");
-    }
+    if (!socketRef.current?.connected) return;
+    socketRef.current.emit("removeFriend", data);
   };
 
   return {
-    socket,
+    socket: socketRef.current,
     isConnected,
     sendFriendRequest,
     acceptFriendRequest,
