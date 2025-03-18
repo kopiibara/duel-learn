@@ -20,8 +20,8 @@ const sanitizeUsername = (displayName: string): string => {
   }
 
   // Ensure minimum length
-  if (sanitized.length < 4) { // 8 minimum - 4 for numbers
-    sanitized = sanitized.padEnd(4, 'x');
+  if (sanitized.length < 2) { // 2 minimum is the new requirement
+    sanitized = sanitized.padEnd(2, 'x');
   }
 
   return sanitized;

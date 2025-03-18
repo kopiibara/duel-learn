@@ -29,13 +29,20 @@ import AssessmentIcon from "@mui/icons-material/Assessment";
 import HelpIcon from "@mui/icons-material/Help";
 import SportsEsportsIcon from "@mui/icons-material/SportsEsports";
 
+interface AdminMenuItem {
+  title: string;
+  icon: React.ReactNode;
+  path: string;
+  divider?: boolean;
+}
+
 interface AdminSidebarProps {
   selectedIndex: number | null;
   setSelectedIndex: React.Dispatch<React.SetStateAction<number | null>>;
 }
 
 // Admin-specific menu items
-const adminMenuItems = [
+const adminMenuItems: AdminMenuItem[] = [
   {
     title: "Dashboard",
     icon: <DashboardIcon />,
@@ -57,7 +64,7 @@ const adminMenuItems = [
     path: "/admin/game-settings",
   },
   {
-    title: "Settings",
+    title: "Admin Settings",
     icon: <SettingsIcon />,
     path: "/admin/settings",
   },
@@ -65,6 +72,12 @@ const adminMenuItems = [
     title: "Support",
     icon: <HelpIcon />,
     path: "/admin/support",
+  },
+  {
+    title: "User Dashboard",
+    icon: <SupervisorAccountIcon />,
+    path: "/dashboard/home",
+    divider: true, // Add a divider before this item
   },
 ];
 
@@ -258,68 +271,71 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
         <nav aria-label="admin-sidebar">
           <List>
             {adminMenuItems.map((item, index) => (
-              <ListItem key={index} disablePadding className="mb-2">
-                <Tooltip
-                  title={collapsed ? item.title : ""}
-                  placement="right"
-                  arrow
-                  sx={{
-                    fontSize: "16px",
-                    backgroundColor: "yellow",
-                    color: "blue",
-                    borderRadius: "8px",
-                  }}
-                >
-                  <ListItemButton
-                    selected={selectedIndex === index}
-                    onClick={() => handleItemClick(index, item.path)}
+              <React.Fragment key={index}>
+                {item.divider && <Divider sx={{ my: 2, backgroundColor: "#3B354C" }} />}
+                <ListItem disablePadding className="mb-2">
+                  <Tooltip
+                    title={collapsed ? item.title : ""}
+                    placement="right"
+                    arrow
                     sx={{
-                      "&:hover, &.Mui-selected": {
-                        borderColor: "#4D18E8",
+                      fontSize: "16px",
+                      backgroundColor: "yellow",
+                      color: "blue",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    <ListItemButton
+                      selected={selectedIndex === index}
+                      onClick={() => handleItemClick(index, item.path)}
+                      sx={{
+                        "&:hover, &.Mui-selected": {
+                          borderColor: "#4D18E8",
+                          borderWidth: "2px",
+                          borderStyle: "solid",
+                          color: "#4D18E8",
+                          transform: "scale(1.05)",
+                        },
+                        "&.Mui-selected": {
+                          color: "#4D18E8",
+                          fontWeight: "bold",
+                        },
+                        transition: "all 0.3s ease",
+                        justifyContent: collapsed ? "center" : "flex-start",
+                        padding: "0.6rem 1.6rem",
+                        color: "#E2DDF3",
+                        borderColor: "#080511",
                         borderWidth: "2px",
                         borderStyle: "solid",
-                        color: "#4D18E8",
-                        transform: "scale(1.05)",
-                      },
-                      "&.Mui-selected": {
-                        color: "#4D18E8",
-                        fontWeight: "bold",
-                      },
-                      transition: "all 0.3s ease",
-                      justifyContent: collapsed ? "center" : "flex-start",
-                      padding: "0.6rem 1.6rem",
-                      color: "#E2DDF3",
-                      borderColor: "#080511",
-                      borderWidth: "2px",
-                      borderStyle: "solid",
-                      borderRadius: "0.8rem",
-                    }}
-                    onMouseEnter={() => setHoveredIndex(index)}
-                    onMouseLeave={() => setHoveredIndex(null)}
-                  >
-                    <ListItemIcon
-                      sx={{
-                        minWidth: 0,
-                        mr: collapsed ? 0 : 2,
-                        justifyContent: "center",
-                        color: selectedIndex === index || hoveredIndex === index 
-                          ? "#4D18E8" 
-                          : "#E2DDF3",
+                        borderRadius: "0.8rem",
                       }}
+                      onMouseEnter={() => setHoveredIndex(index)}
+                      onMouseLeave={() => setHoveredIndex(null)}
                     >
-                      {item.icon}
-                    </ListItemIcon>
-                    <ListItemText
-                      primary={item.title}
-                      className={clsx("transition-all duration-0", {
-                        "opacity-0 w-auto": collapsed,
-                        "opacity-100 w-auto": !collapsed,
-                      })}
-                      sx={{ whiteSpace: "nowrap", overflow: "hidden" }}
-                    />
-                  </ListItemButton>
-                </Tooltip>
-              </ListItem>
+                      <ListItemIcon
+                        sx={{
+                          minWidth: 0,
+                          mr: collapsed ? 0 : 2,
+                          justifyContent: "center",
+                          color: selectedIndex === index || hoveredIndex === index 
+                            ? "#4D18E8" 
+                            : "#E2DDF3",
+                        }}
+                      >
+                        {item.icon}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={item.title}
+                        className={clsx("transition-all duration-0", {
+                          "opacity-0 w-auto": collapsed,
+                          "opacity-100 w-auto": !collapsed,
+                        })}
+                        sx={{ whiteSpace: "nowrap", overflow: "hidden" }}
+                      />
+                    </ListItemButton>
+                  </Tooltip>
+                </ListItem>
+              </React.Fragment>
             ))}
           </List>
         </nav>

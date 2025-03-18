@@ -161,41 +161,17 @@ const UserManagement: React.FC = () => {
   const fetchInitialUsersWithAuth = async () => {
     setLoading(true);
     try {
-      console.log("Attempting to fetch users with current auth state...");
-      const currentFirebaseUser = auth.currentUser;
+      console.log("Attempting to fetch users...");
       
-      // If we have Firebase user but not user context, try to use Firebase token
-      if (currentFirebaseUser) {
-        const token = await currentFirebaseUser.getIdToken(true);
-        console.log("Using Firebase token for request");
-        
-        // Get user claims if any
-        const claims = await currentFirebaseUser.getIdTokenResult();
-        console.log("Token claims:", claims.claims);
-        
-        // Fetch real users from API
-        const response = await apiClient.get('/admin/users');
-        if (Array.isArray(response.data.users)) {
-          setUsers(response.data.users);
-          setAuthError(null);
-        } else {
-          console.error("API response is not an array of users");
-          setAuthError("Invalid data format received from server");
-          setUsers([]);
-        }
+      // Use apiClient directly which already has token handling
+      const response = await apiClient.get('/admin/users');
+      if (Array.isArray(response.data.users)) {
+        setUsers(response.data.users);
+        setAuthError(null);
       } else {
-        // Try the request anyway - may fail with 401, which is handled in catch
-        console.log("No auth user available, attempting request");
-        
-        const response = await apiClient.get('/admin/users');
-        if (Array.isArray(response.data.users)) {
-          setUsers(response.data.users);
-          setAuthError(null);
-        } else {
-          console.error("API response is not an array of users");
-          setAuthError("Invalid data format received from server");
-          setUsers([]);
-        }
+        console.error("API response is not an array of users");
+        setAuthError("Invalid data format received from server");
+        setUsers([]);
       }
     } catch (error) {
       console.error("Error fetching users:", error);

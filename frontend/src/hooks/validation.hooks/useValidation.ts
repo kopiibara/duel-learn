@@ -11,8 +11,8 @@ import {
 const usernameValidation = (value: string) => {
   if (!value) {
     return "Username is required.";
-  } else if (value.length < 8) {
-    return "Username must be at least 8 characters.";
+  } else if (value.length < 2) {
+    return "Username must be at least 2 characters.";
   } else if (value.length > 20) {
     return "Username cannot exceed 20 characters.";
   } else if (!/^[a-zA-Z0-9_]+$/.test(value)) {

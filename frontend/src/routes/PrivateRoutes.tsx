@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
+import { useAuth } from "../contexts/AuthContext";
 import DashboardLayout from "../layouts/DashboardLayout";
 import Home from "../pages/dashboard/home/HomePage";
 import Explore from "../pages/dashboard/explore/ExplorePage";
@@ -35,22 +36,26 @@ import PvpBattle from "../pages/dashboard/play-battleground/modes/multiplayer/ba
 import SearchPage from "../pages/dashboard/search/SearchPage";
 
 const PrivateRoutes = () => {
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
+  const { isAuthenticated, isLoading: authLoading, currentUser } = useAuth();
   const [_selectedIndex, setSelectedIndex] = useState<number | null>(1);
 
-  if (!user) {
+  // Show loading screen if either auth or user data is still loading
+  if (authLoading || userLoading) {
+    return <LoadingScreen />;
+  }
+
+  // If not authenticated, redirect to landing page
+  if (!isAuthenticated || !currentUser) {
     return <Navigate to="/landing-page" />;
   }
 
-  /* isAdmin = user.account_type === "admin" || 
-                 (localStorage.getItem("userData") && 
-                  JSON.parse(localStorage.getItem("userData") || "{}").account_type === "admin");
+  // If authenticated but no user data loaded yet, try to load it
+  if (!user) {
+    return <LoadingScreen />;
+  }
 
-  if (isAdmin) {
-    console.log("PrivateRoutes - Admin user detected, redirecting to admin dashboard");
-    return <Navigate to="/admin/dashboard" />;
-  }*/
-
+  // If email not verified, redirect to verification page
   if (!user.email_verified) {
     return <Navigate to="/verify-email" />;
   }

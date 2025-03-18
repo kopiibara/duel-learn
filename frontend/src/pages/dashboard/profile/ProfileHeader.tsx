@@ -8,11 +8,12 @@ import {
   getCurrentLevel,
   DEFAULT_LEVELS,
 } from "../../../types/levelRequiredObject";
+import RefreshIcon from "@mui/icons-material/Refresh";
 
 const ProfileHeader = () => {
-  const { user } = useUser();
+  const { user, refreshUserData } = useUser();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [_loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [_error, setError] = useState<string | null>(null);
   const [friendsCount, setFriendsCount] = useState(0);
   const [profileData, setProfileData] = useState({
@@ -25,34 +26,36 @@ const ProfileHeader = () => {
     xpProgress: 0,
   });
   const [accountType, setAccountType] = useState<string | undefined>(undefined);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Fetch user info from the API
+  // Extract fetchUserInfo to be reusable
+  const fetchUserInfo = useCallback(async () => {
+    if (!user?.firebase_uid) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/user-info/details/${
+          user.firebase_uid
+        }`
+      );
+      setUserInfo(response.data.user);
+      // Also update the accountType when we get userInfo
+      setAccountType(response.data.user.account_type);
+    } catch (err) {
+      console.error("Error fetching user info:", err);
+      setError("Failed to load user data");
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.firebase_uid, setLoading, setError]);
+
+  // Fetch user info from the API on component mount
   useEffect(() => {
-    const fetchUserInfo = async () => {
-      if (!user?.firebase_uid) return;
-
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/user-info/details/${
-            user.firebase_uid
-          }`
-        );
-        setUserInfo(response.data.user);
-        // Also update the accountType when we get userInfo
-        setAccountType(response.data.user.account_type);
-      } catch (err) {
-        console.error("Error fetching user info:", err);
-        setError("Failed to load user data");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchUserInfo();
-  }, [user?.firebase_uid]);
+  }, [fetchUserInfo]);
 
   // Fetch friend count
   const fetchFriendCount = useCallback(async () => {
@@ -155,6 +158,26 @@ const ProfileHeader = () => {
     }
   };
 
+  // Function to handle refresh action
+  const handleRefresh = async () => {
+    if (isRefreshing || !user?.firebase_uid) return;
+    
+    setIsRefreshing(true);
+    
+    try {
+      // First refresh the user data in UserContext
+      await refreshUserData();
+      
+      // Then refresh profile-specific data
+      await fetchUserInfo();
+      await fetchFriendCount();
+    } catch (error) {
+      console.error("Error refreshing profile data:", error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return (
     <div
       className="rounded-[1rem] px-6 md:px-14 py-9 flex flex-col md:flex-row items-center md:items-start text-center md:text-left mb-9"
@@ -185,6 +208,18 @@ const ProfileHeader = () => {
               className="w-[15px] h-auto rounded-sm"
             />
           )}
+          
+          <button 
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            className="ml-auto bg-[#3D384C] hover:bg-[#514869] p-2 rounded-full transition-colors"
+            title="Refresh profile data"
+          >
+            <RefreshIcon 
+              className={`text-[#E2DDF3] transition-transform ${isRefreshing ? 'animate-spin' : ''}`}
+              fontSize="small"
+            />
+          </button>
         </div>
         <div className="flex justify-center md:justify-between">
           <p className="text-[#9F9BAE] text-[16px">Level {profileData.level}</p>

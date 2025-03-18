@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../index.css";
 import { useUser } from "../../contexts/UserContext";
+import { useAuth } from "../../contexts/AuthContext";
 import useCombinedErrorHandler from "../../hooks/validation.hooks/useCombinedErrorHandler";
 import {
   collection,
@@ -25,9 +26,11 @@ import {
 import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import { useStoreUser } from '../../hooks/api.hooks/useStoreUser';
+import { setAuthToken } from "../../api/apiClient";
 
 const Login = () => {
-  const { user, loginAndSetUserData } = useUser();
+  const { user, loadUserData } = useUser();
+  const { login, isLoading: authLoading, error: authError } = useAuth();
   const { handleError, combinedError } = useCombinedErrorHandler();
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
@@ -35,6 +38,14 @@ const Login = () => {
   const { handleGoogleAuth, loading: googleLoading } = useGoogleAuth();
   const [loading, setLoading] = useState(false);
   const { storeUser } = useStoreUser();
+  const [submitError, setSubmitError] = useState("");
+
+  // Handle auth errors
+  useEffect(() => {
+    if (authError) {
+      handleError(new Error(authError));
+    }
+  }, [authError, handleError]);
 
   // Check if user is already logged in and redirect
   useEffect(() => {
@@ -82,9 +93,19 @@ const Login = () => {
             
             console.log("Found user in temp_users collection, attempting to sign in with Firebase");
             
-            // Try to sign in with Firebase
-            const result = await signInWithEmailAndPassword(auth, email, values.password);
-            const token = await result.user.getIdToken();
+            // Try to sign in with Firebase using the AuthContext
+            const result = await login(email, values.password);
+            
+            // Get a fresh token and make sure it's set in apiClient
+            const token = await result.getIdToken();
+            console.log("Got Firebase token:", token.substring(0, 10) + "...");
+            
+            // Explicitly set the token to ensure it's available for the API call
+            setAuthToken(token);
+            console.log("Token explicitly set in apiClient");
+            
+            // Add a small delay to ensure token is properly set
+            await new Promise(resolve => setTimeout(resolve, 500));
             
             console.log("Firebase sign in successful, storing user data");
             
@@ -93,8 +114,10 @@ const Login = () => {
               username: userData.username,
               email: userData.email,
               password: values.password,
-              account_type: userData.account_type || "free"
-            }, token);
+              account_type: userData.account_type || "free",
+              isNew: true,
+              isSSO: false
+            });
             console.log("Store user result:", storeUserResult);
 
             if (!storeUserResult.success) {
@@ -132,9 +155,19 @@ const Login = () => {
             
             console.log("Found user in temp_users collection with email search, attempting to sign in with Firebase");
             
-            // Try to sign in with Firebase
-            const result = await signInWithEmailAndPassword(auth, email, values.password);
-            const token = await result.user.getIdToken();
+            // Try to sign in with Firebase using the AuthContext
+            const result = await login(email, values.password);
+            
+            // Get a fresh token and make sure it's set in apiClient
+            const token = await result.getIdToken();
+            console.log("Got Firebase token:", token.substring(0, 10) + "...");
+            
+            // Explicitly set the token to ensure it's available for the API call
+            setAuthToken(token);
+            console.log("Token explicitly set in apiClient");
+            
+            // Add a small delay to ensure token is properly set
+            await new Promise(resolve => setTimeout(resolve, 500));
             
             console.log("Firebase sign in successful, storing user data");
             
@@ -143,8 +176,10 @@ const Login = () => {
               username: userData.username,
               email: userData.email,
               password: values.password,
-              account_type: userData.account_type || "free"
-            }, token);
+              account_type: userData.account_type || "free",
+              isNew: true,
+              isSSO: false
+            });
             
             console.log("Navigating to email verification page");
             // Navigate to verify email page
@@ -157,22 +192,32 @@ const Login = () => {
           // The email input will be used directly
         }
         
-        // Proceed with standard login
-        const result = await signInWithEmailAndPassword(auth, email, values.password);
-        const token = await result.user.getIdToken();
-
-        // Use the new loginAndSetUserData function
+        // Proceed with standard login using AuthContext
+        const result = await login(email, values.password);
+        
+        // Get a fresh token and make sure it's set in apiClient
+        const token = await result.getIdToken();
+        console.log("Got Firebase token:", token.substring(0, 10) + "...");
+        
+        // Explicitly set the token to ensure it's available for the API call
+        setAuthToken(token);
+        console.log("Token explicitly set in apiClient");
+        
+        // Add a small delay to ensure token is properly set
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Use the loadUserData function from UserContext
         try {
-          const userData = await loginAndSetUserData(result.user.uid, token);
+          const userData = await loadUserData(result.uid);
           console.log("User data after login:", userData);
           
-          if (userData.isNew) {
+          if (userData?.isNew) {
             setSuccessMessage("Account found successfully!");
             setTimeout(() => {
               setLoading(true);
               navigate("/dashboard/welcome");
             }, 1500);
-          } else if (!userData.email_verified) {
+          } else if (userData && !userData.email_verified) {
             console.log("Email not verified, navigating to verification page");
             setLoading(true);
             navigate("/verify-email", { state: { token } });
@@ -180,40 +225,30 @@ const Login = () => {
             console.log("Email verified, navigating to dashboard");
             
             // Check if user is admin and handle special redirection
-            if (userData.account_type === "admin") {
+            if (userData?.account_type === "admin") {
               console.log("Admin user detected, navigating to admin dashboard");
-              // Make sure userData is stored in localStorage before redirecting
-              localStorage.setItem("userData", JSON.stringify(userData));
-              localStorage.setItem("userToken", token);
-              
-              // Add a small delay to ensure localStorage is updated
-              setTimeout(() => {
-                setLoading(true);
-                navigate("/admin/dashboard");
-              }, 100);
+              setLoading(true);
+              navigate("/admin/dashboard");
             } else {
               setLoading(true);
               navigate("/dashboard/home");
             }
           }
         } catch (loginError: any) {
-          // If the error is because user is not in temp_users, they might be a verified user
-          // Try direct API call as a fallback
-          if (loginError.message === "User not found in temp_users collection") {
-            console.log("User not in temp_users, trying direct API call...");
-            try {
-              // If Firebase auth succeeded but temp_users check failed,
-              // assume the user is verified and navigate to dashboard
-              setLoading(true);
-              navigate("/dashboard/home");
-              return;
-            } catch (apiError) {
-              handleError(apiError);
-              setLoading(false);
-            }
+          console.error("Error during login user data loading:", loginError);
+          
+          // Check for specific error messages
+          if (loginError.message && loginError.message.includes("not found")) {
+            // The user exists in Firebase but not in our database yet
+            setSubmitError("Your account exists but needs to be set up. Please complete registration.");
+            
+            // Redirect to verify email page to continue registration process
+            setTimeout(() => {
+              navigate("/verify-email", { state: { token } });
+            }, 2000);
           } else {
-            // For other errors, pass through to error handler
-            handleError(loginError);
+            // For other errors, display the specific error message
+            setSubmitError(loginError.message || "An error occurred during login");
             setLoading(false);
           }
         }
@@ -229,7 +264,9 @@ const Login = () => {
     try {
       const account_type = "free";
       const authResult = await handleGoogleAuth(account_type);
-      const userData = await loginAndSetUserData(authResult.userData.uid, authResult.token);
+      
+      // Load user data using updated UserContext method
+      const userData = await loadUserData(authResult.userData.uid);
 
       if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
@@ -237,7 +274,7 @@ const Login = () => {
           setLoading(true);
           navigate("/dashboard/welcome");
         }, 1500);
-      } else if (!userData.email_verified) {
+      } else if (userData && !userData.email_verified) {
         setLoading(true);
         navigate("/verify-email", { state: { token: authResult.token } });
       } else {
@@ -285,6 +322,11 @@ const Login = () => {
           {combinedError && (
             <div className="bg-red-700 text-white text-center py-2 mb-4 rounded">
               {combinedError}
+            </div>
+          )}
+          {submitError && (
+            <div className="bg-red-700 text-white text-center py-2 mb-4 rounded">
+              {submitError}
             </div>
           )}
           {/* Form */}

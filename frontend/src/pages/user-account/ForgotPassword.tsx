@@ -7,9 +7,11 @@ import PageTransition from "../../styles/PageTransition";
 import sampleAvatar2 from "../../assets/images/sampleAvatar2.png";
 import useFirebaseError from "../../hooks/validation.hooks/useFirebaseError";
 import * as Yup from "yup";
+import { useAuth } from "../../contexts/AuthContext";
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
+  const { resetPassword, error: authError } = useAuth();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -19,6 +21,13 @@ const ForgotPassword = () => {
   const [isSSOModalOpen, setIsSSOModalOpen] = useState(false);
   const { error, handleFirebaseError, setError } = useFirebaseError();
   const [submitError, setSubmitError] = useState("");
+
+  // Handle auth errors
+  React.useEffect(() => {
+    if (authError) {
+      setSubmitError(authError);
+    }
+  }, [authError]);
 
   const validationSchema = Yup.object().shape({
     email: Yup.string()
@@ -49,12 +58,18 @@ const ForgotPassword = () => {
           if (userData.isSSO) {
             setIsSSOModalOpen(true);
           } else {
-            navigate("/confirmation-account", {
-              state: {
-                email,
-                type: "reset",
-              },
-            });
+            // Use AuthContext resetPassword instead of navigating directly
+            try {
+              await resetPassword(email);
+              navigate("/confirmation-account", {
+                state: {
+                  email,
+                  type: "reset",
+                },
+              });
+            } catch (error: any) {
+              setSubmitError(error.message || "Failed to send password reset email");
+            }
           }
         }
       } catch (error) {

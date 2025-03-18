@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
+import { useAuth } from "../contexts/AuthContext";
 import { useEffect, useState } from "react";
 import LoadingScreen from "../components/LoadingScreen";
 import AdminDashboardLayout from "../layouts/AdminDashboardLayout";
@@ -18,48 +19,34 @@ import {
 } from "../pages/admin";
 
 const AdminRoutes = () => {
-  const { user } = useUser();
-  const token = localStorage.getItem("userToken");
-  const [isLoading, setIsLoading] = useState(true);
+  const { user, loading: userLoading } = useUser();
+  const { isAuthenticated, isLoading: authLoading, currentUser } = useAuth();
   
-  // Check localStorage for persisted admin status
-  const userData = localStorage.getItem("userData");
-  const parsedUserData = userData ? JSON.parse(userData) : null;
-  const isAdmin = parsedUserData?.account_type === "admin";
-
   // Effect to handle initial loading
-  useEffect(() => {
-    // If we have user data or explicitly know we don't have a user, stop loading
-    if (user || user === null) {
-      setIsLoading(false);
-    }
-    
-    // Log for debugging
-    if (user) {
-      console.log("AdminRoutes - User data loaded:", user);
-      console.log("AdminRoutes - Is admin:", user.account_type === "admin");
-    }
-  }, [user]);
+  const isLoading = authLoading || userLoading;
+  
+  // Check if admin based on user context data
+  const isAdmin = user?.account_type === "admin";
 
   // While loading, show loading screen
   if (isLoading) {
     return <LoadingScreen />;
   }
 
-  // Use both the React state user and localStorage as fallback
-  // This ensures we don't redirect incorrectly during state transitions
-  if ((!user && !isAdmin) || (user && user.account_type !== "admin" && !isAdmin)) {
-    console.log("AdminRoutes - Redirecting to admin-sign-up: No admin user found");
+  // If not authenticated, redirect to login
+  if (!isAuthenticated || !currentUser) {
+    return <Navigate to="/login" />;
+  }
+
+  // If not admin, redirect to admin signup
+  if (!isAdmin) {
     return <Navigate to="/admin-sign-up" />;
   }
 
-  // If we have a user (from state or localStorage) but email isn't verified
-  if ((user && !user.email_verified) || (parsedUserData && !parsedUserData.email_verified)) {
-    console.log("AdminRoutes - Redirecting to verify-email: Email not verified");
+  // If email isn't verified, redirect to verification page
+  if (user && !user.email_verified) {
     return <Navigate to="/verify-email" />;
   }
-
-  console.log("AdminRoutes - Rendering admin routes");
   
   return (
     <Routes>
