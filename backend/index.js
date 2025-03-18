@@ -8,7 +8,6 @@ import userInfoRoutes from "./routes/UserInfoRoutes.js";
 import lobbyRoutes from "./routes/lobby.routes.js";
 import battleRoutes from "./routes/battle.routes.js";
 import gameplayRoutes from "./routes/gameplay.routes.js";
-import battleRoutes from "./routes/battle.routes.js";
 import openAiRoutes from "./routes/OpenAiRoutes.js";
 import searchRoutes from "./routes/SearchRoutes.js"; // Import search routes
 import adminRoutes from "./routes/admin/AdminRoutes.js"; // Import admin routes
