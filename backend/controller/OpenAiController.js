@@ -187,39 +187,44 @@ If generating multiple questions, include them all in the array.`;
       // Clean the term by removing any letter prefix
       const cleanedTerm = term.replace(/^[A-D]\.\s+/, "");
 
-      // Highlight the style rule more prominently
+      // Updated prompt to generate similar options to the term
       const prompt = `Generate ${numberOfItems} multiple choice questions based on this term and definition:
 Term: "${cleanedTerm}"
 Definition: "${definition}"
+
 Rules for generating the question:
-1. Use the EXACT original definition as the question
-2. Generate 3 plausible but incorrect options that are similar in nature to the original term
+1. The question should ask which term matches the definition
+2. Generate 3 plausible but incorrect options that are similar to the original term "${cleanedTerm}"
 3. The original term MUST be one of the options
 4. Options must be complete words or phrases, NEVER single letters
-5. Each option should be 1-3 words maximum
-6. Each option should be closely related to the term
-7. CRITICAL: All options MUST be of similar length and style to the original term "${cleanedTerm}"
+5. Each option should be similar in nature to the original term "${cleanedTerm}"
+6. CRITICAL: All options MUST be of similar length and style to the original term "${cleanedTerm}"
+7. IMPORTANT: The incorrect options should be terms that someone might confuse with "${cleanedTerm}", NOT terms related to the definition
+8. The options should be in the same category or domain as "${cleanedTerm}"
+
 Format the response exactly as JSON array:
 [
   {
     "type": "multiple-choice",
-    "question": "${definition}",
+    "question": "Which term is defined as: ${definition}",
     "options": {
-      "A": "(first option)",
-      "B": "(second option)",
-      "C": "(third option)",
-      "D": "(fourth option)"
+      "A": "(first option - similar to ${cleanedTerm})",
+      "B": "(second option - similar to ${cleanedTerm})",
+      "C": "(third option - similar to ${cleanedTerm})",
+      "D": "(fourth option - similar to ${cleanedTerm})"
     },
     "answer": "(letter). ${cleanedTerm}"
   }
 ]
 If generating multiple questions, include them all in the array.
+
 Important:
 - The answer format must be "letter. term" where letter matches where the term appears in options
 - Never use single letters or numbers as options
-- Keep options concise and similar in style to the original term
+- Keep options similar to the original term in style and meaning
 - The original term must appear exactly as provided in one of the options
-- Use the original definition exactly as provided for the question`;
+- Make sure all options are plausible alternatives that someone might confuse with the correct term
+- The incorrect options should be terms that could be mistaken for "${cleanedTerm}", not terms related to the definition`;
 
       console.log("Calling OpenAI for multiple choice questions");
       const completion = await openai.chat.completions.create({
@@ -228,7 +233,7 @@ Important:
           {
             role: "system",
             content:
-              'You are a helpful AI that generates multiple-choice questions. Always use the original definition as the question, include the original term as one of the options, and ensure all options are proper words or phrases (never single letters or numbers). Format the answer as "letter. term" where the letter matches where the term appears in the options.',
+              'You are a helpful AI that generates multiple-choice questions. Create questions where the user must select the correct term that matches a definition. Include the original term as one of the options, and ensure all other options are similar terms that might be confused with the correct answer. The incorrect options should be terms that could be mistaken for the original term, not terms related to the definition. Format the answer as "letter. term" where the letter matches where the term appears in the options.',
           },
           { role: "user", content: prompt },
         ],

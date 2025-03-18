@@ -366,15 +366,15 @@ const PVPLobby: React.FC = () => {
           setManaPoints((prev) => prev - 10);
           console.log("Battle Started!");
 
-          // Navigate host to their specific route
+          // Navigate host to their specific route with FIXED guest username
           navigate("/dashboard/select-difficulty/pvp", {
             state: {
               lobbyCode,
               material: selectedMaterial,
               questionTypes: selectedTypesFinal,
               isHost: true,
-              hostUsername: players[0]?.username,
-              guestUsername: user?.username
+              hostUsername: user?.username,
+              guestUsername: invitedPlayer?.username || players[1]?.username || "Guest" // Use invited player username instead of host's
             }
           });
         }
