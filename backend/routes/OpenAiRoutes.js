@@ -13,30 +13,26 @@ router.get("/status", (req, res) => {
       )}`
     : "not set";
 
-  res.json({
-    status: "OpenAI API routes are configured",
-    apiKeyConfigured: apiKeyExists,
-    apiKeyHint: apiKeyFirstChars,
-    routesAvailable: [
-      "/api/openai/generate-summary (POST)",
-      "/api/openai/generate-identification (POST)",
-      "/api/openai/generate-true-false (POST)",
-      "/api/openai/generate-multiple-choice (POST)",
-      "/api/openai/status (GET)",
-    ],
-    serverTime: new Date().toISOString(),
-  });
+    res.json({
+        status: 'OpenAI API routes are configured',
+        apiKeyConfigured: apiKeyExists,
+        apiKeyHint: apiKeyFirstChars,
+        routesAvailable: [
+            '/api/openai/generate-summary (POST)',
+            '/api/openai/generate-identification (POST)',
+            '/api/openai/generate-true-false (POST)',
+            '/api/openai/generate-multiple-choice (POST)',
+            '/api/openai/save-session-results (POST)',
+            '/api/openai/status (GET)'
+        ],
+        serverTime: new Date().toISOString()
+    });
 });
 
-router.post("/generate-summary", OpenAIController.generateSummary);
-router.post(
-  "/generate-identification",
-  OpenAIController.generateIdentification
-);
-router.post("/generate-true-false", OpenAIController.generateTrueFalse);
-router.post(
-  "/generate-multiple-choice",
-  OpenAIController.generateMultipleChoice
-);
+router.post('/generate-summary', OpenAIController.generateSummary);
+router.post('/generate-identification', OpenAIController.generateIdentification);
+router.post('/generate-true-false', OpenAIController.generateTrueFalse);
+router.post('/generate-multiple-choice', OpenAIController.generateMultipleChoice);
+router.post('/save-session-results', OpenAIController.saveSessionResults);
 
 export default router;

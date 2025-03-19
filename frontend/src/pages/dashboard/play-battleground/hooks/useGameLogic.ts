@@ -100,19 +100,6 @@ export const useGameLogic = ({
     }
   }, [remainingQuestions, questionIndex]);
 
-  const handleNextQuestion = () => {
-    if (questionIndex < remainingQuestions.length - 1) {
-      setIsFlipped(false);
-      setSelectedAnswer(null);
-      setInputAnswer("");
-      setShowResult(false);
-      setShowNextButton(false);
-      setQuestionIndex(prev => prev + 1);
-    } else {
-      handleGameComplete();
-    }
-  };
-
   // Filter questions based on mode and selected types
   const filteredQuestions = questionsData.filter(
     (question) =>
@@ -253,6 +240,21 @@ export const useGameLogic = ({
     setIsFlipped(true);
   };
 
+  // Only advance to the next question when the user clicks "Next Question" or "Mastered"/"Unmastered"
+  const handleNextQuestion = () => {
+    if (questionIndex < remainingQuestions.length - 1) {
+      setIsFlipped(false);
+      setSelectedAnswer(null);
+      setInputAnswer("");
+      setShowResult(false);
+      setShowNextButton(false);
+      setQuestionIndex(prev => prev + 1);
+      setIsCorrect(null); // Reset the correctness state
+    } else {
+      handleGameComplete();
+    }
+  };
+
   const handleGameComplete = () => {
     const endTime = new Date();
     const timeDiff = endTime.getTime() - startTime.getTime();
@@ -262,27 +264,44 @@ export const useGameLogic = ({
       .toString()
       .padStart(2, "0")}`;
 
-    console.log("Game Complete:", {
+    console.log("=== GAME COMPLETE - START ===");
+    console.log("Game Complete Stats:", {
+      timeSpent,
+      correctCount,
+      incorrectCount,
+      mode,
+      materialId: material?.study_material_id,
+      materialTitle: material?.title,
+    });
+    console.log("Original mode value:", mode);
+    console.log("Mode type:", typeof mode);
+
+    console.log("Highest Streak before navigating:", highestStreak);
+    console.log("Remaining Questions:", remainingQuestions);
+    console.log("Questions count:", remainingQuestions?.length || 0);
+    
+    if (remainingQuestions && remainingQuestions.length > 0) {
+      console.log("First question sample:", remainingQuestions[0]);
+    }
+
+    const navigationState = {
       timeSpent,
       correctCount,
       incorrectCount,
       mode,
       material,
-    });
+      highestStreak,
+      masteredCount,
+      unmasteredCount,
+      aiQuestions: remainingQuestions, // Pass the AI questions to the session summary
+    };
+    
+    console.log("Navigation state being passed:", navigationState);
+    console.log("=== GAME COMPLETE - END ===");
 
-    console.log("Highest Streak before navigating:", highestStreak);
-
+    // Include the remainingQuestions in the state passed to the session summary
     navigate("/dashboard/study/session-summary", {
-      state: {
-        timeSpent,
-        correctCount,
-        incorrectCount,
-        mode,
-        material,
-        highestStreak,
-        masteredCount,
-        unmasteredCount,
-      },
+      state: navigationState
     });
   };
 
