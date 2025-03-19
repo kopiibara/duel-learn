@@ -427,4 +427,358 @@ export const updateTurn = async (req, res) => {
     } finally {
         if (connection) connection.release(); // Always release the connection
     }
+};
+
+export const endBattle = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const {
+            lobby_code,
+            winner_id,
+            battle_end_reason,
+            session_id
+        } = req.body;
+
+        console.log("endBattle request:", { lobby_code, winner_id, battle_end_reason, session_id });
+
+        // Validate required fields
+        if (!lobby_code || !battle_end_reason) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: lobby_code and battle_end_reason are required"
+            });
+        }
+
+        // Validate that battle_end_reason is one of the allowed values
+        const validEndReasons = ['time_up', 'health_depleted', 'rounds_complete', 'forfeit', 'disconnection', 'draw'];
+        if (!validEndReasons.includes(battle_end_reason)) {
+            return res.status(400).json({
+                success: false,
+                message: `Invalid battle_end_reason: '${battle_end_reason}'. Must be one of: time_up, health_depleted, rounds_complete, forfeit, disconnection, draw`
+            });
+        }
+
+        // Get the session ID if not provided
+        let sessionIdentifier = session_id;
+        if (!sessionIdentifier) {
+            // Find the active battle session using the lobby code
+            const [sessionResult] = await connection.query(
+                `SELECT BattleSession_ID FROM battle_sessions 
+                WHERE lobby_code = ? AND is_active = 1`,
+                [lobby_code]
+            );
+
+            if (sessionResult.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "No active battle session found for this lobby"
+                });
+            }
+
+            sessionIdentifier = sessionResult[0].BattleSession_ID;
+        }
+
+        console.log(`Ending battle with session ID: ${sessionIdentifier}, reason: ${battle_end_reason}`);
+
+        // 1. Insert record into battle_endings table
+        const insertEndingQuery = `
+            INSERT INTO battle_endings 
+            (session_id, winner_id, battle_end_reason)
+            VALUES (?, ?, ?)
+        `;
+
+        const insertParams = [
+            sessionIdentifier,
+            winner_id || null,
+            battle_end_reason
+        ];
+
+        console.log("Insert params:", insertParams);
+
+        const [insertResult] = await connection.query(insertEndingQuery, insertParams);
+        console.log("Insert result:", insertResult);
+
+        // 2. Update the battle_sessions table to mark it as inactive
+        const updateSessionQuery = `
+            UPDATE battle_sessions 
+            SET is_active = 0,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE BattleSession_ID = ?
+        `;
+
+        const [result] = await connection.query(updateSessionQuery, [sessionIdentifier]);
+        console.log("Update result:", result);
+
+        // Check if the update was successful
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Failed to update battle session - it may no longer be active"
+            });
+        }
+
+        // Log the battle end for debugging
+        console.log(`Battle ended: Session ${sessionIdentifier}, Reason: ${battle_end_reason}, Winner: ${winner_id || 'None'}`);
+
+        res.json({
+            success: true,
+            message: "Battle ended successfully",
+            data: {
+                session_id: sessionIdentifier,
+                battle_end_reason,
+                winner_id
+            }
+        });
+
+    } catch (error) {
+        console.error('Error ending battle:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to end battle",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+export const initializeBattleSession = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const {
+            lobby_code,
+            host_id,
+            guest_id,
+            host_username,
+            guest_username,
+            total_rounds,
+            is_active,
+            host_in_battle,
+            guest_in_battle
+        } = req.body;
+
+        // Validate required fields
+        if (!lobby_code || !host_id || !guest_id) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields"
+            });
+        }
+
+        // Check if battle session already exists for this lobby
+        const [existingSession] = await connection.query(
+            `SELECT * FROM battle_sessions 
+             WHERE lobby_code = ? AND is_active = true`,
+            [lobby_code]
+        );
+
+        if (existingSession.length > 0) {
+            // Update existing session
+            const updateQuery = `
+                UPDATE battle_sessions 
+                SET host_id = ?,
+                    guest_id = ?,
+                    host_in_battle = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE lobby_code = ? AND is_active = true
+            `;
+
+            await connection.query(updateQuery, [
+                host_id,
+                guest_id,
+                host_in_battle || false,
+                lobby_code
+            ]);
+
+            // Return updated session data
+            const [updatedSession] = await connection.query(
+                `SELECT * FROM battle_sessions 
+                 WHERE lobby_code = ? AND is_active = true`,
+                [lobby_code]
+            );
+
+            return res.json({
+                success: true,
+                data: updatedSession[0]
+            });
+        }
+
+        // Initialize new battle session
+        const query = `
+            INSERT INTO battle_sessions 
+            (lobby_code, host_id, guest_id, total_rounds, current_turn, is_active, 
+             host_in_battle, guest_in_battle, battle_started)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        const values = [
+            lobby_code,
+            host_id,
+            guest_id,
+            total_rounds || 30,
+            null, // No current turn initially
+            is_active || true,
+            host_in_battle || false,
+            guest_in_battle || false,
+            false // Battle not started until both players are in
+        ];
+
+        const [result] = await connection.query(query, values);
+
+        // Get the newly created session
+        const [newSession] = await connection.query(
+            `SELECT * FROM battle_sessions WHERE BattleSession_ID = ?`,
+            [result.insertId]
+        );
+
+        res.status(201).json({
+            success: true,
+            data: newSession[0]
+        });
+
+    } catch (error) {
+        console.error('Error initializing battle session:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to initialize battle session",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+export const updateBattleSession = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { lobby_code, ...updateData } = req.body;
+
+        if (!lobby_code) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing lobby_code"
+            });
+        }
+
+        // Build the dynamic update query based on provided fields
+        let setClause = '';
+        const queryParams = [];
+
+        Object.entries(updateData).forEach(([key, value], index) => {
+            setClause += `${key} = ?${index < Object.entries(updateData).length - 1 ? ', ' : ''}`;
+            queryParams.push(value);
+        });
+
+        if (!setClause) {
+            return res.status(400).json({
+                success: false,
+                message: "No update data provided"
+            });
+        }
+
+        // Add the lobby_code to parameters
+        queryParams.push(lobby_code);
+
+        const query = `
+            UPDATE battle_sessions 
+            SET ${setClause}, updated_at = CURRENT_TIMESTAMP
+            WHERE lobby_code = ? AND is_active = true
+        `;
+
+        const [result] = await connection.query(query, queryParams);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle session not found or not active"
+            });
+        }
+
+        // If guest is joining, check if both players are now in battle
+        if (updateData.guest_in_battle === true) {
+            const [checkSession] = await connection.query(
+                `SELECT * FROM battle_sessions
+                 WHERE lobby_code = ? AND is_active = true`,
+                [lobby_code]
+            );
+
+            if (checkSession.length > 0 && checkSession[0].host_in_battle) {
+                // Both players are in, update battle_started
+                await connection.query(
+                    `UPDATE battle_sessions
+                     SET battle_started = true, updated_at = CURRENT_TIMESTAMP
+                     WHERE lobby_code = ? AND is_active = true`,
+                    [lobby_code]
+                );
+            }
+        }
+
+        // Get the updated session data
+        const [updatedSession] = await connection.query(
+            `SELECT * FROM battle_sessions
+             WHERE lobby_code = ? AND is_active = true`,
+            [lobby_code]
+        );
+
+        res.json({
+            success: true,
+            message: "Battle session updated successfully",
+            data: updatedSession[0]
+        });
+
+    } catch (error) {
+        console.error('Error updating battle session:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update battle session",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+export const getBattleSessionState = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { lobby_code } = req.params;
+
+        const query = `
+            SELECT * FROM battle_sessions
+            WHERE lobby_code = ? AND is_active = true
+            ORDER BY created_at DESC LIMIT 1
+        `;
+
+        const [sessions] = await connection.query(query, [lobby_code]);
+
+        if (sessions.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No active battle session found for this lobby"
+            });
+        }
+
+        res.json({
+            success: true,
+            data: sessions[0]
+        });
+
+    } catch (error) {
+        console.error('Error getting battle session state:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to get battle session state",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
 }; 

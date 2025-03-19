@@ -53,17 +53,20 @@ export default function DifficultySelection() {
         difficulty: selectedDifficulty,
       });
 
-      // Then initialize entry in battle_gameplay
-      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize`, {
+      // Then initialize entry in battle_sessions instead of battle_gameplay
+      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize-session`, {
         lobby_code: lobbyCode,
         host_id: hostId,
         guest_id: guestId,
         host_username: hostUsername,
         guest_username: guestUsername,
-        host_in_battle: true // Mark host as entered
+        total_rounds: 30,
+        is_active: true,
+        host_in_battle: true, // Mark host as entered
+        guest_in_battle: false
       });
 
-      navigate("/dashboard/pvp-battle", {
+      navigate(`/dashboard/pvp-battle/${lobbyCode}`, {
         state: {
           lobbyCode,
           difficulty: selectedDifficulty,

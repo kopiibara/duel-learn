@@ -2,16 +2,15 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Settings } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import axios from "axios";
+import { motion, AnimatePresence } from "framer-motion";
 
 // Character animations
 import playerCharacter from "../../../../../../assets/characterinLobby/playerCharacter.gif"; // Regular idle animation for player
 import enemyCharacter from "../../../../../../assets/characterinLobby/playerCharacter.gif"; // Regular idle animation for enemy
 import characterPicking from "../../../../../../assets/characterinLobby/CharacterPicking.gif"; // Initial picking animation (non-looping)
 import characterPickingLoop from "../../../../../../assets/characterinLobby/CharacterPickingLoop.gif"; // Continuous picking animation (looping)
-
-import { useLocation } from "react-router-dom";
-import axios from "axios";
-import { motion, AnimatePresence } from "framer-motion";
 
 // Import components
 import PlayerInfo from "./components/PlayerInfo";
@@ -36,6 +35,9 @@ interface BattleState {
   host_in_battle: boolean;
   guest_in_battle: boolean;
   battle_started: boolean;
+  host_username: string | null;
+  guest_username: string | null;
+  id: string;
 }
 
 /**
@@ -43,6 +45,7 @@ interface BattleState {
  */
 export default function PvpBattle() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { hostUsername, guestUsername, isHost, lobbyCode, hostId, guestId } = location.state || {};
 
   // Debug the values received from location state
@@ -88,6 +91,76 @@ export default function PvpBattle() {
   const [randomizing, setRandomizing] = useState(false);
   const [randomizationDone, setRandomizationDone] = useState(false);
 
+  // Handle leaving the battle and updating the database
+  const handleLeaveBattle = async () => {
+    try {
+      console.log("Ending battle due to user leaving. Reason: disconnection");
+
+      // End the battle with disconnection status
+      const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/end`, {
+        lobby_code: lobbyCode,
+        winner_id: isHost ? guestId : hostId, // Opponent wins if player leaves
+        battle_end_reason: 'disconnection',
+        session_id: battleState?.id // Pass the session ID directly
+      });
+
+      console.log("Battle end response:", response.data);
+
+      // Add a small delay to ensure the request completes
+      await new Promise(resolve => setTimeout(resolve, 300));
+
+      // Navigate to dashboard/home after successfully saving
+      console.log("Navigating away from battle...");
+      navigate('/dashboard/home');
+    } catch (error) {
+      console.error('Error ending battle:', error);
+      // Still redirect even if error occurs, to prevent user from being stuck
+      navigate('/dashboard/home');
+    }
+  };
+
+  // Setup event listeners for page navigation and refresh
+  useEffect(() => {
+    // Prevent refresh and tab close
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      // Custom message to display in the confirmation dialog
+      event.returnValue = "Are you sure you want to leave the battle? Your progress will be lost and the battle will end.";
+      return event.returnValue;
+    };
+
+    // Handle browser back button
+    const handlePopState = (event: PopStateEvent) => {
+      // Show confirmation dialog
+      const confirmLeave = window.confirm(
+        "Are you sure you want to leave the battle? Your progress will be lost and the battle will end."
+      );
+
+      if (confirmLeave) {
+        console.log("User confirmed leaving battle via back button");
+        // User confirmed, end battle and navigate
+        event.preventDefault(); // Try to prevent immediate navigation
+        handleLeaveBattle();
+      } else {
+        // User cancelled, prevent navigation by pushing a new history state
+        window.history.pushState(null, '', window.location.pathname);
+      }
+    };
+
+    // Register event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
+
+    // Push initial state to prevent back button on first click
+    window.history.pushState(null, '', window.location.pathname);
+
+    // Cleanup event listeners on component unmount
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [navigate, lobbyCode, isHost, hostId, guestId, battleState]);
+
   // Check for both players and battle start with dynamic polling
   useEffect(() => {
     // Function to check the battle status
@@ -95,25 +168,43 @@ export default function PvpBattle() {
       try {
         if (lobbyCode) {
           const response = await axios.get(
-            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/state/${lobbyCode}`
+            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-state/${lobbyCode}`
           );
 
           if (response.data.success) {
-            const battleState = response.data.data;
-            setBattleState(battleState);
+            const sessionState = response.data.data;
+            setBattleState({
+              current_turn: sessionState.current_turn,
+              round_number: 1, // Default to 1 for now
+              total_rounds: sessionState.total_rounds || 30,
+              host_card: null,
+              guest_card: null,
+              host_score: 0,
+              guest_score: 0,
+              host_health: 100,
+              guest_health: 100,
+              is_active: sessionState.is_active === 1,
+              winner_id: null,
+              battle_end_reason: null,
+              host_in_battle: sessionState.host_in_battle === 1,
+              guest_in_battle: sessionState.guess_in_battle === 1, // Note the field name is misspelled in DB
+              battle_started: sessionState.battle_started === 1,
+              host_username: sessionState.host_username,
+              guest_username: sessionState.guest_username,
+              id: sessionState.id
+            });
 
             // Update waiting state based on both players being in battle
-            if (battleState.host_in_battle && battleState.guest_in_battle) {
+            if (sessionState.host_in_battle === 1 && sessionState.guest_in_battle === 1) {
               setWaitingForPlayer(false);
 
               // Show randomizer to host if battle started but no current_turn set
-              // Only show if randomization hasn't been done yet
-              if (battleState.battle_started && !battleState.current_turn && isHost && !randomizationDone) {
+              if (sessionState.battle_started === 1 && !sessionState.current_turn && isHost && !randomizationDone) {
                 setShowRandomizer(true);
-              } else if (battleState.battle_started && !battleState.current_turn && !randomizationDone) {
+              } else if (sessionState.battle_started === 1 && !sessionState.current_turn && !randomizationDone) {
                 // Guest just waits for host to randomize
                 console.log("Waiting for host to determine who goes first...");
-              } else if (battleState.battle_started && battleState.current_turn) {
+              } else if (sessionState.battle_started === 1 && sessionState.current_turn) {
                 // Turn has been decided, start the game
                 setShowRandomizer(false);
 
@@ -123,16 +214,16 @@ export default function PvpBattle() {
 
                   // Determine if it's the current player's turn
                   const isCurrentPlayerTurn = isHost
-                    ? battleState.current_turn === hostId
-                    : battleState.current_turn === guestId;
+                    ? sessionState.current_turn === hostId
+                    : sessionState.current_turn === guestId;
 
                   // Set the game start text based on whose turn it is
                   if (isCurrentPlayerTurn) {
                     setGameStartText("You will go first!");
                   } else {
                     const opponentName = isHost
-                      ? battleState.guest_username || "Guest"
-                      : battleState.host_username || "Host";
+                      ? sessionState.guest_username || "Guest"
+                      : sessionState.host_username || "Host";
                     setGameStartText(`${opponentName} will go first!`);
                   }
 
@@ -333,7 +424,7 @@ export default function PvpBattle() {
     }, toggleInterval);
   };
 
-  // Function to finalize the random selection - update this to use IDs
+  // Function to finalize the random selection - update this to use IDs and battle_sessions
   const finalizeRandomization = async (selectedPlayer: string) => {
     try {
       // Use the ID instead of username
@@ -350,9 +441,9 @@ export default function PvpBattle() {
       // Show the final selection in the game start text
       setShowGameStart(true);
 
-      // Update turn with player ID, not username
+      // Update turn with player ID in battle_sessions
       await axios.put(
-        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-turn`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-session`,
         {
           lobby_code: lobbyCode,
           current_turn: selectedPlayerId // Use ID instead of username
