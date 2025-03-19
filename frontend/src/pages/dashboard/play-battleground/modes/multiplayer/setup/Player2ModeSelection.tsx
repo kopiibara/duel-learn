@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -13,15 +11,20 @@ export default function Player2ModeSelection() {
   const location = useLocation();
   const navigate = useNavigate();
   const { hostUsername, guestUsername, lobbyCode } = location.state || {};
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Easy Mode");
-  const [hostSelectedDifficulty, setHostSelectedDifficulty] = useState<string | null>(null);
+  const [selectedDifficulty, setSelectedDifficulty] =
+    useState<string>("Easy Mode");
+  const [hostSelectedDifficulty, setHostSelectedDifficulty] = useState<
+    string | null
+  >(null);
 
   // Poll for host's difficulty selection
   useEffect(() => {
     const checkDifficulty = async () => {
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/difficulty/${lobbyCode}`
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/battle/invitations-lobby/difficulty/${lobbyCode}`
         );
 
         if (response.data.success && response.data.data.difficulty) {
@@ -29,14 +32,19 @@ export default function Player2ModeSelection() {
           setSelectedDifficulty(response.data.data.difficulty);
 
           // When host has selected, update battle_gameplay to mark guest as ready
-          await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize`, {
-            lobby_code: lobbyCode,
-            host_id: hostUsername,
-            guest_id: guestUsername,
-            host_username: hostUsername,
-            guest_username: guestUsername,
-            guest_in_battle: true // Mark guest as entered (don't set current_turn - use the one set by host)
-          });
+          await axios.post(
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/gameplay/battle/initialize`,
+            {
+              lobby_code: lobbyCode,
+              host_id: hostUsername,
+              guest_id: guestUsername,
+              host_username: hostUsername,
+              guest_username: guestUsername,
+              guest_in_battle: true, // Mark guest as entered (don't set current_turn - use the one set by host)
+            }
+          );
 
           // Navigate to battle
           navigate("/dashboard/pvp-battle", {
@@ -45,8 +53,8 @@ export default function Player2ModeSelection() {
               difficulty: response.data.data.difficulty,
               isHost: false,
               hostUsername,
-              guestUsername
-            }
+              guestUsername,
+            },
           });
         }
       } catch (error) {
@@ -93,12 +101,15 @@ export default function Player2ModeSelection() {
         {/* Header */}
         <div className="text-center mb-8 md:mb-12">
           <h1 className="text-xl sm:text-2xl md:text-[33px] mt-[-20px] md:mt-[-40px] font-bold mb-3 px-3 mb-5 sm:px-0">
-            {hostUsername ? `${hostUsername.toUpperCase()} IS` : 'HOST'} CURRENTLY SELECTING DIFFICULTY
+            {hostUsername ? `${hostUsername.toUpperCase()} IS` : "HOST"}{" "}
+            CURRENTLY SELECTING DIFFICULTY
             <span className="dot-1">.</span>
             <span className="dot-2">.</span>
             <span className="dot-3">.</span>
           </h1>
-          <p className="text-gray-400 text-sm md:text-lg">Please wait while the host makes their selection</p>
+          <p className="text-gray-400 text-sm md:text-lg">
+            Please wait while the host makes their selection
+          </p>
         </div>
 
         {/* Mode Selector Tabs */}
@@ -106,28 +117,31 @@ export default function Player2ModeSelection() {
           <div className="flex space-x-3 md:space-x-10">
             <button
               onClick={() => handleManualSelection("Easy Mode")}
-              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-base transition-all cursor-pointer ${selectedDifficulty === "Easy Mode"
-                ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
-                : "text-gray-400 hover:text-gray-300"
-                }`}
+              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-base transition-all cursor-pointer ${
+                selectedDifficulty === "Easy Mode"
+                  ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
+                  : "text-gray-400 hover:text-gray-300"
+              }`}
             >
               EASY MODE
             </button>
             <button
               onClick={() => handleManualSelection("Average Mode")}
-              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg transition-all cursor-pointer ${selectedDifficulty === "Average Mode"
-                ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
-                : "text-gray-400 hover:text-gray-300"
-                }`}
+              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg transition-all cursor-pointer ${
+                selectedDifficulty === "Average Mode"
+                  ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
+                  : "text-gray-400 hover:text-gray-300"
+              }`}
             >
               AVERAGE MODE
             </button>
             <button
               onClick={() => handleManualSelection("Hard Mode")}
-              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg transition-all cursor-pointer ${selectedDifficulty === "Hard Mode"
-                ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
-                : "text-gray-400 hover:text-gray-300"
-                }`}
+              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg transition-all cursor-pointer ${
+                selectedDifficulty === "Hard Mode"
+                  ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
+                  : "text-gray-400 hover:text-gray-300"
+              }`}
             >
               HARD MODE
             </button>
@@ -159,7 +173,7 @@ export default function Player2ModeSelection() {
                 style={{
                   width: "clamp(120px, 20vw, 180px)",
                   height: "clamp(160px, 28vw, 250px)",
-                  margin: "0 auto"
+                  margin: "0 auto",
                 }}
               >
                 <div className="flip-card-inner">

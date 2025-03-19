@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
 
@@ -43,10 +41,16 @@ interface BattleState {
  */
 export default function PvpBattle() {
   const location = useLocation();
-  const { hostUsername, guestUsername, isHost, lobbyCode } = location.state || {};
+  const { hostUsername, guestUsername, isHost, lobbyCode } =
+    location.state || {};
 
   // Debug the values received from location state
-  console.log('PvpBattle state:', { hostUsername, guestUsername, isHost, lobbyCode });
+  console.log("PvpBattle state:", {
+    hostUsername,
+    guestUsername,
+    isHost,
+    lobbyCode,
+  });
 
   // Game state
   const [timeLeft, setTimeLeft] = useState(25);
@@ -63,20 +67,24 @@ export default function PvpBattle() {
   const [gameStartText, setGameStartText] = useState("");
 
   // Player info
-  const playerName = isHost ? (hostUsername || "Host") : (guestUsername || "Guest");
-  const opponentName = isHost ? (guestUsername || "Guest") : (hostUsername || "Host");
+  const playerName = isHost ? hostUsername || "Host" : guestUsername || "Guest";
+  const opponentName = isHost
+    ? guestUsername || "Guest"
+    : hostUsername || "Host";
   const playerHealth = 100;
   const opponentHealth = 100;
   const maxHealth = 100;
 
   // Debug the assigned player names
-  console.log('Assigned names:', { playerName, opponentName, isHost });
+  console.log("Assigned names:", { playerName, opponentName, isHost });
 
   // Animation state for player and enemy
   const [enemyAnimationState, setEnemyAnimationState] = useState("idle");
   const [playerAnimationState, setPlayerAnimationState] = useState("idle");
-  const [enemyPickingIntroComplete, setEnemyPickingIntroComplete] = useState(false);
-  const [playerPickingIntroComplete, setPlayerPickingIntroComplete] = useState(false);
+  const [enemyPickingIntroComplete, setEnemyPickingIntroComplete] =
+    useState(false);
+  const [playerPickingIntroComplete, setPlayerPickingIntroComplete] =
+    useState(false);
 
   // New states for turn randomizer
   const [showRandomizer, setShowRandomizer] = useState(false);
@@ -89,7 +97,9 @@ export default function PvpBattle() {
       try {
         if (lobbyCode) {
           const response = await axios.get(
-            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/state/${lobbyCode}`
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/gameplay/battle/state/${lobbyCode}`
           );
 
           if (response.data.success) {
@@ -102,12 +112,24 @@ export default function PvpBattle() {
 
               // Show randomizer to host if battle started but no current_turn set
               // Only show if randomization hasn't been done yet
-              if (battleState.battle_started && !battleState.current_turn && isHost && !randomizationDone) {
+              if (
+                battleState.battle_started &&
+                !battleState.current_turn &&
+                isHost &&
+                !randomizationDone
+              ) {
                 setShowRandomizer(true);
-              } else if (battleState.battle_started && !battleState.current_turn && !randomizationDone) {
+              } else if (
+                battleState.battle_started &&
+                !battleState.current_turn &&
+                !randomizationDone
+              ) {
                 // Guest just waits for host to randomize
                 console.log("Waiting for host to determine who goes first...");
-              } else if (battleState.battle_started && battleState.current_turn) {
+              } else if (
+                battleState.battle_started &&
+                battleState.current_turn
+              ) {
                 // Turn has been decided, start the game
                 setShowRandomizer(false);
 
@@ -166,7 +188,14 @@ export default function PvpBattle() {
     const interval = setInterval(checkBattleStatus, 1200);
 
     return () => clearInterval(interval);
-  }, [lobbyCode, hostUsername, guestUsername, isHost, gameStarted, randomizationDone]);
+  }, [
+    lobbyCode,
+    hostUsername,
+    guestUsername,
+    isHost,
+    gameStarted,
+    randomizationDone,
+  ]);
 
   // Handle card selection
   const handleCardSelected = (cardId: string) => {
@@ -224,7 +253,9 @@ export default function PvpBattle() {
       const introTimer = setTimeout(() => {
         // After intro animation completes exactly once, switch to the looping animation
         setPlayerPickingIntroComplete(true);
-        console.log("Player picking intro completed, switching to loop animation");
+        console.log(
+          "Player picking intro completed, switching to loop animation"
+        );
       }, introDuration);
 
       return () => clearTimeout(introTimer);
@@ -240,7 +271,9 @@ export default function PvpBattle() {
       const introTimer = setTimeout(() => {
         // After intro animation completes exactly once, switch to the looping animation
         setEnemyPickingIntroComplete(true);
-        console.log("Enemy picking intro completed, switching to loop animation");
+        console.log(
+          "Enemy picking intro completed, switching to loop animation"
+        );
       }, introDuration);
 
       return () => clearTimeout(introTimer);
@@ -248,7 +281,11 @@ export default function PvpBattle() {
   }, [enemyAnimationState, enemyPickingIntroComplete]);
 
   // Helper function to get the correct animation image for a character
-  const getCharacterImage = (baseImage: string, animationState: string, introComplete: boolean): string => {
+  const getCharacterImage = (
+    baseImage: string,
+    animationState: string,
+    introComplete: boolean
+  ): string => {
     if (animationState === "picking") {
       // If in picking state, show intro animation until it completes, then show loop
       return introComplete ? characterPickingLoop : characterPicking;
@@ -270,7 +307,7 @@ export default function PvpBattle() {
     setRandomizing(true);
 
     // Visual randomization effect (alternating between host and guest)
-    let duration = 3000; // 3 seconds of animation
+    const duration = 3000; // 3 seconds of animation
     let toggleInterval = 100; // Start fast (100ms)
     let currentTime = 0;
 
@@ -332,7 +369,7 @@ export default function PvpBattle() {
         `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-turn`,
         {
           lobby_code: lobbyCode,
-          current_turn: selectedPlayer
+          current_turn: selectedPlayer,
         }
       );
 
@@ -408,12 +445,20 @@ export default function PvpBattle() {
 
         {/* Characters */}
         <Character
-          imageSrc={getCharacterImage(playerCharacter, playerAnimationState, playerPickingIntroComplete)}
+          imageSrc={getCharacterImage(
+            playerCharacter,
+            playerAnimationState,
+            playerPickingIntroComplete
+          )}
           alt="Player Character"
         />
 
         <Character
-          imageSrc={getCharacterImage(enemyCharacter, enemyAnimationState, enemyPickingIntroComplete)}
+          imageSrc={getCharacterImage(
+            enemyCharacter,
+            enemyAnimationState,
+            enemyPickingIntroComplete
+          )}
           alt="Enemy Character"
           isRight
         />
@@ -422,8 +467,12 @@ export default function PvpBattle() {
         {showRandomizer && isHost && (
           <div className="fixed inset-0 bg-black/80 z-40 flex flex-col items-center justify-center">
             <div className="text-center">
-              <h2 className="text-purple-300 text-4xl font-bold mb-8">Ready to Battle!</h2>
-              <p className="text-white text-xl mb-12">Both players have joined. Who will go first?</p>
+              <h2 className="text-purple-300 text-4xl font-bold mb-8">
+                Ready to Battle!
+              </h2>
+              <p className="text-white text-xl mb-12">
+                Both players have joined. Who will go first?
+              </p>
 
               {randomizing ? (
                 <div className="mb-8">
@@ -447,19 +496,36 @@ export default function PvpBattle() {
         )}
 
         {/* Waiting for host to randomize (shown to guest) */}
-        {!waitingForPlayer && battleState?.battle_started && !battleState?.current_turn && !isHost && !randomizationDone && (
-          <div className="fixed inset-0 bg-black/80 z-40 flex flex-col items-center justify-center">
-            <div className="text-center">
-              <h2 className="text-purple-300 text-4xl font-bold mb-8">Ready to Battle!</h2>
-              <p className="text-white text-xl mb-12">Waiting for host to determine who goes first...</p>
-              <div className="flex space-x-4 justify-center">
-                <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+        {!waitingForPlayer &&
+          battleState?.battle_started &&
+          !battleState?.current_turn &&
+          !isHost &&
+          !randomizationDone && (
+            <div className="fixed inset-0 bg-black/80 z-40 flex flex-col items-center justify-center">
+              <div className="text-center">
+                <h2 className="text-purple-300 text-4xl font-bold mb-8">
+                  Ready to Battle!
+                </h2>
+                <p className="text-white text-xl mb-12">
+                  Waiting for host to determine who goes first...
+                </p>
+                <div className="flex space-x-4 justify-center">
+                  <div
+                    className="w-3 h-3 bg-purple-500 rounded-full animate-bounce"
+                    style={{ animationDelay: "0ms" }}
+                  ></div>
+                  <div
+                    className="w-3 h-3 bg-purple-500 rounded-full animate-bounce"
+                    style={{ animationDelay: "150ms" }}
+                  ></div>
+                  <div
+                    className="w-3 h-3 bg-purple-500 rounded-full animate-bounce"
+                    style={{ animationDelay: "300ms" }}
+                  ></div>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Game Start Animation */}
         <AnimatePresence>
@@ -477,7 +543,9 @@ export default function PvpBattle() {
                 transition={{ duration: 0.5 }}
                 className="flex flex-col items-center"
               >
-                <div className="text-purple-300 text-5xl font-bold mb-4">BATTLE START!</div>
+                <div className="text-purple-300 text-5xl font-bold mb-4">
+                  BATTLE START!
+                </div>
                 <div className="text-white text-2xl">{gameStartText}</div>
               </motion.div>
             </motion.div>

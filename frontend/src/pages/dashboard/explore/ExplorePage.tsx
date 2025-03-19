@@ -14,7 +14,7 @@ import ExploreCards from "./ExploreCards";
 import { useUser } from "../../../contexts/UserContext";
 import AutoHideSnackbar from "../../../components/ErrorsSnackbar";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
-import noStudyMaterial from "../../../assets/images/NoStudyMaterial.svg";
+import NoStudyMaterial from "../../../assets/images/noStudyMaterial.svg";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { Tooltip } from "@mui/material";
 
@@ -601,7 +601,7 @@ const ExplorePage = () => {
               minHeight={{ xs: "40vh", sm: "60vh" }}
             >
               <img
-                src={noStudyMaterial}
+                src={NoStudyMaterial}
                 alt="No Study Materials"
                 style={{
                   width: "100%",

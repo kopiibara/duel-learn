@@ -6,14 +6,14 @@ import { UserProvider } from "./contexts/UserContext";
 import { AuthProvider } from "./contexts/AuthContext";
 import { AudioProvider } from "./contexts/AudioContext";
 import { SnackbarProvider } from "./contexts/SnackbarContext";
-import { 
-  GlobalSnackbar, 
-  SnackbarConnector, 
+import {
+  GlobalSnackbar,
+  SnackbarConnector,
   AuthTokenSynchronizer,
   InvitationLobbySnackbar,
-  AudioStopper 
+  AudioStopper,
 } from "./components";
-import theme from "../../frontend/src/contexts/ThemeContext";
+import theme from "./contexts/ThemeContext";
 import "./index.css";
 
 function App() {
