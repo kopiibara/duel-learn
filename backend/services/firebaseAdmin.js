@@ -4,7 +4,7 @@ import { readFileSync } from 'fs';
 
 dotenv.config();
 
-const credentialsPath = "./duel-learn-firebase-adminsdk-65lmy-22bd9929f6.json";
+const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
 
 if (!credentialsPath) {
   throw new Error("GOOGLE_APPLICATION_CREDENTIALS is not defined in environment variables.");
