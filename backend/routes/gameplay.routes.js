@@ -9,7 +9,8 @@ import {
     endBattle,
     initializeBattleSession,
     updateBattleSession,
-    getBattleSessionState
+    getBattleSessionState,
+    getBattleEndStatus
 } from '../controller/GameplayController.js';
 
 const router = express.Router();
@@ -39,5 +40,8 @@ router.put('/battle/update-turn', updateTurn);
 
 // End the battle
 router.post('/battle/end', endBattle);
+
+// Check battle end status
+router.get('/battle/end-status/:session_uuid', getBattleEndStatus);
 
 export default router; 

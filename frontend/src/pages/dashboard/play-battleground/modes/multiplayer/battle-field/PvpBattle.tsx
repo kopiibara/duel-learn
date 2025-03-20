@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Settings } from "lucide-react";
+import { Settings, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
@@ -37,7 +37,8 @@ interface BattleState {
   battle_started: boolean;
   host_username: string | null;
   guest_username: string | null;
-  id: string;
+  ID: number;
+  session_uuid: string;
 }
 
 /**
@@ -91,65 +92,102 @@ export default function PvpBattle() {
   const [randomizing, setRandomizing] = useState(false);
   const [randomizationDone, setRandomizationDone] = useState(false);
 
+  // Add new state variables after other state declarations
+  const [showVictoryModal, setShowVictoryModal] = useState(false);
+  const [victoryMessage, setVictoryMessage] = useState("");
+  const battleEndingPollingRef = useRef<number | null>(null);
+
   // Handle leaving the battle and updating the database
   const handleLeaveBattle = async () => {
     try {
-      console.log("Ending battle due to user leaving. Reason: disconnection");
+      console.log("Ending battle due to user leaving");
 
-      // End the battle with disconnection status
+      // End the battle with appropriate status
       const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/end`, {
         lobby_code: lobbyCode,
         winner_id: isHost ? guestId : hostId, // Opponent wins if player leaves
-        battle_end_reason: 'disconnection',
-        session_id: battleState?.id // Pass the session ID directly
+        battle_end_reason: 'Left The Game',
+        session_uuid: battleState?.session_uuid
       });
 
       console.log("Battle end response:", response.data);
 
-      // Add a small delay to ensure the request completes
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Wait for the request to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Navigate to dashboard/home after successfully saving
-      console.log("Navigating away from battle...");
-      navigate('/dashboard/home');
+      // Force navigation to dashboard
+      window.location.href = '/dashboard/home';
+
     } catch (error) {
       console.error('Error ending battle:', error);
-      // Still redirect even if error occurs, to prevent user from being stuck
-      navigate('/dashboard/home');
+      // Still redirect even if error occurs
+      window.location.href = '/dashboard/home';
     }
   };
 
   // Setup event listeners for page navigation and refresh
   useEffect(() => {
-    // Prevent refresh and tab close
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+    // Handle page reload or tab close
+    const handleBeforeUnload = async (event: BeforeUnloadEvent) => {
       event.preventDefault();
-      // Custom message to display in the confirmation dialog
       event.returnValue = "Are you sure you want to leave the battle? Your progress will be lost and the battle will end.";
+
+      try {
+        // End battle with disconnection status
+        await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/end`, {
+          lobby_code: lobbyCode,
+          winner_id: isHost ? guestId : hostId, // Opponent wins if player leaves
+          battle_end_reason: 'Left The Game',
+          session_uuid: battleState?.session_uuid
+        });
+      } catch (error) {
+        console.error('Error ending battle on reload:', error);
+      }
+
       return event.returnValue;
     };
 
-    // Handle browser back button
-    const handlePopState = (event: PopStateEvent) => {
+    // Handle browser back button and URL changes
+    const handlePopState = async (event: PopStateEvent) => {
       // Show confirmation dialog
       const confirmLeave = window.confirm(
         "Are you sure you want to leave the battle? Your progress will be lost and the battle will end."
       );
 
       if (confirmLeave) {
-        console.log("User confirmed leaving battle via back button");
-        // User confirmed, end battle and navigate
-        event.preventDefault(); // Try to prevent immediate navigation
-        handleLeaveBattle();
+        console.log("User confirmed leaving battle");
+        event.preventDefault();
+        await handleLeaveBattle();
       } else {
-        // User cancelled, prevent navigation by pushing a new history state
+        // User cancelled, prevent navigation
         window.history.pushState(null, '', window.location.pathname);
+      }
+    };
+
+    // Handle direct URL changes
+    const handleURLChange = async () => {
+      const currentPath = window.location.pathname;
+      const battlePath = `/dashboard/pvp-battle/${lobbyCode}`;
+
+      if (currentPath !== battlePath) {
+        // User is trying to navigate away
+        const confirmLeave = window.confirm(
+          "Are you sure you want to leave the battle? Your progress will be lost and the battle will end."
+        );
+
+        if (confirmLeave) {
+          await handleLeaveBattle();
+        } else {
+          // User cancelled, force back to battle
+          window.history.pushState(null, '', battlePath);
+        }
       }
     };
 
     // Register event listeners
     window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('popstate', handlePopState);
+    window.addEventListener('hashchange', handleURLChange);
 
     // Push initial state to prevent back button on first click
     window.history.pushState(null, '', window.location.pathname);
@@ -158,6 +196,7 @@ export default function PvpBattle() {
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('hashchange', handleURLChange);
     };
   }, [navigate, lobbyCode, isHost, hostId, guestId, battleState]);
 
@@ -191,7 +230,8 @@ export default function PvpBattle() {
               battle_started: sessionState.battle_started === 1,
               host_username: sessionState.host_username,
               guest_username: sessionState.guest_username,
-              id: sessionState.id
+              ID: sessionState.ID,
+              session_uuid: sessionState.session_uuid
             });
 
             // Update waiting state based on both players being in battle
@@ -280,6 +320,50 @@ export default function PvpBattle() {
       }
     };
   }, [lobbyCode, hostId, guestId, isHost, gameStarted, randomizationDone]);
+
+  // Add new effect for polling battle endings after other effects
+  useEffect(() => {
+    const checkBattleEnding = async () => {
+      try {
+        if (!battleState?.session_uuid) return;
+
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/end-status/${battleState.session_uuid}`
+        );
+
+        if (response.data.success && response.data.data) {
+          const endingData = response.data.data;
+
+          // If battle has ended and current player is NOT the one who left
+          if (endingData.battle_end_reason === 'Left The Game' &&
+            endingData.winner_id === currentUserId) {
+            setVictoryMessage(`${opponentName} left the game. You won!`);
+            setShowVictoryModal(true);
+
+            // Clear polling intervals
+            if (battleEndingPollingRef.current) {
+              clearInterval(battleEndingPollingRef.current);
+            }
+            if (pollingIntervalRef.current) {
+              clearInterval(pollingIntervalRef.current);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error checking battle ending:", error);
+      }
+    };
+
+    // Start polling for battle endings
+    battleEndingPollingRef.current = window.setInterval(checkBattleEnding, 2000);
+
+    // Cleanup
+    return () => {
+      if (battleEndingPollingRef.current) {
+        clearInterval(battleEndingPollingRef.current);
+      }
+    };
+  }, [battleState?.session_uuid, currentUserId, opponentName]);
 
   // Handle card selection
   const handleCardSelected = (cardId: string) => {
@@ -486,6 +570,11 @@ export default function PvpBattle() {
     }
   };
 
+  // Add handleVictoryConfirm function after other handler functions
+  const handleVictoryConfirm = () => {
+    window.location.href = '/dashboard/home';
+  };
+
   return (
     <div className="w-full h-screen flex flex-col">
       {/* Top UI Bar */}
@@ -617,6 +706,37 @@ export default function PvpBattle() {
           isVisible={waitingForPlayer}
           message="Waiting for your opponent to connect..."
         />
+
+        {/* Victory Modal */}
+        {showVictoryModal && (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+            <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4 relative">
+              <div className="absolute top-4 right-4">
+                <button
+                  onClick={handleVictoryConfirm}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <h2 className="text-purple-300 text-3xl font-bold mb-4 text-center">
+                Victory!
+              </h2>
+
+              <p className="text-white text-xl mb-8 text-center">
+                {victoryMessage}
+              </p>
+
+              <button
+                onClick={handleVictoryConfirm}
+                className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-lg transition-colors"
+              >
+                Return to Dashboard
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
