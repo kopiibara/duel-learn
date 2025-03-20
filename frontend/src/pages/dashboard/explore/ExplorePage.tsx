@@ -48,12 +48,17 @@ const ExplorePage = () => {
   // Track if component is mounted (for socket cleanup)
   const isMounted = useRef(true);
 
-  // Memoize socket instance
+  // In ExplorePage.tsx
   const socket = useMemo(
     () =>
       io(import.meta.env.VITE_BACKEND_URL, {
         transports: ["websocket", "polling"],
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        timeout: 10000,
         autoConnect: false,
+        path: "/socket.io/", // Make sure path matches server
       }),
     []
   );
@@ -86,7 +91,6 @@ const ExplorePage = () => {
   }, []);
 
   // Get the appropriate URL based on tab index and if force refresh is needed
-  // Add this improved URL handling and error handling to your fetchData function
   const getUrlForTab = useCallback(
     (tabIndex: number, force = false): string | null => {
       if (!user?.username) return null;
@@ -301,21 +305,15 @@ const ExplorePage = () => {
     }
   }, [fetchData, selected, user?.username, showTemporaryUpdateLabel]);
 
-  // Initial load and refresh intervals
+  // Initial load and refresh intervals - REMOVED PRELOADING HERE
   useEffect(() => {
     if (!user?.username) return;
 
     // Reset the component mounted flag
     isMounted.current = true;
 
-    // Start with current tab
+    // Only fetch data for the current tab on initial load
     fetchData(selected);
-
-    // Then fetch other tabs in background with slight delays to avoid overwhelming server
-    const timeouts = [
-      setTimeout(() => fetchData(0 === selected ? 1 : 0), 1000),
-      setTimeout(() => fetchData(2 === selected ? 1 : 2), 2000),
-    ];
 
     // Set up background refresh interval - align better with backend's cache TTL
     // Backend cache is 10 minutes, so refresh every 5 minutes
@@ -323,7 +321,6 @@ const ExplorePage = () => {
 
     return () => {
       isMounted.current = false;
-      timeouts.forEach(clearTimeout);
       clearInterval(refreshInterval);
     };
   }, [user?.username, fetchData, selected, backgroundRefresh]);
@@ -366,8 +363,6 @@ const ExplorePage = () => {
 
       // Set the updates available flag for better UX
       setUpdatesAvailable(true);
-
-      // Optional: You could trigger a silent background refresh here or wait for the interval
     };
 
     socket.on("broadcastStudyMaterial", handleNewMaterial);
@@ -521,8 +516,6 @@ const ExplorePage = () => {
           open={snackbarOpen}
           onClose={() => setSnackbarOpen(false)}
         />
-
-        {/* Add global styles for animations */}
       </Box>
     </PageTransition>
   );
