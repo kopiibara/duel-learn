@@ -487,7 +487,7 @@ const studyMaterialController = {
       const [infoRows] = await connection.execute(
         `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at 
                  FROM study_material_info 
-                 WHERE created_by != ?; `,
+                 WHERE created_by != ? AND visibility = 1; `,
         [username]
       );
 
@@ -610,7 +610,7 @@ const studyMaterialController = {
       i.study_material_id, i.title, i.tags, i.total_items,
         i.created_by, i.total_views, i.created_at
         FROM study_material_info i
-        WHERE i.status = 'active' AND i.visibility = 0
+        WHERE i.status = 'active' AND i.visibility = 1
         ORDER BY i.total_views DESC
         LIMIT 9; `
       );
@@ -723,7 +723,7 @@ const studyMaterialController = {
       const [infoRows] = await connection.execute(
         `SELECT study_material_id, title, tags, total_items, created_by, total_views, created_at, status
          FROM study_material_info 
-         WHERE created_by_id IN(${placeholders}) AND status != 'archived'
+         WHERE created_by_id IN(${placeholders}) AND status != 'archived AND visibility = 1'
          ORDER BY created_at DESC`,
         [...friendIds]
       );
@@ -805,7 +805,7 @@ const studyMaterialController = {
         total_views, created_at, visibility
              FROM study_material_info 
              WHERE created_by != ?
-        AND visibility = 0
+        AND visibility = 1
              ORDER BY created_at DESC
              LIMIT 10`,
         [username]
@@ -1042,7 +1042,7 @@ const studyMaterialController = {
           `SELECT
       i.study_material_id, i.title, i.tags, i.total_items,
         i.created_by, i.created_by_id, i.total_views,
-        i.created_at, i.visibility, i.status
+        i.created_at, i.updated_at, i.visibility, i.status
           FROM study_material_info i
           WHERE i.study_material_id IN(${placeholders})`,
           [...batchIds]
@@ -1081,6 +1081,7 @@ const studyMaterialController = {
                 created_by_id: info.created_by_id,
                 total_views: info.total_views,
                 created_at: info.created_at,
+                updated_at: info.updated_at,
                 visibility: info.visibility,
                 status: info.status,
                 items: contentRows.map((item) => ({
