@@ -1,5 +1,6 @@
 import React from "react";
 
+// =================== WAITING OVERLAY =====================
 export interface WaitingOverlayProps {
     isVisible: boolean;
     waitingForTurn?: boolean;
@@ -9,7 +10,7 @@ export interface WaitingOverlayProps {
 /**
  * WaitingOverlay component displays a waiting screen while looking for an opponent
  */
-const WaitingOverlay: React.FC<WaitingOverlayProps> = ({ isVisible, waitingForTurn = false, message }) => {
+export function WaitingOverlay({ isVisible, waitingForTurn = false, message }: WaitingOverlayProps) {
     // If neither condition is true, don't render the overlay
     if (!isVisible && !waitingForTurn) return null;
 
@@ -53,6 +54,30 @@ const WaitingOverlay: React.FC<WaitingOverlayProps> = ({ isVisible, waitingForTu
             </div>
         </div>
     );
-};
+}
 
-export default WaitingOverlay; 
+// =================== LOADING ENDING OVERLAY =====================
+interface LoadingOverlayProps {
+    isVisible: boolean;
+    message?: string;
+}
+
+export function LoadingOverlay({
+    isVisible,
+    message = "Ending Battle..."
+}: LoadingOverlayProps) {
+    if (!isVisible) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
+            <div className="text-center">
+                <h2 className="text-purple-300 text-3xl font-bold mb-6">{message}</h2>
+                <div className="flex space-x-4 justify-center">
+                    <div className="w-4 h-4 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-4 h-4 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-4 h-4 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                </div>
+            </div>
+        </div>
+    );
+} 

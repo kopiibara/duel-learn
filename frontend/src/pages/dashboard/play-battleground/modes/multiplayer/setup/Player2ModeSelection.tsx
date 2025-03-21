@@ -12,45 +12,58 @@ import DefaultBackHoverCard from "../../../../../../assets/cards/DefaultCardInsi
 export default function Player2ModeSelection() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { hostUsername, guestUsername, lobbyCode } = location.state || {};
+  const { hostUsername, guestUsername, lobbyCode, hostId, guestId } = location.state || {};
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Easy Mode");
   const [hostSelectedDifficulty, setHostSelectedDifficulty] = useState<string | null>(null);
+
+  console.log("Player2ModeSelection state:", { hostUsername, guestUsername, hostId, guestId, lobbyCode });
 
   // Poll for host's difficulty selection
   useEffect(() => {
     const checkDifficulty = async () => {
       try {
-        const response = await axios.get(
+        // First check if the host has selected a difficulty
+        const difficultyResponse = await axios.get(
           `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/difficulty/${lobbyCode}`
         );
 
-        if (response.data.success && response.data.data.difficulty) {
-          setHostSelectedDifficulty(response.data.data.difficulty);
-          setSelectedDifficulty(response.data.data.difficulty);
+        if (difficultyResponse.data.success && difficultyResponse.data.data.difficulty) {
+          setHostSelectedDifficulty(difficultyResponse.data.data.difficulty);
+          setSelectedDifficulty(difficultyResponse.data.data.difficulty);
 
-          // When host has selected, update battle_gameplay to mark guest as ready
-          await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize`, {
-            lobby_code: lobbyCode,
-            host_id: hostUsername,
-            guest_id: guestUsername,
-            host_username: hostUsername,
-            guest_username: guestUsername,
-            guest_in_battle: true // Mark guest as entered (don't set current_turn - use the one set by host)
-          });
+          // Then check if the host has actually created a battle session and entered
+          const sessionResponse = await axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-state/${lobbyCode}`
+          );
 
-          // Navigate to battle
-          navigate("/dashboard/pvp-battle", {
-            state: {
-              lobbyCode,
-              difficulty: response.data.data.difficulty,
-              isHost: false,
-              hostUsername,
-              guestUsername
-            }
-          });
+          // Only proceed if the host has created a session and is in battle
+          if (sessionResponse.data.success && sessionResponse.data.data.host_in_battle === 1) {
+            console.log("Host has entered the battle, joining now...");
+
+            // When host has selected and entered, update battle_sessions to mark guest as ready
+            await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-session`, {
+              lobby_code: lobbyCode,
+              guest_in_battle: true // Mark guest as entered
+            });
+
+            // Navigate to battle
+            navigate(`/dashboard/pvp-battle/${lobbyCode}`, {
+              state: {
+                lobbyCode,
+                difficulty: difficultyResponse.data.data.difficulty,
+                isHost: false,
+                hostUsername,
+                guestUsername,
+                hostId,
+                guestId
+              }
+            });
+          } else {
+            console.log("Host has selected difficulty but hasn't entered the battle yet. Waiting...");
+          }
         }
       } catch (error) {
-        console.error("Error checking difficulty:", error);
+        console.error("Error checking host status:", error);
       }
     };
 
@@ -61,7 +74,7 @@ export default function Player2ModeSelection() {
     const interval = setInterval(checkDifficulty, 1200);
 
     return () => clearInterval(interval);
-  }, [lobbyCode, navigate, hostUsername, guestUsername]);
+  }, [lobbyCode, navigate, hostUsername, guestUsername, hostId, guestId]);
 
   const handleManualSelection = (mode: string) => {
     setSelectedDifficulty(mode);
