@@ -215,6 +215,15 @@ export default function PvpBattle() {
       if (!isIntentionallyLeaving && !isEndingBattle) {
         event.preventDefault();
         event.returnValue = "Are you sure you want to leave the battle? Your progress will be lost and the battle will end.";
+
+        // Set a flag in sessionStorage to indicate user confirmed reload
+        // This will be checked on page load to handle the reload case
+        sessionStorage.setItem('battle_reload_confirmed', 'true');
+        sessionStorage.setItem('battle_lobby_code', lobbyCode || '');
+        sessionStorage.setItem('battle_is_host', isHost ? 'true' : 'false');
+        sessionStorage.setItem('battle_host_id', hostId || '');
+        sessionStorage.setItem('battle_guest_id', guestId || '');
+
         return event.returnValue;
       }
     };
@@ -295,9 +304,13 @@ export default function PvpBattle() {
 
     // Special handler for actual navigation away (after confirmation)
     const handleUnload = () => {
+      // Check if this is a reload case where we've already stored the data
+      const reloadConfirmed = sessionStorage.getItem('battle_reload_confirmed') === 'true';
+
       // Only send the request if user hasn't confirmed through another handler
       // and we're not already in the process of ending the battle
-      if (!isIntentionallyLeaving && !isEndingBattle && battleState && (battleState.session_uuid || battleState.ID)) {
+      // and this is not a reload we're already handling
+      if (!isIntentionallyLeaving && !isEndingBattle && !reloadConfirmed && battleState && (battleState.session_uuid || battleState.ID)) {
         try {
           // Use synchronous approach for unload event
           // This is a fallback in case the user closes the browser without confirmation
@@ -791,6 +804,57 @@ export default function PvpBattle() {
       }
     }
   };
+
+  // Check for battle reload flag when component mounts
+  useEffect(() => {
+    const reloadConfirmed = sessionStorage.getItem('battle_reload_confirmed') === 'true';
+
+    if (reloadConfirmed) {
+      console.log("Detected reload after confirmation, ending battle...");
+
+      // Get battle data from sessionStorage
+      const storedLobbyCode = sessionStorage.getItem('battle_lobby_code');
+      const storedIsHost = sessionStorage.getItem('battle_is_host') === 'true';
+      const storedHostId = sessionStorage.getItem('battle_host_id');
+      const storedGuestId = sessionStorage.getItem('battle_guest_id');
+
+      if (storedLobbyCode) {
+        // Show loading state
+        setIsEndingBattle(true);
+
+        // Send request to end battle
+        const payload = {
+          lobby_code: storedLobbyCode,
+          winner_id: storedIsHost ? storedGuestId : storedHostId,
+          battle_end_reason: 'Left The Game'
+        };
+
+        console.log("Sending battle end request after reload:", payload);
+
+        axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/end`,
+          payload
+        )
+          .then(response => {
+            console.log("Battle ended successfully after reload:", response.data);
+          })
+          .catch(error => {
+            console.error("Error ending battle after reload:", error);
+          })
+          .finally(() => {
+            // Clear the reload flags
+            sessionStorage.removeItem('battle_reload_confirmed');
+            sessionStorage.removeItem('battle_lobby_code');
+            sessionStorage.removeItem('battle_is_host');
+            sessionStorage.removeItem('battle_host_id');
+            sessionStorage.removeItem('battle_guest_id');
+
+            // Redirect to dashboard
+            window.location.replace('/dashboard/home');
+          });
+      }
+    }
+  }, []);
 
   return (
     <div className="w-full h-screen flex flex-col">
