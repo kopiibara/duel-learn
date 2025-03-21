@@ -1,6 +1,0 @@
-{
-  "build": {
-    "builder": "NIXPACKS"
-  },
-  "start": "node dist/index.js"
-}
