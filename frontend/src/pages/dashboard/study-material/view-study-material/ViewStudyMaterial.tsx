@@ -214,19 +214,30 @@ const ViewStudyMaterial = () => {
 
   return (
     <PageTransition>
-      <Box className="h-screen w-full px-8">
+      <Box className="min-h-screen w-full px-4 md:px-8">
         <DocumentHead title={studyMaterial?.title + " | Duel Learn"} />
-        <Stack spacing={3}>
-          <Stack direction={"row"}>
-            <Stack spacing={"1vh"}>
+        <Stack spacing={2} sx={{ pt: { xs: 2, md: 3 } }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={2}
+            sx={{ alignItems: { xs: "flex-start", sm: "center" } }}
+          >
+            <Stack spacing={1} sx={{ width: { xs: "100%", sm: "auto" } }}>
               <Typography
-                variant="h3"
+                variant="h4"
                 fontWeight="bold"
                 className="text-[#E2DDF3]"
+                sx={{
+                  fontSize: { xs: "1.5rem", sm: "1.75rem", md: "2rem" },
+                }}
               >
                 {loading ? "Loading..." : studyMaterial?.title}
               </Typography>
-              <Stack direction="row" spacing={2} alignItems="center">
+              <Stack
+                direction={{ xs: "column", sm: "row" }}
+                spacing={1}
+                alignItems={{ xs: "flex-start", sm: "center" }}
+              >
                 <Typography variant="subtitle2" className="text-[#9F9BAE]">
                   Created on{" "}
                   <strong>
@@ -235,7 +246,11 @@ const ViewStudyMaterial = () => {
                       : formatDate(studyMaterial?.updated_at || "")}
                   </strong>
                 </Typography>
-                <Typography variant="subtitle2" className="text-[#9F9BAE]">
+                <Typography
+                  variant="subtitle2"
+                  className="text-[#9F9BAE]"
+                  sx={{ display: { xs: "none", sm: "block" } }}
+                >
                   •
                 </Typography>
                 <Typography variant="subtitle2" className="text-[#9F9BAE]">
@@ -251,6 +266,7 @@ const ViewStudyMaterial = () => {
                       <Typography
                         variant="subtitle2"
                         className="text-[#9F9BAE]"
+                        sx={{ display: { xs: "none", sm: "block" } }}
                       >
                         •
                       </Typography>
@@ -264,8 +280,17 @@ const ViewStudyMaterial = () => {
                   )}
               </Stack>
             </Stack>
-            <Box flex={1} />
-            <Stack direction={"row"} spacing={1} paddingTop={1}>
+            <Box flex={1} sx={{ display: { xs: "none", sm: "block" } }} />
+            <Stack
+              direction={"row"}
+              spacing={1}
+              sx={{
+                mt: { xs: 1, sm: 0 },
+                flexWrap: { xs: "wrap", sm: "nowrap" },
+                width: { xs: "100%", sm: "auto" },
+                justifyContent: { xs: "justify-evenly", sm: "flex-end" },
+              }}
+            >
               <Button
                 variant="contained"
                 sx={{
@@ -274,7 +299,7 @@ const ViewStudyMaterial = () => {
                   color: "#E2DDF3",
                   height: "fit-content",
                   borderRadius: "0.8rem",
-                  padding: "0.5rem 2rem",
+                  padding: { xs: "0.4rem 1rem", sm: "0.5rem 2rem" },
                   fontSize: "0.8rem",
                   transition: "all 0.3s ease",
                   "&:hover": {
@@ -296,6 +321,7 @@ const ViewStudyMaterial = () => {
                     height: "fit-content",
                     borderRadius: "0.8rem",
                     padding: "0.4rem 1rem",
+                    minWidth: { xs: "40px", sm: "auto" },
                     fontSize: "0.9rem",
                     transition: "all 0.3s ease",
                     "&:hover": {
@@ -321,7 +347,7 @@ const ViewStudyMaterial = () => {
                     color: "#E2DDF3",
                     height: "fit-content",
                     borderRadius: "0.8rem",
-                    padding: "0.5rem 2rem",
+                    padding: { xs: "0.4rem 1rem", sm: "0.5rem 2rem" },
                     fontSize: "0.8rem",
                     transition: "all 0.3s ease",
                     "&:hover": {
@@ -347,6 +373,7 @@ const ViewStudyMaterial = () => {
                   height: "fit-content",
                   borderRadius: "0.8rem",
                   padding: "0.4rem 1rem",
+                  minWidth: { xs: "40px", sm: "auto" },
                   fontSize: "0.9rem",
                   transition: "all 0.3s ease",
                   "&:hover": {
@@ -359,11 +386,20 @@ const ViewStudyMaterial = () => {
             </Stack>
           </Stack>
 
-          <Stack spacing={1.5} direction={"row"} alignItems={"center"}>
+          <Stack
+            spacing={1.5}
+            direction={{ xs: "column", sm: "row" }}
+            alignItems={{ xs: "flex-start", sm: "center" }}
+            sx={{ mt: 2 }}
+          >
             <Typography variant="subtitle1" className="text-[#9F9BAE]">
               Tags:
             </Typography>
-            <Stack direction="row" spacing={1}>
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{ flexWrap: "wrap", gap: "8px" }}
+            >
               {studyMaterial?.tags?.map((tag: string, index: number) => (
                 <Chip
                   key={index}
@@ -376,12 +412,13 @@ const ViewStudyMaterial = () => {
                     height: "fit-content",
                     padding: "0.5rem 0.5rem",
                     fontSize: "0.9rem",
+                    mb: { xs: 1, sm: 0 },
                   }}
                 />
               ))}
             </Stack>
           </Stack>
-          <Stack direction="row" alignItems="center" spacing={1}>
+          <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1 }}>
             <Typography
               variant="subtitle1"
               className="text-[#3B354D] font-bold"
@@ -393,7 +430,12 @@ const ViewStudyMaterial = () => {
             <Divider className="bg-[#3B354D] flex-1" />
           </Stack>
           <Stack spacing={2}>
-            <Stack direction="row" spacing={1} className="flex items-center">
+            <Stack
+              direction="row"
+              spacing={1}
+              className="flex items-center"
+              sx={{ overflowX: "auto", pb: 1 }}
+            >
               {["Summary", "Cards"].map((label) => (
                 <Button
                   key={label}
@@ -411,13 +453,14 @@ const ViewStudyMaterial = () => {
                       color: "#E2DDF3",
                       transform: "scale(1.05)",
                     },
+                    whiteSpace: "nowrap",
                   }}
                 >
                   {label}
                 </Button>
               ))}
             </Stack>
-            <Box>
+            <Box sx={{ width: "100%" }}>
               {selected === "Summary" ? (
                 <SummaryPage studyMaterial={studyMaterial} />
               ) : (

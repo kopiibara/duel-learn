@@ -51,8 +51,15 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   // Generate AI questions when component mounts
   useEffect(() => {
     const generateAIQuestions = async () => {
+      // Skip if we already have questions for this material
+      if (aiQuestions.length > 0) {
+        console.log("Questions already generated, skipping...");
+        return;
+      }
+
       console.log("Starting AI question generation in TimePressuredMode");
       console.log("Selected question types:", selectedTypes);
+      console.log("Mode received:", mode);
       setIsGeneratingAI(true);
       const generatedQuestions = [];
 
@@ -109,13 +116,27 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
             const requestPayload = {
               term: item.term,
               definition: item.definition,
-              numberOfItems: 1
+              numberOfItems: 1,
+              studyMaterialId: material.study_material_id,
+              itemId: currentItemIndex + 1,
+              gameMode: "time-pressured",
+              timestamp: new Date().getTime()
             };
 
-            const response = await axios.post<{ data: any[] }>(endpoint, requestPayload);
+            const response = await axios.post<any[]>(endpoint, requestPayload);
             
             if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-              generatedQuestions.push(...response.data);
+              // Add the item information to each question for reference
+              const questionsWithItemInfo = response.data.map(q => ({
+                ...q,
+                itemInfo: {
+                  term: item.term,
+                  definition: item.definition,
+                  itemId: currentItemIndex + 1
+                }
+              }));
+              
+              generatedQuestions.push(...questionsWithItemInfo);
               console.log(`✓ Successfully generated ${type} question for "${item.term}"`);
             } else {
               console.warn(`⚠ No question generated for "${item.term}" of type ${type}`);
@@ -141,7 +162,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     };
 
     generateAIQuestions();
-  }, [material, selectedTypes]);
+  }, [material?.study_material_id, selectedTypes]);
 
   const {
     currentQuestion,

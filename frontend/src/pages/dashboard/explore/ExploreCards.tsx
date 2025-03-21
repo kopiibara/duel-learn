@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
 
 type ExploreCardsProps = {
-  cards: StudyMaterial[]; // Receive filtered cards as prop
+  cards: StudyMaterial[];
 };
 
 const ExploreCards = ({ cards }: ExploreCardsProps) => {
@@ -30,30 +30,36 @@ const ExploreCards = ({ cards }: ExploreCardsProps) => {
   };
 
   return (
-    <Box className="px-2">
-      <Grid container spacing={2}>
-        {cards.map((item, index) => (
-          <Grid item xs={12} sm={6} md={4} key={index}>
-            <CardComponent
-              title={item.title}
-              tags={item.tags}
-              images={item.images}
-              totalItems={item.total_items}
-              createdBy={item.created_by}
-              createdById={item.created_by_id}
-              totalViews={item.total_views}
-              createdAt={item.updated_at}
-              updatedAt={item.updated_at}
-              visibility={item.visibility}
-              status={item.status}
-              items={item.items}
-              onClick={() =>
-                handleCardClick(item.study_material_id, item.title)
-              }
-            />
-          </Grid>
-        ))}
-      </Grid>
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "repeat(auto-fill, minmax(250px, 1fr))",
+          sm: "repeat(auto-fill, minmax(290px, 1fr))",
+        },
+        gap: { xs: 1, sm: 2 },
+        width: "100%",
+      }}
+    >
+      {cards.map((item) => (
+        <Box key={item.study_material_id} position="relative">
+          <CardComponent
+            title={item.title}
+            tags={item.tags}
+            images={item.images}
+            totalItems={item.total_items}
+            createdBy={item.created_by}
+            createdById={item.created_by_id}
+            totalViews={item.total_views}
+            createdAt={item.updated_at}
+            updatedAt={item.updated_at}
+            visibility={item.visibility}
+            status={item.status}
+            items={item.items}
+            onClick={() => handleCardClick(item.study_material_id, item.title)}
+          />
+        </Box>
+      ))}
     </Box>
   );
 };

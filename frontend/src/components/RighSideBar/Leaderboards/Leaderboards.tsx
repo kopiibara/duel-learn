@@ -6,6 +6,7 @@ import BronzeMedal from "../../../assets/General/bronze-medal.svg";
 import axios from "axios";
 import { useUser } from "../../../contexts/UserContext"; // Import your auth context
 import defaultPicture from "../../../assets/profile-picture/default-picture.svg";
+import { useMediaQuery, useTheme } from "@mui/material";
 
 interface LeaderboardPlayer {
   firebase_uid: string;
@@ -25,6 +26,8 @@ const Leaderboards = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useUser(); // Get the current user from your auth context
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
   useEffect(() => {
     const fetchLeaderboardData = async () => {
@@ -88,9 +91,6 @@ const Leaderboards = () => {
           );
           return;
         }
-
-        // Continue with existing array handling logic
-        // Continue with existing array handling logic
         if (Array.isArray(response.data)) {
           console.log("Processing array data:", response.data.length, "items");
           // Add rank if not already present
@@ -146,49 +146,49 @@ const Leaderboards = () => {
         key={player.firebase_uid}
         className={`flex items-center justify-between mb-4 w-full ${
           showBackground && player.isCurrentUser
-            ? "bg-[#221f2e] rounded-lg px-[0.8vw] py-[1.4vh]"
+            ? "bg-[#221f2e] rounded-lg px-2 py-3"
             : ""
         }`}
       >
         {/* Left side with rank, avatar and username */}
         <div className="flex items-center min-w-0 flex-1">
           {/* Rank indicator - fixed width container */}
-          <div className="flex-shrink-0 w-[2vw] min-w-[24px] flex justify-center mr-[1vw]">
+          <div className="flex-shrink-0 w-6 min-w-[24px] flex justify-center mr-2">
             {player.rank <= 3 ? (
               <img
                 src={getMedal(player.rank)}
                 alt={`Rank ${player.rank}`}
-                className="w-[2vw] h-[2vw] min-w-[24px] min-h-[24px]"
+                className="w-6 h-auto min-w-[30px] "
               />
             ) : (
-              <p className="text-[1.8vh] font-semibold text-center">
-                {player.rank}
-              </p>
+              <p className="text-sm font-semibold text-center">{player.rank}</p>
             )}
           </div>
 
           {/* Avatar with fixed dimensions */}
-          <div className="flex-shrink-0 mr-[0.8vw]">
+          <div className="flex-shrink-0 mr-2">
             <img
               src={player.display_picture || defaultPicture}
               alt="Avatar"
-              className="min-w-[44px] w-[2.7vw] max-w-[60px] h-auto rounded-[5px] object-cover"
+              className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-2 ml-4 rounded-[5px]  object-cover"
             />
           </div>
 
           {/* Username with truncation */}
-          <p className={`truncate text-[1.8vh] ${player.isCurrentUser}`}>
+          <p
+            className={`truncate text-sm sm:text-base text-[#E2DDF3] ${player.isCurrentUser}`}
+          >
             {player.username}
           </p>
         </div>
 
         {/* Right side with level and XP - now properly pushed to the right edge */}
-        <div className="flex-shrink-0 flex items-center gap-[0.5vw] ml-2">
-          <p className="text-[1.4vh] truncate whitespace-nowrap text-[#9F9BAE]">
+        <div className="flex-shrink-0 flex items-center gap-1 ml-2">
+          <p className="text-xs truncate whitespace-nowrap text-[#9F9BAE]">
             Level {player.level}
           </p>
-          <p className="text-[#9F9BAE] text-[1.5vh]">•</p>
-          <p className="text-[1.4vh] whitespace-nowrap text-[#9F9BAE]">
+          <p className="text-[#9F9BAE] text-xs">•</p>
+          <p className="text-xs whitespace-nowrap text-[#9F9BAE]">
             EXP {player.exp}
           </p>
         </div>
@@ -203,29 +203,27 @@ const Leaderboards = () => {
   const top3Players = leaderboardData.filter((player) => player.rank <= 3);
 
   return (
-    <Box className="rounded-[0.8rem] shadow-md border-[0.2rem] border-[#3B354C]">
-      <div className="px-[1.5vw] pt-[3vh] pb-[1vh]">
-        <div className="pl-[0.5vw] flex flex-row items-center mb-[2vh] gap-[1vw]">
+    <Box className="rounded-[0.8rem] shadow-md border-[0.2rem] gap-2 border-[#3B354C]">
+      <div className="px-8 pt-8 pb-4">
+        <div className="pl-2 flex flex-row items-center mb-4 gap-4">
           <img
             src="/leaderboard.png"
-            className="min-w-[40px] w-[2.2vw] max-w-[56px] h-auto"
+            className="w-8 sm:w-10 md:w-12 h-auto"
             alt="icon"
           />
-          <h2 className="text-[clamp(1rem,1vw,2rem)]  font-semibold">
-            Leaderboards
-          </h2>
+          <h2 className="text-base md:text-lg font-semibold">Leaderboards</h2>
         </div>
 
-        <hr className="border-t-2 border-[#3B354D] mb-[2vh] rounded-full" />
+        <hr className="border-t-2 border-[#3B354D] mb-4 rounded-full" />
 
         {loading ? (
-          <div className="flex justify-center items-center h-[30vh]">
+          <div className="flex justify-center items-center h-60">
             <CircularProgress />
           </div>
         ) : error ? (
-          <div className="text-center text-red-500 py-[2vh]">{error}</div>
+          <div className="text-center text-red-500 py-4">{error}</div>
         ) : leaderboardData.length === 0 ? (
-          <div className="text-center text-gray-400 py-[2vh]">
+          <div className="text-center text-gray-400 py-4">
             No friends found. Add friends to see your leaderboard!
           </div>
         ) : (
@@ -236,7 +234,7 @@ const Leaderboards = () => {
             {/* Always add separator and current user with background styling */}
             {currentUser && (
               <>
-                <hr className="border-t-2 border-[#3B354D] mb-[2vh] rounded-full" />
+                <hr className="border-t-2 border-[#3B354D] mb-4 rounded-full" />
                 {renderPlayerItem(currentUser, true)}
               </>
             )}
@@ -244,15 +242,15 @@ const Leaderboards = () => {
         )}
       </div>
 
-      {/* Rest of the component remains the same */}
+      {/* Footer section */}
       {leaderboardData.length > 3 && (
         <Stack
           direction={"row"}
           spacing={1}
-          className="flex justify-center bg-[#120F1C] py-[2vh] px-[2vw] border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
+          className="flex justify-center bg-[#120F1C] py-3 px-4 border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
         >
           <p
-            className={`text-[1.7vh] ${
+            className={`text-sm ${
               leaderboardData.length > 3
                 ? "text-[#3B354D] hover:text-[#A38CE6] cursor-pointer transition-colors font-bold"
                 : "text-[#232029] cursor-not-allowed font-bold"
@@ -264,25 +262,25 @@ const Leaderboards = () => {
         </Stack>
       )}
 
-      {/* Modal remains the same */}
+      {/* Modal with updated styling */}
       {isModalOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-4"
           onClick={() => setIsModalOpen(false)}
         >
           <div
-            className="bg-[#080511] px-[3vw] py-[3vh] border-[#3B354D] border rounded-[0.8rem] w-full max-w-[80vw] max-h-[90vh] shadow-lg flex flex-col space-y-[2vh] items-center"
+            className="bg-[#080511] px-5 md:px-8 py-6 border-[#3B354D] border rounded-[0.8rem] w-full max-w-3xl max-h-[90vh] shadow-lg flex flex-col space-y-4 items-center"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 className="text-[2.5vh] text-white font-semibold">
+            <h2 className="text-lg md:text-xl text-white font-semibold">
               Friend Leaderboard
             </h2>
-            <hr className="border-t-2 border-[#363D46] w-full mb-[2vh]" />
-            <div className="overflow-y-auto w-full max-h-[40vh] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-[1.5vh]">
+            <hr className="border-t-2 border-[#363D46] w-full mb-4" />
+            <div className="overflow-y-auto w-full max-h-[400px] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-3">
               {leaderboardData.map((player) => renderPlayerItem(player))}
             </div>
             <button
-              className="mt-[2vh] bg-[#4D1EE3] text-white px-[2vw] py-[1.5vh] rounded-md hover:bg-[#3B1BC9] text-[1.8vh]"
+              className="mt-4 bg-[#4D1EE3] text-white px-6 py-3 rounded-md hover:bg-[#3B1BC9] text-sm"
               onClick={() => setIsModalOpen(false)}
             >
               Close

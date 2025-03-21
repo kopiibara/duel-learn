@@ -8,12 +8,11 @@ import {
   getCurrentLevel,
   DEFAULT_LEVELS,
 } from "../../../types/levelRequiredObject";
-import RefreshIcon from "@mui/icons-material/Refresh";
 
 const ProfileHeader = () => {
-  const { user, refreshUserData } = useUser();
+  const { user } = useUser();
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [_loading, setLoading] = useState(false);
   const [_error, setError] = useState<string | null>(null);
   const [friendsCount, setFriendsCount] = useState(0);
   const [profileData, setProfileData] = useState({
@@ -26,7 +25,6 @@ const ProfileHeader = () => {
     xpProgress: 0,
   });
   const [accountType, setAccountType] = useState<string | undefined>(undefined);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Extract fetchUserInfo to be reusable
   const fetchUserInfo = useCallback(async () => {
@@ -73,16 +71,52 @@ const ProfileHeader = () => {
     }
   }, [user?.firebase_uid]);
 
-  // Initial fetch of friend count
+  // Initial fetch of friend count with optimized polling
   useEffect(() => {
+    // Fetch immediately on component mount
     fetchFriendCount();
 
-    // Set up polling for real-time updates (every 10 seconds)
-    const interval = setInterval(() => {
-      fetchFriendCount();
-    }, 10000);
+    // Set up polling with page visibility awareness
+    let interval: number | null = null;
 
-    return () => clearInterval(interval);
+    // Function to start polling
+    const startPolling = () => {
+      interval = window.setInterval(() => {
+        fetchFriendCount();
+      }, 30000); // Increased to 30 seconds instead of 10
+    };
+
+    // Function to stop polling
+    const stopPolling = () => {
+      if (interval) {
+        window.clearInterval(interval);
+        interval = null;
+      }
+    };
+
+    // Handle visibility change
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        // Page is visible, fetch immediately and start polling
+        fetchFriendCount();
+        startPolling();
+      } else {
+        // Page is hidden, stop polling
+        stopPolling();
+      }
+    };
+
+    // Start initial polling
+    startPolling();
+
+    // Set up visibility change listener
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      // Clean up
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
   }, [fetchFriendCount]);
 
   // Update profile data when userInfo changes and check for level up
@@ -158,26 +192,6 @@ const ProfileHeader = () => {
     }
   };
 
-  // Function to handle refresh action
-  const handleRefresh = async () => {
-    if (isRefreshing || !user?.firebase_uid) return;
-    
-    setIsRefreshing(true);
-    
-    try {
-      // First refresh the user data in UserContext
-      await refreshUserData();
-      
-      // Then refresh profile-specific data
-      await fetchUserInfo();
-      await fetchFriendCount();
-    } catch (error) {
-      console.error("Error refreshing profile data:", error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
-
   return (
     <div
       className="rounded-[1rem] px-6 md:px-14 py-9 flex flex-col md:flex-row items-center md:items-start text-center md:text-left mb-9"
@@ -208,18 +222,6 @@ const ProfileHeader = () => {
               className="w-[15px] h-auto rounded-sm"
             />
           )}
-          
-          <button 
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            className="ml-auto bg-[#3D384C] hover:bg-[#514869] p-2 rounded-full transition-colors"
-            title="Refresh profile data"
-          >
-            <RefreshIcon 
-              className={`text-[#E2DDF3] transition-transform ${isRefreshing ? 'animate-spin' : ''}`}
-              fontSize="small"
-            />
-          </button>
         </div>
         <div className="flex justify-center md:justify-between">
           <p className="text-[#9F9BAE] text-[16px">Level {profileData.level}</p>

@@ -189,6 +189,78 @@ const useAccountSettings = () => {
         localStorage.setItem("userData", JSON.stringify(updatedUserData));
         sessionStorage.setItem("userData", JSON.stringify(updatedUserData));
 
+        // Add this after successful user update
+        if (changedFields.username) {
+          try {
+            await fetch(
+              `${
+                import.meta.env.VITE_BACKEND_URL
+              }/api/study-material/update-creator`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  created_by: values.username,
+                  created_by_id:
+                    user?.firebase_uid || localStorage.getItem("firebase_uid"),
+                }),
+              }
+            );
+
+            await fetch(
+              `${
+                import.meta.env.VITE_BACKEND_URL
+              }/api/study-material/top-picks?timestamp=${Date.now()}`
+            );
+          } catch (error) {
+            console.error(
+              "Failed to update study materials with new username",
+              error
+            );
+          }
+        }
+
+        // Add this code inside the try block, after the updateUserDetailsApi call at approximately line 105
+        if (changedFields.username && values.username !== user?.username) {
+          try {
+            console.log(
+              "Updating study materials with new username:",
+              values.username
+            );
+            // Update study materials with the new username
+            await fetch(
+              `${
+                import.meta.env.VITE_BACKEND_URL
+              }/api/study-material/update-creator`,
+              {
+                method: "POST", // Correct method
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  created_by: values.username,
+                  created_by_id:
+                    user?.firebase_uid || localStorage.getItem("firebase_uid"),
+                }),
+              }
+            );
+
+            // Force refresh the caches
+            await fetch(
+              `${
+                import.meta.env.VITE_BACKEND_URL
+              }/api/study-material/top-picks?timestamp=${Date.now()}`
+            );
+          } catch (error) {
+            console.error(
+              "Failed to update study materials with new username:",
+              error
+            );
+          }
+        }
+
         // Reset all states
         setIsEditing(false);
         setIsChangingPassword(false);
@@ -270,19 +342,17 @@ const useAccountSettings = () => {
     setChangedFields((prev) => ({ ...prev, display_picture: true }));
   };
 
-  // Track username changes
-  const handleUsernameChange = async (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  // Simplified handleUsernameChange function
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newUsername = e.target.value;
     formik.handleChange(e);
 
-    if (newUsername !== user?.username) {
-      // Set as changed to enable saving
-      setChangedFields((prev) => ({ ...prev, username: true }));
-    } else {
-      setChangedFields((prev) => ({ ...prev, username: false }));
-    }
+    // Track if username has changed from original value
+    setChangedFields((prev) => ({
+      ...prev,
+      username: newUsername !== user?.username,
+    }));
   };
 
   const hasChanges = () => {

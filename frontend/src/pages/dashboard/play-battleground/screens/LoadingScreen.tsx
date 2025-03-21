@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import cauldronGif from "../../../../assets/General/Cauldron.gif";
 import PageTransition from "../../../../styles/PageTransition";
-import ellipseShadow from "../../../../assets/General/Ellipse.png";
 
 export default function LoadingScreen() {
   const location = useLocation();
@@ -47,11 +46,6 @@ export default function LoadingScreen() {
     <PageTransition>
       <main className="flex overflow-hidden flex-col justify-center items-center min-h-screen px-10 py-28 max-md:px-2 max-md:py-12">
         <section className="flex flex-col mt-4 items-center max-w-full w-full md:w-[546px] mx-auto px-4">
-          <img
-            src={ellipseShadow}
-            className="absolute top-[478px] w-[200px] opacity-90"
-            alt=""
-          />
           <img
             loading="lazy"
             src={cauldronGif}

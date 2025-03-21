@@ -18,13 +18,12 @@ const ModeCard = styled(Card)(({ theme }) => {
   const isXsScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
   return {
-    padding: isXsScreen ? "1.5vh 1vw" : "2vh 1vw", // Responsive padding
+    padding: isXsScreen ? "1rem 0.75rem" : "1.5rem 0.75rem", // Responsive padding with rem
     borderRadius: "0.8rem",
-    height: isXsScreen ? "18vh" : "24vh", // Responsive height with vh
-    minHeight: isXsScreen ? "18vh" : "12vh", // Min height to prevent too small cards
-    maxHeight: isXsScreen ? "18vh" : "24vh", // Max height to prevent too large cards
-    width: isXsScreen ? "32.5vh" : "auto",
-    marginBottom: "1vh", // Use vh for margin bottom
+    height: isXsScreen ? "180px" : "240px", // Fixed height values instead of vh
+    minHeight: isXsScreen ? "120px" : "140px", // Min height with px
+    maxHeight: isXsScreen ? "180px" : "240px", // Max height with px
+    width: "100%",
     cursor: "pointer",
     background: "#E2DDF3",
     position: "relative", // Add position relative
@@ -105,12 +104,12 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         sx={{
           display: "grid",
           gridTemplateColumns: "1fr",
-          gap: "vh", // Use vh for vertical gap
-          mt: "3vh", // Use vh for margin top
-          paddingX: "0.4vw", // Use vw for horizontal padding
+          gap: "0.75rem", // Use rem for gap
+          mt: "1.5rem", // Use rem for margin top
+          paddingX: "0.5rem", // Use rem for horizontal padding
           "@media (min-width: 768px)": {
             gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "0.8vw", // Use vw for horizontal gap in desktop
+            gap: "1rem", // Use rem for horizontal gap in desktop
           },
         }}
       >
@@ -136,8 +135,8 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
             <Box
               sx={{
                 position: "absolute",
-                bottom: isXsScreen ? "6vw" : "3vh", // Use vh for positioning
-                left: isXsScreen ? "6vw" : "1.5vw", // Use vw for positioning
+                bottom: isXsScreen ? "1.5rem" : "1.25rem", // Use rem for positioning
+                left: isXsScreen ? "1.5rem" : "1rem", // Use rem for positioning
                 textAlign: "left",
                 maxWidth: "80%",
               }}
@@ -146,8 +145,8 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="700"
                 className="text-[#266349]"
                 sx={{
-                  fontSize: "clamp(1rem, 2.2vh, 1.5rem)", // Responsive font size
-                  marginBottom: "0.5vh", // Use vh for margin
+                  fontSize: isXsScreen ? "1.1rem" : "1.3rem", // Responsive font size with rem
+                  marginBottom: "0.4rem", // Use rem for margin
                 }}
               >
                 Peaceful Mode
@@ -156,7 +155,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="650"
                 className="text-[#266349]"
                 sx={{
-                  fontSize: "clamp(0.75rem, 0.8vw, 1rem)", // Responsive font size
+                  fontSize: isXsScreen ? "0.75rem" : "0.85rem", // Responsive font size with rem
                 }}
               >
                 Study your way, no rush, just flow!
@@ -187,8 +186,8 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
             <Box
               sx={{
                 position: "absolute",
-                bottom: isXsScreen ? "6vw" : "3vh", // Use vh for positioning
-                left: isXsScreen ? "6vw" : "1.5vw", // Use vw for positioning
+                bottom: isXsScreen ? "1.5rem" : "1.25rem", // Use rem for positioning
+                left: isXsScreen ? "1.5rem" : "1rem", // Use rem for positioning
                 textAlign: "left",
                 maxWidth: "80%",
               }}
@@ -197,8 +196,8 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="700"
                 className="text-[#504c36]"
                 sx={{
-                  fontSize: "clamp(1rem, 2.2vh, 1.5rem)", // Responsive font size
-                  marginBottom: "0.5vh", // Use vh for margin
+                  fontSize: isXsScreen ? "1.1rem" : "1.3rem", // Responsive font size with rem
+                  marginBottom: "0.4rem", // Use rem for margin
                 }}
               >
                 Time Pressured
@@ -207,7 +206,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="650"
                 className="text-[#504c36]"
                 sx={{
-                  fontSize: "clamp(0.75rem, 0.75vw, 1rem)", // Responsive font size
+                  fontSize: isXsScreen ? "0.75rem" : "0.85rem", // Responsive font size with rem
                 }}
               >
                 Beat the clock, challenge your speed!
@@ -238,8 +237,8 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
             <Box
               sx={{
                 position: "absolute",
-                bottom: isXsScreen ? "6vw" : "3vh", // Use vh for positioning
-                left: isXsScreen ? "6vw" : "1.5vw", // Use vw for positioning
+                bottom: isXsScreen ? "1.5rem" : "1.25rem", // Use rem for positioning
+                left: isXsScreen ? "1.5rem" : "1rem", // Use rem for positioning
                 maxWidth: "80%",
               }}
             >
@@ -247,8 +246,8 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="700"
                 className="text-[#303869]"
                 sx={{
-                  fontSize: "clamp(1rem, 2.2vh, 1.5rem)", // Responsive font size // Responsive font size
-                  marginBottom: "0.5vh", // Use vh for margin
+                  fontSize: isXsScreen ? "1.1rem" : "1.3rem", // Responsive font size with rem
+                  marginBottom: "0.4rem", // Use rem for margin
                 }}
               >
                 PvP Mode
@@ -258,7 +257,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="650"
                 className="text-[#303869]"
                 sx={{
-                  fontSize: "clamp(0.75rem, 0.8vw, 1rem)", // Responsive font size
+                  fontSize: isXsScreen ? "0.75rem" : "0.85rem", // Responsive font size with rem
                 }}
               >
                 Outsmart your opponent and win!

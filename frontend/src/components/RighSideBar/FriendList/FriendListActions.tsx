@@ -5,26 +5,27 @@ import PersonAddIcon from "@mui/icons-material/PersonAdd";
 import PersonSearchIcon from "@mui/icons-material/PersonSearch";
 import Badge from "@mui/material/Badge";
 import { useUser } from "../../../contexts/UserContext";
-import { usePendingFriendRequests } from "../../../hooks/friends.hooks/usePendingFriendRequests";
 
 interface FriendListActionsProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
-  pendingCount?: number;
+  pendingCount: number; // Use this prop instead of requestsCount from hook
 }
 
 const FriendListActions: React.FC<FriendListActionsProps> = ({
   activeTab,
   onTabChange,
+  pendingCount,
 }) => {
   const { user } = useUser();
-  const { requestsCount } = usePendingFriendRequests(user?.firebase_uid);
+  // Remove this line as we're using the prop instead
+  // const { requestsCount } = usePendingFriendRequests(user?.firebase_uid);
 
   return (
     <Stack
       direction={"row"}
       spacing={1}
-      className="flex justify-between bg-[#120F1C] py-[2vh] px-[1vw] border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
+      className="flex justify-between bg-[#120F1C] py-4 px-3 sm:px-4 border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
     >
       <Tooltip title="Your Friends" placement="top" enterDelay={100} arrow>
         <button
@@ -33,7 +34,9 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
             activeTab === "YOUR FRIENDS" ? "text-[#A38CE6]" : "text-[#3B354D]"
           }`}
         >
-          <PeopleIcon sx={{ fontSize: "clamp(1rem, 1.2vw, 2rem)" }} />
+          <PeopleIcon
+            sx={{ fontSize: { xs: "0.9rem", sm: "1.1rem", md: "1.3rem" } }}
+          />
         </button>
       </Tooltip>
       <Divider orientation="vertical" flexItem sx={{ width: "2px" }} />
@@ -47,23 +50,27 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
               : "text-[#3B354D]"
           }`}
         >
-          {requestsCount > 0 ? (
+          {pendingCount > 0 ? (
             <Badge
-              badgeContent={requestsCount}
+              badgeContent={pendingCount}
               overlap="circular"
               sx={{
                 "& .MuiBadge-badge": {
                   left: 14,
                   backgroundColor: "#A38CE6",
                   color: "#3B354D",
-                  fontSize: "clamp(0.5rem, 1vw, 0.8rem)",
+                  fontSize: "0.7rem",
                 },
               }}
             >
-              <PersonAddIcon sx={{ fontSize: "clamp(1rem, 1.2vw, 2rem)" }} />
+              <PersonAddIcon
+                sx={{ fontSize: { xs: "0.9rem", sm: "1.1rem", md: "1.3rem" } }}
+              />
             </Badge>
           ) : (
-            <PersonAddIcon sx={{ fontSize: "clamp(1rem, 1.2vw, 2rem)" }} />
+            <PersonAddIcon
+              sx={{ fontSize: { xs: "0.9rem", sm: "1.1rem", md: "1.3rem" } }}
+            />
           )}
         </button>
       </Tooltip>
@@ -75,7 +82,9 @@ const FriendListActions: React.FC<FriendListActionsProps> = ({
             activeTab === "FIND FRIENDS" ? "text-[#A38CE6]" : "text-[#3B354D]"
           }`}
         >
-          <PersonSearchIcon sx={{ fontSize: "clamp(1rem, 1.2vw, 2rem)" }} />
+          <PersonSearchIcon
+            sx={{ fontSize: { xs: "0.9rem", sm: "1.1rem", md: "1.3rem" } }}
+          />
         </button>
       </Tooltip>
     </Stack>
