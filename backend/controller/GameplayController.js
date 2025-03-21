@@ -442,7 +442,13 @@ export const endBattle = async (req, res) => {
             session_uuid
         } = req.body;
 
-        console.log("endBattle request:", { lobby_code, winner_id, battle_end_reason, session_id, session_uuid });
+        console.log("endBattle request:", {
+            lobby_code,
+            winner_id,
+            battle_end_reason,
+            session_id,
+            session_uuid
+        });
 
         // Validate required fields
         if (!lobby_code || !battle_end_reason) {
@@ -459,12 +465,15 @@ export const endBattle = async (req, res) => {
             // If session_uuid is provided, use it
             sessionWhereClause = "session_uuid = ?";
             sessionQuery = session_uuid;
+            console.log(`Using session_uuid=${session_uuid} to identify battle`);
         } else if (session_id) {
             // If numeric session_id is provided, use it
             sessionWhereClause = "ID = ?";
             sessionQuery = session_id;
+            console.log(`Using session_id=${session_id} to identify battle`);
         } else {
             // If neither is provided, search by lobby_code
+            console.log(`No session identifiers provided, searching by lobby_code=${lobby_code}`);
             const [sessionResult] = await connection.query(
                 `SELECT ID, session_uuid FROM battle_sessions 
                 WHERE lobby_code = ? AND is_active = 1`,
@@ -472,19 +481,45 @@ export const endBattle = async (req, res) => {
             );
 
             if (sessionResult.length === 0) {
-                return res.status(404).json({
-                    success: false,
-                    message: "No active battle session found for this lobby"
-                });
-            }
+                console.log(`No active battle session found for lobby_code=${lobby_code}`);
 
-            // Prefer session_uuid if available
-            if (sessionResult[0].session_uuid) {
-                sessionWhereClause = "session_uuid = ?";
-                sessionQuery = sessionResult[0].session_uuid;
+                // Try looking for any session with this lobby code, even inactive ones
+                const [anySessionResult] = await connection.query(
+                    `SELECT ID, session_uuid, is_active FROM battle_sessions 
+                    WHERE lobby_code = ? 
+                    ORDER BY created_at DESC LIMIT 1`,
+                    [lobby_code]
+                );
+
+                if (anySessionResult.length === 0) {
+                    return res.status(404).json({
+                        success: false,
+                        message: "No battle session found for this lobby"
+                    });
+                }
+
+                console.log(`Found inactive session for lobby_code=${lobby_code}:`, anySessionResult[0]);
+
+                // Use the found session even if inactive
+                if (anySessionResult[0].session_uuid) {
+                    sessionWhereClause = "session_uuid = ?";
+                    sessionQuery = anySessionResult[0].session_uuid;
+                } else {
+                    sessionWhereClause = "ID = ?";
+                    sessionQuery = anySessionResult[0].ID;
+                }
+
+                console.log(`Using ${sessionWhereClause}=${sessionQuery} from inactive session`);
             } else {
-                sessionWhereClause = "ID = ?";
-                sessionQuery = sessionResult[0].ID;
+                // Prefer session_uuid if available
+                if (sessionResult[0].session_uuid) {
+                    sessionWhereClause = "session_uuid = ?";
+                    sessionQuery = sessionResult[0].session_uuid;
+                } else {
+                    sessionWhereClause = "ID = ?";
+                    sessionQuery = sessionResult[0].ID;
+                }
+                console.log(`Found active session with ${sessionWhereClause}=${sessionQuery}`);
             }
         }
 
@@ -492,21 +527,45 @@ export const endBattle = async (req, res) => {
 
         // Get the numeric session ID for the battle_endings table (foreign key)
         const [sessionData] = await connection.query(
-            `SELECT ID FROM battle_sessions 
+            `SELECT ID, session_uuid FROM battle_sessions 
             WHERE ${sessionWhereClause}`,
             [sessionQuery]
         );
 
         if (sessionData.length === 0) {
+            console.log(`Session not found with ${sessionWhereClause}=${sessionQuery}`);
             return res.status(404).json({
                 success: false,
                 message: "Battle session not found"
             });
         }
 
+        console.log(`Found session data:`, sessionData[0]);
         const sessionId = sessionData[0].ID;
+        const finalSessionUuid = sessionData[0].session_uuid;
 
-        // 1. Insert record into battle_endings table - use numeric ID for foreign key
+        // Check if a battle ending record already exists for this session
+        const [existingEnding] = await connection.query(
+            `SELECT * FROM battle_endings 
+            WHERE session_uuid = ?`,
+            [finalSessionUuid]
+        );
+
+        if (existingEnding.length > 0) {
+            console.log(`Battle already ended for session ${finalSessionUuid} with reason: ${existingEnding[0].battle_end_reason}`);
+            return res.json({
+                success: true,
+                message: "Battle was already ended",
+                data: {
+                    session_id: sessionId,
+                    session_uuid: finalSessionUuid,
+                    battle_end_reason: existingEnding[0].battle_end_reason,
+                    winner_id: existingEnding[0].winner_id
+                }
+            });
+        }
+
+        // 1. Insert record into battle_endings table - use string UUID
         const insertEndingQuery = `
             INSERT INTO battle_endings 
             (session_uuid, winner_id, battle_end_reason)
@@ -514,7 +573,7 @@ export const endBattle = async (req, res) => {
         `;
 
         const insertParams = [
-            sessionQuery, // Use the session UUID string instead of numeric ID
+            finalSessionUuid, // Use the session UUID string
             winner_id || null,
             battle_end_reason
         ];
@@ -537,6 +596,7 @@ export const endBattle = async (req, res) => {
 
         // Check if the update was successful
         if (result.affectedRows === 0) {
+            console.log(`Failed to update battle session - it may no longer exist or be active`);
             return res.status(404).json({
                 success: false,
                 message: "Failed to update battle session - it may no longer be active"
@@ -551,7 +611,7 @@ export const endBattle = async (req, res) => {
             message: "Battle ended successfully",
             data: {
                 session_id: sessionId,
-                session_uuid: sessionQuery,
+                session_uuid: finalSessionUuid,
                 battle_end_reason,
                 winner_id
             }
@@ -828,6 +888,8 @@ export const getBattleEndStatus = async (req, res) => {
             });
         }
 
+        console.log(`Checking battle end status for session UUID: ${session_uuid}`);
+
         // Query the battle_endings table to check if this session has ended
         const query = `
             SELECT be.*, bs.host_id, bs.guest_id
@@ -855,6 +917,100 @@ export const getBattleEndStatus = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to check battle end status",
+            error: error.message
+        });
+    }
+};
+
+// Add new function to check battle end status by numeric session ID
+export const getBattleEndStatusById = async (req, res) => {
+    try {
+        const { session_id } = req.params;
+
+        if (!session_id) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing session ID"
+            });
+        }
+
+        console.log(`Checking battle end status for session ID: ${session_id}`);
+
+        // Query the battle_endings table to check if this session has ended
+        // Join to battle_sessions using numeric ID
+        const query = `
+            SELECT be.*, bs.host_id, bs.guest_id
+            FROM battle_endings be
+            JOIN battle_sessions bs ON be.session_uuid = bs.session_uuid
+            WHERE bs.ID = ?
+        `;
+
+        const [results] = await pool.query(query, [session_id]);
+
+        if (results.length === 0) {
+            return res.json({
+                success: true,
+                data: null // Battle hasn't ended yet
+            });
+        }
+
+        res.json({
+            success: true,
+            data: results[0]
+        });
+
+    } catch (error) {
+        console.error('Error checking battle end status by ID:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to check battle end status by ID",
+            error: error.message
+        });
+    }
+};
+
+// Add new function to check battle end status by lobby code
+export const getBattleEndStatusByLobby = async (req, res) => {
+    try {
+        const { lobby_code } = req.params;
+
+        if (!lobby_code) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing lobby code"
+            });
+        }
+
+        console.log(`Checking battle end status for lobby code: ${lobby_code}`);
+
+        // Query the battle_endings table by joining through battle_sessions using lobby_code
+        const query = `
+            SELECT be.*, bs.host_id, bs.guest_id
+            FROM battle_endings be
+            JOIN battle_sessions bs ON be.session_uuid = bs.session_uuid
+            WHERE bs.lobby_code = ?
+            ORDER BY be.created_at DESC LIMIT 1
+        `;
+
+        const [results] = await pool.query(query, [lobby_code]);
+
+        if (results.length === 0) {
+            return res.json({
+                success: true,
+                data: null // Battle hasn't ended yet
+            });
+        }
+
+        res.json({
+            success: true,
+            data: results[0]
+        });
+
+    } catch (error) {
+        console.error('Error checking battle end status by lobby code:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to check battle end status by lobby code",
             error: error.message
         });
     }
