@@ -24,20 +24,36 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
   // Generate AI questions when component mounts
   useEffect(() => {
     const generateAIQuestions = async () => {
+      // Skip if we already have questions for this material
+      if (aiQuestions.length > 0) {
+        console.log("Questions already generated, skipping...");
+        return;
+      }
+
       console.log("Starting AI question generation in PeacefulMode");
       console.log("Selected question types:", selectedTypes);
+      console.log("Material received:", material);
       setIsGeneratingAI(true);
       const generatedQuestions = [];
 
       try {
+        // Validate material and items
+        if (!material) {
+          console.error("No material provided");
+          return;
+        }
+
+        if (!Array.isArray(material.items) || material.items.length === 0) {
+          console.error("Material has no valid items array:", material);
+          return;
+        }
+
         // Create an array of items and shuffle it
         const items = [...material.items];
         const shuffledItems = items.sort(() => Math.random() - 0.5);
-
-        // Calculate how many questions of each type we need
         const totalItems = items.length;
         const typesCount = selectedTypes.length;
-        
+
         // Validate selected types
         const validTypes = ['identification', 'multiple-choice', 'true-false'];
         selectedTypes.forEach(type => {
@@ -46,12 +62,11 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
           }
         });
 
+        // Calculate distribution of questions per type
         const distribution = selectedTypes.reduce((acc, type, index) => {
-          // For the last type, assign all remaining items
           if (index === typesCount - 1) {
             acc[type] = totalItems - Object.values(acc).reduce((sum, val) => sum + val, 0);
           } else {
-            // Otherwise, distribute items evenly with a minimum of 1
             acc[type] = Math.max(1, Math.floor(totalItems / typesCount));
           }
           return acc;
@@ -62,36 +77,53 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
           console.log(`- ${type}: ${count} questions`);
         });
 
-        // Validate total matches number of items
-        const totalQuestions = Object.values(distribution).reduce((sum, count) => sum + count, 0);
-        console.log(`Total questions to generate: ${totalQuestions} (should equal number of items: ${totalItems})`);
-
-        // Keep track of which items have been used
+        // Generate questions according to the distribution
         let currentItemIndex = 0;
 
-        // Generate questions according to the distribution
         for (const type of selectedTypes) {
           const questionsOfThisType = distribution[type];
           console.log(`\nGenerating ${questionsOfThisType} questions of type "${type}":`);
 
           for (let i = 0; i < questionsOfThisType; i++) {
             const item = shuffledItems[currentItemIndex];
+            if (!item || !item.term || !item.definition) {
+              console.error(`Invalid item at index ${currentItemIndex}:`, item);
+              continue;
+            }
+
             console.log(`[${type}] Question ${i + 1}/${questionsOfThisType} using item: "${item.term}"`);
 
             const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
             const requestPayload = {
               term: item.term,
               definition: item.definition,
-              numberOfItems: 1
+              numberOfItems: 1,
+              studyMaterialId: material.study_material_id,
+              itemId: currentItemIndex + 1,
+              gameMode: "peaceful",
+              timestamp: new Date().getTime()
             };
 
-            const response = await axios.post<{ data: any[] }>(endpoint, requestPayload);
-            
-            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-              generatedQuestions.push(...response.data);
-              console.log(`✓ Successfully generated ${type} question for "${item.term}"`);
-            } else {
-              console.warn(`⚠ No question generated for "${item.term}" of type ${type}`);
+            try {
+              const response = await axios.post<any[]>(endpoint, requestPayload);
+              
+              if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+                const questionsWithItemInfo = response.data.map(q => ({
+                  ...q,
+                  itemInfo: {
+                    term: item.term,
+                    definition: item.definition,
+                    itemId: currentItemIndex + 1
+                  }
+                }));
+                
+                generatedQuestions.push(...questionsWithItemInfo);
+                console.log(`✓ Successfully generated ${type} question for "${item.term}"`);
+              } else {
+                console.warn(`⚠ No question generated for "${item.term}" of type ${type}`);
+              }
+            } catch (error) {
+              console.error(`Error generating ${type} question for "${item.term}":`, error);
             }
 
             currentItemIndex++;
@@ -105,16 +137,18 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
 
         // Shuffle the questions for final presentation
         const shuffledQuestions = generatedQuestions.sort(() => Math.random() - 0.5);
+        console.log("Setting AI questions:", shuffledQuestions);
         setAiQuestions(shuffledQuestions);
       } catch (error) {
         console.error("Error generating AI questions:", error);
+        setAiQuestions([]);
       } finally {
         setIsGeneratingAI(false);
       }
     };
 
     generateAIQuestions();
-  }, [material, selectedTypes]);
+  }, [material?.study_material_id, selectedTypes]); // Only depend on material ID and selectedTypes
 
   const {
     currentQuestion,
@@ -285,8 +319,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
             <div className="absolute bottom-0 left-0 right-0 flex justify-between px-8 mb-6">
               <div className="flex items-center">
                 <div className="relative">
-                  <div className="w-1 h-24 bg-gray-800 absolute left-0"></div>{" "}
-                  {/* Flagpole */}
+                  <div className="w-1 h-24 bg-gray-800 absolute left-0"></div>
                   <div
                     className="bg-[#FF3B3F] text-white rounded-lg p-4 text-3xl animate-waving-flag cursor-pointer"
                     onClick={handleUnmastered}
@@ -297,8 +330,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
               </div>
               <div className="flex items-center">
                 <div className="relative">
-                  <div className="w-1 h-24 bg-gray-800 absolute right-0"></div>{" "}
-                  {/* Flagpole */}
+                  <div className="w-1 h-24 bg-gray-800 absolute right-0"></div>
                   <div
                     className="bg-[#52A647] text-white rounded-lg p-4 text-3xl animate-waving-flag cursor-pointer"
                     onClick={handleMastered}
