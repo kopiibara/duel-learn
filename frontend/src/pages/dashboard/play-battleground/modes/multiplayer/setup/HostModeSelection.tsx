@@ -53,7 +53,7 @@ export default function DifficultySelection() {
         difficulty: selectedDifficulty,
       });
 
-      // Then initialize entry in battle_sessions instead of battle_gameplay
+      // Then initialize entry in battle_sessions 
       await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize-session`, {
         lobby_code: lobbyCode,
         host_id: hostId,
