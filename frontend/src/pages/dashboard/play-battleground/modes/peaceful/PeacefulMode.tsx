@@ -5,6 +5,8 @@ import Header from "../../components/common/Header";
 import Timer from "../../components/common/Timer";
 import axios from "axios";
 import { useAudio } from "../../../../../contexts/AudioContext";
+import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
+import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 
 interface PeacefulModeProps {
   mode: string;
@@ -46,6 +48,16 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
         if (!Array.isArray(material.items) || material.items.length === 0) {
           console.error("Material has no valid items array:", material);
           return;
+        }
+
+        // Enhanced debugging for item IDs
+        if (material.items && material.items.length > 0) {
+          console.log("Item ID examples:", material.items.slice(0, 3).map((item: any) => ({
+            id: item.id,
+            type: typeof item.id,
+            stringified: JSON.stringify(item.id),
+            item_number: item.item_number
+          })));
         }
 
         // Create an array of items and shuffle it
@@ -91,7 +103,10 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
               continue;
             }
 
-            console.log(`[${type}] Question ${i + 1}/${questionsOfThisType} using item: "${item.term}"`);
+            console.log(`[${type}] Question ${i + 1}/${questionsOfThisType} using item: "${item.term}" (ID: ${item.id}, type: ${typeof item.id}, item_number: ${item.item_number})`);
+
+            // Log ID format in proper format
+            console.log(`[${type}] Item ID format check: "${item.id}" (${typeof item.id}, length: ${String(item.id).length})`);
 
             const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
             const requestPayload = {
@@ -99,21 +114,32 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
               definition: item.definition,
               numberOfItems: 1,
               studyMaterialId: material.study_material_id,
-              itemId: currentItemIndex + 1,
+              itemId: String(item.id), // Ensure ID is passed as string
+              itemNumber: item.item_number, // Ensure we're sending the actual item_number
               gameMode: "peaceful",
               timestamp: new Date().getTime()
             };
+
+            // Enhanced logging to debug the ID format
+            console.log("Request payload for item:", {
+              term: item.term,
+              studyMaterialId: material.study_material_id,
+              itemId: item.id,
+              idType: typeof item.id,
+              itemNumber: item.item_number
+            });
 
             try {
               const response = await axios.post<any[]>(endpoint, requestPayload);
               
               if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+                // When adding itemInfo to questions, ensure we pass the string ID
                 const questionsWithItemInfo = response.data.map(q => ({
                   ...q,
                   itemInfo: {
                     term: item.term,
                     definition: item.definition,
-                    itemId: currentItemIndex + 1
+                    itemId: String(item.id) // Ensure it's a string
                   }
                 }));
                 
@@ -199,6 +225,22 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     originalHandleAnswerSubmit(answer);
   };
 
+  // Add keyboard event listener
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (showResult && isCorrect) {
+        if (event.key === 'ArrowLeft') {
+          handleMastered();
+        } else if (event.key === 'ArrowRight') {
+          handleUnmastered();
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [showResult, isCorrect, handleMastered, handleUnmastered]);
+
   // Remove the custom loading UI since LoadingScreen.tsx is already handling this
   if (isGeneratingAI) {
     return null; // Return null to let the parent component handle loading state
@@ -207,69 +249,119 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
   const renderQuestionContent = () => {
     if (!currentQuestion) return null;
 
+    // Common styles for Mastered/Retake buttons with strokes
+    const masterButtonStyle = "relative h-[100px] w-[200px] bg-[#16251C] rounded-lg text-white hover:opacity-90 transition-colors border-2 border-[#6DBE45] flex items-center justify-center";
+    const retakeButtonStyle = "relative h-[100px] w-[200px] bg-[#39101B] rounded-lg text-white hover:opacity-90 transition-colors border-2 border-[#FF3B3F] flex items-center justify-center";
+    
+    // Updated sizes for the arrow indicators (25x25)
+    const leftArrowStyle = "absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#080511] rounded-full w-[25px] h-[25px] flex items-center justify-center border border-[#6DBE45]";
+    const rightArrowStyle = "absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 bg-[#080511] rounded-full w-[25px] h-[25px] flex items-center justify-center border border-[#FF3B3F]";
+
+    const renderMasteredRetakeButtons = () => (
+      <div className="w-full flex flex-col items-center">
+        <div className="text-sm text-gray-400 whitespace-nowrap opacity-80 mb-2">
+          Use ← → arrow keys or click buttons
+        </div>
+        <div className="flex gap-4 justify-center">
+          <button
+            onClick={handleMastered}
+            className={masterButtonStyle}
+          >
+            <div className={leftArrowStyle}>
+              <KeyboardArrowLeftIcon sx={{ fontSize: 20 }} />
+            </div>
+            Mastered!
+          </button>
+          <button
+            onClick={handleUnmastered}
+            className={retakeButtonStyle}
+          >
+            Retake
+            <div className={rightArrowStyle}>
+              <KeyboardArrowRightIcon sx={{ fontSize: 20 }} />
+            </div>
+          </button>
+        </div>
+      </div>
+    );
+
     switch (currentQuestion.questionType) {
       case "multiple-choice":
         return (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-[1000px] mx-auto">
-            {currentQuestion.options?.map((option: string, index: number) => (
-              <button
-                key={index}
-                onClick={() => handleAnswerSubmit(option)}
-                disabled={showResult}
-                className={`h-[100px] w-full bg-transparent 
-                          ${getButtonStyle(option)}
-                          rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                          disabled:cursor-not-allowed px-4 text-center`}
-              >
-                {option}
-              </button>
-            ))}
+          <div className="w-full max-w-[1000px] mx-auto">
+            {showResult && isCorrect ? (
+              renderMasteredRetakeButtons()
+            ) : (
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {currentQuestion.options?.map((option: string, index: number) => (
+                  <button
+                    key={index}
+                    onClick={() => handleAnswerSubmit(option)}
+                    disabled={showResult}
+                    className={`h-[100px] w-full bg-transparent 
+                      ${getButtonStyle(option)}
+                      rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                      disabled:cursor-not-allowed px-4 text-center`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         );
 
       case "identification":
         return (
           <div className="w-full max-w-[500px] mt-3 mx-auto">
-            <input
-              type="text"
-              value={inputAnswer}
-              onChange={(e) => setInputAnswer(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === "Enter" && !showResult) {
-                  handleAnswerSubmit(inputAnswer);
-                }
-              }}
-              disabled={showResult}
-              className={`w-full p-4 rounded-lg bg-transparent py-10 px-10 border-2 text-center
-                                ${
-                                  showResult
-                                    ? isCorrect
-                                      ? "border-[#52A647]"
-                                      : "border-[#FF3B3F]"
-                                    : "border-gray-600"
-                                }
-                                text-white focus:outline-none placeholder:text-[#6F658D]`}
-              placeholder="Type your answer here..."
-            />
+            {showResult && isCorrect ? (
+              renderMasteredRetakeButtons()
+            ) : (
+              <input
+                type="text"
+                value={inputAnswer}
+                onChange={(e) => setInputAnswer(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter" && !showResult) {
+                    handleAnswerSubmit(inputAnswer);
+                  }
+                }}
+                disabled={showResult}
+                className={`w-full p-4 rounded-lg bg-transparent py-10 px-10 border-2 text-center
+                  ${
+                    showResult
+                      ? isCorrect
+                        ? "border-[#52A647]"
+                        : "border-[#FF3B3F]"
+                      : "border-gray-600"
+                  }
+                  text-white focus:outline-none placeholder:text-[#6F658D]`}
+                placeholder="Type your answer here..."
+              />
+            )}
           </div>
         );
 
       case "true-false":
         return (
-          <div className="flex gap-4 justify-center">
-            {["true", "false"].map((option) => (
-              <button
-                key={option}
-                onClick={() => handleAnswerSubmit(option)}
-                disabled={showResult}
-                className={`h-[100px] w-[200px] bg-transparent 
-                                    ${getButtonStyle(option)}
-                                    rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                                    disabled:cursor-not-allowed`}
-              >
-                {option.toUpperCase()}
-              </button>
-            ))}
+          <div className="w-full flex justify-center">
+            {showResult && isCorrect ? (
+              renderMasteredRetakeButtons()
+            ) : (
+              ["true", "false"].map((option) => (
+                <button
+                  key={option}
+                  onClick={() => handleAnswerSubmit(option)}
+                  disabled={showResult}
+                  className={`h-[100px] w-[200px] bg-transparent 
+                    ${getButtonStyle(option)}
+                    rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                    disabled:cursor-not-allowed`}
+                >
+                  {option.toUpperCase()}
+                </button>
+              ))
+            )}
           </div>
         );
     }
@@ -314,32 +406,6 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
             >
               Next Question
             </button>
-          )}
-          {showResult && isCorrect === true && (
-            <div className="absolute bottom-0 left-0 right-0 flex justify-between px-8 mb-6">
-              <div className="flex items-center">
-                <div className="relative">
-                  <div className="w-1 h-24 bg-gray-800 absolute left-0"></div>
-                  <div
-                    className="bg-[#FF3B3F] text-white rounded-lg p-4 text-3xl animate-waving-flag cursor-pointer"
-                    onClick={handleUnmastered}
-                  >
-                    <span>Unmastered</span>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <div className="relative">
-                  <div className="w-1 h-24 bg-gray-800 absolute right-0"></div>
-                  <div
-                    className="bg-[#52A647] text-white rounded-lg p-4 text-3xl animate-waving-flag cursor-pointer"
-                    onClick={handleMastered}
-                  >
-                    <span>Mastered</span>
-                  </div>
-                </div>
-              </div>
-            </div>
           )}
         </div>
       </main>
