@@ -33,7 +33,6 @@ export const useQuestionGeneration = (material: any, selectedTypes: string[], mo
     let mounted = true;
 
     const generateAIQuestions = async () => {
-      // Skip if already generated or missing data
       if (hasGeneratedRef.current || !material?.study_material_id || !selectedTypes.length) {
         return;
       }
@@ -71,8 +70,11 @@ export const useQuestionGeneration = (material: any, selectedTypes: string[], mo
               const response = await axios.post<any[]>(endpoint, requestPayload);
               
               if (response.data?.[0]) {
+                const questionData = response.data[0];
                 const questionWithInfo = {
-                  ...response.data[0],
+                  ...questionData,
+                  question_type: type,
+                  answer: questionData.correctAnswer,
                   itemInfo: {
                     term: item.term,
                     definition: item.definition,
