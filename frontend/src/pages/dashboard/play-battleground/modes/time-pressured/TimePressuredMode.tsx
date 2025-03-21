@@ -51,6 +51,12 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   // Generate AI questions when component mounts
   useEffect(() => {
     const generateAIQuestions = async () => {
+      // Skip if we already have questions for this material
+      if (aiQuestions.length > 0) {
+        console.log("Questions already generated, skipping...");
+        return;
+      }
+
       console.log("Starting AI question generation in TimePressuredMode");
       console.log("Selected question types:", selectedTypes);
       console.log("Mode received:", mode);
@@ -156,7 +162,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     };
 
     generateAIQuestions();
-  }, [material, selectedTypes]);
+  }, [material?.study_material_id, selectedTypes]);
 
   const {
     currentQuestion,

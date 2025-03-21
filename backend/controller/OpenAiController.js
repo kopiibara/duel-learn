@@ -149,9 +149,7 @@ const storeGeneratedQuestions = async (studyMaterialId, items, questions, gameMo
 
     // Create a map to track which item_numbers have been used
     const usedItemNumbers = new Map();
-    const usedQuestions = new Set();
     const termToItemNumber = new Map(); // Map to track item_number for each term
-    const usedNumbers = new Set(); // Track which item_numbers have been used
     
     // First pass: assign item_numbers to terms
     for (let i = 0; i < items.length; i++) {
@@ -166,31 +164,144 @@ const storeGeneratedQuestions = async (studyMaterialId, items, questions, gameMo
     // Insert the questions
     console.log(`Inserting ${questions.length} questions for study material ${studyMaterialId} with game mode ${normalizedGameMode}`);
     
+    // Add counters for each question type
+    const questionTypeCounts = {
+      'multiple-choice': 0,
+      'identification': 0,
+      'true-false': 0,
+      'other': 0
+    };
+    
     // Process each question
     for (let i = 0; i < questions.length; i++) {
       const question = questions[i];
-      const item = items[i] || items[0]; // Use corresponding item or first item if there's only one
+      
+      // Extract item from itemInfo if available
+      let item;
+      if (question.itemInfo) {
+        console.log(`Question ${i+1} has itemInfo property:`, question.itemInfo);
+        // Try to match this item with one in the items array
+        const matchingItem = items.find(it => it.term === question.itemInfo.term);
+        
+        if (matchingItem) {
+          console.log(`Found matching item for ${question.itemInfo.term}`);
+          item = matchingItem;
+        } else {
+          // Use the itemInfo directly if no match found
+          console.log(`Creating item from itemInfo for ${question.itemInfo.term}`);
+          item = {
+            id: question.itemInfo.itemId || i + 1,
+            term: question.itemInfo.term,
+            definition: question.itemInfo.definition
+          };
+        }
+      } else {
+        // Use the corresponding item from items array
+        item = items[i % items.length];
+        console.log(`Using item at index ${i % items.length} for question ${i+1}`);
+      }
+      
+      // Ensure item is valid
+      if (!item || !item.term) {
+        console.error(`Invalid item for question ${i+1}:`, item);
+        console.error(`Creating dummy item for question ${i+1}`);
+        
+        // Create a dummy item from the question
+        item = {
+          id: i + 1,
+          term: question.answer || question.correctAnswer || `Item ${i+1}`,
+          definition: question.question || `Definition ${i+1}`
+        };
+      }
       
       // Get the item_number for this term, or use the index + 1 if not found
       let itemNumber = termToItemNumber.get(item.term) || (i + 1);
       
+      // Normalize question type - ensure we have consistent field names
+      let questionType = '';
+      
+      // Check for multiple fields that could indicate the question type
+      if (question.type) {
+        questionType = question.type;
+      } else if (question.questionType) {
+        questionType = question.questionType;
+      } else if (question.question_type) {
+        questionType = question.question_type;
+      } else {
+        // Try to infer the type from available properties
+        if (question.options || (question.choices && !Array.isArray(question.choices))) {
+          questionType = 'multiple-choice';
+        } else if (question.answer === 'true' || question.answer === 'false' || 
+                   question.answer === 'True' || question.answer === 'False') {
+          questionType = 'true-false';
+        } else {
+          questionType = 'identification'; // Default to identification if can't determine
+        }
+      }
+      
+      // Normalize to our standard types
+      if (questionType.includes('multiple') || questionType.includes('choice')) {
+        questionType = 'multiple-choice';
+      } else if (questionType.includes('true') || questionType.includes('false')) {
+        questionType = 'true-false';
+      } else if (questionType.includes('identification') || questionType.includes('identify')) {
+        questionType = 'identification';
+      }
+      
+      // Ensure question has normalized type properties for consistency
+      question.type = questionType;
+      question.questionType = questionType;
+      question.question_type = questionType;
+      
+      console.log(`\n[Question ${i+1}/${questions.length}] Processing question of type "${questionType}" for term "${item.term}"`);
+      
+      // Get the correct answer field based on question type
+      let answer = '';
+      if (question.answer) {
+        answer = question.answer;
+      } else if (question.correctAnswer) {
+        answer = question.correctAnswer;
+      } else {
+        console.warn(`⚠️ Question ${i+1} has no answer field! Using term as fallback.`);
+        answer = item.term;
+      }
+      
+      // For multiple choice, clean up the answer (remove the prefix letter if any)
+      if (questionType === 'multiple-choice' && answer.match(/^[A-D]\.\s+/)) {
+        answer = answer.replace(/^[A-D]\.\s+/, '');
+      }
+      
+      console.log(`- Term: "${item.term}"`);
+      console.log(`- Question: "${question.question?.substring(0, 50)}..."`);
+      console.log(`- Answer: "${answer}"`);
+      
       // Create a unique key for this question type and term
-      const questionTypeKey = `${item.term}-${question.type || 'unknown'}`;
+      const questionTypeKey = `${item.term}-${questionType}`;
       
       // Skip if we've already processed this exact question type for this term
       if (usedItemNumbers.has(questionTypeKey)) {
-        console.log(`Skipping duplicate question for term "${item.term}" of type ${question.type}`);
+        console.log(`Skipping duplicate question for term "${item.term}" of type ${questionType}`);
         continue;
       }
       
       // Mark this question as processed
       usedItemNumbers.set(questionTypeKey, itemNumber);
       
-      console.log(`Using item_number ${itemNumber} for term "${item.term}" of type ${question.type || 'unknown'}`);
+      console.log(`Using item_number ${itemNumber} for term "${item.term}" of type ${questionType}`);
       
       try {
         // Use direct SQL with REPLACE INTO to ensure uniqueness
         const { pool } = await import('../config/db.js');
+        
+        // Process choices for multiple-choice questions
+        let choicesJSON = null;
+        if (questionType === 'multiple-choice') {
+          if (question.options) {
+            choicesJSON = JSON.stringify(question.options);
+          } else if (question.choices) {
+            choicesJSON = typeof question.choices === 'string' ? question.choices : JSON.stringify(question.choices);
+          }
+        }
         
         // Prepare the question data
         const questionData = {
@@ -199,22 +310,29 @@ const storeGeneratedQuestions = async (studyMaterialId, items, questions, gameMo
           item_number: itemNumber,
           term: String(item.term),
           definition: String(item.definition),
-          question_type: String(question.type || question.questionType),
-          question: String(question.question),
-          answer: String(question.answer || question.correctAnswer),
-          choices: question.options ? JSON.stringify(question.options) : null,
+          question_type: String(questionType),
+          question: String(question.question || ''),
+          answer: String(answer),
+          choices: choicesJSON,
           game_mode: normalizedGameMode
         };
         
-        // Use REPLACE INTO to ensure we don't get duplicates
-        const replaceQuery = `
-          REPLACE INTO generated_material 
+        console.log(`About to store question with: 
+          - study_material_id: ${questionData.study_material_id}
+          - term: ${questionData.term}
+          - question_type: ${questionData.question_type}
+          - game_mode: ${questionData.game_mode}
+          - choices: ${questionData.choices ? 'set' : 'null'}`);
+        
+        // Try INSERT IGNORE first in case REPLACE is causing issues
+        const insertQuery = `
+          INSERT IGNORE INTO generated_material 
           (study_material_id, item_id, item_number, term, definition, question_type, question, answer, choices, game_mode) 
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         
-        const replaceValues = [
-          studyMaterialId,
+        const insertValues = [
+          questionData.study_material_id,
           questionData.item_id,
           itemNumber,
           questionData.term,
@@ -226,49 +344,328 @@ const storeGeneratedQuestions = async (studyMaterialId, items, questions, gameMo
           normalizedGameMode
         ];
         
-        console.log(`Replacing question for term "${questionData.term}" of type ${questionData.question_type} with item_number ${itemNumber}`);
+        console.log(`Executing SQL INSERT for ${questionData.question_type} question...`);
         
-        const [replaceResult] = await pool.execute(replaceQuery, replaceValues);
-        console.log(`SQL Replace result:`, replaceResult);
-        
-      } catch (sqlError) {
-        console.error(`Error replacing question with SQL:`, sqlError);
-        // Try with Objection as fallback
         try {
-          // Prepare the question data
-          const questionData = {
-            study_material_id: studyMaterialId,
-            item_id: parseInt(item.id) || itemNumber,
-            item_number: itemNumber,
-            term: String(item.term),
-            definition: String(item.definition),
-            question_type: String(question.type || question.questionType),
-            question: String(question.question),
-            answer: String(question.answer || question.correctAnswer),
-            choices: question.options ? JSON.stringify(question.options) : null,
-            game_mode: normalizedGameMode
-          };
+          const [insertResult] = await pool.execute(insertQuery, insertValues);
+          console.log(`SQL Insert result for ${questionData.question_type}:`, insertResult);
           
-          // First try to delete any existing question with the same key attributes
-          await GeneratedMaterial.query()
-            .delete()
-            .where('study_material_id', studyMaterialId)
-            .where('term', questionData.term)
-            .where('question_type', questionData.question_type)
-            .where('game_mode', normalizedGameMode);
+          // If insert did not affect any rows, try direct update
+          if (insertResult.affectedRows === 0) {
+            console.log(`Insert didn't affect rows, trying update...`);
+            
+            const updateQuery = `
+              UPDATE generated_material 
+              SET 
+                item_id = ?,
+                item_number = ?,
+                definition = ?,
+                question = ?,
+                answer = ?,
+                choices = ?
+              WHERE 
+                study_material_id = ? AND 
+                term = ? AND 
+                question_type = ? AND 
+                game_mode = ?
+            `;
+            
+            const updateValues = [
+              questionData.item_id,
+              itemNumber,
+              questionData.definition,
+              questionData.question,
+              questionData.answer,
+              questionData.choices,
+              questionData.study_material_id,
+              questionData.term,
+              questionData.question_type,
+              normalizedGameMode
+            ];
+            
+            const [updateResult] = await pool.execute(updateQuery, updateValues);
+            console.log(`SQL Update result for ${questionData.question_type}:`, updateResult);
+            
+            if (updateResult.affectedRows > 0) {
+              console.log(`✅ Updated ${questionData.question_type} question successfully`);
+            } else {
+              // If neither insert nor update worked, try a direct REPLACE
+              console.log(`Update didn't affect rows, trying direct replace...`);
+              
+              const replaceQuery = `
+                REPLACE INTO generated_material 
+                (study_material_id, item_id, item_number, term, definition, question_type, question, answer, choices, game_mode) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+              `;
+              
+              const [replaceResult] = await pool.execute(replaceQuery, insertValues);
+              console.log(`SQL Replace result for ${questionData.question_type}:`, replaceResult);
+              
+              if (replaceResult.affectedRows > 0) {
+                console.log(`✅ Replaced ${questionData.question_type} question successfully (ID: ${replaceResult.insertId})`);
+              } else {
+                console.error(`❌ All SQL operations failed for ${questionData.question_type} question!`);
+              }
+            }
+          } else {
+            console.log(`✅ Inserted ${questionData.question_type} question successfully (ID: ${insertResult.insertId})`);
+          }
+        } catch (sqlOpError) {
+          console.error(`SQL operation error:`, sqlOpError);
           
-          // Then insert the new question
-          const result = await GeneratedMaterial.query().insert(questionData);
-          console.log(`Successfully inserted question ${itemNumber} with ID ${result.id}`);
-        } catch (objectionError) {
-          console.error(`Error with Objection fallback:`, objectionError);
-          // Continue with the next question even if this one fails
+          // Check for specific error codes
+          if (sqlOpError.code === 'ER_DUP_ENTRY') {
+            console.log(`Duplicate entry detected, trying direct UPDATE instead...`);
+            
+            // Try direct update as a fallback
+            const updateQuery = `
+              UPDATE generated_material 
+              SET 
+                item_id = ?,
+                item_number = ?,
+                definition = ?,
+                question = ?,
+                answer = ?,
+                choices = ?
+              WHERE 
+                study_material_id = ? AND 
+                term = ? AND 
+                question_type = ? AND 
+                game_mode = ?
+            `;
+            
+            const updateValues = [
+              questionData.item_id,
+              itemNumber,
+              questionData.definition,
+              questionData.question,
+              questionData.answer,
+              questionData.choices,
+              questionData.study_material_id,
+              questionData.term,
+              questionData.question_type,
+              normalizedGameMode
+            ];
+            
+            try {
+              const [updateResult] = await pool.execute(updateQuery, updateValues);
+              console.log(`SQL Update fallback result:`, updateResult);
+              
+              if (updateResult.affectedRows > 0) {
+                console.log(`✅ Updated ${questionData.question_type} question successfully as fallback`);
+              } else {
+                throw new Error(`Update fallback failed too`);
+              }
+            } catch (updateError) {
+              console.error(`Update fallback error:`, updateError);
+              throw updateError;
+            }
+          } else {
+            throw sqlOpError;
+          }
+        }
+        
+        // Track successfully stored question types regardless of method
+        if (questionType === 'multiple-choice') {
+          questionTypeCounts['multiple-choice']++;
+        } else if (questionType === 'identification') {
+          questionTypeCounts['identification']++;
+        } else if (questionType === 'true-false') {
+          questionTypeCounts['true-false']++;
+        } else {
+          questionTypeCounts['other']++;
+        }
+        
+        // Verify the question was stored
+        try {
+          const [verifyRows] = await pool.query(
+            'SELECT * FROM generated_material WHERE study_material_id = ? AND term = ? AND question_type = ? AND game_mode = ? LIMIT 1',
+            [questionData.study_material_id, questionData.term, questionData.question_type, normalizedGameMode]
+          );
+          
+          if (verifyRows && verifyRows.length > 0) {
+            console.log(`✅ Successfully verified ${questionData.question_type} question was stored. ID: ${verifyRows[0].id}`);
+            console.log(`Stored row:`, verifyRows[0]);
+          } else {
+            console.warn(`⚠️ Could not verify ${questionData.question_type} question was stored!`);
+            
+            // Try a broader search
+            const [broadVerifyRows] = await pool.query(
+              'SELECT * FROM generated_material WHERE study_material_id = ? LIMIT 10',
+              [questionData.study_material_id]
+            );
+            
+            console.log(`Broader search found ${broadVerifyRows?.length || 0} rows for this study material`);
+            
+            if (broadVerifyRows && broadVerifyRows.length > 0) {
+              console.log(`First few rows from study material:`, broadVerifyRows.slice(0, 3));
+            }
+            
+            // Check table structure
+            const [columnsResult] = await pool.query('SHOW COLUMNS FROM generated_material');
+            console.log(`Table structure verification:`, columnsResult.map(col => col.Field));
+          }
+        } catch (verifyError) {
+          console.error(`Error verifying question storage:`, verifyError);
+        }
+      } catch (sqlError) {
+        console.error(`Error with SQL operations:`, sqlError);
+        console.error(`SQL Error Code:`, sqlError.code);
+        console.error(`SQL Error Number:`, sqlError.errno);
+        console.error(`SQL State:`, sqlError.sqlState);
+        
+        // Try with a direct approach - minimal query with only required fields
+        try {
+          console.log(`Trying minimal SQL approach...`);
+          const { pool } = await import('../config/db.js');
+          
+          const minimalQuery = `
+            INSERT INTO generated_material 
+            (study_material_id, term, definition, question_type, question, answer, game_mode) 
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+          `;
+          
+          const minimalValues = [
+            studyMaterialId,
+            item.term,
+            item.definition,
+            questionType,
+            question.question || '',
+            answer,
+            normalizedGameMode
+          ];
+          
+          const [minimalResult] = await pool.execute(minimalQuery, minimalValues);
+          console.log(`Minimal SQL approach result:`, minimalResult);
+          
+          if (minimalResult.affectedRows > 0) {
+            console.log(`✅ Minimal approach succeeded for ${questionType} question`);
+            
+            // Update counter
+            if (questionType === 'multiple-choice') {
+              questionTypeCounts['multiple-choice']++;
+            } else if (questionType === 'identification') {
+              questionTypeCounts['identification']++;
+            } else if (questionType === 'true-false') {
+              questionTypeCounts['true-false']++;
+            } else {
+              questionTypeCounts['other']++;
+            }
+          }
+        } catch (minimalError) {
+          console.error(`Even minimal approach failed:`, minimalError);
+          
+          // Try with Objection as ultimate fallback
+          try {
+            // Normalize the answer field
+            let normalizedAnswer = question.answer || question.correctAnswer || item.term;
+            
+            // Prepare the question data
+            const questionData = {
+              study_material_id: studyMaterialId,
+              item_id: parseInt(item.id) || itemNumber,
+              item_number: itemNumber,
+              term: String(item.term),
+              definition: String(item.definition),
+              question_type: String(questionType),
+              question: String(question.question || ''),
+              answer: String(normalizedAnswer),
+              choices: questionType === 'multiple-choice' && question.options ? JSON.stringify(question.options) : null,
+              game_mode: normalizedGameMode
+            };
+            
+            // First try to delete any existing question with the same key attributes
+            await GeneratedMaterial.query()
+              .delete()
+              .where('study_material_id', studyMaterialId)
+              .where('term', questionData.term)
+              .where('question_type', questionData.question_type)
+              .where('game_mode', normalizedGameMode);
+            
+            // Then insert the new question
+            const result = await GeneratedMaterial.query().insert(questionData);
+            console.log(`Successfully inserted question ${itemNumber} with ID ${result.id}`);
+            
+            // Update counter
+            if (questionType === 'multiple-choice') {
+              questionTypeCounts['multiple-choice']++;
+            } else if (questionType === 'identification') {
+              questionTypeCounts['identification']++;
+            } else if (questionType === 'true-false') {
+              questionTypeCounts['true-false']++;
+            } else {
+              questionTypeCounts['other']++;
+            }
+          } catch (objectionError) {
+            console.error(`Error with Objection fallback:`, objectionError);
+            // Continue with the next question even if this one fails
+          }
         }
       }
     }
     
-    console.log(`Successfully stored ${questions.length} questions for study material ${studyMaterialId}`);
+    // Enhanced log with question type breakdown
+    console.log(`\n=== QUESTION STORAGE SUMMARY ===`);
+    console.log(`Study Material ID: ${studyMaterialId}`);
+    console.log(`Game Mode: ${normalizedGameMode}`);
+    console.log(`Total questions processed: ${questions.length}`);
+    console.log(`Question types stored:`);
+    console.log(`- Multiple Choice: ${questionTypeCounts['multiple-choice']}`);
+    console.log(`- Identification: ${questionTypeCounts['identification']}`);
+    console.log(`- True/False: ${questionTypeCounts['true-false']}`);
+    if (questionTypeCounts['other'] > 0) {
+      console.log(`- Other/Unknown: ${questionTypeCounts['other']}`);
+    }
+    
+    console.log(`Successfully stored ${questions.length} questions for study material ${studyMaterialId} with game mode ${normalizedGameMode}`);
     console.log("=== STORING GENERATED QUESTIONS - COMPLETE ===");
+
+    // Add specific check for identification questions
+    try {
+      const { pool } = await import('../config/db.js');
+      
+      console.log("=== SPECIFIC IDENTIFICATION QUESTIONS CHECK ===");
+      const [idQuestions] = await pool.query(
+        "SELECT * FROM generated_material WHERE study_material_id = ? AND question_type = 'identification' AND game_mode = ?",
+        [studyMaterialId, normalizedGameMode]
+      );
+      
+      if (idQuestions && idQuestions.length > 0) {
+        console.log(`Found ${idQuestions.length} identification questions in database`);
+        console.log("First identification question:", idQuestions[0]);
+      } else {
+        console.error("❌ NO IDENTIFICATION QUESTIONS FOUND IN DATABASE!");
+        
+        // Try to explain why
+        const [allQuestions] = await pool.query(
+          "SELECT question_type, COUNT(*) as count FROM generated_material WHERE study_material_id = ? GROUP BY question_type",
+          [studyMaterialId]
+        );
+        
+        console.log("Questions by type in database:", allQuestions);
+        
+        // Check for question_type value issues
+        const [valueCheck] = await pool.query(
+          "SELECT DISTINCT question_type FROM generated_material"
+        );
+        
+        console.log("All question types in database:", valueCheck.map(row => row.question_type));
+        
+        // Try a super permissive search
+        const [fuzzySearch] = await pool.query(
+          "SELECT * FROM generated_material WHERE study_material_id = ? AND question_type LIKE '%ident%'",
+          [studyMaterialId]
+        );
+        
+        if (fuzzySearch && fuzzySearch.length > 0) {
+          console.log(`Found ${fuzzySearch.length} potential identification questions with fuzzy search`);
+          console.log("First fuzzy match:", fuzzySearch[0]);
+        }
+      }
+    } catch (checkError) {
+      console.error("Error checking for identification questions:", checkError);
+    }
+
     return true;
   } catch (error) {
     console.error("=== STORING GENERATED QUESTIONS - ERROR ===");
@@ -367,7 +764,8 @@ const OpenAIController = {
 
   generateIdentification: async (req, res) => {
     try {
-      console.log("Received identification question request");
+      console.log("=== IDENTIFICATION QUESTION GENERATION - START ===");
+      console.log("Received identification question request with body:", req.body);
       const { term, definition, studyMaterialId, itemId, gameMode = "peaceful" } = req.body;
       
       // Normalize the game mode
@@ -383,60 +781,97 @@ const OpenAIController = {
 
       // Clean the term by removing any letter prefix (e.g., "D. AI" becomes "AI")
       const cleanedTerm = term.replace(/^[A-D]\.\s+/, "");
+      console.log("Cleaned term for identification:", cleanedTerm);
 
-      // For identification, simply return the term and definition in question format
+      // Create the identification question object with EXPLICIT question_type field
       const result = [
         {
           type: "identification",
+          questionType: "identification",
+          question_type: "identification", // Add this explicit field that matches DB column name
           question: definition,
           answer: cleanedTerm,
         },
       ];
 
+      console.log("Generated identification question object:", JSON.stringify(result, null, 2));
+
       // Store the generated question if studyMaterialId is provided
       if (studyMaterialId) {
-        console.log("Checking if questions already exist before storing...");
+        console.log(`Direct DB insertion for identification question - material ${studyMaterialId}`);
         
-        // Check if questions already exist for this study material
-        let existingQuestions = 0;
         try {
-          // First try with Objection.js
-          const result = await GeneratedMaterial.query()
-            .where('study_material_id', studyMaterialId)
-            .count('* as count')
-            .first();
+          // Direct database insertion to bypass any potential issues with storeGeneratedQuestions
+          const { pool } = await import('../config/db.js');
           
-          existingQuestions = result ? parseInt(result.count) : 0;
-        } catch (countError) {
-          console.error("Error counting existing questions:", countError);
+          // Attempt direct SQL insertion
+          const directInsertQuery = `
+            INSERT INTO generated_material 
+            (study_material_id, item_id, item_number, term, definition, question_type, question, answer, choices, game_mode) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+            ON DUPLICATE KEY UPDATE 
+            question = VALUES(question),
+            answer = VALUES(answer),
+            updated_at = CURRENT_TIMESTAMP
+          `;
           
-          // Try with direct SQL
-          try {
-            const { pool } = await import('../config/db.js');
-            const [rows] = await pool.query(
-              'SELECT COUNT(*) as count FROM generated_material WHERE study_material_id = ?', 
-              [studyMaterialId]
-            );
-            existingQuestions = parseInt(rows[0].count);
-          } catch (sqlError) {
-            console.error("Error counting with SQL:", sqlError);
+          const insertParams = [
+            studyMaterialId,
+            parseInt(itemId) || 1,
+            parseInt(itemId) || 1,
+            cleanedTerm,
+            definition,
+            "identification", // Explicitly set as identification
+            definition,
+            cleanedTerm,
+            normalizedGameMode
+          ];
+          
+          console.log("Direct SQL insertion parameters:", insertParams);
+          
+          const [directInsertResult] = await pool.execute(directInsertQuery, insertParams);
+          console.log("Direct insertion result:", directInsertResult);
+          
+          // Verify the question was actually stored
+          const [verifyResult] = await pool.query(
+            'SELECT * FROM generated_material WHERE study_material_id = ? AND term = ? AND question_type = ? ORDER BY id DESC LIMIT 1',
+            [studyMaterialId, cleanedTerm, "identification"]
+          );
+          
+          if (verifyResult && verifyResult.length > 0) {
+            console.log("✅ IDENTIFICATION VERIFICATION SUCCESS - ID:", verifyResult[0].id);
+            console.log(verifyResult[0]);
+          } else {
+            console.error("❌ IDENTIFICATION VERIFICATION FAILED - Question not found in database!");
           }
+          
+          // Also use the regular storage method as a backup
+          const itemObject = { 
+            id: itemId || 1, 
+            term: cleanedTerm, 
+            definition: definition 
+          };
+          
+          await storeGeneratedQuestions(
+            studyMaterialId, 
+            [itemObject], 
+            result, 
+            normalizedGameMode
+          );
+        } catch (dbError) {
+          console.error("DATABASE ERROR with identification question:", dbError);
+          console.error("SQL Error Code:", dbError.code);
+          console.error("SQL Error Number:", dbError.errno);
+          console.error("SQL State:", dbError.sqlState);
         }
-        
-        console.log(`Found ${existingQuestions} existing questions for study material ${studyMaterialId}`);
-        
-        // Only store if no questions exist
-        if (existingQuestions === 0) {
-          console.log("Storing identification question with studyMaterialId:", studyMaterialId);
-          await storeGeneratedQuestions(studyMaterialId, [{ id: itemId, term: cleanedTerm, definition }], result, normalizedGameMode);
-        } else {
-          console.log(`Questions already exist for study material ${studyMaterialId}, skipping storage`);
-        }
+      } else {
+        console.warn("No studyMaterialId provided, identification question will not be stored");
       }
 
-      console.log("Generated identification question:", result);
+      console.log("=== IDENTIFICATION QUESTION GENERATION - COMPLETE ===");
       res.json(result);
     } catch (error) {
+      console.error("=== IDENTIFICATION QUESTION GENERATION - ERROR ===");
       console.error("Error in generate-identification route:", error);
       res.status(500).json({
         error: "Failed to generate identification question",
@@ -506,42 +941,23 @@ If generating multiple questions, include them all in the array.`;
 
       // Store the generated questions if studyMaterialId is provided
       if (studyMaterialId) {
-        console.log("Checking if questions already exist before storing...");
-        
-        // Check if questions already exist for this study material
-        let existingQuestions = 0;
+        console.log("Storing true/false questions with studyMaterialId:", studyMaterialId);
         try {
-          // First try with Objection.js
-          const result = await GeneratedMaterial.query()
-            .where('study_material_id', studyMaterialId)
-            .count('* as count')
-            .first();
+          // Check if this specific question type already exists for this material and mode
+          const { pool } = await import('../config/db.js');
+          const [rows] = await pool.query(
+            'SELECT COUNT(*) as count FROM generated_material WHERE study_material_id = ? AND game_mode = ? AND question_type = ? AND term = ?', 
+            [studyMaterialId, normalizedGameMode, "true-false", cleanedTerm]
+          );
           
-          existingQuestions = result ? parseInt(result.count) : 0;
-        } catch (countError) {
-          console.error("Error counting existing questions:", countError);
+          const existingCount = parseInt(rows[0].count || '0');
+          console.log(`Found ${existingCount} existing true-false questions for this term`);
           
-          // Try with direct SQL
-          try {
-            const { pool } = await import('../config/db.js');
-            const [rows] = await pool.query(
-              'SELECT COUNT(*) as count FROM generated_material WHERE study_material_id = ?', 
-              [studyMaterialId]
-            );
-            existingQuestions = parseInt(rows[0].count);
-          } catch (sqlError) {
-            console.error("Error counting with SQL:", sqlError);
-          }
-        }
-        
-        console.log(`Found ${existingQuestions} existing questions for study material ${studyMaterialId}`);
-        
-        // Only store if no questions exist
-        if (existingQuestions === 0) {
-          console.log("Storing true/false questions with studyMaterialId:", studyMaterialId);
+          // Always store the question, replacing if it exists
           await storeGeneratedQuestions(studyMaterialId, [{ id: itemId, term: cleanedTerm, definition }], questions, normalizedGameMode);
-        } else {
-          console.log(`Questions already exist for study material ${studyMaterialId}, skipping storage`);
+          console.log("Successfully stored true/false questions");
+        } catch (storeError) {
+          console.error("Error storing true/false questions:", storeError);
         }
       }
 
@@ -678,48 +1094,23 @@ Important:
 
         // After generating and validating questions, store them if studyMaterialId is provided
         if (studyMaterialId) {
-          console.log("Checking if questions already exist before storing...");
-          
-          // Check if questions already exist for this study material
-          let existingQuestions = 0;
+          console.log("Storing multiple choice questions with studyMaterialId:", studyMaterialId);
           try {
-            // First try with Objection.js
-            const result = await GeneratedMaterial.query()
-              .where('study_material_id', studyMaterialId)
-              .count('* as count')
-              .first();
+            // Check if this specific question type already exists for this material and mode
+            const { pool } = await import('../config/db.js');
+            const [rows] = await pool.query(
+              'SELECT COUNT(*) as count FROM generated_material WHERE study_material_id = ? AND game_mode = ? AND question_type = ? AND term = ?', 
+              [studyMaterialId, normalizedGameMode, "multiple-choice", cleanedTerm]
+            );
             
-            existingQuestions = result ? parseInt(result.count) : 0;
-          } catch (countError) {
-            console.error("Error counting existing questions:", countError);
+            const existingCount = parseInt(rows[0].count || '0');
+            console.log(`Found ${existingCount} existing multiple-choice questions for this term`);
             
-            // Try with direct SQL
-            try {
-              const { pool } = await import('../config/db.js');
-              const [rows] = await pool.query(
-                'SELECT COUNT(*) as count FROM generated_material WHERE study_material_id = ?', 
-                [studyMaterialId]
-              );
-              existingQuestions = parseInt(rows[0].count);
-            } catch (sqlError) {
-              console.error("Error counting with SQL:", sqlError);
-            }
-          }
-          
-          console.log(`Found ${existingQuestions} existing questions for study material ${studyMaterialId}`);
-          
-          // Only store if no questions exist
-          if (existingQuestions === 0) {
-            console.log("Storing questions with studyMaterialId:", studyMaterialId);
-            try {
-              await storeGeneratedQuestions(studyMaterialId, [{ id: itemId, term: cleanedTerm, definition }], questions, normalizedGameMode);
-              console.log("Successfully stored questions");
-            } catch (storeError) {
-              console.error("Error storing questions:", storeError);
-              // Continue with the response even if storage fails
-            }
-          } else {
-            console.log(`Questions already exist for study material ${studyMaterialId}, skipping storage`);
+            // Always store the question, replacing if it exists
+            await storeGeneratedQuestions(studyMaterialId, [{ id: itemId, term: cleanedTerm, definition }], questions, normalizedGameMode);
+            console.log("Successfully stored multiple choice questions");
+          } catch (storeError) {
+            console.error("Error storing multiple choice questions:", storeError);
           }
         }
 
@@ -811,22 +1202,53 @@ Important:
       if (Array.isArray(questions) && questions.length > 0) {
         console.log(`Processing ${questions.length} questions for storage`);
         
-        // Always store questions, even if they have itemInfo property
-        console.log(`Storing questions to ensure they're updated with each session`);
+        // Log question types to help with debugging
+        const questionTypes = questions.map(q => q.type || q.questionType).filter(Boolean);
+        const typeCounts = questionTypes.reduce((acc, type) => {
+          acc[type] = (acc[type] || 0) + 1;
+          return acc;
+        }, {});
         
-        // Get the material items from the database or use the ones provided
+        console.log("Question types in payload:", typeCounts);
+        
+        // First declaration (keep this one)
+        const identificationQuestions = questions.filter(q => 
+          q.type === 'identification' || q.questionType === 'identification' || q.question_type === 'identification'
+        );
+        
+        console.log(`Found ${identificationQuestions.length} identification questions in request`);
+        if (identificationQuestions.length > 0) {
+          console.log("Identification question samples:", identificationQuestions.map(q => ({
+            type: q.type,
+            questionType: q.questionType,
+            question_type: q.question_type,
+            term: q.itemInfo?.term || 'unknown',
+            question: q.question,
+            answer: q.answer || q.correctAnswer
+          })));
+        }
+
+        // Create items from itemInfo if items are not provided
         const providedItems = items || [];
-        console.log(`Using ${providedItems.length} provided items`);
-        
-        // If we don't have items but have questions, create dummy items from the questions
         const processedItems = providedItems.length > 0 ? providedItems : questions.map((q, index) => {
-          const item = {
-            id: index + 1,
-            term: q.correctAnswer || q.answer,
-            definition: q.question
-          };
-          console.log(`Created dummy item ${index + 1}:`, item);
-          return item;
+          // First try to get item from itemInfo
+          if (q.itemInfo && q.itemInfo.term && q.itemInfo.definition) {
+            console.log(`Creating item from question ${index+1} itemInfo:`, q.itemInfo);
+            return {
+              id: q.itemInfo.itemId || index + 1,
+              term: q.itemInfo.term,
+              definition: q.itemInfo.definition
+            };
+          } else {
+            // Fall back to creating from question fields
+            const item = {
+              id: index + 1,
+              term: q.correctAnswer || q.answer || `Item ${index+1}`,
+              definition: q.question || `Definition ${index+1}`
+            };
+            console.log(`Created dummy item ${index+1}:`, item);
+            return item;
+          }
         });
         
         console.log(`Processed ${processedItems.length} items for storage`);
@@ -857,6 +1279,13 @@ Important:
         console.log(`Filtered questions: ${questions.length} -> ${uniqueQuestions.length}`);
         console.log(`Unique term+type combinations: ${seenKeys.size}`);
         
+        // Right before calling storeGeneratedQuestions, check the items format
+        console.log("Items before storage:", items.map(item => ({
+          id: item.id,
+          term: item.term,
+          definition: item.definition
+        })));
+        
         // Store the questions
         try {
           console.log("Calling storeGeneratedQuestions with:", {
@@ -874,6 +1303,111 @@ Important:
             message: storeError.message,
             stack: storeError.stack
           });
+        }
+
+        // Change the second declaration to use a different variable name
+        const identificationQuestionsForDebug = questions.filter(q => 
+          q.type === 'identification' || q.questionType === 'identification'
+        );
+
+        if (identificationQuestionsForDebug.length > 0) {
+          console.log("=== IDENTIFICATION QUESTION DEBUG ===");
+          console.log(`Found ${identificationQuestionsForDebug.length} identification questions`);
+          
+          // For each identification question, try to store it directly
+          for (let i = 0; i < identificationQuestionsForDebug.length; i++) {
+            const q = identificationQuestionsForDebug[i];
+            
+            // Extract all relevant data
+            const term = q.itemInfo?.term || q.correctAnswer || q.answer || 'Unknown Term';
+            const definition = q.itemInfo?.definition || q.question || 'Unknown Definition';
+            const question = q.question || 'Unknown Question';
+            const answer = q.correctAnswer || q.answer || term;
+            
+            console.log(`Identification question ${i+1}:`);
+            console.log(` - Term: ${term}`);
+            console.log(` - Definition: ${definition}`);
+            console.log(` - Question: ${question}`);
+            console.log(` - Answer: ${answer}`);
+            
+            try {
+              const { pool } = await import('../config/db.js');
+              
+              // Try simple manual insertion
+              const directInsertQuery = `
+                INSERT INTO generated_material 
+                (study_material_id, item_id, term, definition, question_type, question, answer, game_mode) 
+                VALUES (?, ?, ?, ?, 'identification', ?, ?, ?)
+              `;
+              
+              const directInsertValues = [
+                studyMaterialId,
+                i + 1,
+                term,
+                definition,
+                question,
+                answer,
+                'peaceful'
+              ];
+              
+              console.log(`Executing direct insert for identification question ${i+1}...`);
+              
+              try {
+                const [directResult] = await pool.execute(directInsertQuery, directInsertValues);
+                console.log(`Direct insertion result:`, directResult);
+                
+                if (directResult.affectedRows > 0) {
+                  console.log(`✅ Successfully inserted identification question ${i+1} directly`);
+                } else {
+                  console.warn(`⚠️ Direct insertion affected 0 rows for identification question ${i+1}`);
+                }
+              } catch (directError) {
+                console.error(`❌ Error with direct insertion:`, directError);
+                
+                // Try update if insert failed
+                try {
+                  const updateQuery = `
+                    UPDATE generated_material 
+                    SET definition = ?, question = ?, answer = ?
+                    WHERE study_material_id = ? AND term = ? AND question_type = 'identification' AND game_mode = 'peaceful'
+                  `;
+                  
+                  const updateValues = [
+                    definition,
+                    question,
+                    answer,
+                    studyMaterialId,
+                    term
+                  ];
+                  
+                  const [updateResult] = await pool.execute(updateQuery, updateValues);
+                  console.log(`Update result:`, updateResult);
+                  
+                  if (updateResult.affectedRows > 0) {
+                    console.log(`✅ Successfully updated identification question ${i+1}`);
+                  } else {
+                    console.warn(`⚠️ Update affected 0 rows for identification question ${i+1}`);
+                  }
+                } catch (updateError) {
+                  console.error(`❌ Error with update:`, updateError);
+                }
+              }
+              
+              // Verify by query
+              const [verifyResult] = await pool.query(
+                `SELECT * FROM generated_material WHERE study_material_id = ? AND term = ? AND question_type = 'identification'`,
+                [studyMaterialId, term]
+              );
+              
+              if (verifyResult && verifyResult.length > 0) {
+                console.log(`✅ Verification found identification question in DB:`, verifyResult[0]);
+              } else {
+                console.error(`❌ Verification FAILED for identification question ${i+1}`);
+              }
+            } catch (manualError) {
+              console.error(`Critical error with manual insertion:`, manualError);
+            }
+          }
         }
       } else {
         console.log("No questions to store in session results");
