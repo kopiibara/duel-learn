@@ -57,6 +57,8 @@ interface InvitedPlayerStatus {
 interface StudyMaterial {
   title: string;
   id?: string;
+  study_material_id?: string; // Explicitly add study_material_id
+  items?: any[];
   [key: string]: any; // For any other properties
 }
 
@@ -407,6 +409,8 @@ const PVPLobby: React.FC = () => {
 
   const handleMaterialSelect = async (material: any) => {
     try {
+      console.log("Selected material:", material); // Log the selected material
+
       // Update local state
       setSelectedMaterial(material);
 
@@ -414,7 +418,8 @@ const PVPLobby: React.FC = () => {
       await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/settings`, {
         lobby_code: lobbyCode,
         question_types: selectedTypesFinal,
-        study_material_title: material.title
+        study_material_title: material.title,
+        study_material_id: material.study_material_id || material.id // Add study_material_id
       });
 
       setOpenMaterialModal(false);

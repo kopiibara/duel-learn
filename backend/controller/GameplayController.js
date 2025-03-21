@@ -215,7 +215,9 @@ export const initializeBattleSession = async (req, res) => {
             total_rounds,
             is_active,
             host_in_battle,
-            guest_in_battle
+            guest_in_battle,
+            difficulty_mode,
+            study_material_id
         } = req.body;
 
         // Validate required fields
@@ -244,6 +246,8 @@ export const initializeBattleSession = async (req, res) => {
                 SET host_id = ?,
                     guest_id = ?,
                     host_in_battle = ?,
+                    difficulty_mode = ?,
+                    study_material_id = ?,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE lobby_code = ? AND is_active = true
             `;
@@ -252,6 +256,8 @@ export const initializeBattleSession = async (req, res) => {
                 host_id,
                 guest_id,
                 host_in_battle || false,
+                difficulty_mode || null,
+                study_material_id || null,
                 lobby_code
             ]);
 
@@ -272,8 +278,9 @@ export const initializeBattleSession = async (req, res) => {
         const query = `
             INSERT INTO battle_sessions 
             (lobby_code, host_id, guest_id, total_rounds, current_turn, is_active, 
-             host_in_battle, guest_in_battle, battle_started, session_uuid)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             host_in_battle, guest_in_battle, battle_started, session_uuid,
+             difficulty_mode, study_material_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const values = [
@@ -286,7 +293,9 @@ export const initializeBattleSession = async (req, res) => {
             host_in_battle || false,
             guest_in_battle || false,
             false, // Battle not started until both players are in
-            sessionUuid // Add the session UUID
+            sessionUuid, // Add the session UUID
+            difficulty_mode || null,
+            study_material_id || null
         ];
 
         const [result] = await connection.query(query, values);
@@ -585,5 +594,57 @@ export const getBattleEndStatusByLobby = async (req, res) => {
             message: "Failed to check battle end status by lobby code",
             error: error.message
         });
+    }
+};
+
+// Add new function to get battle session with study material details
+export const getBattleSessionWithMaterial = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { lobby_code } = req.params;
+
+        if (!lobby_code) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing lobby code"
+            });
+        }
+
+        // Query to get session with study material details
+        const query = `
+            SELECT bs.*, 
+                   bs.difficulty_mode, 
+                   bs.study_material_id
+            FROM battle_sessions bs
+            WHERE bs.lobby_code = ? AND bs.is_active = true
+            ORDER BY bs.created_at DESC 
+            LIMIT 1
+        `;
+
+        const [sessions] = await connection.query(query, [lobby_code]);
+
+        if (sessions.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No active battle session found for this lobby"
+            });
+        }
+
+        res.json({
+            success: true,
+            data: sessions[0]
+        });
+
+    } catch (error) {
+        console.error('Error getting battle session with material details:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to get battle session details",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
     }
 }; 
