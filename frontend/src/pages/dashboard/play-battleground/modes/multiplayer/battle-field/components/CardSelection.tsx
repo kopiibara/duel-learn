@@ -51,8 +51,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         ],
         rare: [
             { id: "rare-1", name: "Mind Control", type: "Rare Power Card", description: "Forces the opponent to answer the next question without any power-ups" },
-            { id: "rare-2", name: "Poison Type", type: "Rare Power Card", description: "It gives the enemy a poison type effect that last 3 rounds" },
-            { id: "rare-3", name: "STEAL!", type: "Rare Power Card", description: "Swipe a random power-up card from your opponent's hand and turn the tides in your favor" }
+            { id: "rare-2", name: "Poison Type", type: "Rare Power Card", description: "It gives the enemy a poison type effect that last 3 rounds" }
         ]
     };
 
@@ -62,19 +61,19 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             basic: 70,
             normal: { total: 30, distribution: { "Time Manipulation": 15, "Quick Draw": 15 } },
             epic: { total: 0, distribution: { "Answer Shield": 0, "Regeneration": 0 } },
-            rare: { total: 0, distribution: { "Mind Control": 0, "Poison Type": 0, "STEAL!": 0 } }
+            rare: { total: 0, distribution: { "Mind Control": 0, "Poison Type": 0 } }
         },
         average: {
             basic: 70,
             normal: { total: 20, distribution: { "Time Manipulation": 10, "Quick Draw": 10 } },
             epic: { total: 10, distribution: { "Answer Shield": 5, "Regeneration": 5 } },
-            rare: { total: 0, distribution: { "Mind Control": 0, "Poison Type": 0, "STEAL!": 0 } }
+            rare: { total: 0, distribution: { "Mind Control": 0, "Poison Type": 0 } }
         },
         hard: {
             basic: 70,
             normal: { total: 15, distribution: { "Time Manipulation": 8, "Quick Draw": 8 } },
             epic: { total: 10, distribution: { "Answer Shield": 5, "Regeneration": 5 } },
-            rare: { total: 5, distribution: { "Mind Control": 2.5, "Poison Type": 2.5, "STEAL!": 0 } }
+            rare: { total: 5, distribution: { "Mind Control": 2.5, "Poison Type": 2.5 } }
         }
     };
 
@@ -266,26 +265,17 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                                             transition: { duration: 0.2 }
                                         }}
                                     >
-                                        {card.name === "STEAL!" ? (
-                                            // Use image for STEAL! card
-                                            <img
-                                                src={cardFrontImage}
-                                                alt="STEAL! Card"
-                                                className="w-full h-full object-contain"
-                                            />
-                                        ) : (
-                                            // For other cards, display the card name and info
-                                            <div className="flex flex-col h-full p-4 text-white">
-                                                <div className="text-lg font-bold mb-2">{card.name}</div>
-                                                <div className="text-xs italic mb-4">{card.type}</div>
-                                                <div className="border-t border-white/20 my-2 pt-2">
-                                                    <p className="text-sm">{card.description}</p>
-                                                </div>
-                                                <div className="mt-auto flex justify-end">
-                                                    <div className="text-xs italic opacity-60">Card ID: {card.id}</div>
-                                                </div>
+                                        {/* For all cards, display the card name and info */}
+                                        <div className="flex flex-col h-full p-4 text-white">
+                                            <div className="text-lg font-bold mb-2">{card.name}</div>
+                                            <div className="text-xs italic mb-4">{card.type}</div>
+                                            <div className="border-t border-white/20 my-2 pt-2">
+                                                <p className="text-sm">{card.description}</p>
                                             </div>
-                                        )}
+                                            <div className="mt-auto flex justify-end">
+                                                <div className="text-xs italic opacity-60">Card ID: {card.id}</div>
+                                            </div>
+                                        </div>
                                     </motion.div>
                                 ))}
                             </div>
