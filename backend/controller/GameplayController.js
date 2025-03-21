@@ -647,4 +647,74 @@ export const getBattleSessionWithMaterial = async (req, res) => {
     } finally {
         if (connection) connection.release();
     }
+};
+
+export const initializeBattleRounds = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid, round_number } = req.body;
+
+        // Validate required fields
+        if (!session_uuid) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required field: session_uuid"
+            });
+        }
+
+        // Check if entry already exists for this session
+        const [existingRounds] = await connection.query(
+            `SELECT * FROM battle_rounds 
+             WHERE session_uuid = ?`,
+            [session_uuid]
+        );
+
+        if (existingRounds.length > 0) {
+            return res.json({
+                success: true,
+                message: "Battle rounds already initialized",
+                data: existingRounds[0]
+            });
+        }
+
+        // Initialize a new entry in battle_rounds
+        const query = `
+            INSERT INTO battle_rounds 
+            (session_uuid, round_number)
+            VALUES (?, ?)
+        `;
+
+        const [result] = await connection.query(query, [
+            session_uuid,
+            round_number || null
+        ]);
+
+        if (result.affectedRows === 0) {
+            return res.status(500).json({
+                success: false,
+                message: "Failed to initialize battle rounds"
+            });
+        }
+
+        res.status(201).json({
+            success: true,
+            message: "Battle rounds initialized successfully",
+            data: {
+                session_uuid,
+                round_number
+            }
+        });
+
+    } catch (error) {
+        console.error('Error initializing battle rounds:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to initialize battle rounds",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
 }; 

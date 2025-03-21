@@ -22,6 +22,7 @@ router.get("/get-made-by-friends/:userId", studyMaterialController.getMadeByFrie
 router.get("/discover/:username", studyMaterialController.getNonMatchingTags);
 router.get('/check-bookmark-status', studyMaterialController.checkBookmarkStatus);
 router.get('/get-bookmarks-by-user/:bookmarked_by_id', studyMaterialController.getBookmarksByUser);
+router.get('/info/:studyMaterialId', studyMaterialController.getStudyMaterialInfo);
 
 
 export default router;

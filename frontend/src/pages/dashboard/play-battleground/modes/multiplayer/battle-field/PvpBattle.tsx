@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
 import { useLocation } from "react-router-dom";
+import axios from "axios";
 
 // Character animations
 import playerCharacter from "../../../../../../assets/characterinLobby/playerCharacter.gif"; // Regular idle animation for player
@@ -56,9 +57,11 @@ export default function PvpBattle() {
   // Game state
   const [timeLeft, setTimeLeft] = useState(25);
   const [currentQuestion, setCurrentQuestion] = useState(1);
-  const totalQuestions = 30;
+  const [totalItems, setTotalItems] = useState(30); // Default value, will be updated from study material
   const [waitingForPlayer, setWaitingForPlayer] = useState(true);
   const [battleState, setBattleState] = useState<BattleState | null>(null);
+  const [difficultyMode, setDifficultyMode] = useState<string | null>(null);
+  const [studyMaterialId, setStudyMaterialId] = useState<string | null>(null);
 
   // Turn-based gameplay state
   const [gameStarted, setGameStarted] = useState(false);
@@ -206,6 +209,46 @@ export default function PvpBattle() {
     }
   };
 
+  // Fetch battle session data to get difficulty mode and study material id
+  useEffect(() => {
+    const fetchBattleSessionData = async () => {
+      if (!lobbyCode) return;
+
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-with-material/${lobbyCode}`
+        );
+
+        if (response.data.success && response.data.data) {
+          setDifficultyMode(response.data.data.difficulty_mode);
+
+          // Get the study material id
+          if (response.data.data.study_material_id) {
+            setStudyMaterialId(response.data.data.study_material_id);
+
+            // Fetch study material info to get total items
+            try {
+              const studyMaterialResponse = await axios.get(
+                `${import.meta.env.VITE_BACKEND_URL}/api/study-material/info/${response.data.data.study_material_id}`
+              );
+
+              if (studyMaterialResponse.data.success && studyMaterialResponse.data.data &&
+                studyMaterialResponse.data.data.total_items) {
+                setTotalItems(studyMaterialResponse.data.data.total_items);
+              }
+            } catch (error) {
+              console.error("Error fetching study material info:", error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching battle session data:", error);
+      }
+    };
+
+    fetchBattleSessionData();
+  }, [lobbyCode]);
+
   return (
     <div className="w-full h-screen flex flex-col">
       {/* Character animation manager */}
@@ -230,7 +273,8 @@ export default function PvpBattle() {
         <QuestionTimer
           timeLeft={timeLeft}
           currentQuestion={currentQuestion}
-          totalQuestions={totalQuestions}
+          totalQuestions={totalItems}
+          difficultyMode={difficultyMode}
         />
 
         <PlayerInfo
@@ -308,6 +352,7 @@ export default function PvpBattle() {
               opponentName={opponentName}
               playerName={playerName}
               onCardSelected={handleCardSelected}
+              difficultyMode={difficultyMode}
             />
           </div>
         )}

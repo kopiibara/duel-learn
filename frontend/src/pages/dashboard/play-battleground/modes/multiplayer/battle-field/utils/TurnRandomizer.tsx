@@ -119,13 +119,57 @@ export default function TurnRandomizer({
             setShowGameStart(true);
 
             // Update turn with player ID in battle_sessions
-            await axios.put(
+            const sessionResponse = await axios.put(
                 `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-session`,
                 {
                     lobby_code: lobbyCode,
                     current_turn: selectedPlayerId // Use ID instead of username
                 }
             );
+
+            // Get the session_uuid from the response
+            let sessionUuid = '';
+            if (sessionResponse.data.success && sessionResponse.data.data && sessionResponse.data.data.session_uuid) {
+                sessionUuid = sessionResponse.data.data.session_uuid;
+
+                // Get study material info to set round_number to total_items
+                try {
+                    const battleSessionResponse = await axios.get(
+                        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-with-material/${lobbyCode}`
+                    );
+
+                    if (battleSessionResponse.data.success &&
+                        battleSessionResponse.data.data &&
+                        battleSessionResponse.data.data.study_material_id) {
+
+                        const studyMaterialId = battleSessionResponse.data.data.study_material_id;
+
+                        const studyMaterialResponse = await axios.get(
+                            `${import.meta.env.VITE_BACKEND_URL}/api/study-material/info/${studyMaterialId}`
+                        );
+
+                        if (studyMaterialResponse.data.success &&
+                            studyMaterialResponse.data.data &&
+                            studyMaterialResponse.data.data.total_items) {
+
+                            const totalItems = studyMaterialResponse.data.data.total_items;
+
+                            // Initialize entry in battle_rounds table
+                            await axios.post(
+                                `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize-rounds`,
+                                {
+                                    session_uuid: sessionUuid,
+                                    round_number: totalItems
+                                }
+                            );
+
+                            console.log(`Initialized battle rounds with total_items: ${totalItems}`);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error setting up battle rounds:", error);
+                }
+            }
 
             // Optionally, we could extend our state to include who was selected to go first
             // This would let us start rendering things even before the polling catches up
