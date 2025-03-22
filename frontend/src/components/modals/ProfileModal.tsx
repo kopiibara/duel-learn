@@ -4,7 +4,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import axios from "axios";
 import CardComponent from "../CardComponent";
-import defaultPicture from "../../assets/profile-picture/default-picture.svg";
+import defaultPicture from "/profile-picture/default-picture.svg";
 import { useUser } from "../../contexts/UserContext";
 import { UserInfo } from "../../types/userInfoObject";
 import { StudyMaterial } from "../../types/studyMaterialObject";

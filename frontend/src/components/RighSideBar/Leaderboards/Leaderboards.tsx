@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { Box, Stack, CircularProgress } from "@mui/material";
-import GoldMedal from "../../../assets/General/gold-medal.svg";
-import SilverMedal from "../../../assets/General/silver-medal.svg";
-import BronzeMedal from "../../../assets/General/bronze-medal.svg";
+import GoldMedal from "/General/gold-medal.svg";
+import SilverMedal from "/General/silver-medal.svg";
+import BronzeMedal from "/General/bronze-medal.svg";
 import axios from "axios";
 import { useUser } from "../../../contexts/UserContext"; // Import your auth context
-import defaultPicture from "../../../assets/profile-picture/default-picture.svg";
+import defaultPicture from "/profile-picture/default-picture.svg";
 import { useMediaQuery, useTheme } from "@mui/material";
 
 interface LeaderboardPlayer {

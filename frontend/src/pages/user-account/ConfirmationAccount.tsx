@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import ExitIcon from "../../assets/images/Exit.png";
-import sampleAvatarDeployment from "../../assets/images/sampleAvatar2.png";
+import ExitIcon from "/images/Exit.png";
+import sampleAvatarDeployment from "/images/sampleAvatar2.png";
 import {
   getFirestore,
   collection,

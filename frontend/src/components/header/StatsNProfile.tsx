@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import CoinIcon from "../../assets/CoinIcon.png";
-import ManaIcon from "../../assets/ManaIcon.png";
+import CoinIcon from "/CoinIcon.png";
+import ManaIcon from "/ManaIcon.png";
 import Tooltip from "@mui/material/Tooltip";
 import ProfilePopover from "./ProfilePopover";
 import { Avatar, Box } from "@mui/material";
 import { useUser } from "../../contexts/UserContext";
-import defaultPicture from "../../assets/profile-picture/default-picture.svg";
+import DefaultPicture from "/profile-picture/default-picture.svg";
 
 const StatsNProfile = () => {
   const { user } = useUser();
@@ -81,7 +81,7 @@ const StatsNProfile = () => {
         <Avatar
           variant="rounded"
           onClick={handleProfileClick}
-          src={user?.display_picture || defaultPicture}
+          src={user?.display_picture || DefaultPicture}
           alt={user?.email || "User"}
           sx={{
             cursor: "pointer",

@@ -15,6 +15,8 @@ import {
 } from "./components";
 import theme from "./contexts/ThemeContext";
 import "./index.css";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function App() {
   return (
@@ -40,6 +42,8 @@ function App() {
                   <GlobalSnackbar />
                   <SnackbarConnector />
                   <InvitationLobbySnackbar />
+                  <Analytics />
+                  <SpeedInsights />
                 </ThemeProvider>
               </HelmetProvider>
             </SnackbarProvider>

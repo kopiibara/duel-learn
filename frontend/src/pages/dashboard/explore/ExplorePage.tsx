@@ -14,7 +14,7 @@ import ExploreCards from "./ExploreCards";
 import { useUser } from "../../../contexts/UserContext";
 import AutoHideSnackbar from "../../../components/ErrorsSnackbar";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
-import NoStudyMaterial from "../../../assets/images/noStudyMaterial.svg";
+import NoStudyMaterial from "/images/noStudyMaterial.svg";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { Tooltip } from "@mui/material";
 

@@ -6,10 +6,10 @@ import axios, { AxiosError } from "axios";
 import { useUser } from "../../../../contexts/UserContext";
 import { useFriendList } from "../../../../hooks/friends.hooks/useFriendList";
 import { useFriendSocket } from "../../../../hooks/friends.hooks/useFriendSocket";
-import cauldronGif from "../../../../assets/General/Cauldron.gif";
+import cauldronGif from "/General/Cauldron.gif";
 import InviteSnackbar from "../../../../components/InviteSnackbar";
 import { FriendRequestData, Friend } from "../../../../types/friendObject";
-import defaultPicture from "../../../../assets/profile-picture/default-picture.svg";
+import DefaultPicture from "/profile-picture/default-picture.svg";
 
 const FindFriends: React.FC = () => {
   const { user } = useUser();
@@ -186,7 +186,7 @@ const FindFriends: React.FC = () => {
               >
                 <div className="flex items-center">
                   <img
-                    src={otherUser.display_picture || defaultPicture}
+                    src={otherUser.display_picture || DefaultPicture}
                     alt="Avatar"
                     className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
                   />{" "}

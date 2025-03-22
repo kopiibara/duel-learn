@@ -2,10 +2,10 @@ import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
 
 // Character animations
-import playerCharacter from "../../../../../../assets/characterinLobby/playerCharacter.gif"; // Regular idle animation for player
-import enemyCharacter from "../../../../../../assets/characterinLobby/playerCharacter.gif"; // Regular idle animation for enemy
-import characterPicking from "../../../../../../assets/characterinLobby/CharacterPicking.gif"; // Initial picking animation (non-looping)
-import characterPickingLoop from "../../../../../../assets/characterinLobby/CharacterPickingLoop.gif"; // Continuous picking animation (looping)
+import playerCharacter from "/characterinLobby/playerCharacter.gif"; // Regular idle animation for player
+import enemyCharacter from "/characterinLobby/playerCharacter.gif"; // Regular idle animation for enemy
+import characterPicking from "/characterinLobby/CharacterPicking.gif"; // Initial picking animation (non-looping)
+import characterPickingLoop from "/characterinLobby/CharacterPickingLoop.gif"; // Continuous picking animation (looping)
 
 import { useLocation } from "react-router-dom";
 import axios from "axios";

@@ -1,12 +1,12 @@
 // src/data/itemsData.ts
 
 // Add imports for all shop item images
-import ManaRegenBand from "../../../../assets/shop-picture/mana-band.png";
-import TechPass from "../../../../assets/shop-picture/tech-pass.png";
-import RewardsMultiplier from "../../../../assets/shop-picture/multiplier-badge.png";
-import FortuneCoin from "../../../../assets/shop-picture/fortune-coin.png";
-import InsightfulToken from "../../../../assets/shop-picture/insightful-token.png";
-import StudyStarterPack from "../../../../assets/shop-picture/study-pack.png";
+import ManaRegenBand from "/shop-picture/mana-band.png";
+import TechPass from "/shop-picture/tech-pass.png";
+import RewardsMultiplier from "/shop-picture/multiplier-badge.png";
+import FortuneCoin from "/shop-picture/fortune-coin.png";
+import InsightfulToken from "/shop-picture/insightful-token.png";
+import StudyStarterPack from "/shop-picture/study-pack.png";
 
 export interface ShopItem {
   id: number;

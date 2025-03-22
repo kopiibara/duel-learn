@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import PremiumBuyBG from "../assets/shop-picture/PremiumBuyBG.png";
-import PremiumStar from "../assets/shop-picture/PremiumStar.png";
+import PremiumBuyBG from "/shop-picture/PremiumBuyBG.png";
+import PremiumStar from "/shop-picture/PremiumStar.png";
 import { useNavigate } from "react-router-dom"; // Import useNavigate
 import "./BuyPremimun.css";
 

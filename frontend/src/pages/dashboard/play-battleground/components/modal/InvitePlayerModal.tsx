@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { Box, Typography, Button, IconButton, Tooltip, Alert, AlertTitle } from "@mui/material";
+import {
+  Box,
+  Typography,
+  Button,
+  IconButton,
+  Tooltip,
+  Alert,
+  AlertTitle,
+} from "@mui/material";
 import CloseIcon from "@mui/icons-material/CancelOutlined";
-import InviteFriendList from "../../../../../assets/General/ModalFriendList.png";
-import ProfileIcon from "../../../../../assets/profile-picture/kopibara-picture.png";
+import InviteFriendList from "/General/ModalFriendList.png";
+import ProfileIcon from "/profile-picture/default-picture.svg";
 import axios from "axios";
 import { useUser } from "../../../../../contexts/UserContext";
 import SocketService from "../../../../../services/socketService";
-import { io } from 'socket.io-client';
+import { io } from "socket.io-client";
 
 interface Player {
   firebase_uid: string;
@@ -52,26 +60,27 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
   const [directSocket, setDirectSocket] = useState<any>(null);
 
   useEffect(() => {
-    console.log(lobbyCode, inviterName, senderId)
+    console.log(lobbyCode, inviterName, senderId);
     const fetchFriends = async () => {
       if (!user?.firebase_uid || !open) return;
 
       setLoading(true);
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/lobby/invite-friends/${user.firebase_uid
+          `${import.meta.env.VITE_BACKEND_URL}/api/lobby/invite-friends/${
+            user.firebase_uid
           }`
         );
 
         // Map the response data to match the Player interface
-        const formattedFriends: Player[] = (response.data as { data: any[] }).data.map(
-          (friend: any) => ({
-            firebase_uid: friend.firebase_uid,
-            username: friend.username,
-            level: friend.level || 1,
-            display_picture: friend.display_picture,
-          })
-        );
+        const formattedFriends: Player[] = (
+          response.data as { data: any[] }
+        ).data.map((friend: any) => ({
+          firebase_uid: friend.firebase_uid,
+          username: friend.username,
+          level: friend.level || 1,
+          display_picture: friend.display_picture,
+        }));
 
         setFriends(formattedFriends);
         setError(null);
@@ -94,16 +103,16 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
     // Create direct socket connection similar to DirectSocketDebug
     const newSocket = io(`${import.meta.env.VITE_BACKEND_URL}`, {
       transports: ["websocket"],
-      reconnection: true
+      reconnection: true,
     });
 
-    newSocket.on('connect', () => {
+    newSocket.on("connect", () => {
       console.log(`Direct invitation socket connected: ${newSocket.id}`);
-      newSocket.emit('setup', user.firebase_uid);
+      newSocket.emit("setup", user.firebase_uid);
     });
 
     // Listen directly for battle invitations
-    newSocket.on('battle_invitation', (data) => {
+    newSocket.on("battle_invitation", (data) => {
       console.group("🔔 Direct Invitation Received");
       console.log("Raw invitation data:", data);
 
@@ -152,7 +161,10 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
     };
 
     // Register the handler
-    const removeListener = socketService.on("battle_invitation", handleBattleInvitation);
+    const removeListener = socketService.on(
+      "battle_invitation",
+      handleBattleInvitation
+    );
 
     return () => {
       if (removeListener) removeListener();
@@ -169,7 +181,12 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
       setInviting(true);
 
       // Validate required fields
-      if (!user.firebase_uid || !user.username || !friend.firebase_uid || !lobbyCode) {
+      if (
+        !user.firebase_uid ||
+        !user.username ||
+        !friend.firebase_uid ||
+        !lobbyCode
+      ) {
         console.error("Missing required fields for invitation");
         return;
       }
@@ -183,9 +200,9 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
         receiver_username: friend.username,
         receiver_level: friend.level || 1,
         lobby_code: lobbyCode,
-        status: 'pending',
+        status: "pending",
         question_types: selectedTypesFinal,
-        study_material_title: selectedMaterial?.title
+        study_material_title: selectedMaterial?.title,
       };
 
       // Make POST request to create battle invitation
@@ -203,7 +220,7 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
         senderId: user.firebase_uid,
         senderName: user.username || inviterName || "Unknown Player",
         receiverId: friend.firebase_uid,
-        lobbyCode: lobbyCode
+        lobbyCode: lobbyCode,
       };
 
       // Log the final invitation data
@@ -213,9 +230,8 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
       handleClose();
       onInviteSuccess(friend, {
         ...invitationData,
-        dbRecord: response.data.data // Include the database record
+        dbRecord: response.data.data, // Include the database record
       });
-
     } catch (error) {
       console.error("Error inviting player:", error);
       // You might want to show an error message to the user here
@@ -257,9 +273,7 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
 
           {/* Error message */}
           {error && (
-            <div className="text-red-500 text-center mb-4">
-              {error}
-            </div>
+            <div className="text-red-500 text-center mb-4">{error}</div>
           )}
 
           {/* Friend List */}
@@ -298,8 +312,8 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
                       backgroundColor: "#57A64E",
                       "&:disabled": {
                         backgroundColor: "#2E5428",
-                        color: "#A0A0A0"
-                      }
+                        color: "#A0A0A0",
+                      },
                     }}
                     disabled={inviting}
                     onClick={() => {
@@ -318,46 +332,56 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
 
       {/* Replace InvitationSnackbar with custom implementation */}
       {receivedInvitation.open && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          zIndex: 10000,
-          pointerEvents: 'none',
-          display: 'flex',
-          justifyContent: 'center',
-          padding: '16px'
-        }}>
-          <div style={{
-            width: 'fit-content',
-            pointerEvents: 'auto'
-          }}>
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100%",
+            zIndex: 10000,
+            pointerEvents: "none",
+            display: "flex",
+            justifyContent: "center",
+            padding: "16px",
+          }}
+        >
+          <div
+            style={{
+              width: "fit-content",
+              pointerEvents: "auto",
+            }}
+          >
             <Alert
               severity="info"
-              onClose={() => setReceivedInvitation(prev => ({ ...prev, open: false }))}
+              onClose={() =>
+                setReceivedInvitation((prev) => ({ ...prev, open: false }))
+              }
               sx={{
                 width: "100%",
-                minWidth: '300px',
+                minWidth: "300px",
                 boxShadow: "0 8px 32px rgba(0,0,0,0.8)",
-                border: '2px solid #4D1EE3'
+                border: "2px solid #4D1EE3",
               }}
             >
               <AlertTitle>Battle Invitation</AlertTitle>
-              <strong>{receivedInvitation.inviterName}</strong> has invited you to battle!
+              <strong>{receivedInvitation.inviterName}</strong> has invited you
+              to battle!
               <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
                 <Button
                   size="small"
                   variant="contained"
                   color="success"
                   onClick={() => {
-                    console.log("Accepting invitation with data:", receivedInvitation);
+                    console.log(
+                      "Accepting invitation with data:",
+                      receivedInvitation
+                    );
                     if (onInvitationAccepted) {
                       onInvitationAccepted(receivedInvitation.lobbyCode);
                     }
-                    setReceivedInvitation(prev => ({ ...prev, open: false }));
+                    setReceivedInvitation((prev) => ({ ...prev, open: false }));
                   }}
-                  sx={{ fontWeight: 'bold' }}
+                  sx={{ fontWeight: "bold" }}
                 >
                   Accept
                 </Button>
@@ -365,8 +389,10 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
                   size="small"
                   variant="contained"
                   color="error"
-                  onClick={() => setReceivedInvitation(prev => ({ ...prev, open: false }))}
-                  sx={{ fontWeight: 'bold' }}
+                  onClick={() =>
+                    setReceivedInvitation((prev) => ({ ...prev, open: false }))
+                  }
+                  sx={{ fontWeight: "bold" }}
                 >
                   Decline
                 </Button>

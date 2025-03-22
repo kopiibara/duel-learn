@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import Profile from "../../../assets/profile-picture/default-picture.svg";
-import PremiumLabel from "../../../assets/premium-star.png";
+import Profile from "/profile-picture/default-picture.svg";
+import PremiumLabel from "/premium-star.png";
 import axios from "axios";
 import { UserInfo } from "../../../types/userInfoObject";
 import { useUser } from "../../../contexts/UserContext";

@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import "./styles/EffectUserOnboarding.css";
 import { useNavigate } from "react-router-dom";
-import useWandCursor from "./data/useWandCursor"; // Import the custom hook
-import WelcomePhoto from "../../assets/UserOnboarding/WelcomePhoto.gif";
+import UseWandCursor from "./data/useWandCursor"; // Import the custom hook
+import WelcomePhoto from "/UserOnboarding/WelcomePhoto.gif";
 import { useUser } from "../../contexts/UserContext"; // Import the useUser hook
 import PageTransition from "../../styles/PageTransition";
 import { useAudio } from "../../contexts/AudioContext"; // Import the useAudio hook
@@ -14,7 +14,7 @@ const WelcomePage = () => {
   const { playStartAudio, playLoopAudio, isPlaying } = useAudio();
   const startAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  useWandCursor();
+  UseWandCursor();
 
   const handleNavigate = () => {
     console.log("Navigating to /tutorial/step-one...");

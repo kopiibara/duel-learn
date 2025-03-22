@@ -10,7 +10,7 @@ import {
   useTheme,
 } from "@mui/material";
 import { styled } from "@mui/system";
-import defaultCover from "../assets/study-material-cover/cardBackground.svg";
+import defaultCover from "/study-material-cover/cardBackground.svg";
 
 interface Item {
   term: string;

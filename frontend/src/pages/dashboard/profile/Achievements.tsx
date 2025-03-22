@@ -1,15 +1,15 @@
 import { useState } from "react";
 
 // Add imports for achievement images
-import WisdomCollectorW from "../../../assets/achievements/wisdom-collector-w.png";
-import DuelistW from "../../../assets/achievements/duelist-w.png";
-import BattleArchmageW from "../../../assets/achievements/battle-archmage-w.png";
-import BestMagicianW from "../../../assets/achievements/best-magician-w.png";
-import SpeedyWitchW from "../../../assets/achievements/speedy-witch-w.png";
-import FlawlessSpellcasterW from "../../../assets/achievements/flawless-spellcaster-w.png";
-import ArcaneScholarW from "../../../assets/achievements/arcane-scholar-w.png";
-import HexOfSilenceW from "../../../assets/achievements/hex-silence-w.png";
-import MysticElderW from "../../../assets/achievements/mystic-elder-w.png";
+import WisdomCollectorW from "/achievements/wisdom-collector-w.png";
+import DuelistW from "/achievements/duelist-w.png";
+import BattleArchmageW from "/achievements/battle-archmage-w.png";
+import BestMagicianW from "/achievements/best-magician-w.png";
+import SpeedyWitchW from "/achievements/speedy-witch-w.png";
+import FlawlessSpellcasterW from "/achievements/flawless-spellcaster-w.png";
+import ArcaneScholarW from "/achievements/arcane-scholar-w.png";
+import HexOfSilenceW from "/achievements/hex-silence-w.png";
+import MysticElderW from "/achievements/mystic-elder-w.png";
 
 const Achievements = () => {
   // Helper function to get the appropriate badge image based on progress

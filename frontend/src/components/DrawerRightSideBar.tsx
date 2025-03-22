@@ -30,7 +30,7 @@ const DrawerRightSideBar: React.FC<DrawerProps> = ({ open, toggleDrawer }) => {
   const [friendCount] = useState<number>(6); // Example: Change this to dynamically update based on data
 
   // Determine whether to show EmptyLB or Leaderboards
-  const leaderboardContent = friendCount >= 5 ? <Leaderboards /> : <EmptyLB />;
+  const leaderboardContent = friendCount >= 2 ? <Leaderboards /> : <EmptyLB />;
   const friendListContent =
     friendCount >= 1 ? <FriendList /> : <EmptyFriendList />;
 

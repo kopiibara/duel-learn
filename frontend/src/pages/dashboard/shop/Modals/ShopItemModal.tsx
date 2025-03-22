@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Modal, Box } from "@mui/material";
-import CoinIcon from "../../../../assets/CoinIcon.png";
+import CoinIcon from "/CoinIcon.png";
 import ConfirmPurchaseModal from "./ConfirmPurchaseModal"; // Import new modal
 
 interface ShopItem {

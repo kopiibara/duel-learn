@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Box, IconButton, Stack } from "@mui/material";
 import { useUser } from "../../../contexts/UserContext";
-import cauldronGif from "../../../assets/General/Cauldron.gif";
+import cauldronGif from "/General/Cauldron.gif";
 import InviteSnackbar from "../../../components/InviteSnackbar";
 import Modal from "./FriendListModal";
 import FriendListItem from "./FriendListItem";
@@ -13,7 +13,7 @@ import axios from "axios";
 import { SnackbarState, FriendRequestData } from "../../../types/friendObject";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
-import noFriend from "../../../assets/images/NoFriend.svg";
+import noFriend from "/images/NoFriend.svg";
 import { Friend } from "../../../contexts/UserContext";
 
 const FriendList: React.FC = () => {

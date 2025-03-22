@@ -2,7 +2,7 @@ import * as React from "react";
 import Typewriter from "typewriter-effect";
 import useWandCursor from "./data/useWandCursor";
 import { useNavigate } from "react-router-dom";
-import CharacterTalking from "../../assets/UserOnboarding/NoddingBunny.gif";
+import CharacterTalking from "/UserOnboarding/NoddingBunny.gif";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import PageTransition from "../../styles/PageTransition";
 

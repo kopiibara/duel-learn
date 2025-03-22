@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import cauldronGif from "../assets/General/Cauldron.gif";
+import cauldronGif from "/General/Cauldron.gif";
 import PageTransition from "../styles/PageTransition";
 
 interface LoadingScreenProps {
