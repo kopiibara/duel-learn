@@ -3,8 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import axios from "axios";
-import CardBackImg from "../../../../../../assets/General/CardDesignBack.png";
-import DefaultBackHoverCard from "../../../../../../assets/cards/DefaultCardInside.png";
+import CardBackImg from "/General/CardDesignBack.png";
+import DefaultBackHoverCard from "/cards/DefaultCardInside.png";
 
 // Utility function for conditional class names
 const cn = (...classes: string[]) => classes.filter(Boolean).join(" ");
@@ -14,10 +14,18 @@ export default function DifficultySelection() {
   const navigate = useNavigate();
   const { lobbyCode, hostUsername, guestUsername } = location.state || {};
 
-  console.log("DifficultySelection state:", { lobbyCode, hostUsername, guestUsername, locationState: location.state });
+  console.log("DifficultySelection state:", {
+    lobbyCode,
+    hostUsername,
+    guestUsername,
+    locationState: location.state,
+  });
 
-  const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Easy Mode");
-  const [windowWidth, setWindowWidth] = useState<number>(typeof window !== "undefined" ? window.innerWidth : 0);
+  const [selectedDifficulty, setSelectedDifficulty] =
+    useState<string>("Easy Mode");
+  const [windowWidth, setWindowWidth] = useState<number>(
+    typeof window !== "undefined" ? window.innerWidth : 0
+  );
 
   // Responsive window width tracking
   useEffect(() => {
@@ -48,20 +56,28 @@ export default function DifficultySelection() {
 
     try {
       // First update difficulty in battle_invitations
-      await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/difficulty`, {
-        lobby_code: lobbyCode,
-        difficulty: selectedDifficulty,
-      });
+      await axios.put(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/battle/invitations-lobby/difficulty`,
+        {
+          lobby_code: lobbyCode,
+          difficulty: selectedDifficulty,
+        }
+      );
 
       // Then initialize entry in battle_gameplay
-      await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize`, {
-        lobby_code: lobbyCode,
-        host_id: hostUsername,
-        guest_id: guestUsername,
-        host_username: hostUsername,
-        guest_username: guestUsername,
-        host_in_battle: true // Mark host as entered
-      });
+      await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize`,
+        {
+          lobby_code: lobbyCode,
+          host_id: hostUsername,
+          guest_id: guestUsername,
+          host_username: hostUsername,
+          guest_username: guestUsername,
+          host_in_battle: true, // Mark host as entered
+        }
+      );
 
       navigate("/dashboard/pvp-battle", {
         state: {
@@ -69,8 +85,8 @@ export default function DifficultySelection() {
           difficulty: selectedDifficulty,
           isHost: true,
           hostUsername,
-          guestUsername
-        }
+          guestUsername,
+        },
       });
     } catch (error) {
       console.error("Error starting game:", error);
@@ -80,7 +96,10 @@ export default function DifficultySelection() {
   const handleDifficultyChange = (direction: "left" | "right") => {
     const difficulties = ["Easy Mode", "Average Mode", "Hard Mode"];
     const currentIndex = difficulties.indexOf(selectedDifficulty);
-    const newIndex = direction === "left" ? (currentIndex - 1 + difficulties.length) % difficulties.length : (currentIndex + 1) % difficulties.length;
+    const newIndex =
+      direction === "left"
+        ? (currentIndex - 1 + difficulties.length) % difficulties.length
+        : (currentIndex + 1) % difficulties.length;
     setSelectedDifficulty(difficulties[newIndex]);
   };
 
@@ -111,8 +130,12 @@ export default function DifficultySelection() {
           {/* Left Column - Difficulty Selection */}
           <div className="flex flex-col items-center lg:items-start gap-4 px-4 md:px-8 order-2 lg:order-1">
             <div className="w-full text-center lg:text-left mb-4 md:mb-8">
-              <h1 className="text-3xl md:text-4xl lg:text-[40px] font-bold mb-2">SELECT DIFFICULTY</h1>
-              <p className="text-gray-400 text-base md:text-lg">Choose a difficulty level that matches your skill!</p>
+              <h1 className="text-3xl md:text-4xl lg:text-[40px] font-bold mb-2">
+                SELECT DIFFICULTY
+              </h1>
+              <p className="text-gray-400 text-base md:text-lg">
+                Choose a difficulty level that matches your skill!
+              </p>
             </div>
 
             <div className="w-full space-y-3 md:space-y-5 mb-4 md:mb-7">
@@ -122,7 +145,9 @@ export default function DifficultySelection() {
                   onClick={() => setSelectedDifficulty(difficulty)}
                   className={cn(
                     "w-full md:max-w-[550px] py-6 md:py-10 pl-5 md:pl-10 rounded-xl text-lg md:text-xl font-medium text-left transition-all duration-200",
-                    selectedDifficulty === difficulty ? "bg-[#49347e] border-2 md:border-4 border-[#3d2577]" : "bg-[#3B354D]"
+                    selectedDifficulty === difficulty
+                      ? "bg-[#49347e] border-2 md:border-4 border-[#3d2577]"
+                      : "bg-[#3B354D]"
                   )}
                 >
                   {difficulty}
@@ -130,7 +155,10 @@ export default function DifficultySelection() {
               ))}
             </div>
 
-            <button onClick={handleStartGame} className="w-full md:w-[240px] py-3 md:py-4 px-7 rounded-xl bg-indigo-600 hover:bg-indigo-700 transition-colors font-bold text-lg text-white">
+            <button
+              onClick={handleStartGame}
+              className="w-full md:w-[240px] py-3 md:py-4 px-7 rounded-xl bg-indigo-600 hover:bg-indigo-700 transition-colors font-bold text-lg text-white"
+            >
               Start Game
             </button>
           </div>
@@ -138,25 +166,74 @@ export default function DifficultySelection() {
           {/* Right Column - Card Display */}
           <div className="flex flex-col items-center order-1 lg:order-2">
             <div className="grid grid-cols-2 gap-4 sm:gap-8 md:gap-12 mx-auto lg:ml-28 lg:mt-[-25px] mb-8 md:mb-14 relative">
-              <div className="absolute w-[300px] h-[300px] md:w-[400px] md:h-[400px] lg:w-[600px] lg:h-[600px] bg-[#6B21A8] blur-[150px] md:blur-[200px] lg:blur-[250px] rounded-full opacity-40 animate-pulse"
-                style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 0, animation: "pulse 3s infinite alternate" }}></div>
+              <div
+                className="absolute w-[300px] h-[300px] md:w-[400px] md:h-[400px] lg:w-[600px] lg:h-[600px] bg-[#6B21A8] blur-[150px] md:blur-[200px] lg:blur-[250px] rounded-full opacity-40 animate-pulse"
+                style={{
+                  top: "50%",
+                  left: "50%",
+                  transform: "translate(-50%, -50%)",
+                  zIndex: 0,
+                  animation: "pulse 3s infinite alternate",
+                }}
+              ></div>
 
               {[0, 1, 2, 3].map((index) => (
-                <motion.div key={index} className="relative z-10 perspective mx-auto" style={{ width: cardDimensions.width, height: cardDimensions.height, perspective: "1000px", transformStyle: "preserve-3d" }} initial="initial" whileHover="hover" variants={cardVariants}>
-                  <motion.div className="absolute w-full h-full backface-hidden" style={{ backfaceVisibility: "hidden" }}>
-                    <img src={CardBackImg} alt="Card back design" className="w-full h-full object-contain" />
+                <motion.div
+                  key={index}
+                  className="relative z-10 perspective mx-auto"
+                  style={{
+                    width: cardDimensions.width,
+                    height: cardDimensions.height,
+                    perspective: "1000px",
+                    transformStyle: "preserve-3d",
+                  }}
+                  initial="initial"
+                  whileHover="hover"
+                  variants={cardVariants}
+                >
+                  <motion.div
+                    className="absolute w-full h-full backface-hidden"
+                    style={{ backfaceVisibility: "hidden" }}
+                  >
+                    <img
+                      src={CardBackImg}
+                      alt="Card back design"
+                      className="w-full h-full object-contain"
+                    />
                   </motion.div>
-                  <motion.div className="absolute w-full h-full backface-hidden" style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
-                    <img src={DefaultBackHoverCard} alt="Card hover design" className="w-full h-full object-contain" />
+                  <motion.div
+                    className="absolute w-full h-full backface-hidden"
+                    style={{
+                      backfaceVisibility: "hidden",
+                      transform: "rotateY(180deg)",
+                    }}
+                  >
+                    <img
+                      src={DefaultBackHoverCard}
+                      alt="Card hover design"
+                      className="w-full h-full object-contain"
+                    />
                   </motion.div>
                 </motion.div>
               ))}
             </div>
 
             <div className="flex justify-between items-center mx-auto lg:ml-28 w-full max-w-[530px] px-4">
-              <button onClick={() => handleDifficultyChange("left")} aria-label="Previous difficulty"><ChevronLeft size={28} /></button>
-              <p className="text-center text-base md:text-lg text-gray-300 px-4">{getDifficultyDescription()}</p>
-              <button onClick={() => handleDifficultyChange("right")} aria-label="Next difficulty"><ChevronRight size={28} /></button>
+              <button
+                onClick={() => handleDifficultyChange("left")}
+                aria-label="Previous difficulty"
+              >
+                <ChevronLeft size={28} />
+              </button>
+              <p className="text-center text-base md:text-lg text-gray-300 px-4">
+                {getDifficultyDescription()}
+              </p>
+              <button
+                onClick={() => handleDifficultyChange("right")}
+                aria-label="Next difficulty"
+              >
+                <ChevronRight size={28} />
+              </button>
             </div>
           </div>
         </div>

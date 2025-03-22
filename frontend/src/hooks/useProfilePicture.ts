@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 
 const useProfilePicture = (initialPicture: string) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -8,13 +8,15 @@ const useProfilePicture = (initialPicture: string) => {
   useEffect(() => {
     const loadImages = async () => {
       try {
-        const imageModules = import.meta.glob('../assets/profile-picture/*.{png,jpg,jpeg,svg}');
+        const imageModules = import.meta.glob(
+          "/profile-picture/*.{png,jpg,jpeg,svg}"
+        );
         const imageUrls = await Promise.all(
-          Object.values(imageModules).map(importFn => importFn())
+          Object.values(imageModules).map((importFn) => importFn())
         );
         setAvailablePictures(imageUrls.map((module: any) => module.default));
       } catch (error) {
-        console.error('Error loading profile pictures:', error);
+        console.error("Error loading profile pictures:", error);
       }
     };
 
@@ -44,4 +46,4 @@ const useProfilePicture = (initialPicture: string) => {
   };
 };
 
-export default useProfilePicture; 
+export default useProfilePicture;

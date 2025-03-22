@@ -3,7 +3,7 @@ import Typewriter from "typewriter-effect";
 import useWandCursor from "./data/useWandCursor";
 import { useNavigate } from "react-router-dom";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import CharacterTalking from "../../assets/UserOnboarding/NoddingBunny.gif";
+import CharacterTalking from "/UserOnboarding/NoddingBunny.gif";
 import PageTransition from "../../styles/PageTransition";
 import { useAudio } from "../../contexts/AudioContext"; // Import the useAudio hook
 
@@ -24,7 +24,7 @@ export default function TutorialTwo() {
 
   React.useEffect(() => {
     setAnimate(true);
-    setKey(prevKey => prevKey + 1); // Restart Typewriter
+    setKey((prevKey) => prevKey + 1); // Restart Typewriter
     playUserOnboardingAudio(); // Play user onboarding audio
   }, [playUserOnboardingAudio]);
 
@@ -39,7 +39,7 @@ export default function TutorialTwo() {
       setAnimate(false);
       setTimeout(() => {
         setAnimate(true);
-        setKey(prevKey => prevKey + 1); // Restart Typewriter
+        setKey((prevKey) => prevKey + 1); // Restart Typewriter
       }, 100);
     } else {
       navigate("/dashboard/tutorial/step-three");

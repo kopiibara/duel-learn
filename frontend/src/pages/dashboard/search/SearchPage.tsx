@@ -5,7 +5,7 @@ import axios from "axios";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
 import { UserInfo } from "../../../types/userInfoObject";
 import CardComponent from "../../../components/CardComponent";
-import defaultPicture from "../../../assets/profile-picture/default-picture.svg";
+import defaultPicture from "/profile-picture/default-picture.svg";
 import CircularProgress from "@mui/material/CircularProgress";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { useUser } from "../../../contexts/UserContext";

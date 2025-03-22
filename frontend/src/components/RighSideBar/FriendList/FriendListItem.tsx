@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "@mui/material";
-import defaultPicture from "../../../assets/profile-picture/default-picture.svg";
+import DefaultPicture from "/profile-picture/default-picture.svg";
 import { Friend } from "../../../contexts/UserContext";
 import ProfileModal from "../../modals/ProfileModal";
 import { useState } from "react";
@@ -22,7 +22,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <img
-            src={friend.display_picture || defaultPicture}
+            src={friend.display_picture || DefaultPicture}
             onClick={() => handleViewProfile(friend.firebase_uid)}
             alt="Avatar"
             className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"

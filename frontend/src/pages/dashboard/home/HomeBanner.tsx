@@ -1,5 +1,5 @@
 import { Box, useMediaQuery, useTheme } from "@mui/material";
-import homeBanner from "../../../assets/images/homeBanner.svg";
+import homeBanner from "/images/homeBanner.svg";
 import { useNavigate } from "react-router-dom";
 
 const HomeBannerComponent = () => {

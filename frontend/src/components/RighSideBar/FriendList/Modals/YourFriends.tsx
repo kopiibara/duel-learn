@@ -5,10 +5,10 @@ import { useFriendSocket } from "../../../../hooks/friends.hooks/useFriendSocket
 import { useUser } from "../../../../contexts/UserContext";
 import { Box, Tooltip, Stack } from "@mui/material";
 import ErrorSnackbar from "../../../ErrorsSnackbar";
-import cauldronGif from "../../../../assets/General/Cauldron.gif";
+import cauldronGif from "/General/Cauldron.gif";
 import { Friend } from "../../../../types/friendObject";
-import noFriend from "../../../../assets/images/NoFriend.svg";
-import defaultPicture from "../../../../assets/profile-picture/default-picture.svg";
+import noFriend from "/images/NoFriend.svg";
+import DefaultPicture from "/profile-picture/default-picture.svg";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import ProfileModal from "../../../modals/ProfileModal";
 
@@ -135,7 +135,7 @@ const YourFriends: React.FC = () => {
               onClick={() => handleViewProfile(friend.firebase_uid)}
             >
               <img
-                src={friend.display_picture || defaultPicture}
+                src={friend.display_picture || DefaultPicture}
                 alt="Avatar"
                 className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
               />

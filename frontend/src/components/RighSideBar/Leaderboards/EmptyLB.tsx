@@ -1,4 +1,4 @@
-import noLeaderboard from "../../../assets/images/noLeaderboard.svg";
+import noLeaderboard from "/images/noLeaderboard.svg";
 
 const EmptyLB = () => {
   return (

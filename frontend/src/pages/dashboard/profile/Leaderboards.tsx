@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import GoldMedal from "../../../assets/General/gold-medal.svg";
-import SilverMedal from "../../../assets/General/silver-medal.svg";
-import BronzeMedal from "../../../assets/General/bronze-medal.svg";
+import GoldMedal from "/General/gold-medal.svg";
+import SilverMedal from "/General/silver-medal.svg";
+import BronzeMedal from "/General/bronze-medal.svg";
 import "./media-queries/LeaderboardResponsive.css";
 import { useUser } from "../../../contexts/UserContext";
 import axios from "axios";
 import { CircularProgress } from "@mui/material";
-import defaultProfile from "../../../assets/profile-picture/default-picture.svg";
-import noLeaderboard from "../../../assets/images/noLeaderboard.svg";
+import defaultProfile from "/profile-picture/default-picture.svg";
+import noLeaderboard from "/images/noLeaderboard.svg";
 
 interface LeaderboardPlayer {
   firebase_uid: string;

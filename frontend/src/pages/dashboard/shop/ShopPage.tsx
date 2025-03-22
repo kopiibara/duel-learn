@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import PremiumAdsBG from "../../../assets/shop-picture/premium-ads-bg.png";
-import PremiumActivatedBG from "../../../assets/shop-picture/PremiumActivatedBG.png";
-import CoinIcon from "../../../assets/CoinIcon.png";
+import PremiumAdsBG from "/shop-picture/premium-ads-bg.png";
+import PremiumActivatedBG from "/shop-picture/PremiumActivatedBG.png";
+import CoinIcon from "/CoinIcon.png";
 import ShopItemModal from "./Modals/ShopItemModal"; // Import the modal component
 import { items, ShopItem } from "./data/itemsData"; // Import items from the new data file
 import DocumentHead from "../../../components/DocumentHead";

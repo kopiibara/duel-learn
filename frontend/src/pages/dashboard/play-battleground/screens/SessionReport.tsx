@@ -1,7 +1,7 @@
 import { Button } from "@mui/material";
-import SessionComplete from "../../../../assets/General/SessionComplete.png";
-import ClockIcon from "../../../../assets/clock.png";
-import ManaIcon from "../../../../assets/ManaIcon.png";
+import SessionComplete from "/General/SessionComplete.png";
+import ClockIcon from "/clock.png";
+import ManaIcon from "/ManaIcon.png";
 import { useNavigate, useLocation } from "react-router-dom";
 import AutoConfettiAnimation from "../../../../pages/dashboard/play-battleground/components/common/AutoConfettiAnimation";
 import { useAudio } from "../../../../contexts/AudioContext"; // Import the useAudio hook

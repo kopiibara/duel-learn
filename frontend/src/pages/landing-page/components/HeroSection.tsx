@@ -202,7 +202,7 @@ const HeroSection = () => {
               }}
             >
               <img
-                src="src/assets/landing-page/bunny-hero.png"
+                src="/landing-page/bunny-hero.png"
                 alt="Wizard Mascot"
                 style={{
                   width: "100%",
@@ -239,7 +239,7 @@ const HeroSection = () => {
                   }}
                 >
                   <img
-                    src="src/assets/landing-page/spark.png"
+                    src="/landing-page/spark.png"
                     alt="Spark"
                     style={{
                       width: "100%",
@@ -328,7 +328,7 @@ const HeroSection = () => {
               }}
             >
               <img
-                src="src/assets/landing-page/capybara-hero.png"
+                src="/landing-page/capybara-hero.png"
                 alt="Cat Mascot"
                 style={{
                   width: "100%",

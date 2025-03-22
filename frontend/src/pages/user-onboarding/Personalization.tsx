@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { Button, Fab, Box } from "@mui/material";
 import { ArrowBackIos, ArrowForwardIos } from "@mui/icons-material";
-import PersonalizationBG from "../../assets/UserOnboarding/PersonalizationBG.png";
-import PurpleGem from "../../assets/General/PurpleGem.png";
+import PersonalizationBG from "/UserOnboarding/PersonalizationBG.png";
+import PurpleGem from "/General/PurpleGem.png";
 import { useNavigate } from "react-router-dom";
 import { topics } from "./data/topics";
 import PageTransition from "../../styles/PageTransition";

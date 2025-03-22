@@ -47,7 +47,6 @@ app.use("/api/friend", friendRoutes);
 app.use("/api/user-info", userInfoRoutes);
 app.use("/api/lobby", lobbyRoutes);
 app.use("/api/search", searchRoutes);
-app.use("/api/search", searchRoutes);
 app.use("/api/battle", battleRoutes);
 app.use("/api/gameplay", gameplayRoutes);
 app.use("/api/openai", openAiRoutes);

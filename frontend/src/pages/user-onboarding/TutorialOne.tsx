@@ -3,7 +3,7 @@ import Typewriter from "typewriter-effect";
 import "./styles/EffectUserOnboarding.css";
 import { useNavigate } from "react-router-dom";
 import useWandCursor from "./data/useWandCursor";
-import Tutorial1Magician from "../../assets/UserOnboarding/StandingBunny.gif";
+import Tutorial1Magician from "/UserOnboarding/StandingBunny.gif";
 import PageTransition from "../../styles/PageTransition";
 import { useAudio } from "../../contexts/AudioContext";
 
@@ -20,7 +20,7 @@ const TutorialOnePage: React.FC = () => {
 
   useEffect(() => {
     setAnimate(true);
-    setKey(prevKey => prevKey + 1); // Force Typewriter to restart
+    setKey((prevKey) => prevKey + 1); // Force Typewriter to restart
 
     const initAudio = async () => {
       if (!isPlaying) {
@@ -51,7 +51,7 @@ const TutorialOnePage: React.FC = () => {
       setAnimate(false);
       setTimeout(() => {
         setAnimate(true);
-        setKey(prevKey => prevKey + 1); // Restart Typewriter
+        setKey((prevKey) => prevKey + 1); // Restart Typewriter
       }, 100);
     } else {
       pauseAudio(); // Stop audio before navigating away
@@ -92,19 +92,19 @@ const TutorialOnePage: React.FC = () => {
                 />
               ) : (
                 <Typewriter
-                key={key} // Force re-render
-                onInit={(typewriter) => {
-                  typewriter
-                    .typeString(dialogues[clickCount])
-                    .callFunction(() => setTypingDone(true))
-                    .start();
-                }}
-                options={{
-                  autoStart: true,
-                  loop: false,
-                  delay: 50,
-                }}
-              />
+                  key={key} // Force re-render
+                  onInit={(typewriter) => {
+                    typewriter
+                      .typeString(dialogues[clickCount])
+                      .callFunction(() => setTypingDone(true))
+                      .start();
+                  }}
+                  options={{
+                    autoStart: true,
+                    loop: false,
+                    delay: 50,
+                  }}
+                />
               )}
             </div>
             {/* Triangle for the speech bubble */}

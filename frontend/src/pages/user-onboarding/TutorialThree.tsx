@@ -3,7 +3,7 @@ import Typewriter from "typewriter-effect";
 import useWandCursor from "./data/useWandCursor";
 import { useNavigate } from "react-router-dom";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
-import CharacterTalking from "../../assets/UserOnboarding/NoddingBunny.gif";
+import CharacterTalking from "/UserOnboarding/NoddingBunny.gif";
 import PageTransition from "../../styles/PageTransition";
 
 export default function TutorialThree() {

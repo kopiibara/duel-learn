@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import { motion } from "framer-motion"; // Import motion from framer-motion
 import "./../../styles/setupques.css";
-import ManaIcon from "../../../../../assets/ManaIcon.png";
+import ManaIcon from "/ManaIcon.png";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { ContentCopy, CheckCircle, Add } from "@mui/icons-material";
@@ -20,7 +20,7 @@ import QuestionTypeSelectionModal from "../../components/modal/QuestionTypeSelec
 import InvitePlayerModal from "../../components/modal/InvitePlayerModal"; // Import the new modal
 import { useUser } from "../../../../../contexts/UserContext"; // Import the useUser hook
 import { generateCode } from "../../utils/codeGenerator"; // Import the utility function
-import defaultAvatar from "../../../../../assets/profile-picture/bunny-picture.png";
+import defaultAvatar from "/profile-picture/bunny-picture.png";
 import { io, Socket } from "socket.io-client";
 import axios from "axios";
 import SocketService from "../../../../../services/socketService";
@@ -63,7 +63,13 @@ interface StudyMaterial {
 const PVPLobby: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { mode, material, selectedTypes, lobbyCode: stateLobbyCode, isGuest } = location.state || {};
+  const {
+    mode,
+    material,
+    selectedTypes,
+    lobbyCode: stateLobbyCode,
+    isGuest,
+  } = location.state || {};
   const { lobbyCode: urlLobbyCode } = useParams<{ lobbyCode?: string }>();
   // console.log(
   //   "Mode:",
@@ -94,9 +100,10 @@ const PVPLobby: React.FC = () => {
   );
 
   // State to manage selected material and mode
-  const [selectedMaterial, setSelectedMaterial] = useState<StudyMaterial | null>(
-    location.state?.selectedMaterial || material
-  );
+  const [selectedMaterial, setSelectedMaterial] =
+    useState<StudyMaterial | null>(
+      location.state?.selectedMaterial || material
+    );
   const [selectedMode, setSelectedMode] = useState<string | null>(mode);
   const [openMaterialModal, setOpenMaterialModal] = useState(false);
 
@@ -121,7 +128,11 @@ const PVPLobby: React.FC = () => {
     if (urlLobbyCode && urlLobbyCode !== lobbyCode) {
       setLobbyCode(urlLobbyCode);
       console.log("Updated lobby code from URL:", urlLobbyCode);
-    } else if (stateLobbyCode && !urlLobbyCode && stateLobbyCode !== lobbyCode) {
+    } else if (
+      stateLobbyCode &&
+      !urlLobbyCode &&
+      stateLobbyCode !== lobbyCode
+    ) {
       setLobbyCode(stateLobbyCode);
       console.log("Updated lobby code from state:", stateLobbyCode);
     }
@@ -134,13 +145,16 @@ const PVPLobby: React.FC = () => {
   const [debug, setDebug] = useState(false);
 
   // Add this state to track if current user is a guest (invited player)
-  const [isCurrentUserGuest, setIsCurrentUserGuest] = useState<boolean>(isGuest || false);
+  const [isCurrentUserGuest, setIsCurrentUserGuest] = useState<boolean>(
+    isGuest || false
+  );
 
   // Add state to track invited player status
-  const [invitedPlayerStatus, setInvitedPlayerStatus] = useState<InvitedPlayerStatus>({
-    isPending: false,
-    invitedAt: new Date()
-  });
+  const [invitedPlayerStatus, setInvitedPlayerStatus] =
+    useState<InvitedPlayerStatus>({
+      isPending: false,
+      invitedAt: new Date(),
+    });
 
   // Add this state to track player ready status
   const [playerReadyState, setPlayerReadyState] = useState<{
@@ -172,7 +186,7 @@ const PVPLobby: React.FC = () => {
       setSelectedTypesFinal(selectedTypes);
     } else if (location.state?.isGuest) {
       // Guest joining via invitation - set defaults
-      setSelectedTypesFinal(['multiple-choice', 'true-false']);
+      setSelectedTypesFinal(["multiple-choice", "true-false"]);
     }
   }, [mode, material, selectedTypes, location.state?.isGuest]);
 
@@ -189,7 +203,7 @@ const PVPLobby: React.FC = () => {
 
     // Wait for socket to connect
     if (!newSocket.connected) {
-      newSocket.on('connect', () => {
+      newSocket.on("connect", () => {
         console.log("Socket connected successfully");
         setSocket(newSocket);
       });
@@ -235,7 +249,7 @@ const PVPLobby: React.FC = () => {
         firebase_uid: String(data.senderId || "missing-sender"),
         username: data.senderName || "Unknown Player",
         level: 1,
-        display_picture: null
+        display_picture: null,
       });
 
       // Then open the invitation dialog
@@ -244,7 +258,10 @@ const PVPLobby: React.FC = () => {
     };
 
     // Register the handler with proper cleanup
-    const removeListener = socketService.on("battle_invitation", handleBattleInvitation);
+    const removeListener = socketService.on(
+      "battle_invitation",
+      handleBattleInvitation
+    );
 
     return () => {
       if (removeListener) removeListener();
@@ -302,11 +319,15 @@ const PVPLobby: React.FC = () => {
     const checkBattleStarted = async () => {
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/battle-status/${lobbyCode}`
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/battle/invitations-lobby/battle-status/${lobbyCode}`
         );
 
         if (response.data.success && response.data.data.battle_started) {
-          console.log("Battle has started! Navigating to difficulty selection...");
+          console.log(
+            "Battle has started! Navigating to difficulty selection..."
+          );
           setBattleStarted(true);
 
           // Navigate guest to their specific route with host username
@@ -317,8 +338,8 @@ const PVPLobby: React.FC = () => {
               questionTypes: selectedTypesFinal,
               isGuest: true,
               hostUsername: players[0]?.username,
-              guestUsername: user?.username
-            }
+              guestUsername: user?.username,
+            },
           });
         }
       } catch (error) {
@@ -333,7 +354,15 @@ const PVPLobby: React.FC = () => {
     const interval = setInterval(checkBattleStarted, 1500);
 
     return () => clearInterval(interval);
-  }, [isCurrentUserGuest, lobbyCode, navigate, selectedMaterial, selectedTypesFinal, players, user?.username]);
+  }, [
+    isCurrentUserGuest,
+    lobbyCode,
+    navigate,
+    selectedMaterial,
+    selectedTypesFinal,
+    players,
+    user?.username,
+  ]);
 
   // Update the handleBattleStart function
   const handleBattleStart = async () => {
@@ -354,10 +383,12 @@ const PVPLobby: React.FC = () => {
       try {
         // Update battle_started status in the database
         const response = await axios.put(
-          `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/battle-status`,
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/battle/invitations-lobby/battle-status`,
           {
             lobby_code: lobbyCode,
-            battle_started: true
+            battle_started: true,
           }
         );
 
@@ -374,8 +405,9 @@ const PVPLobby: React.FC = () => {
               questionTypes: selectedTypesFinal,
               isHost: true,
               hostUsername: user?.username,
-              guestUsername: invitedPlayer?.username || players[1]?.username || "Guest" // Use invited player username instead of host's
-            }
+              guestUsername:
+                invitedPlayer?.username || players[1]?.username || "Guest", // Use invited player username instead of host's
+            },
           });
         }
       } catch (error) {
@@ -399,11 +431,16 @@ const PVPLobby: React.FC = () => {
       setSelectedMaterial(material);
 
       // Update in database only - no socket emit
-      await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/settings`, {
-        lobby_code: lobbyCode,
-        question_types: selectedTypesFinal,
-        study_material_title: material.title
-      });
+      await axios.put(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/battle/invitations-lobby/settings`,
+        {
+          lobby_code: lobbyCode,
+          question_types: selectedTypesFinal,
+          study_material_title: material.title,
+        }
+      );
 
       setOpenMaterialModal(false);
     } catch (error) {
@@ -426,11 +463,16 @@ const PVPLobby: React.FC = () => {
       setSelectedTypesFinal(selected);
 
       // Update in database only - no socket emit
-      await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/settings`, {
-        lobby_code: lobbyCode,
-        question_types: selected,
-        study_material_title: selectedMaterial?.title
-      });
+      await axios.put(
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/battle/invitations-lobby/settings`,
+        {
+          lobby_code: lobbyCode,
+          question_types: selected,
+          study_material_title: selectedMaterial?.title,
+        }
+      );
 
       setModalOpenChangeQuestionType(false);
     } catch (error) {
@@ -454,7 +496,7 @@ const PVPLobby: React.FC = () => {
       // Set invited player status to pending
       setInvitedPlayerStatus({
         isPending: true,
-        invitedAt: new Date()
+        invitedAt: new Date(),
       });
 
       // Create the notification data
@@ -478,7 +520,7 @@ const PVPLobby: React.FC = () => {
       if (!currentSocket.connected) {
         console.log("Waiting for socket to connect...");
         await new Promise<void>((resolve) => {
-          currentSocket?.once('connect', () => {
+          currentSocket?.once("connect", () => {
             console.log("Socket connected successfully");
             resolve();
           });
@@ -497,7 +539,7 @@ const PVPLobby: React.FC = () => {
       // Reset pending status on error
       setInvitedPlayerStatus({
         isPending: false,
-        invitedAt: new Date()
+        invitedAt: new Date(),
       });
     }
   };
@@ -573,13 +615,13 @@ const PVPLobby: React.FC = () => {
         playerName: user.username,
         playerLevel: user.level || 1,
         playerPicture: user.display_picture || null,
-        hostId: location.state?.invitedPlayer?.firebase_uid
+        hostId: location.state?.invitedPlayer?.firebase_uid,
       });
 
       // Request lobby details
       socket.emit("request_lobby_info", {
         lobbyCode: lobbyCode,
-        requesterId: user.firebase_uid
+        requesterId: user.firebase_uid,
       });
     }
 
@@ -605,7 +647,7 @@ const PVPLobby: React.FC = () => {
           hostName: user.username,
           material: selectedMaterial,
           questionTypes: selectedTypesFinal,
-          mode: selectedMode
+          mode: selectedMode,
         });
       }
     };
@@ -622,20 +664,23 @@ const PVPLobby: React.FC = () => {
           hostName: user.username,
           material: selectedMaterial,
           questionTypes: selectedTypesFinal,
-          mode: selectedMode
+          mode: selectedMode,
         });
       }
     };
 
     // For guest: handle lobby info response
     const handleLobbyInfoResponse = (data: any) => {
-      if (data.lobbyCode === lobbyCode && data.requesterId === user?.firebase_uid) {
+      if (
+        data.lobbyCode === lobbyCode &&
+        data.requesterId === user?.firebase_uid
+      ) {
         console.log("Received lobby info from host:", data);
 
         if (data.material) {
           setSelectedMaterial((prev: StudyMaterial | null) => ({
             ...prev,
-            title: data.material.title
+            title: data.material.title,
           }));
         }
 
@@ -652,18 +697,27 @@ const PVPLobby: React.FC = () => {
           firebase_uid: data.hostId,
           username: data.hostName,
           level: data.hostLevel || 1,
-          display_picture: data.hostPicture || defaultAvatar
+          display_picture: data.hostPicture || defaultAvatar,
         };
 
         // Update the players array with host info first
-        setPlayers(prevPlayers => [hostPlayer, ...prevPlayers.slice(1)]);
+        setPlayers((prevPlayers) => [hostPlayer, ...prevPlayers.slice(1)]);
       }
     };
 
     // Register event handlers
-    const removePlayerJoinedListener = socketService.on("player_joined_lobby", handlePlayerJoined);
-    const removeLobbyInfoRequestListener = socketService.on("request_lobby_info", handleLobbyInfoRequest);
-    const removeLobbyInfoResponseListener = socketService.on("lobby_info_response", handleLobbyInfoResponse);
+    const removePlayerJoinedListener = socketService.on(
+      "player_joined_lobby",
+      handlePlayerJoined
+    );
+    const removeLobbyInfoRequestListener = socketService.on(
+      "request_lobby_info",
+      handleLobbyInfoRequest
+    );
+    const removeLobbyInfoResponseListener = socketService.on(
+      "lobby_info_response",
+      handleLobbyInfoResponse
+    );
 
     // Cleanup
     return () => {
@@ -671,7 +725,15 @@ const PVPLobby: React.FC = () => {
       if (removeLobbyInfoRequestListener) removeLobbyInfoRequestListener();
       if (removeLobbyInfoResponseListener) removeLobbyInfoResponseListener();
     };
-  }, [loading, user?.firebase_uid, lobbyCode, isCurrentUserGuest, selectedMaterial, selectedTypesFinal, selectedMode]);
+  }, [
+    loading,
+    user?.firebase_uid,
+    lobbyCode,
+    isCurrentUserGuest,
+    selectedMaterial,
+    selectedTypesFinal,
+    selectedMode,
+  ]);
 
   // Add this effect to sync material changes from host to guest
   useEffect(() => {
@@ -681,7 +743,7 @@ const PVPLobby: React.FC = () => {
       if (data.lobbyCode === lobbyCode) {
         setSelectedMaterial((prev: StudyMaterial | null) => ({
           ...prev,
-          title: data.material.title
+          title: data.material.title,
         }));
         setSelectedTypesFinal(data.questionTypes);
         setSelectedMode(data.mode);
@@ -703,7 +765,7 @@ const PVPLobby: React.FC = () => {
       if (data.lobbyCode === lobbyCode) {
         setInvitedPlayerStatus({
           isPending: false,
-          invitedAt: new Date()
+          invitedAt: new Date(),
         });
       }
     });
@@ -714,7 +776,7 @@ const PVPLobby: React.FC = () => {
         setInvitedPlayer(null);
         setInvitedPlayerStatus({
           isPending: false,
-          invitedAt: new Date()
+          invitedAt: new Date(),
         });
       }
     });
@@ -735,7 +797,7 @@ const PVPLobby: React.FC = () => {
         if (data.study_material_title) {
           setSelectedMaterial((prev: StudyMaterial | null) => ({
             ...prev,
-            title: data.study_material_title
+            title: data.study_material_title,
           }));
         }
       }
@@ -751,7 +813,9 @@ const PVPLobby: React.FC = () => {
   // Add this helper function near the top of the component
   const sortQuestionTypes = (types: string[]) => {
     // Use the order defined in questionTypes array
-    const orderMap = new Map(questionTypes.map((qt, index) => [qt.value, index]));
+    const orderMap = new Map(
+      questionTypes.map((qt, index) => [qt.value, index])
+    );
     return [...types].sort((a, b) => {
       const orderA = orderMap.get(a) ?? 999;
       const orderB = orderMap.get(b) ?? 999;
@@ -768,19 +832,21 @@ const PVPLobby: React.FC = () => {
     try {
       // Update ready state in the database
       const response = await axios.put(
-        `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/ready-state`,
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/battle/invitations-lobby/ready-state`,
         {
           lobby_code: lobbyCode,
           player_id: user.firebase_uid,
-          is_ready: !playerReadyState.guestReady // Toggle current state
+          is_ready: !playerReadyState.guestReady, // Toggle current state
         }
       );
 
       if (response.data.success) {
         // Update local state
-        setPlayerReadyState(prev => ({
+        setPlayerReadyState((prev) => ({
           ...prev,
-          guestReady: !prev.guestReady
+          guestReady: !prev.guestReady,
         }));
 
         // Also update via socket for immediate feedback to host
@@ -788,7 +854,7 @@ const PVPLobby: React.FC = () => {
           socket.emit("player_ready_state_changed", {
             lobbyCode: lobbyCode,
             playerId: user.firebase_uid,
-            isReady: !playerReadyState.guestReady
+            isReady: !playerReadyState.guestReady,
           });
         }
       }
@@ -805,14 +871,16 @@ const PVPLobby: React.FC = () => {
 
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/ready-state/${lobbyCode}`
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/battle/invitations-lobby/ready-state/${lobbyCode}`
       );
 
       if (response.data.success) {
         const { hostReady, guestReady } = response.data.data;
         setPlayerReadyState({
           hostReady: hostReady || true, // Default to true for host
-          guestReady: guestReady || false
+          guestReady: guestReady || false,
         });
       }
     } catch (error) {
@@ -842,15 +910,18 @@ const PVPLobby: React.FC = () => {
         // Update local state based on which player changed status
         if (isCurrentUserGuest && data.playerId !== user?.firebase_uid) {
           // Host changed status (less common case)
-          setPlayerReadyState(prev => ({
+          setPlayerReadyState((prev) => ({
             ...prev,
-            hostReady: data.isReady
+            hostReady: data.isReady,
           }));
-        } else if (!isCurrentUserGuest && data.playerId !== user?.firebase_uid) {
+        } else if (
+          !isCurrentUserGuest &&
+          data.playerId !== user?.firebase_uid
+        ) {
           // Guest changed status
-          setPlayerReadyState(prev => ({
+          setPlayerReadyState((prev) => ({
             ...prev,
-            guestReady: data.isReady
+            guestReady: data.isReady,
           }));
         }
       }
@@ -869,7 +940,9 @@ const PVPLobby: React.FC = () => {
 
     try {
       const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/settings/${lobbyCode}`
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/battle/invitations-lobby/settings/${lobbyCode}`
       );
 
       if (response.data.success) {
@@ -880,7 +953,10 @@ const PVPLobby: React.FC = () => {
 
         // Update question types if different
         if (question_types && Array.isArray(question_types)) {
-          if (JSON.stringify(question_types.sort()) !== JSON.stringify(selectedTypesFinal.sort())) {
+          if (
+            JSON.stringify(question_types.sort()) !==
+            JSON.stringify(selectedTypesFinal.sort())
+          ) {
             console.log("Updating question types from poll:", question_types);
             setSelectedTypesFinal(question_types);
             settingsChanged = true;
@@ -888,11 +964,17 @@ const PVPLobby: React.FC = () => {
         }
 
         // Update study material if different
-        if (study_material_title && study_material_title !== selectedMaterial?.title) {
-          console.log("Updating study material from poll:", study_material_title);
+        if (
+          study_material_title &&
+          study_material_title !== selectedMaterial?.title
+        ) {
+          console.log(
+            "Updating study material from poll:",
+            study_material_title
+          );
           setSelectedMaterial((prev: StudyMaterial | null) => ({
             ...prev,
-            title: study_material_title
+            title: study_material_title,
           }));
           settingsChanged = true;
         }
@@ -956,25 +1038,31 @@ const PVPLobby: React.FC = () => {
               {isCurrentUserGuest ? "Host selected: " : ""}
               {selectedTypesFinal.map((type, index) => {
                 // Map question type values to display names
-                const displayType = questionTypes.find(qt => qt.value === type)?.display || type;
+                const displayType =
+                  questionTypes.find((qt) => qt.value === type)?.display ||
+                  type;
                 return (
                   <span key={type}>
-                    {index > 0 ? ', ' : ''}
+                    {index > 0 ? ", " : ""}
                     {displayType}
                   </span>
                 );
               })}
             </h6>
             <p className="text-[12px] sm:text-[14px] text-gray-400 flex items-center">
-              {isCurrentUserGuest ? "Host's Study Material: " : "Chosen Study Material: "}&nbsp;
+              {isCurrentUserGuest
+                ? "Host's Study Material: "
+                : "Chosen Study Material: "}
+              &nbsp;
               <span className="font-bold text-white">
                 {selectedMaterial
-                  ? (typeof selectedMaterial === 'string' && selectedMaterial === "None")
+                  ? typeof selectedMaterial === "string" &&
+                    selectedMaterial === "None"
                     ? "Waiting for host's material..."
                     : selectedMaterial.title || "Loading material..."
                   : isCurrentUserGuest
-                    ? "Waiting for host's material..."
-                    : "Choose Study Material"}
+                  ? "Waiting for host's material..."
+                  : "Choose Study Material"}
               </span>
               {!isCurrentUserGuest && (
                 <span className="transition-colors duration-200">
@@ -1137,7 +1225,11 @@ const PVPLobby: React.FC = () => {
                 <div className="relative">
                   <div
                     className={`w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 bg-white rounded-md flex items-center justify-center 
-                      ${invitedPlayer && invitedPlayerStatus.isPending ? 'opacity-50' : ''}`}
+                      ${
+                        invitedPlayer && invitedPlayerStatus.isPending
+                          ? "opacity-50"
+                          : ""
+                      }`}
                   >
                     {invitedPlayer ? (
                       <>
@@ -1147,20 +1239,28 @@ const PVPLobby: React.FC = () => {
                           alt="Invited Player"
                           className="w-full h-full rounded-md"
                           initial={{ scale: 0.95, opacity: 0.5 }}
-                          animate={invitedPlayerStatus.isPending ? {
-                            scale: [0.95, 1.05, 0.95],
-                            opacity: [0.5, 0.7, 0.5]
-                          } : {
-                            scale: 1,
-                            opacity: 1
-                          }}
-                          transition={invitedPlayerStatus.isPending ? {
-                            duration: 2,
-                            repeat: Infinity,
-                            ease: "easeInOut"
-                          } : {
-                            duration: 0.5
-                          }}
+                          animate={
+                            invitedPlayerStatus.isPending
+                              ? {
+                                  scale: [0.95, 1.05, 0.95],
+                                  opacity: [0.5, 0.7, 0.5],
+                                }
+                              : {
+                                  scale: 1,
+                                  opacity: 1,
+                                }
+                          }
+                          transition={
+                            invitedPlayerStatus.isPending
+                              ? {
+                                  duration: 2,
+                                  repeat: Infinity,
+                                  ease: "easeInOut",
+                                }
+                              : {
+                                  duration: 0.5,
+                                }
+                          }
                         />
                         {/* Pending overlay */}
                         {invitedPlayerStatus.isPending && (
@@ -1180,23 +1280,29 @@ const PVPLobby: React.FC = () => {
                       <Add className="text-gray-500" />
                     )}
                   </div>
-                  <div className={`text-center mt-5 ${invitedPlayerStatus.isPending ? 'opacity-50' : ''}`}>
+                  <div
+                    className={`text-center mt-5 ${
+                      invitedPlayerStatus.isPending ? "opacity-50" : ""
+                    }`}
+                  >
                     <p className="text-sm sm:text-base font-semibold">
                       {invitedPlayer
                         ? invitedPlayer.username
                         : players[1]
-                          ? players[1].username
-                          : "PLAYER 2"}
+                        ? players[1].username
+                        : "PLAYER 2"}
                     </p>
                     <p className="text-xs sm:text-sm text-gray-400">
                       {invitedPlayer
                         ? `LVL ${invitedPlayer.level}`
                         : players[1] && players[1].level
-                          ? `LVL ${players[1].level}`
-                          : "LVL ???"}
+                        ? `LVL ${players[1].level}`
+                        : "LVL ???"}
                     </p>
                     {invitedPlayerStatus.isPending && (
-                      <p className="text-xs text-purple-400 mt-1">Invitation sent</p>
+                      <p className="text-xs text-purple-400 mt-1">
+                        Invitation sent
+                      </p>
                     )}
                   </div>
                 </div>
@@ -1237,11 +1343,12 @@ const PVPLobby: React.FC = () => {
             onClick={handleBattleStart}
             disabled={readyStateLoading || battleStartLoading}
             className={`mt-6 sm:mt-11 w-full max-w-[250px] sm:max-w-[300px] md:max-w-[350px] py-2 sm:py-3 
-              ${!isCurrentUserGuest && !playerReadyState.guestReady
-                ? 'bg-[#3a3a3a] hover:bg-[#4a4a4a] cursor-not-allowed'
-                : isCurrentUserGuest && playerReadyState.guestReady
-                  ? 'bg-[#E44D4D] hover:bg-[#C03A3A]'
-                  : 'bg-[#4D1EE3] hover:bg-purple-800'
+              ${
+                !isCurrentUserGuest && !playerReadyState.guestReady
+                  ? "bg-[#3a3a3a] hover:bg-[#4a4a4a] cursor-not-allowed"
+                  : isCurrentUserGuest && playerReadyState.guestReady
+                  ? "bg-[#E44D4D] hover:bg-[#C03A3A]"
+                  : "bg-[#4D1EE3] hover:bg-purple-800"
               } text-white rounded-lg text-md sm:text-lg shadow-lg transition flex items-center justify-center`}
           >
             {readyStateLoading || battleStartLoading ? (
@@ -1260,15 +1367,15 @@ const PVPLobby: React.FC = () => {
                 ) : (
                   <>
                     START 1/2
-                    {players.length > 1 ? " (Waiting for guest)" : " (Waiting for player)"}
+                    {players.length > 1
+                      ? " (Waiting for guest)"
+                      : " (Waiting for player)"}
                   </>
                 )}
               </>
             ) : (
               // Guest view
-              <>
-                {playerReadyState.guestReady ? "CANCEL 2/2" : "START 1/2"}
-              </>
+              <>{playerReadyState.guestReady ? "CANCEL 2/2" : "START 1/2"}</>
             )}
           </motion.button>
         </motion.div>
@@ -1378,10 +1485,14 @@ const PVPLobby: React.FC = () => {
           inviterName={user?.username ?? undefined}
           senderId={user?.firebase_uid}
           selectedTypesFinal={selectedTypesFinal}
-          selectedMaterial={selectedMaterial ? {
-            id: selectedMaterial.id || "",
-            title: selectedMaterial.title
-          } : null}
+          selectedMaterial={
+            selectedMaterial
+              ? {
+                  id: selectedMaterial.id || "",
+                  title: selectedMaterial.title,
+                }
+              : null
+          }
         />
       )}
 

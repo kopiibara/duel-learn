@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import cauldronGif from "../../../../assets/General/Cauldron.gif";
+import cauldronGif from "/General/Cauldron.gif";
 import PageTransition from "../../../../styles/PageTransition";
 
 export default function LoadingScreen() {
