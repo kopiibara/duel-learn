@@ -19,26 +19,26 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   };
   return (
     <>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <div className="flex items-center flex-1 min-w-0 mr-2">
           <img
             src={friend.display_picture || DefaultPicture}
             onClick={() => handleViewProfile(friend.firebase_uid)}
             alt="Avatar"
-            className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
+            className="w-9 sm:w-11 md:w-14 cursor-pointer h-auto mr-2 sm:mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
           />
 
           {/* Text content */}
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 overflow-hidden">
             <p className="text-sm sm:text-base text-[#E2DDF3] truncate">
               {friend.username}
             </p>
-            <div className="flex items-center gap-2">
-              <p className="text-xs sm:text-sm text-[#9F9BAE]">
+            <div className="flex items-center gap-1 sm:gap-2">
+              <p className="text-xs sm:text-sm text-[#9F9BAE] whitespace-nowrap">
                 Level {friend.level}
               </p>
-              <p className="text-[#9F9BAE] text-xs">•</p>
-              <p className="text-xs sm:text-sm text-[#9F9BAE]">
+              <p className="text-[#9F9BAE] text-xs hidden xs:inline">•</p>
+              <p className="text-xs sm:text-sm text-[#9F9BAE] whitespace-nowrap">
                 EXP {friend.exp}
               </p>
             </div>
@@ -51,17 +51,16 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
           sx={{
             borderRadius: "0.6rem",
             padding: {
-              xs: "0.25rem 0.5rem", // Smaller padding on very small screens
+              xs: "0.2rem 0.4rem", // Smaller padding on very small screens
               sm: "0.3rem 0.75rem", // Medium padding
               md: "0.4rem 1rem", // Larger padding
             },
-            marginLeft: "8px",
             display: "flex",
             width: "fit-content",
-            minWidth: "60px",
+            minWidth: { xs: "50px", sm: "60px" },
             height: "fit-content",
             fontSize: {
-              xs: "0.7rem",
+              xs: "0.65rem",
               sm: "0.75rem",
               md: "0.8rem",
             },
