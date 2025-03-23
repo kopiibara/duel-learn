@@ -8,7 +8,9 @@ import {
     getBattleEndStatusById,
     getBattleEndStatusByLobby,
     getBattleSessionWithMaterial,
-    initializeBattleRounds
+    initializeBattleRounds,
+    updateBattleRound,
+    getBattleRound
 } from '../controller/GameplayController.js';
 
 const router = express.Router();
@@ -22,6 +24,8 @@ router.get('/battle/session-with-material/:lobby_code', getBattleSessionWithMate
 
 // Battle rounds
 router.post('/battle/initialize-rounds', initializeBattleRounds);
+router.put('/battle/update-round', updateBattleRound);
+router.get('/battle/round/:session_uuid', getBattleRound);
 
 // End the battle
 router.post('/battle/end', endBattle);

@@ -27,27 +27,8 @@ import TurnRandomizer from "./utils/TurnRandomizer";
 import { getCharacterImage } from "./utils/getCharacterImage";
 import QuestionTimer from "./utils/QuestionTimer";
 
-interface BattleState {
-  current_turn: string | null;
-  round_number: number;
-  total_rounds: number;
-  host_card: string | null;
-  guest_card: string | null;
-  host_score: number;
-  guest_score: number;
-  host_health: number;
-  guest_health: number;
-  is_active: boolean;
-  winner_id: string | null;
-  battle_end_reason: string | null;
-  host_in_battle: boolean;
-  guest_in_battle: boolean;
-  battle_started: boolean;
-  host_username: string | null;
-  guest_username: string | null;
-  ID: number;
-  session_uuid: string;
-}
+// Import shared BattleState interface
+import { BattleState } from "./BattleState";
 
 /**
  * PvpBattle component - Main battle screen for player vs player mode
@@ -132,47 +113,115 @@ export default function PvpBattle() {
     !randomizationDone;
 
   // Handle card selection
-  const handleCardSelected = (cardId: string) => {
+  const handleCardSelected = async (cardId: string) => {
     // When player selects a card, it's no longer their turn
     // Reset player animations to idle
     setPlayerAnimationState("idle");
     setPlayerPickingIntroComplete(false);
 
-    // In a real app, you would send this selection to the server
-    // For now, just switch turns
-    setIsMyTurn(false);
+    try {
+      // Determine if the current player is host or guest
+      const playerType = isHost ? 'host' : 'guest';
 
-    // Set enemy animation to picking - they get their turn next
-    setEnemyAnimationState("picking");
-    setEnemyPickingIntroComplete(false);
+      // Update the battle round with the selected card and switch turns
+      const response = await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
+        {
+          session_uuid: battleState?.session_uuid,
+          player_type: playerType,
+          card_id: cardId,
+          lobby_code: lobbyCode
+        }
+      );
 
-    // Simulate opponent's turn (in a real app, this would come from the server)
-    setTimeout(() => {
-      // After 3 seconds, switch back to player's turn
-      setPlayerAnimationState("picking");
-      setPlayerPickingIntroComplete(false);
-      setEnemyAnimationState("idle");
-      setEnemyPickingIntroComplete(false);
-      setIsMyTurn(true);
-    }, 3000);
-  };
+      if (response.data.success) {
+        console.log(`Card ${cardId} selection successful, turn switched`);
 
-  // Update animation states when turns change
-  useEffect(() => {
-    if (gameStarted && !waitingForPlayer) {
-      if (isMyTurn) {
-        // If it's my turn, my character should be picking
-        setPlayerAnimationState("picking");
-        setPlayerPickingIntroComplete(false);
-        setEnemyAnimationState("idle");
-      } else {
-        // If it's opponent's turn, their character should be picking
+        // Switch turns locally but keep UI visible
+        setIsMyTurn(false);
+
+        // Set enemy animation to picking - they get their turn next
         setEnemyAnimationState("picking");
         setEnemyPickingIntroComplete(false);
-        setPlayerAnimationState("idle");
+      } else {
+        console.error("Failed to update battle round:", response.data.message);
       }
+    } catch (error) {
+      console.error("Error updating battle round:", error);
     }
-  }, [isMyTurn, gameStarted, waitingForPlayer]);
+  };
+
+  // Add polling for turn updates
+  useEffect(() => {
+    // Skip if game hasn't started or we're waiting for players
+    if (!gameStarted || waitingForPlayer || !battleState?.session_uuid) return;
+
+    // Function to check if it's our turn
+    const checkTurn = async () => {
+      try {
+        // Get the latest session state
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-state/${lobbyCode}`
+        );
+
+        if (response.data.success && response.data.data) {
+          const sessionData = response.data.data;
+
+          // Update local battle state with proper type safety
+          setBattleState(prevState => {
+            // If prevState is null, we can't update it properly
+            if (!prevState) return null;
+
+            return {
+              ...prevState,
+              current_turn: sessionData.current_turn,
+              // Only set cards if they exist in the session data
+              ...(sessionData.host_card && { host_card: sessionData.host_card }),
+              ...(sessionData.guest_card && { guest_card: sessionData.guest_card })
+            };
+          });
+
+          // Check if it's this player's turn
+          const isCurrentPlayerTurn = sessionData.current_turn === currentUserId;
+
+          // If turn has changed
+          if (isCurrentPlayerTurn !== isMyTurn) {
+            console.log(`Turn changed: ${isMyTurn} → ${isCurrentPlayerTurn}`);
+
+            // Update UI accordingly
+            setIsMyTurn(isCurrentPlayerTurn);
+
+            if (isCurrentPlayerTurn) {
+              // My turn now - update animations 
+              setPlayerAnimationState("picking");
+              setPlayerPickingIntroComplete(false);
+              setEnemyAnimationState("idle");
+              setEnemyPickingIntroComplete(false);
+            } else {
+              // Opponent's turn - update animations
+              setPlayerAnimationState("idle");
+              setPlayerPickingIntroComplete(false);
+              setEnemyAnimationState("picking");
+              setEnemyPickingIntroComplete(false);
+            }
+
+            // Always show cards UI regardless of whose turn it is
+            setShowCards(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking turn status:", error);
+      }
+    };
+
+    // Set up polling for turn updates (every 2 seconds)
+    const turnCheckInterval = setInterval(checkTurn, 2000);
+
+    // Initial check
+    checkTurn();
+
+    return () => clearInterval(turnCheckInterval);
+  }, [gameStarted, waitingForPlayer, battleState?.session_uuid, lobbyCode, currentUserId, isMyTurn]);
 
   // Timer effect
   useEffect(() => {
