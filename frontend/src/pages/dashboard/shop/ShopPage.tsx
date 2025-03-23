@@ -68,25 +68,26 @@ const Shop = () => {
   return (
     <PageTransition>
       <DocumentHead title="Shop | Duel Learn" />
-      <div className="h-full w-full text-white px-6 pb-6">
-        {/* Your premium section and items display logic */}
-        {/* Show this section only if the user is not premium */}
+      <div className="h-full w-full text-white px-3 sm:px-6 pb-6">
+        {/* Premium section with responsive adjustments */}
         {!isPremium && (
           <div
-            className="h-[232px] rounded-lg p-6 text-center mb-6 flex flex-col justify-center items-center"
+            className="h-auto min-h-[200px] sm:h-[232px] rounded-lg p-4 sm:p-6 text-center mb-4 sm:mb-6 flex flex-col justify-center items-center"
             style={{
               backgroundImage: `url(${PremiumAdsBG})`,
               backgroundSize: "cover",
               backgroundPosition: "center",
             }}
           >
-            <h1 className="text-3xl mb-2 font-bold">Go Premium!</h1>
-            <p className="text-[16px] w-[360px]">
+            <h1 className="text-2xl sm:text-3xl mb-1 sm:mb-2 font-bold">
+              Go Premium!
+            </h1>
+            <p className="text-[14px] sm:text-[16px] w-full sm:w-[360px] px-2 sm:px-0">
               Unlock advanced tools. Earn exclusive rewards. Enjoy ad-free
               learning!
             </p>
             <button
-              className="mt-4 px-10 py-2 text-[19px] bg-white text-[#9F87E5] rounded-full font-bold"
+              className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[16px] sm:text-[19px] bg-white text-[#9F87E5] rounded-full font-bold"
               onClick={() => navigate("/dashboard/buy-premium-account")}
             >
               TRY IT NOW
@@ -94,23 +95,25 @@ const Shop = () => {
           </div>
         )}
 
-        {/* Show this section only if the user is premium */}
+        {/* Premium activated section with responsive adjustments */}
         {isPremium && (
           <div
-            className="h-[232px] rounded-lg p-6 text-center mb-6 flex flex-col justify-center items-center"
+            className="h-auto min-h-[200px] sm:h-[232px] rounded-lg p-4 sm:p-6 text-center mb-4 sm:mb-6 flex flex-col justify-center items-center"
             style={{
               backgroundImage: `url(${PremiumActivatedBG})`,
               backgroundSize: "cover",
               backgroundPosition: "center",
             }}
           >
-            <h1 className="text-3xl mb-2 font-bold">Premium Perks Unlocked!</h1>
-            <p className="text-[15px] my-21 w-[390px]">
+            <h1 className="text-2xl sm:text-3xl mb-1 sm:mb-2 font-bold">
+              Premium Perks Unlocked!
+            </h1>
+            <p className="text-[13px] sm:text-[15px] my-1 sm:my-2 w-full sm:w-[390px] px-2 sm:px-0">
               You're all set to access the best tools and rewards. Stay ahead
               with ad-free, uninterrupted learning.
             </p>
             <button
-              className="mt-4 px-10 py-2 text-[15px] bg-white text-[#3e2880] rounded-full font-bold"
+              className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px] sm:text-[15px] bg-white text-[#3e2880] rounded-full font-bold"
               onClick={() => navigate("/dashboard/shop/buy-premium-account")}
             >
               ENDS IN 24D 1H
@@ -118,53 +121,53 @@ const Shop = () => {
           </div>
         )}
 
-        <hr className="border-t-1 my-9 border-[#b3b3b3]" />
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
+        <hr className="border-t-2 border-[#3B354D] mb-6" />
+
+        {/* Responsive grid for shop items */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
           {items.map((item) => (
             <div
               key={item.id}
-              className="border-[0.2rem] border-[#3B354C] rounded-[1rem] shadow-lg py-7 px-7 flex flex-col items-center pb-4 aspect-w-1 aspect-h-1 relative"
+              className="border-[0.2rem] border-[#3B354C] rounded-[1rem] shadow-lg py-4 sm:py-7 px-4 sm:px-7 flex flex-col items-center pb-4 aspect-w-1 aspect-h-1 relative"
             >
               <div className="relative">
-                {/* Remove or comment out this block to hide owned status */}
-                {/*
-                {item.owned > 0 && (
-                  <div className="absolute top-0 left-8 w-[91px] rounded-lg bg-white text-black px-2 py-1 text-xs">
-                    OWNED {item.owned} / 5
-                  </div>
-                )}
-                */}
                 <img
                   src={item.image}
                   alt={item.name}
-                  className={`w-24 h-24 object-contain mb-4 rounded ${getImagePaddingClass(
+                  className={`w-20 h-20 sm:w-24 sm:h-24 object-contain mb-3 sm:mb-4 rounded ${getImagePaddingClass(
                     item.id
                   )}`}
                 />
               </div>
-              <h2 className="text-lg font-bold mb-2">{item.name}</h2>
-              <p className="text-sm text-gray-400 mb-4 text-center">
+              <h2 className="text-base sm:text-lg font-bold mb-1 sm:mb-2">
+                {item.name}
+              </h2>
+              <p className="text-xs sm:text-sm text-gray-400 mb-3 sm:mb-4 text-center">
                 {item.description}
               </p>
               <div className="flex-grow"></div>
-              <div className="flex gap-2 mb-3 w-full">
+              <div className="flex gap-2 mb-2 sm:mb-3 w-full">
                 {item.owned > 0 && (
-                  <button className="flex-1 border rounded-lg border-[#afafaf] text-white py-2 hover:bg-[#544483] ">
+                  <button className="flex-1 border rounded-lg border-[#afafaf] text-white py-1.5 sm:py-2 text-sm sm:text-base hover:bg-[#544483]">
                     Use
                   </button>
                 )}
 
                 {item.owned < 5 && item.buyLabel && (
                   <button
-                    className="flex-1 border rounded-lg border-[#afafaf] text-black py-2 bg-white flex items-center justify-center hover:bg-[#e0e0e0]"
+                    className="flex-1 border rounded-lg border-[#afafaf] text-black py-1.5 sm:py-2 bg-white flex items-center justify-center hover:bg-[#e0e0e0] text-sm sm:text-base"
                     onClick={() => openModal(item)}
                   >
                     <span>Buy for </span>
-                    <img src={CoinIcon} alt="Coin" className="w-5 h-5 ml-2" />
+                    <img
+                      src={CoinIcon}
+                      alt="Coin"
+                      className="w-4 h-4 sm:w-5 sm:h-5 ml-1 sm:ml-2"
+                    />
                     <span
                       style={{
                         color: "#9C8307",
-                        marginLeft: "7px",
+                        marginLeft: "5px",
                         fontWeight: "bold",
                       }}
                     >

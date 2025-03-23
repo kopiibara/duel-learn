@@ -23,7 +23,7 @@ const ProfilePictureModal: React.FC<ProfilePictureModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 flex items-center justify-center z-50">
       <PageTransition>
         <div className="w-full max-w-2xl bg-[#1a1625] rounded-lg p-8 shadow-md">
           <h2 className="text-[18px] text-center text-[#9F9BAE] mb-8">

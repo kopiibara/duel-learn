@@ -23,7 +23,7 @@ const HomePage = ({
     <PageTransition>
       <Box className="h-full w-auto" sx={{ backgroundColor: "#080511" }}>
         <DocumentHead title="Home | Duel Learn" />
-        <Stack spacing={1} className="px-3 sm:px-5 md:px-8">
+        <Stack spacing={1} className=" sm:px-0 md:px-8">
           <HomeBanner />
           <Stack spacing={2} className="pb-4 pt-4 sm:pb-6 sm:pt-6">
             <Stack

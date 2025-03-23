@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { Box, Stack } from "@mui/material";
+import { Box, Stack, IconButton, useMediaQuery } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import { UserInfo } from "../../types/userInfoObject";
@@ -9,7 +9,7 @@ import PersonIcon from "@mui/icons-material/Person";
 import MenuBookIcon from "@mui/icons-material/MenuBook";
 import "../../styles/custom-scrollbar.css";
 import { useNavigate } from "react-router-dom";
-import ProfileModal from "../modals/ProfileModal"; // Import ProfileModal
+import ProfileModal from "../modals/ProfileModal";
 
 // Define a union type for search results
 type SearchResult = UserInfo | StudyMaterial;
@@ -19,7 +19,11 @@ export default function SearchField() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isFocused, setIsFocused] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const navigate = useNavigate();
+
+  // Check if on mobile view
+  const isMobile = useMediaQuery("(max-width:640px)");
 
   // Add state for ProfileModal
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -58,7 +62,6 @@ export default function SearchField() {
   }, [inputValue]);
 
   // Handle Enter key press to navigate to search page
-  // Handle Enter key press to navigate to search page
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && inputValue.trim()) {
       // First close the modal if it's open
@@ -68,6 +71,7 @@ export default function SearchField() {
       // Then navigate to search page
       navigate(`/dashboard/search?query=${encodeURIComponent(inputValue)}`);
       setIsFocused(false);
+      if (isMobile) setIsExpanded(false);
     }
   };
 
@@ -82,6 +86,7 @@ export default function SearchField() {
       navigate(`/dashboard/study-material/view/${item.study_material_id}`);
     }
     setIsFocused(false);
+    if (isMobile) setIsExpanded(false);
   };
 
   // Handle closing the profile modal
@@ -90,17 +95,64 @@ export default function SearchField() {
     setSelectedUsername(undefined);
   };
 
+  // Toggle expanded search on mobile
+  const toggleExpanded = () => {
+    setIsExpanded(!isExpanded);
+    if (!isExpanded) {
+      // Focus the input after expanding
+      setTimeout(() => {
+        document.getElementById("search-input")?.focus();
+      }, 10);
+    }
+  };
+
+  // Hide search on blur if empty
+  const handleBlur = () => {
+    setTimeout(() => {
+      setIsFocused(false);
+      if (isMobile && !inputValue) {
+        setIsExpanded(false);
+      }
+    }, 100);
+  };
+
+  if (isMobile && !isExpanded) {
+    return (
+      <IconButton
+        onClick={toggleExpanded}
+        sx={{
+          color: "#6F658D",
+          backgroundColor: "rgba(59, 53, 77, 0.5)",
+          borderRadius: "50%",
+          padding: "8px",
+          "&:hover": {
+            backgroundColor: "rgba(59, 53, 77, 0.8)",
+          },
+        }}
+      >
+        <SearchIcon sx={{ fontSize: "22px" }} />
+      </IconButton>
+    );
+  }
+
   return (
-    <Box className="w-full max-w-[567px] min-w-[170px]">
-      <Box className="relative">
+    <Box
+      className={`w-full max-w-[567px] min-w-[170px] ${
+        isMobile && isExpanded
+          ? "absolute top-0 left-0 right-0 z-50 p-2 bg-[#080511] h-full flex items-center"
+          : ""
+      }`}
+    >
+      <Box className="relative w-full">
         <input
+          id="search-input"
           type="search"
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onFocus={() => setIsFocused(true)}
-          onBlur={() => setTimeout(() => setIsFocused(false), 100)}
+          onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className="peer w-full h-[48px]  pl-16 pr-10 text-[18px] bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#6F658D] placeholder-transparent sm:max-w-full [&::-webkit-search-cancel-button]:appearance-none"
+          className="peer w-full h-[48px] pl-16 pr-10 text-[18px] bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#6F658D] placeholder-transparent sm:max-w-full [&::-webkit-search-cancel-button]:appearance-none"
           placeholder="Search input"
         />
         {/* Hide default clear button and add custom one */}
