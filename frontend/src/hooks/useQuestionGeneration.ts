@@ -55,13 +55,20 @@ export const useQuestionGeneration = (material: any, selectedTypes: string[], mo
           for (let i = 0; i < questionsOfThisType; i++) {
             const item = shuffledItems[currentItemIndex];
             
+            console.log('Processing item:', {
+              item_id: item.item_id,
+              item_number: item.item_number,
+              term: item.term
+            });
+
             const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
             const requestPayload = {
               term: item.term,
               definition: item.definition,
               numberOfItems: 1,
               studyMaterialId: material.study_material_id,
-              itemId: currentItemIndex + 1,
+              itemId: item.item_id,
+              itemNumber: item.item_number,
               gameMode: mode.toLowerCase(),
               timestamp: new Date().getTime()
             };
@@ -75,10 +82,13 @@ export const useQuestionGeneration = (material: any, selectedTypes: string[], mo
                   ...questionData,
                   question_type: type,
                   answer: questionData.correctAnswer,
+                  item_id: item.item_id,
+                  item_number: item.item_number,
                   itemInfo: {
                     term: item.term,
                     definition: item.definition,
-                    itemId: currentItemIndex + 1
+                    itemId: item.item_id,
+                    itemNumber: item.item_number
                   }
                 };
                 generatedQuestions.push(questionWithInfo);

@@ -26,20 +26,40 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
   // Generate AI questions when component mounts
   useEffect(() => {
     const generateAIQuestions = async () => {
-      // Skip if we already have questions for this material
       if (aiQuestions.length > 0) {
-        console.log("Questions already generated, skipping...");
+        console.log("Questions already exist in state, skipping generation");
+        return;
+      }
+
+      if (!material?.study_material_id) {
+        console.error("No study material ID provided");
         return;
       }
 
       console.log("Starting AI question generation in PeacefulMode");
-      console.log("Selected question types:", selectedTypes);
-      console.log("Material received:", material);
       setIsGeneratingAI(true);
       const generatedQuestions = [];
 
       try {
-        // Validate material and items
+        // Clear existing questions first
+        const clearEndpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/clear-questions/${material.study_material_id}`;
+        try {
+          const clearResponse = await axios.delete<{success: boolean, error?: string}>(clearEndpoint);
+          
+          if (!clearResponse.data.success) {
+            console.warn("Failed to clear existing questions:", clearResponse.data.error);
+            // Continue with generation despite clearing error
+            console.log("Continuing with question generation despite clearing error");
+          } else {
+            console.log("Successfully cleared existing questions:", clearResponse.data);
+          }
+        } catch (clearError) {
+          // Log the error but continue with generation
+          console.warn("Error clearing existing questions:", clearError);
+          console.log("Continuing with question generation despite clearing error");
+        }
+
+        // Continue with question generation
         if (!material) {
           console.error("No material provided");
           return;
@@ -89,6 +109,13 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
           console.log(`- ${type}: ${count} questions`);
         });
 
+        // Log the first few items to verify the data structure
+        console.log("First few items:", shuffledItems.slice(0, 3).map(item => ({
+          item_id: item.item_id, // Use item_id instead of id
+          item_number: item.item_number,
+          term: item.term
+        })));
+
         // Generate questions according to the distribution
         let currentItemIndex = 0;
 
@@ -98,15 +125,12 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
 
           for (let i = 0; i < questionsOfThisType; i++) {
             const item = shuffledItems[currentItemIndex];
-            if (!item || !item.term || !item.definition) {
-              console.error(`Invalid item at index ${currentItemIndex}:`, item);
-              continue;
-            }
-
-            console.log(`[${type}] Question ${i + 1}/${questionsOfThisType} using item: "${item.term}" (ID: ${item.id}, type: ${typeof item.id}, item_number: ${item.item_number})`);
-
-            // Log ID format in proper format
-            console.log(`[${type}] Item ID format check: "${item.id}" (${typeof item.id}, length: ${String(item.id).length})`);
+            
+            console.log(`Processing item:`, {
+              item_id: item.item_id, // Use item_id instead of id
+              item_number: item.item_number,
+              term: item.term
+            });
 
             const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
             const requestPayload = {
@@ -114,42 +138,35 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
               definition: item.definition,
               numberOfItems: 1,
               studyMaterialId: material.study_material_id,
-              itemId: String(item.id), // Ensure ID is passed as string
-              itemNumber: item.item_number, // Ensure we're sending the actual item_number
+              itemId: item.item_id,
+              itemNumber: item.item_number,
               gameMode: "peaceful",
               timestamp: new Date().getTime()
             };
-
-            // Enhanced logging to debug the ID format
-            console.log("Request payload for item:", {
-              term: item.term,
-              studyMaterialId: material.study_material_id,
-              itemId: item.id,
-              idType: typeof item.id,
-              itemNumber: item.item_number
-            });
 
             try {
               const response = await axios.post<any[]>(endpoint, requestPayload);
               
               if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-                // When adding itemInfo to questions, ensure we pass the string ID
                 const questionsWithItemInfo = response.data.map(q => ({
                   ...q,
+                  item_id: item.item_id,
+                  item_number: item.item_number,
                   itemInfo: {
                     term: item.term,
                     definition: item.definition,
-                    itemId: String(item.id) // Ensure it's a string
+                    itemId: item.item_id,
+                    itemNumber: item.item_number
                   }
                 }));
                 
                 generatedQuestions.push(...questionsWithItemInfo);
-                console.log(`✓ Successfully generated ${type} question for "${item.term}"`);
+                console.log(`✓ Successfully generated ${type} question for "${item.term}" with item_id: ${item.item_id}`);
               } else {
                 console.warn(`⚠ No question generated for "${item.term}" of type ${type}`);
               }
             } catch (error) {
-              console.error(`Error generating ${type} question for "${item.term}":`, error);
+              console.error(`Error generating ${type} question:`, error);
             }
 
             currentItemIndex++;
@@ -166,7 +183,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
         console.log("Setting AI questions:", shuffledQuestions);
         setAiQuestions(shuffledQuestions);
       } catch (error) {
-        console.error("Error generating AI questions:", error);
+        console.error("Error in question generation process:", error);
         setAiQuestions([]);
       } finally {
         setIsGeneratingAI(false);

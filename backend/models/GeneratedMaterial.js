@@ -13,7 +13,7 @@ class GeneratedMaterial extends Model {
       properties: {
         id: { type: 'integer' },
         study_material_id: { type: 'string' },
-        item_id: { type: ['integer', 'null'] },
+        item_id: { type: ['string', 'null'] }, // Changed from integer to string
         item_number: { type: ['integer', 'null'] },
         term: { type: 'string' },
         definition: { type: 'string' },
@@ -45,7 +45,7 @@ class GeneratedMaterial extends Model {
           CREATE TABLE generated_material (
             id INT AUTO_INCREMENT PRIMARY KEY,
             study_material_id VARCHAR(255) NOT NULL,
-            item_id INT,
+            item_id VARCHAR(255), /* Changed from INT to VARCHAR(255) to support string IDs */
             item_number INT,
             term VARCHAR(255) NOT NULL,
             definition TEXT NOT NULL,
@@ -67,6 +67,24 @@ class GeneratedMaterial extends Model {
         console.log("generated_material table created successfully");
       } else {
         console.log("generated_material table already exists");
+        
+        // Check if item_id is VARCHAR, if not, alter it
+        try {
+          const [columns] = await pool.query(
+            `SHOW COLUMNS FROM generated_material LIKE 'item_id'`
+          );
+          
+          if (columns.length > 0 && columns[0].Type.toLowerCase().indexOf('varchar') === -1) {
+            console.log("Converting item_id column from INT to VARCHAR(255)");
+            await pool.query(`
+              ALTER TABLE generated_material 
+              MODIFY COLUMN item_id VARCHAR(255)
+            `);
+            console.log("item_id column type updated successfully");
+          }
+        } catch (alterError) {
+          console.error("Error updating item_id column type:", alterError);
+        }
         
         // Check if unique constraint exists and add if missing
         try {

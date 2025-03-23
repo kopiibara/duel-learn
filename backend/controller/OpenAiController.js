@@ -8,6 +8,77 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Updated helper function to fetch item_id from study_material_content with corrected column names
+const getItemIdFromStudyMaterial = async (studyMaterialId, term, itemNumber) => {
+  try {
+    const { pool } = await import('../config/db.js');
+    
+    console.log(`=== FETCHING ITEM ID FOR "${term}" ===`);
+    console.log(`- Study Material ID: ${studyMaterialId}`);
+    console.log(`- Term: "${term}"`);
+    console.log(`- Item Number: ${itemNumber}`);
+    
+    // Try exact term match
+    const [exactTermResults] = await pool.query(
+      `SELECT item_id, item_number FROM study_material_content 
+       WHERE study_material_id = ? AND term = ? 
+       LIMIT 1`,
+      [studyMaterialId, term]
+    );
+    
+    if (exactTermResults && exactTermResults.length > 0) {
+      console.log(`✓ EXACT MATCH: Found item_id ${exactTermResults[0].item_id} for term "${term}" in study_material_content`);
+      return {
+        itemId: exactTermResults[0].item_id,
+        itemNumber: exactTermResults[0].item_number
+      };
+    }
+    
+    // If no exact match, try case-insensitive match
+    console.log(`No exact match for "${term}", trying case-insensitive match`);
+    const [caseInsensitiveResults] = await pool.query(
+      `SELECT item_id, item_number, term FROM study_material_content 
+       WHERE study_material_id = ? AND LOWER(term) = LOWER(?) 
+       LIMIT 1`,
+      [studyMaterialId, term]
+    );
+    
+    if (caseInsensitiveResults && caseInsensitiveResults.length > 0) {
+      console.log(`✓ CASE-INSENSITIVE MATCH: Found item_id ${caseInsensitiveResults[0].item_id} for term "${term}"`);
+      return {
+        itemId: caseInsensitiveResults[0].item_id,
+        itemNumber: caseInsensitiveResults[0].item_number
+      };
+    }
+    
+    // If no match by term, try by item_number
+    if (itemNumber) {
+      console.log(`No term match for "${term}", trying to match by item_number ${itemNumber}`);
+      const [numResults] = await pool.query(
+        `SELECT item_id, term FROM study_material_content 
+         WHERE study_material_id = ? AND item_number = ? 
+         LIMIT 1`,
+        [studyMaterialId, itemNumber]
+      );
+      
+      if (numResults && numResults.length > 0) {
+        console.log(`✓ ITEM NUMBER MATCH: Found item_id ${numResults[0].item_id} for item_number ${itemNumber}`);
+        return {
+          itemId: numResults[0].item_id,
+          itemNumber: itemNumber
+        };
+      }
+    }
+    
+    // Log failure and return null if no match found
+    console.warn(`❌ NO MATCHING CONTENT FOUND in study_material_content for "${term}" or item_number ${itemNumber}`);
+    return null;
+  } catch (error) {
+    console.error("Error fetching item_id from study_material_content:", error);
+    return null;
+  }
+};
+
 // Helper function to store generated questions in the database
 const storeGeneratedQuestions = async (studyMaterialId, items, questions, gameMode = "peaceful") => {
   try {
@@ -217,6 +288,38 @@ const storeGeneratedQuestions = async (studyMaterialId, items, questions, gameMo
       // Get the item_number for this term, or use the index + 1 if not found
       let itemNumber = termToItemNumber.get(item.term) || (i + 1);
       
+      // Fetch the actual item_id from study_material_content table with enhanced debugging
+      console.log(`\nLooking up content for question ${i+1} with term "${item.term}"`);
+      const contentItem = await getItemIdFromStudyMaterial(studyMaterialId, item.term, itemNumber);
+      let actualItemId, actualItemNumber;
+      
+      if (contentItem && contentItem.itemId) {
+        actualItemId = contentItem.itemId; // Keep as string, don't parse
+        actualItemNumber = contentItem.itemNumber;
+        console.log(`✅ SUCCESS: Using actual item_id ${actualItemId} (type: ${typeof actualItemId}) from study_material_content for term "${item.term}"`);
+      } else {
+        // If lookup fails, make one more attempt with a cleaned version of the term
+        const cleanedTerm = item.term.trim().replace(/^[A-Z]\.\s+/, ''); // Remove letter prefixes like "A. "
+        if (cleanedTerm !== item.term) {
+          console.log(`Trying again with cleaned term: "${cleanedTerm}"`);
+          const cleanedContentItem = await getItemIdFromStudyMaterial(studyMaterialId, cleanedTerm, itemNumber);
+          
+          if (cleanedContentItem && cleanedContentItem.itemId) {
+            actualItemId = cleanedContentItem.itemId; // Keep as string
+            actualItemNumber = cleanedContentItem.itemNumber;
+            console.log(`✅ SUCCESS with cleaned term: Using item_id ${actualItemId} (type: ${typeof actualItemId}) for "${cleanedTerm}"`);
+          } else {
+            console.warn(`❌ FAILURE: Couldn't find item_id in study_material_content for either "${item.term}" or "${cleanedTerm}"`);
+            actualItemId = item.id || String(i + 1); // Ensure string format even for fallback
+            actualItemNumber = itemNumber;
+          }
+        } else {
+          console.warn(`❌ FAILURE: Couldn't find item_id in study_material_content for term "${item.term}"`);
+          actualItemId = item.id || String(i + 1); // Ensure string format even for fallback
+          actualItemNumber = itemNumber;
+        }
+      }
+      
       // Normalize question type - ensure we have consistent field names
       let questionType = '';
       
@@ -287,7 +390,7 @@ const storeGeneratedQuestions = async (studyMaterialId, items, questions, gameMo
       // Mark this question as processed
       usedItemNumbers.set(questionTypeKey, itemNumber);
       
-      console.log(`Using item_number ${itemNumber} for term "${item.term}" of type ${questionType}`);
+      console.log(`Using item_number ${actualItemNumber} and item_id ${actualItemId} for term "${item.term}" of type ${questionType}`);
       
       try {
         // Use direct SQL with REPLACE INTO to ensure uniqueness
@@ -306,8 +409,8 @@ const storeGeneratedQuestions = async (studyMaterialId, items, questions, gameMo
         // Prepare the question data
         const questionData = {
           study_material_id: studyMaterialId,
-          item_id: parseInt(item.id) || itemNumber,
-          item_number: itemNumber,
+          item_id: actualItemId,
+          item_number: actualItemNumber,
           term: String(item.term),
           definition: String(item.definition),
           question_type: String(questionType),
@@ -319,6 +422,8 @@ const storeGeneratedQuestions = async (studyMaterialId, items, questions, gameMo
         
         console.log(`About to store question with: 
           - study_material_id: ${questionData.study_material_id}
+          - item_id: ${questionData.item_id}
+          - item_number: ${questionData.item_number}
           - term: ${questionData.term}
           - question_type: ${questionData.question_type}
           - game_mode: ${questionData.game_mode}
@@ -334,7 +439,7 @@ const storeGeneratedQuestions = async (studyMaterialId, items, questions, gameMo
         const insertValues = [
           questionData.study_material_id,
           questionData.item_id,
-          itemNumber,
+          questionData.item_number,
           questionData.term,
           questionData.definition,
           questionData.question_type,
@@ -459,7 +564,7 @@ const storeGeneratedQuestions = async (studyMaterialId, items, questions, gameMo
             } catch (updateError) {
               console.error(`Update fallback error:`, updateError);
               throw updateError;
-            }
+            }       
           } else {
             throw sqlOpError;
           }
@@ -563,7 +668,7 @@ const storeGeneratedQuestions = async (studyMaterialId, items, questions, gameMo
             // Prepare the question data
             const questionData = {
               study_material_id: studyMaterialId,
-              item_id: parseInt(item.id) || itemNumber,
+              item_id: item.id || String(itemNumber), // Keep as string, don't use parseInt
               item_number: itemNumber,
               term: String(item.term),
               definition: String(item.definition),
@@ -766,7 +871,7 @@ const OpenAIController = {
     try {
       console.log("=== IDENTIFICATION QUESTION GENERATION - START ===");
       console.log("Received identification question request with body:", req.body);
-      const { term, definition, studyMaterialId, itemId, gameMode = "peaceful" } = req.body;
+      const { term, definition, studyMaterialId, itemId, itemNumber, gameMode = "peaceful" } = req.body;
       
       // Normalize the game mode
       let normalizedGameMode = gameMode ? gameMode.toLowerCase().replace(/\s+/g, '-') : "peaceful";
@@ -801,6 +906,23 @@ const OpenAIController = {
         console.log(`Direct DB insertion for identification question - material ${studyMaterialId}`);
         
         try {
+          // Fetch the actual item_id from study_material_content with enhanced debugging
+          console.log(`Looking up content for identification question with term "${cleanedTerm}"`);
+          const contentItem = await getItemIdFromStudyMaterial(studyMaterialId, cleanedTerm, itemNumber);
+          let actualItemId, actualItemNumber;
+          
+          if (contentItem && contentItem.itemId) {
+            actualItemId = contentItem.itemId; // Keep as string
+            actualItemNumber = contentItem.itemNumber;
+            console.log(`✅ SUCCESS: Using actual item_id ${actualItemId} (type: ${typeof actualItemId}) from study_material_content for term "${cleanedTerm}"`);
+          } else {
+            console.warn(`❌ FAILURE: Couldn't find item_id in study_material_content for term "${cleanedTerm}"`);
+            actualItemId = itemId || "1"; // Ensure string format
+            actualItemNumber = itemNumber || 1;
+          }
+          
+          console.log(`Using item_id ${actualItemId} and item_number ${actualItemNumber} for identification question`);
+          
           // Direct database insertion to bypass any potential issues with storeGeneratedQuestions
           const { pool } = await import('../config/db.js');
           
@@ -817,8 +939,8 @@ const OpenAIController = {
           
           const insertParams = [
             studyMaterialId,
-            parseInt(itemId) || 1,
-            parseInt(itemId) || 1,
+            actualItemId,
+            actualItemNumber,
             cleanedTerm,
             definition,
             "identification", // Explicitly set as identification
@@ -883,7 +1005,7 @@ const OpenAIController = {
   generateTrueFalse: async (req, res) => {
     try {
       console.log("Received true/false question request");
-      const { term, definition, numberOfItems = 1, studyMaterialId, itemId, gameMode = "peaceful" } = req.body;
+      const { term, definition, numberOfItems = 1, studyMaterialId, itemId, itemNumber, gameMode = "peaceful" } = req.body;
       
       // Normalize the game mode
       let normalizedGameMode = gameMode ? gameMode.toLowerCase().replace(/\s+/g, '-') : "peaceful";
@@ -953,8 +1075,30 @@ If generating multiple questions, include them all in the array.`;
           const existingCount = parseInt(rows[0].count || '0');
           console.log(`Found ${existingCount} existing true-false questions for this term`);
           
+          // Fetch the actual item_id from study_material_content with enhanced debugging
+          console.log(`Looking up content for true/false question with term "${cleanedTerm}"`);
+          const contentItem = await getItemIdFromStudyMaterial(studyMaterialId, cleanedTerm, itemNumber);
+          let actualItemId, actualItemNumber;
+          
+          if (contentItem && contentItem.itemId) {
+            actualItemId = contentItem.itemId; // Keep as string
+            actualItemNumber = contentItem.itemNumber;
+            console.log(`✅ SUCCESS: Using actual item_id ${actualItemId} (type: ${typeof actualItemId}) from study_material_content for term "${cleanedTerm}"`);
+          } else {
+            console.warn(`❌ FAILURE: Couldn't find item_id in study_material_content for term "${cleanedTerm}"`);
+            actualItemId = itemId || String(1); // Ensure string format
+            actualItemNumber = itemNumber || 1;
+          }
+          
+          console.log(`Using item_id ${actualItemId} and item_number ${actualItemNumber} for true/false question`);
+          
           // Always store the question, replacing if it exists
-          await storeGeneratedQuestions(studyMaterialId, [{ id: itemId, term: cleanedTerm, definition }], questions, normalizedGameMode);
+          await storeGeneratedQuestions(studyMaterialId, [{ 
+            id: actualItemId, 
+            term: cleanedTerm, 
+            definition,
+            item_number: actualItemNumber
+          }], questions, normalizedGameMode);
           console.log("Successfully stored true/false questions");
         } catch (storeError) {
           console.error("Error storing true/false questions:", storeError);
@@ -975,7 +1119,7 @@ If generating multiple questions, include them all in the array.`;
   generateMultipleChoice: async (req, res) => {
     try {
       console.log("Received multiple choice question request with body:", req.body);
-      const { term, definition, numberOfItems = 1, studyMaterialId, itemId, gameMode = "peaceful" } = req.body;
+      const { term, definition, numberOfItems = 1, studyMaterialId, itemId, itemNumber, gameMode = "peaceful" } = req.body;
       
       // Normalize the game mode
       let normalizedGameMode = gameMode ? gameMode.toLowerCase().replace(/\s+/g, '-') : "peaceful";
@@ -1333,16 +1477,40 @@ Important:
             try {
               const { pool } = await import('../config/db.js');
               
+              // Fetch the actual item_id from study_material_content with enhanced debugging
+              console.log(`Looking up content for identification question ${i+1} with term "${term}"`);
+              const contentItem = await getItemIdFromStudyMaterial(studyMaterialId, term, i + 1);
+              let actualItemId, actualItemNumber;
+              
+              if (contentItem && contentItem.itemId) {
+                actualItemId = contentItem.itemId; // Keep as string
+                actualItemNumber = contentItem.itemNumber;
+                console.log(`✅ SUCCESS: Using actual item_id ${actualItemId} (type: ${typeof actualItemId}) from study_material_content for term "${term}"`);
+              } else {
+                console.warn(`❌ FAILURE: Couldn't find item_id in study_material_content for term "${term}"`);
+                actualItemId = q.itemInfo?.itemId || String(i + 1); // Use fallback but ensure it's not study_material_id
+                actualItemNumber = q.itemInfo?.itemNumber || i + 1;
+                
+                // Make sure actualItemId isn't accidentally the study_material_id
+                if (actualItemId === studyMaterialId) {
+                  console.warn(`⚠️ Detected item_id same as study_material_id. Using fallback ID instead.`);
+                  actualItemId = `item_${i + 1}`;
+                }
+              }
+              
+              console.log(`Using item_id ${actualItemId} and item_number ${actualItemNumber} for identification question ${i+1}`);
+              
               // Try simple manual insertion
               const directInsertQuery = `
                 INSERT INTO generated_material 
-                (study_material_id, item_id, term, definition, question_type, question, answer, game_mode) 
-                VALUES (?, ?, ?, ?, 'identification', ?, ?, ?)
+                (study_material_id, item_id, item_number, term, definition, question_type, question, answer, game_mode) 
+                VALUES (?, ?, ?, ?, ?, 'identification', ?, ?, ?)
               `;
               
               const directInsertValues = [
                 studyMaterialId,
-                i + 1,
+                actualItemId, // Use the properly fetched item_id
+                actualItemNumber,
                 term,
                 definition,
                 question,
@@ -1351,6 +1519,7 @@ Important:
               ];
               
               console.log(`Executing direct insert for identification question ${i+1}...`);
+              console.log(`Direct insert values:`, directInsertValues);
               
               try {
                 const [directResult] = await pool.execute(directInsertQuery, directInsertValues);
@@ -1451,45 +1620,22 @@ Important:
       
       console.log(`Clearing all questions for study material ${studyMaterialId}`);
       
-      // Try with Objection.js first
       try {
-        const deleteResult = await GeneratedMaterial.query()
-          .delete()
-          .where('study_material_id', studyMaterialId);
+        const { pool } = await import('../config/db.js');
         
-        console.log("Delete result:", deleteResult);
+        const deleteQuery = `DELETE FROM generated_material WHERE study_material_id = ?`;
+        const [deleteResult] = await pool.execute(deleteQuery, [studyMaterialId]);
         
-        console.log(`Successfully cleared questions for study material ${studyMaterialId}`);
-        console.log("=== CLEAR QUESTIONS - COMPLETE ===");
+        console.log("SQL Delete result:", deleteResult);
         
         return res.status(200).json({
           success: true,
           message: `Successfully cleared questions for study material ${studyMaterialId}`,
-          count: deleteResult
+          count: deleteResult.affectedRows
         });
-      } catch (objectionError) {
-        console.error("Error clearing questions with Objection.js:", objectionError);
-        
-        // Try with direct SQL
-        try {
-          const { pool } = await import('../config/db.js');
-          
-          const deleteQuery = `DELETE FROM generated_material WHERE study_material_id = ?`;
-          const [deleteResult] = await pool.execute(deleteQuery, [studyMaterialId]);
-          
-          console.log("SQL Delete result:", deleteResult);
-          console.log(`Successfully cleared questions for study material ${studyMaterialId} using SQL`);
-          console.log("=== CLEAR QUESTIONS - COMPLETE ===");
-          
-          return res.status(200).json({
-            success: true,
-            message: `Successfully cleared questions for study material ${studyMaterialId}`,
-            count: deleteResult.affectedRows
-          });
-        } catch (sqlError) {
-          console.error("Error clearing questions with SQL:", sqlError);
-          throw sqlError;
-        }
+      } catch (sqlError) {
+        console.error("Error clearing questions with SQL:", sqlError);
+        throw sqlError;
       }
     } catch (error) {
       console.error("=== CLEAR QUESTIONS - ERROR ===");
@@ -1500,6 +1646,81 @@ Important:
         error: "Failed to clear questions",
         details: error.message
       });
+    }
+  },
+
+  // Add this function to handle clearing generated questions
+  clearGeneratedQuestions: async (req, res) => {
+    try {
+      const { studyMaterialId } = req.params;
+      
+      console.log("=== CLEAR GENERATED QUESTIONS - START ===");
+      console.log("Study Material ID:", studyMaterialId);
+      
+      // Delete using both study_material_id and game_mode to ensure we clear the right questions
+      const deleteQuery = `
+        DELETE FROM generated_material 
+        WHERE study_material_id = ? 
+        AND game_mode = ?
+      `;
+      
+      const [result] = await pool.query(deleteQuery, [studyMaterialId, 'peaceful']);
+      
+      console.log("Clear operation result:", result);
+      
+      res.json({ 
+        success: true,
+        message: 'Successfully cleared existing questions',
+        affectedRows: result.affectedRows 
+      });
+    } catch (error) {
+      console.error('=== CLEAR GENERATED QUESTIONS - ERROR ===');
+      console.error('Error:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to clear existing questions',
+        details: error.message 
+      });
+    }
+  },
+
+  // Update the save function to handle duplicates
+  saveGeneratedQuestion: async (studyMaterialId, itemId, itemNumber, term, definition, type, question, answer, gameMode) => {
+    try {
+      // First try to delete any existing question with the same key combination
+      const deleteQuery = `
+        DELETE FROM generated_material 
+        WHERE study_material_id = ? 
+        AND term = ? 
+        AND question_type = ? 
+        AND game_mode = ?
+      `;
+      
+      await pool.query(deleteQuery, [studyMaterialId, term, type, gameMode]);
+
+      // Then insert the new question
+      const insertQuery = `
+        INSERT INTO generated_material 
+        (study_material_id, item_id, item_number, term, definition, question_type, question, answer, game_mode) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      const [result] = await pool.query(insertQuery, [
+        studyMaterialId,
+        itemId,
+        itemNumber,
+        term,
+        definition,
+        type,
+        question,
+        answer,
+        gameMode
+      ]);
+
+      return result;
+    } catch (error) {
+      console.error('Error saving generated question:', error);
+      throw error;
     }
   }
 };
