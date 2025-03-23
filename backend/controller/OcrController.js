@@ -29,8 +29,22 @@ const CONFIG = {
 // Create a Vision client using environment variables
 let visionClient;
 try {
+  // Check if base64 credentials are provided
+  if (process.env.GOOGLE_VISION_CREDENTIALS_BASE64) {
+    try {
+      console.log("Using base64 encoded credentials for Google Vision API");
+      const credentials = JSON.parse(
+        Buffer.from(process.env.GOOGLE_VISION_CREDENTIALS_BASE64, 'base64').toString('utf8')
+      );
+      visionClient = new ImageAnnotatorClient({ credentials });
+      console.log("Successfully initialized Vision API client with base64 credentials");
+    } catch (parseError) {
+      console.error("Failed to parse base64 credentials:", parseError);
+      throw new Error(`Failed to parse base64 credentials: ${parseError.message}`);
+    }
+  }
   // Check if credentials are provided as a JSON string in env var
-  if (process.env.GOOGLE_VISION_CREDENTIALS) {
+  else if (process.env.GOOGLE_VISION_CREDENTIALS) {
     try {
       // Only try to parse if it starts with '{' (looks like JSON)
       if (process.env.GOOGLE_VISION_CREDENTIALS.trim().startsWith("{")) {
@@ -51,28 +65,13 @@ try {
         "Failed to parse credentials from environment variable:",
         parseError
       );
-      // Fallback to credentials file
-      console.log("Falling back to credentials file");
-      const credentialsPath = path.resolve(
-        __dirname,
-        "../lunar-goal-452311-e6-1af8037708ca.json"
-      );
-      console.log(`Using credentials at: ${credentialsPath}`);
-      visionClient = new ImageAnnotatorClient({
-        keyFilename: credentialsPath,
-      });
+      throw new Error(`Failed to use credentials from environment variable: ${parseError.message}`);
     }
   } else {
-    // Use credentials file directly
-    console.log("Initializing Vision API client with credentials file");
-    const credentialsPath = path.resolve(
-      __dirname,
-      "../lunar-goal-452311-e6-1af8037708ca.json"
+    // No credentials available
+    throw new Error(
+      "No Google Vision credentials found. Please set GOOGLE_VISION_CREDENTIALS_BASE64 environment variable."
     );
-    console.log(`Using credentials at: ${credentialsPath}`);
-    visionClient = new ImageAnnotatorClient({
-      keyFilename: credentialsPath,
-    });
   }
   console.log("Vision API client initialized successfully");
 } catch (error) {
