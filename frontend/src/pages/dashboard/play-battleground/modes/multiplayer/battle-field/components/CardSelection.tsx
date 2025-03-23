@@ -35,6 +35,10 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     const [showCardOptions, setShowCardOptions] = useState(false);
     const [backCardExitComplete, setBackCardExitComplete] = useState(false);
     const [animationComplete, setAnimationComplete] = useState(false);
+    // Track persistent cards across turns
+    const [persistentCards, setPersistentCards] = useState<Card[]>([]);
+    // Track the index of the last used card
+    const [lastUsedCardIndex, setLastUsedCardIndex] = useState<number | null>(null);
 
     // Cards grouped by type for easier selection
     const cardsByType = {
@@ -77,8 +81,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         }
     };
 
-    // Choose cards based on probability distribution
-    const selectCardsByProbability = (difficulty: string): Card[] => {
+    // Choose a single card based on probability distribution
+    const selectSingleCardByProbability = (difficulty: string): Card => {
         // Extract just the first word (hard, easy, average) from strings like "Hard Mode"
         const difficultyWord = difficulty?.toLowerCase().split(' ')[0] || "average";
 
@@ -88,11 +92,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         else if (difficultyWord.includes("hard")) normalizedDifficulty = "hard";
         else normalizedDifficulty = "average"; // Default
 
-        console.log(`Original difficulty: "${difficulty}", normalized to: "${normalizedDifficulty}"`);
-
         const dist = probabilityDistribution[normalizedDifficulty] || probabilityDistribution.average;
-
-        const selectedCards: Card[] = [];
 
         // Helper function to select a random card based on weights
         const selectRandomCard = (cardPool: Card[], weights: Record<string, number>): Card => {
@@ -108,47 +108,42 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             return cardPool[0]; // Fallback to first card
         };
 
-        // Select cards based on probability until we have 3
-        while (selectedCards.length < 3) {
-            const random = Math.random() * 100;
+        // Select a card based on probability
+        const random = Math.random() * 100;
 
-            // Basic cards selection
-            if (random < dist.basic) {
-                const basicCard = cardsByType.basic[Math.floor(Math.random() * cardsByType.basic.length)];
-                // Only add if not already in the selection
-                if (!selectedCards.some(card => card.type === basicCard.type)) {
-                    selectedCards.push(basicCard);
-                }
-            }
-            // Normal cards selection
-            else if (random < dist.basic + dist.normal.total) {
-                const normalCard = selectRandomCard(cardsByType.normal, dist.normal.distribution);
-                if (!selectedCards.some(card => card.name === normalCard.name)) {
-                    selectedCards.push(normalCard);
-                }
-            }
-            // Epic cards selection
-            else if (random < dist.basic + dist.normal.total + dist.epic.total) {
-                const epicCard = selectRandomCard(cardsByType.epic, dist.epic.distribution);
-                if (!selectedCards.some(card => card.name === epicCard.name)) {
-                    selectedCards.push(epicCard);
-                }
-            }
-            // Rare cards selection
-            else {
-                const rareCard = selectRandomCard(cardsByType.rare, dist.rare.distribution);
-                if (!selectedCards.some(card => card.name === rareCard.name)) {
-                    selectedCards.push(rareCard);
-                }
-            }
-
-            // Break if we've tried many times to avoid infinite loop
-            if (selectedCards.length === 0 && random > 95) {
-                selectedCards.push(cardsByType.basic[0]);
-            }
+        // Basic cards selection
+        if (random < dist.basic) {
+            return cardsByType.basic[Math.floor(Math.random() * cardsByType.basic.length)];
         }
+        // Normal cards selection
+        else if (random < dist.basic + dist.normal.total) {
+            return selectRandomCard(cardsByType.normal, dist.normal.distribution);
+        }
+        // Epic cards selection
+        else if (random < dist.basic + dist.normal.total + dist.epic.total) {
+            return selectRandomCard(cardsByType.epic, dist.epic.distribution);
+        }
+        // Rare cards selection
+        else {
+            return selectRandomCard(cardsByType.rare, dist.rare.distribution);
+        }
+    };
 
-        return selectedCards.slice(0, 3);
+    // Choose cards based on probability distribution
+    const selectCardsByProbability = (difficulty: string): Card[] => {
+        // If we have persistent cards, we only need to generate one new card
+        if (persistentCards.length > 0 && lastUsedCardIndex !== null) {
+            // Create a copy of the persistent cards
+            const newCards = [...persistentCards];
+
+            // Replace only the card that was used last turn
+            newCards[lastUsedCardIndex] = selectSingleCardByProbability(difficulty);
+
+            return newCards;
+        } else {
+            // First turn or reset - generate 3 new cards
+            return Array(3).fill(null).map(() => selectSingleCardByProbability(difficulty));
+        }
     };
 
     // Declare state for selected cards
@@ -162,8 +157,9 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             setBackCardExitComplete(false);
             setAnimationComplete(false);
 
-            // Re-randomize the cards each time it's the player's turn
-            setSelectedCards(selectCardsByProbability(difficultyMode || "average"));
+            // Get cards for this turn - either all new or with 2 persistent cards
+            const newCards = selectCardsByProbability(difficultyMode || "average");
+            setSelectedCards(newCards);
 
             // Start the card animation sequence
             const flipTimer = setTimeout(() => {
@@ -189,7 +185,14 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         setShowCardOptions(true);
     };
 
-    const handleCardSelect = (cardId: string) => {
+    const handleCardSelect = (cardId: string, index: number) => {
+        // Store the index of the used card
+        setLastUsedCardIndex(index);
+
+        // Remember the current cards for the next turn
+        setPersistentCards([...selectedCards]);
+
+        // Pass the selected card to the parent component
         onCardSelected(cardId);
         setShowCardOptions(false);
     };
@@ -249,7 +252,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                             <div className="flex gap-4">
                                 {selectedCards.map((card, index) => (
                                     <motion.div
-                                        key={card.id}
+                                        key={card.id + "-" + index} // Add index to key to ensure uniqueness when the same card appears twice
                                         className={`w-[200px] h-[300px] rounded-xl overflow-hidden cursor-pointer shadow-lg relative ${getCardBackground(card.type)} border-2 border-white/20`}
                                         initial={{ opacity: 0, y: 20, rotateY: -90 }}
                                         animate={{ opacity: 1, y: 0, rotateY: 0 }}
@@ -258,7 +261,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                                             delay: index * 0.15,
                                             ease: "easeOut"
                                         }}
-                                        onClick={() => handleCardSelect(card.id)}
+                                        onClick={() => handleCardSelect(card.id, index)}
                                         whileHover={{
                                             y: -10,
                                             scale: 1.05,

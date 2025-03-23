@@ -22,8 +22,10 @@ import CharacterAnimationManager from "./components/CharacterAnimationManager";
 import GameStartAnimation from "./components/GameStartAnimation";
 import GuestWaitingForRandomization from "./components/GuestWaitingForRandomization";
 
-// Import utils
-import { TurnRandomizer, QuestionTimer, getCharacterImage } from "./utils";
+// Import utils directly
+import TurnRandomizer from "./utils/TurnRandomizer";
+import { getCharacterImage } from "./utils/getCharacterImage";
+import QuestionTimer from "./utils/QuestionTimer";
 
 interface BattleState {
   current_turn: string | null;

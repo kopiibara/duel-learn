@@ -1,8 +1,6 @@
 import { useEffect } from 'react';
-import { getIntroAnimationDuration } from '../utils/animations';
+import { getIntroAnimationDuration } from '../utils/getCharacterImage';
 
-// Character animations
-import playerCharacter from "../../../../../../../assets/characterinLobby/playerCharacter.gif"; // Regular idle animation
 import characterPicking from "../../../../../../../assets/characterinLobby/CharacterPicking.gif"; // Initial picking animation
 import characterPickingLoop from "../../../../../../../assets/characterinLobby/CharacterPickingLoop.gif"; // Loop animation
 
