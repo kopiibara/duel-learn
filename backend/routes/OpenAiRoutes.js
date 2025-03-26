@@ -1,5 +1,5 @@
 import express from "express";
-import OpenAIController from "../controller/OpenAiController.js";
+import OpenAiController from "../controller/OpenAiController.js";
 const router = express.Router();
 
 router.get("/status", (req, res) => {
@@ -23,21 +23,27 @@ router.get("/status", (req, res) => {
       "/api/openai/generate-true-false (POST)",
       "/api/openai/generate-multiple-choice (POST)",
       "/api/openai/cross-reference-definition (POST)",
+      "/api/openai/save-session-results (POST)",
       "/api/openai/status (GET)",
     ],
     serverTime: new Date().toISOString(),
   });
 });
 
-router.post("/generate-summary", OpenAIController.generateSummary);
+router.post("/generate-summary", OpenAiController.generateSummary);
 router.post(
   "/generate-identification",
-  OpenAIController.generateIdentification
+  OpenAiController.generateIdentification
 );
-router.post("/generate-true-false", OpenAIController.generateTrueFalse);
+router.post("/generate-true-false", OpenAiController.generateTrueFalse);
 router.post(
   "/generate-multiple-choice",
-  OpenAIController.generateMultipleChoice
+  OpenAiController.generateMultipleChoice
+);
+router.post("/save-session-results", OpenAiController.saveSessionResults);
+router.delete(
+  "/clear-questions/:studyMaterialId",
+  OpenAiController.clearQuestions
 );
 router.post(
   "/cross-reference-definition",

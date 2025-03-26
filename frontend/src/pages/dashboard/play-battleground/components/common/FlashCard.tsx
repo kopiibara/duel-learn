@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { memo } from 'react';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 
 interface FlashCardProps {
@@ -6,24 +6,25 @@ interface FlashCardProps {
     correctAnswer: string;
     isFlipped: boolean;
     onFlip: () => void;
-    onReveal?: () => void; // New prop for handling reveal action
+    onReveal?: () => void;
     timeRemaining?: number | null;
     type?: 'multiple-choice' | 'identification' | 'true-false';
-    disabled?: boolean; // Add disabled prop to prevent interactions
+    disabled?: boolean;
 }
 
-const FlashCard: React.FC<FlashCardProps> = ({ 
+const FlashCard: React.FC<FlashCardProps> = memo(({ 
     question, 
     correctAnswer, 
     isFlipped, 
     onFlip,
-    onReveal, // New prop
+    onReveal,
     timeRemaining,
     type,
-    disabled = false // Default to not disabled
+    disabled = false
 }) => {
-    useEffect(() => {
-        console.log("FlashCard RENDER", { 
+    // Only log once during initial render
+    React.useEffect(() => {
+        console.log("FlashCard mounted", { 
             question, 
             correctAnswer, 
             type,
@@ -69,15 +70,7 @@ const FlashCard: React.FC<FlashCardProps> = ({
             >
                 <div className="flex-1 flex items-center justify-center">
                     <p className="text-center text-black text-2xl max-w-[600px]">
-                        {question ? (
-                            <>
-                                {/* Log when content is displayed */}
-                                {console.log("Displaying question:", question)}
-                                {question}
-                            </>
-                        ) : (
-                            <span className="animate-pulse">Loading question...</span>
-                        )}
+                        {question || <span className="animate-pulse">Loading question...</span>}
                     </p>
                 </div>
 
@@ -104,19 +97,20 @@ const FlashCard: React.FC<FlashCardProps> = ({
                 }}
             >
                 <p className="text-center text-black text-3xl font-bold">
-                    {correctAnswer ? (
-                        <>
-                            {/* Log when content is displayed */}
-                            {console.log("Displaying answer:", correctAnswer)}
-                            {correctAnswer}
-                        </>
-                    ) : (
-                        <span className="animate-pulse">Loading answer...</span>
-                    )}
+                    {correctAnswer || <span className="animate-pulse">Loading answer...</span>}
                 </p>
             </div>
         </div>
     );
-};
+}, (prevProps, nextProps) => {
+    // Only re-render if these props change
+    return (
+        prevProps.question === nextProps.question &&
+        prevProps.correctAnswer === nextProps.correctAnswer &&
+        prevProps.isFlipped === nextProps.isFlipped &&
+        prevProps.timeRemaining === nextProps.timeRemaining &&
+        prevProps.disabled === nextProps.disabled
+    );
+});
 
 export default FlashCard;
