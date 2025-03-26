@@ -22,6 +22,7 @@ router.get("/status", (req, res) => {
       "/api/openai/generate-identification (POST)",
       "/api/openai/generate-true-false (POST)",
       "/api/openai/generate-multiple-choice (POST)",
+      "/api/openai/cross-reference-definition (POST)",
       "/api/openai/status (GET)",
     ],
     serverTime: new Date().toISOString(),
@@ -37,6 +38,10 @@ router.post("/generate-true-false", OpenAIController.generateTrueFalse);
 router.post(
   "/generate-multiple-choice",
   OpenAIController.generateMultipleChoice
+);
+router.post(
+  "/cross-reference-definition",
+  OpenAIController.crossReferenceDefinition
 );
 
 export default router;

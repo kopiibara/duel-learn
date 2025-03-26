@@ -327,6 +327,118 @@ Important:
       });
     }
   },
+
+  // New method for cross-referencing definitions
+  crossReferenceDefinition: async (req, res) => {
+    try {
+      console.log("Received cross-reference request");
+      const { term, definition } = req.body;
+
+      if (!term || !definition) {
+        console.log("Missing required parameters");
+        return res.status(400).json({
+          error: "Missing required parameters",
+          message: "Both term and definition are required",
+        });
+      }
+
+      // Validate definition has enough content to check
+      if (definition.trim().split(/\s+/).length < 5) {
+        console.log("Definition too short for meaningful cross-reference");
+        return res.status(400).json({
+          error: "Definition too vague",
+          message:
+            "Please provide a more detailed definition for effective fact-checking",
+        });
+      }
+
+      console.log(`Cross-referencing term: "${term}" with definition`);
+
+      const prompt = `Please fact-check this definition for the term "${term}" with a very lenient approach:
+      
+Definition: "${definition}"
+
+Instructions:
+1. Be EXTREMELY lenient - focus ONLY on definitively incorrect facts, not style or completeness.
+2. Accept different ways to express a concept as valid.
+3. Only flag individual words or short phrases that are factually wrong (e.g., in "dog is a plant that walks," only flag "plant").
+4. Do not suggest rewriting the entire definition - ONLY identify specific incorrect words and their replacements.
+5. Ignore minor issues, stylistic differences, or incomplete information.
+6. Make sure the definition doesn't include the term itself - if it does, flag this circular reference.
+
+Respond with JSON in this exact format:
+{
+  "isAccurate": boolean,
+  "accuracyScore": number (0-100),
+  "assessment": "brief assessment, mention it's just checking for definitively wrong facts",
+  "incorrectParts": ["specific word/phrase that is wrong", "another specific word/phrase"] (empty array if nothing is definitively wrong),
+  "suggestedCorrections": ["replacement for first part", "replacement for second part"] (empty array if nothing to correct)
+}
+
+Assessment criteria:
+- "Accurate" (70-100): Definition doesn't contain any definitively incorrect facts
+- "Inaccurate" (<70): Definition contains at least one definitively wrong statement
+
+Important: 
+- SPECIFIC WORDS ONLY - Do not flag whole sentences, only the exact words that need changing
+- Different phrasings, styles, or levels of detail are all acceptable
+- Focus only on factual correctness, not completeness
+- If the definition is technically incomplete but not wrong, still mark it as accurate
+- If the definition is too vague to assess, set isAccurate to null
+- If the definition contains the term itself (e.g., "A dog is a dog that..."), flag this circular reference`;
+
+      console.log("Calling OpenAI for cross-reference assessment");
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an extremely lenient fact-checker who only flags definitively incorrect information. You focus on specific words or short phrases that are factually wrong rather than suggesting rewrites. For example, if a definition says 'dog is a plant that walks,' you would only flag the word 'plant' and suggest 'animal' as a replacement. Accept many different ways of expressing concepts and assume the user knows what they're doing unless something is clearly incorrect.",
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.2, // Lower temperature for more consistent identification of incorrect parts
+      });
+
+      const text = completion.choices[0].message.content;
+      console.log("AI response for cross-reference received");
+
+      // Remove any Markdown formatting from the response and parse JSON
+      const cleanedText = text.replace(/```json|```/g, "").trim();
+
+      try {
+        console.log("Parsing AI response");
+        const assessment = JSON.parse(cleanedText);
+
+        // If the definition is too vague for assessment
+        if (assessment.isAccurate === null) {
+          return res.status(400).json({
+            error: "Definition too vague",
+            message:
+              assessment.assessment ||
+              "The definition lacks sufficient detail for assessment",
+          });
+        }
+
+        console.log("Cross-reference assessment:", assessment);
+        res.json(assessment);
+      } catch (parseError) {
+        console.error("Failed to parse AI response:", parseError);
+        res.status(500).json({
+          error: "Failed to process AI response",
+          message: "The AI response could not be properly interpreted",
+        });
+      }
+    } catch (error) {
+      console.error("Error in cross-reference-definition route:", error);
+      res.status(500).json({
+        error: "Failed to cross-reference definition",
+        message: "An error occurred during the cross-reference process",
+        details: error.message,
+      });
+    }
+  },
 };
 
 export default OpenAIController;
