@@ -12,12 +12,22 @@ const cn = (...classes: string[]) => classes.filter(Boolean).join(" ");
 export default function DifficultySelection() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { lobbyCode, hostUsername, guestUsername } = location.state || {};
+  const {
+    lobbyCode,
+    hostUsername,
+    guestUsername,
+    hostId,
+    guestId,
+    material, // Extract material from location state
+  } = location.state || {};
 
   console.log("DifficultySelection state:", {
     lobbyCode,
     hostUsername,
     guestUsername,
+    hostId,
+    guestId,
+    material, // Log material to verify
     locationState: location.state,
   });
 
@@ -55,6 +65,15 @@ export default function DifficultySelection() {
     if (!selectedDifficulty || !lobbyCode) return;
 
     try {
+      // Get study material ID from material object
+      const studyMaterialId = material?.study_material_id || material?.id;
+
+      console.log("Starting game with:", {
+        difficulty: selectedDifficulty,
+        studyMaterialId,
+        material,
+      });
+
       // First update difficulty in battle_invitations
       await axios.put(
         `${
@@ -66,26 +85,36 @@ export default function DifficultySelection() {
         }
       );
 
-      // Then initialize entry in battle_gameplay
+      // Then initialize entry in battle_sessions with difficulty_mode and study_material_id
       await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize`,
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/gameplay/battle/initialize-session`,
         {
           lobby_code: lobbyCode,
-          host_id: hostUsername,
-          guest_id: guestUsername,
+          host_id: hostId,
+          guest_id: guestId,
           host_username: hostUsername,
           guest_username: guestUsername,
+          total_rounds: 30,
+          is_active: true,
           host_in_battle: true, // Mark host as entered
+          guest_in_battle: false,
+          difficulty_mode: selectedDifficulty,
+          study_material_id: studyMaterialId, // Pass the study material ID
         }
       );
 
-      navigate("/dashboard/pvp-battle", {
+      navigate(`/dashboard/pvp-battle/${lobbyCode}`, {
         state: {
           lobbyCode,
           difficulty: selectedDifficulty,
           isHost: true,
           hostUsername,
           guestUsername,
+          hostId,
+          guestId,
+          material, // Pass the material to the battle screen for reference
         },
       });
     } catch (error) {
