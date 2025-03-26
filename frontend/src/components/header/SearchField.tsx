@@ -143,7 +143,10 @@ export default function SearchField() {
           : ""
       }`}
     >
-      <Box className="relative w-full">
+      <Box
+        className="relative w-full"
+        onClick={() => document.getElementById("search-input")?.focus()}
+      >
         <input
           id="search-input"
           type="search"
@@ -152,24 +155,39 @@ export default function SearchField() {
           onFocus={() => setIsFocused(true)}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className="peer w-full h-[48px] pl-16 pr-10 text-[18px] bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#6F658D] placeholder-transparent sm:max-w-full [&::-webkit-search-cancel-button]:appearance-none"
+          className="peer w-full h-[48px] pl-10 pr-10 text-[18px] bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#6F658D] placeholder-transparent sm:max-w-full [&::-webkit-search-cancel-button]:appearance-none text-ellipsis"
           placeholder="Search input"
+          style={{
+            width: "100%",
+            minWidth: isMobile
+              ? "100%"
+              : inputValue
+              ? `${Math.min(inputValue.length * 10 + 80, 567)}px`
+              : "170px",
+            transition: isMobile ? "none" : "min-width 0.2s ease",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
         />
         {/* Hide default clear button and add custom one */}
         {inputValue && (
           <Box
             className="absolute right-3 top-1/2 transform -translate-y-1/2 cursor-pointer"
-            onClick={() => setInputValue("")}
+            onClick={(e) => {
+              e.stopPropagation();
+              setInputValue("");
+            }}
           >
             <ClearIcon sx={{ color: "#6F658D", fontSize: "20px" }} />
           </Box>
         )}
         {!inputValue && !isFocused && (
           <label
-            htmlFor="search"
-            className="absolute left-[43px] top-1/2 transform -translate-y-1/2 text-[#6F658D] text-[18px] transition-opacity duration-300 opacity-100"
+            htmlFor="search-input" // Fixed to match input id
+            className="absolute left-[40px] top-1/2 transform -translate-y-1/2 text-[#6F658D] text-[18px] transition-opacity duration-300 opacity-100 pointer-events-none"
           >
-            Search input
+            Search
           </label>
         )}
         <Box className="absolute left-3 top-1/2 transform -translate-y-1/2">
@@ -177,10 +195,10 @@ export default function SearchField() {
         </Box>
 
         {/* Autocomplete dropdown */}
-        {isFocused && (
-          <Box className="absolute top-[55px] bg-[#3B354D] w-full max-h-[400px] overflow-y-auto rounded-[0.8rem] shadow-lg z-10">
+        {isFocused && inputValue.trim() !== "" && (
+          <Box className="absolute top-[55px] bg-[#3B354D] w-full max-h-[400px] overflow-y-auto rounded-[0.8rem] shadow-lg z-10 custom-scrollbar">
             {loading ? (
-              <Box className="py-3 px-4 ">Loading...</Box>
+              <Box className="py-3 px-4">Loading...</Box>
             ) : results.length > 0 ? (
               results.map((item, index) => (
                 <Stack className="p-2" key={index}>
@@ -203,7 +221,7 @@ export default function SearchField() {
                 </Stack>
               ))
             ) : (
-              <Box className="py-3 px-4 ">No results found</Box>
+              <Box className="py-3 px-4">No results found</Box>
             )}
           </Box>
         )}

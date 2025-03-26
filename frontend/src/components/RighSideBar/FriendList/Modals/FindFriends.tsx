@@ -10,6 +10,7 @@ import cauldronGif from "/General/Cauldron.gif";
 import InviteSnackbar from "../../../../components/InviteSnackbar";
 import { FriendRequestData, Friend } from "../../../../types/friendObject";
 import DefaultPicture from "/profile-picture/default-picture.svg";
+import ProfileModal from "../../../modals/ProfileModal";
 
 const FindFriends: React.FC = () => {
   const { user } = useUser();
@@ -31,6 +32,10 @@ const FindFriends: React.FC = () => {
   const { friendList, handleSendFriendRequest } = useFriendList(
     user?.firebase_uid
   );
+
+  // Add these state variables for the ProfileModal
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | undefined>();
 
   // Update the handleFriendRequest function to better handle incoming requests
   const handleFriendRequest = (data: FriendRequestData) => {
@@ -149,6 +154,18 @@ const FindFriends: React.FC = () => {
     return () => clearTimeout(timeout);
   }, [searchQuery, searchUsers]);
 
+  // Add this function to handle viewing a profile
+  const handleViewProfile = (userId: string) => {
+    setSelectedUserId(userId);
+    setProfileModalOpen(true);
+  };
+
+  // Add this function to close the modal
+  const handleCloseProfileModal = () => {
+    setProfileModalOpen(false);
+    setSelectedUserId(undefined);
+  };
+
   if (loading)
     return (
       <Box display="flex" justifyContent="center" alignItems="center">
@@ -189,6 +206,8 @@ const FindFriends: React.FC = () => {
                     src={otherUser.display_picture || DefaultPicture}
                     alt="Avatar"
                     className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
+                    onClick={() => handleViewProfile(otherUser.firebase_uid)}
+                    style={{ cursor: "pointer" }}
                   />{" "}
                   <div>
                     <p className="text-lg text-[#E2DDF3]">
@@ -201,7 +220,7 @@ const FindFriends: React.FC = () => {
                 </div>
                 <div className="flex space-x-2">
                   <Tooltip
-                    title={hasPendingRequest ? "Request Pending" : "Add Friend"}
+                    title={hasPendingRequest ? "Request Pending" : "Add "}
                     enterDelay={100}
                     arrow
                   >
@@ -292,7 +311,10 @@ const FindFriends: React.FC = () => {
                   </Tooltip>
 
                   <Tooltip title="View Profile" enterDelay={100} arrow>
-                    <button className="bg-[#3A3A8B] text-white py-2 px-4 rounded-md hover:scale-105 transition-all duration-300">
+                    <button
+                      className="bg-[#3A3A8B] text-white py-2 px-4 rounded-md hover:scale-105 transition-all duration-300"
+                      onClick={() => handleViewProfile(otherUser.firebase_uid)}
+                    >
                       <VisibilityIcon sx={{ fontSize: 18 }} />
                     </button>
                   </Tooltip>
@@ -302,6 +324,14 @@ const FindFriends: React.FC = () => {
           })
         )}
       </div>
+
+      {/* Add ProfileModal component */}
+      <ProfileModal
+        open={profileModalOpen}
+        onClose={handleCloseProfileModal}
+        userId={selectedUserId}
+      />
+
       <InviteSnackbar
         open={snackbar.open}
         message={snackbar.message}

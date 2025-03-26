@@ -23,7 +23,7 @@ const DashboardLayout = () => {
 
   return (
     <Box
-      className={`h-screen flex flex-col lg:flex-row w-screen overflow-x-hidden ${
+      className={`h-screen flex flex-col lg:flex-row w-screen overflow-x-hidden overflow-y-auto custom-scrollbar ${
         useMediaQuery("(min-width:1400px)") ? "px-11" : "px-8"
       }`}
     >
