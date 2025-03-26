@@ -47,7 +47,7 @@ router.delete(
 );
 router.post(
   "/cross-reference-definition",
-  OpenAIController.crossReferenceDefinition
+  OpenAiController.crossReferenceDefinition
 );
 
 export default router;

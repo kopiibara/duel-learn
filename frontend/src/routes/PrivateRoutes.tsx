@@ -36,30 +36,23 @@ import PvpBattle from "../pages/dashboard/play-battleground/modes/multiplayer/ba
 import SearchPage from "../pages/dashboard/search/SearchPage";
 
 const PrivateRoutes = () => {
-  const { user, loading: userLoading } = useUser();
+  const { user, loading: userLoading, refreshUserData } = useUser();
   const { isAuthenticated, isLoading: authLoading, currentUser } = useAuth();
   const [_selectedIndex, setSelectedIndex] = useState<number | null>(1);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
-  // Check if user is admin
+  // Add loading timeout to prevent infinite loading
   useEffect(() => {
-    if (currentUser) {
-      // Check for admin claims in the token
-      currentUser.getIdTokenResult()
-        .then((idTokenResult) => {
-          // Check if the user is an admin
-          if (idTokenResult.claims.admin === true) {
-            setIsAdmin(true);
-          }
-        })
-        .catch(error => {
-          console.error("Error checking admin status:", error);
-        });
-    }
-  }, [currentUser]);
+    // If still loading after 5 seconds, allow the user to proceed anyway
+    const timer = setTimeout(() => {
+      setLoadingTimeout(true);
+    }, 5000);
 
-  // Show loading screen if auth is still loading
-  if (authLoading) {
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show loading screen if both auth and user data are still loading and timeout hasn't occurred
+  if ((authLoading || userLoading) && !loadingTimeout) {
     return <LoadingScreen />;
   }
 
@@ -68,91 +61,88 @@ const PrivateRoutes = () => {
     return <Navigate to="/landing-page" />;
   }
 
-  // If authenticated but no user data loaded yet, continue loading ONLY if not admin
-  if (!user && !isAdmin && userLoading) {
+  // If authenticated but no user data loaded yet, try to load it
+  if (!user && !loadingTimeout) {
+    // Attempt to refresh user data if not loaded
+    if (!userLoading) {
+      refreshUserData();
+    }
     return <LoadingScreen />;
   }
 
-  // If admin user or we have user data, continue to routes
-  // Admin users can bypass the user data check
-  if (isAdmin || user) {
-    // If email not verified (regular users only), redirect to verification page
-    if (user && !user.email_verified && !isAdmin) {
-      return <Navigate to="/verify-email" />;
-    }
-
-    return (
-      <Routes>
-        {/* Onboarding and Tutorial Routes */}
-        <Route path="welcome" element={<WelcomePage />} />
-        <Route path="tutorial/step-one" element={<TutorialOnePage />} />
-        <Route path="tutorial/step-two" element={<TutorialTwo />} />
-        <Route path="tutorial/step-three" element={<TutorialThree />} />
-        <Route path="tutorial/step-four" element={<TutorialFour />} />
-        <Route path="tutorial/step-five" element={<TutorialFive />} />
-        <Route path="tutorial/step-six" element={<TutorialSix />} />
-        <Route path="tutorial/last-step" element={<TutorialLast />} />
-        <Route path="my-preferences" element={<Personalization />} />
-
-        {/* Routes for the main dashboard after onboarding */}
-        <Route element={<DashboardLayout />}>
-          <Route
-            path="home"
-            element={<Home setSelectedIndex={setSelectedIndex} />}
-          />
-          <Route path="explore" element={<Explore />} />
-          <Route path="my-library" element={<YourLibrary />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="shop" element={<Shop />} />
-          <Route path="study-material/create" element={<CreateStudyMaterial />} />
-          <Route
-            path="study-material/view/:studyMaterialId"
-            element={<ViewStudyMaterial />}
-          />
-          <Route path="search" element={<SearchPage />} />
-          <Route path="account-settings" element={<AccountSettings />} />
-        </Route>
-
-        {/* Premium Routes */}
-        <Route path="/buy-premium-account" element={<BuyPremium />} />
-
-        {/* Game Setup Routes */}
-        <Route path="/welcome-game-mode" element={<WelcomeGameMode />} />
-        <Route path="/setup/questions" element={<SetUpQuestionType />} />
-        <Route path="/setup/timer" element={<SetUpTimeQuestion />} />
-        <Route path="/loading-screen" element={<LoadingScreen />} />
-
-        {/* Game Mode Routes */}
-        <Route
-          path="/study/peaceful-mode"
-          element={
-            <GameModeWrapper>
-              {(props) => <PeacefulMode {...props} />}
-            </GameModeWrapper>
-          }
-        />
-        <Route
-          path="/study/time-pressured-mode"
-          element={
-            <GameModeWrapper>
-              {(props) => <TimePressuredMode {...props} />}
-            </GameModeWrapper>
-          }
-        />
-        <Route path="/pvp-lobby/:lobbyCode?" element={<PVPLobby />} />
-        <Route path="/study/session-summary" element={<SessionReport />} />
-        <Route path="/select-difficulty/pvp" element={<HostModeSelection />} />
-        <Route
-          path="/select-difficulty/pvp/player2"
-          element={<Player2ModeSelection />}
-        />
-        <Route path="/pvp-battle" element={<PvpBattle />} />
-      </Routes>
-    );
+  // Only check email verification if we actually have user data
+  if (user && !user.email_verified) {
+    return <Navigate to="/verify-email" />;
   }
 
-  // If still loading user data or waiting for admin check, show loading screen
-  return <LoadingScreen />;
+  return (
+    <Routes>
+      {/* Onboarding and Tutorial Routes */}
+      <Route path="welcome" element={<WelcomePage />} />
+      <Route path="tutorial/step-one" element={<TutorialOnePage />} />
+      <Route path="tutorial/step-two" element={<TutorialTwo />} />
+      <Route path="tutorial/step-three" element={<TutorialThree />} />
+      <Route path="tutorial/step-four" element={<TutorialFour />} />
+      <Route path="tutorial/step-five" element={<TutorialFive />} />
+      <Route path="tutorial/step-six" element={<TutorialSix />} />
+      <Route path="tutorial/last-step" element={<TutorialLast />} />
+      <Route path="my-preferences" element={<Personalization />} />
+
+      {/* Routes for the main dashboard after onboarding */}
+      <Route element={<DashboardLayout />}>
+        <Route
+          path="home"
+          element={<Home setSelectedIndex={setSelectedIndex} />}
+        />
+        <Route path="explore" element={<Explore />} />
+        <Route path="my-library" element={<YourLibrary />} />
+        <Route path="profile" element={<Profile />} />
+        <Route path="shop" element={<Shop />} />
+        <Route path="study-material/create" element={<CreateStudyMaterial />} />
+        <Route
+          path="study-material/view/:studyMaterialId"
+          element={<ViewStudyMaterial />}
+        />
+        <Route path="search" element={<SearchPage />} />
+        <Route path="account-settings" element={<AccountSettings />} />
+      </Route>
+
+      {/* Premium Routes */}
+      <Route path="/buy-premium-account" element={<BuyPremium />} />
+
+      {/* Game Setup Routes */}
+      <Route path="/welcome-game-mode" element={<WelcomeGameMode />} />
+      <Route path="/setup/questions" element={<SetUpQuestionType />} />
+      <Route path="/setup/timer" element={<SetUpTimeQuestion />} />
+      <Route path="/loading-screen" element={<LoadingScreen />} />
+
+      {/* Game Mode Routes */}
+      <Route
+        path="/study/peaceful-mode"
+        element={
+          <GameModeWrapper>
+            {(props) => <PeacefulMode {...props} />}
+          </GameModeWrapper>
+        }
+      />
+      <Route
+        path="/study/time-pressured-mode"
+        element={
+          <GameModeWrapper>
+            {(props) => <TimePressuredMode {...props} />}
+          </GameModeWrapper>
+        }
+      />
+      <Route path="/pvp-lobby/:lobbyCode?" element={<PVPLobby />} />
+      <Route path="/study/session-summary" element={<SessionReport />} />
+      <Route path="/select-difficulty/pvp" element={<HostModeSelection />} />
+      <Route
+        path="/select-difficulty/pvp/player2"
+        element={<Player2ModeSelection />}
+      />
+      <Route path="/pvp-battle" element={<PvpBattle />} />
+    </Routes>
+  );
 };
 
 export default PrivateRoutes;
