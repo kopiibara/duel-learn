@@ -327,9 +327,27 @@ export default function PvpBattle() {
           if (isHost) {
             setPlayerHealth(scores.host_health);
             setOpponentHealth(scores.guest_health);
+
+            // Check for victory/defeat conditions
+            if (scores.host_health <= 0) {
+              setVictoryMessage("You Lost!");
+              setShowVictoryModal(true);
+            } else if (scores.guest_health <= 0) {
+              setVictoryMessage("You Won!");
+              setShowVictoryModal(true);
+            }
           } else {
             setPlayerHealth(scores.guest_health);
             setOpponentHealth(scores.host_health);
+
+            // Check for victory/defeat conditions
+            if (scores.guest_health <= 0) {
+              setVictoryMessage("You Lost!");
+              setShowVictoryModal(true);
+            } else if (scores.host_health <= 0) {
+              setVictoryMessage("You Won!");
+              setShowVictoryModal(true);
+            }
           }
         }
       } catch (error) {
@@ -337,7 +355,7 @@ export default function PvpBattle() {
       }
     };
 
-    // Poll for battle scores every 2 seconds
+    // Poll for battle scores every 1.5 seconds
     const scoresPollInterval = setInterval(fetchBattleScores, 1500);
     fetchBattleScores(); // Initial fetch
 
