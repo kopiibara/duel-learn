@@ -509,7 +509,7 @@ export function useBattle({
                                         if (isCurrentPlayerTurn) {
                                             setShowCards(true);
                                             setPlayerAnimationState("picking");
-                                            setPlayerPickingIntroComplete(false);
+                                            setPlayerPickingIntroComplete(true);
                                             setEnemyAnimationState("idle");
                                             setEnemyPickingIntroComplete(false);
                                         } else {
@@ -517,7 +517,7 @@ export function useBattle({
                                             setPlayerAnimationState("idle");
                                             setPlayerPickingIntroComplete(false);
                                             setEnemyAnimationState("picking");
-                                            setEnemyPickingIntroComplete(false);
+                                            setEnemyPickingIntroComplete(true);
                                         }
                                     }
                                 } catch (error) {

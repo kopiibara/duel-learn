@@ -871,4 +871,120 @@ export const getBattleRound = async (req, res) => {
     } finally {
         if (connection) connection.release();
     }
+};
+
+export const initializeBattleScores = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid, host_health, guest_health } = req.body;
+
+        // Validate required fields
+        if (!session_uuid) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required field: session_uuid"
+            });
+        }
+
+        // Check if entry already exists for this session
+        const [existingScores] = await connection.query(
+            `SELECT * FROM battle_scores 
+             WHERE session_uuid = ?`,
+            [session_uuid]
+        );
+
+        if (existingScores.length > 0) {
+            return res.json({
+                success: true,
+                message: "Battle scores already initialized",
+                data: existingScores[0]
+            });
+        }
+
+        // Initialize a new entry in battle_scores
+        const query = `
+            INSERT INTO battle_scores 
+            (session_uuid, host_health, guest_health)
+            VALUES (?, ?, ?)
+        `;
+
+        const [result] = await connection.query(query, [
+            session_uuid,
+            host_health || 100,
+            guest_health || 100
+        ]);
+
+        if (result.affectedRows === 0) {
+            return res.status(500).json({
+                success: false,
+                message: "Failed to initialize battle scores"
+            });
+        }
+
+        res.status(201).json({
+            success: true,
+            message: "Battle scores initialized successfully",
+            data: {
+                session_uuid,
+                host_health: host_health || 100,
+                guest_health: guest_health || 100
+            }
+        });
+
+    } catch (error) {
+        console.error('Error initializing battle scores:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to initialize battle scores",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+export const getBattleScores = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid } = req.params;
+
+        if (!session_uuid) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required field: session_uuid"
+            });
+        }
+
+        // Get battle scores data
+        const [scoresResult] = await connection.query(
+            `SELECT * FROM battle_scores WHERE session_uuid = ?`,
+            [session_uuid]
+        );
+
+        if (scoresResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle scores not found for this session"
+            });
+        }
+
+        res.json({
+            success: true,
+            data: scoresResult[0]
+        });
+
+    } catch (error) {
+        console.error('Error getting battle scores:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to get battle scores",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
 }; 

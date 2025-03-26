@@ -10,7 +10,9 @@ import {
     getBattleSessionWithMaterial,
     initializeBattleRounds,
     updateBattleRound,
-    getBattleRound
+    getBattleRound,
+    initializeBattleScores,
+    getBattleScores
 } from '../controller/GameplayController.js';
 
 const router = express.Router();
@@ -26,6 +28,10 @@ router.get('/battle/session-with-material/:lobby_code', getBattleSessionWithMate
 router.post('/battle/initialize-rounds', initializeBattleRounds);
 router.put('/battle/update-round', updateBattleRound);
 router.get('/battle/round/:session_uuid', getBattleRound);
+
+// Battle scores
+router.post('/battle/initialize-scores', initializeBattleScores);
+router.get('/battle/scores/:session_uuid', getBattleScores);
 
 // End the battle
 router.post('/battle/end', endBattle);

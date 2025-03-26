@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { BattleState } from '../BattleState';
 
 interface TurnRandomizerProps {
     isHost: boolean;
@@ -10,6 +11,9 @@ interface TurnRandomizerProps {
     guestId: string;
     showRandomizer: boolean;
     currentDisplayName?: string;
+    playerPickingIntroComplete: boolean;
+    enemyPickingIntroComplete: boolean;
+    battleState: BattleState | null;
     setRandomizationDone: (value: boolean) => void;
     setShowRandomizer: (value: boolean) => void;
     setShowGameStart: (value: boolean) => void;
@@ -31,6 +35,9 @@ export default function TurnRandomizer({
     hostId,
     guestId,
     showRandomizer,
+    playerPickingIntroComplete,
+    enemyPickingIntroComplete,
+    battleState,
     setRandomizationDone,
     setShowRandomizer,
     setShowGameStart,
@@ -127,48 +134,55 @@ export default function TurnRandomizer({
                 }
             );
 
-            // Get the session_uuid from the response
-            let sessionUuid = '';
-            if (sessionResponse.data.success && sessionResponse.data.data && sessionResponse.data.data.session_uuid) {
-                sessionUuid = sessionResponse.data.data.session_uuid;
+            // Get study material info and initialize rounds
+            try {
+                const battleSessionResponse = await axios.get(
+                    `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-with-material/${lobbyCode}`
+                );
 
-                // Get study material info to set round_number to total_items
-                try {
-                    const battleSessionResponse = await axios.get(
-                        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-with-material/${lobbyCode}`
+                if (battleSessionResponse.data.success &&
+                    battleSessionResponse.data.data &&
+                    battleSessionResponse.data.data.study_material_id) {
+
+                    const studyMaterialId = battleSessionResponse.data.data.study_material_id;
+
+                    const studyMaterialResponse = await axios.get(
+                        `${import.meta.env.VITE_BACKEND_URL}/api/study-material/info/${studyMaterialId}`
                     );
 
-                    if (battleSessionResponse.data.success &&
-                        battleSessionResponse.data.data &&
-                        battleSessionResponse.data.data.study_material_id) {
+                    if (studyMaterialResponse.data.success &&
+                        studyMaterialResponse.data.data &&
+                        studyMaterialResponse.data.data.total_items &&
+                        battleState?.session_uuid) {
 
-                        const studyMaterialId = battleSessionResponse.data.data.study_material_id;
+                        const totalItems = studyMaterialResponse.data.data.total_items;
 
-                        const studyMaterialResponse = await axios.get(
-                            `${import.meta.env.VITE_BACKEND_URL}/api/study-material/info/${studyMaterialId}`
+                        // Initialize entry in battle_rounds table with session UUID from battleState
+                        await axios.post(
+                            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize-rounds`,
+                            {
+                                session_uuid: battleState.session_uuid,
+                                round_number: totalItems
+                            }
                         );
 
-                        if (studyMaterialResponse.data.success &&
-                            studyMaterialResponse.data.data &&
-                            studyMaterialResponse.data.data.total_items) {
+                        console.log(`Initialized battle rounds with total_items: ${totalItems}`);
 
-                            const totalItems = studyMaterialResponse.data.data.total_items;
+                        // Initialize battle scores with session UUID from battleState
+                        await axios.post(
+                            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize-scores`,
+                            {
+                                session_uuid: battleState.session_uuid,
+                                host_health: 100,
+                                guest_health: 100
+                            }
+                        );
 
-                            // Initialize entry in battle_rounds table
-                            await axios.post(
-                                `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/initialize-rounds`,
-                                {
-                                    session_uuid: sessionUuid,
-                                    round_number: totalItems
-                                }
-                            );
-
-                            console.log(`Initialized battle rounds with total_items: ${totalItems}`);
-                        }
+                        console.log(`Initialized battle scores with default health values`);
                     }
-                } catch (error) {
-                    console.error("Error setting up battle rounds:", error);
                 }
+            } catch (error) {
+                console.error("Error setting up battle rounds:", error);
             }
 
             // Optionally, we could extend our state to include who was selected to go first
@@ -179,21 +193,22 @@ export default function TurnRandomizer({
                 setGameStarted(true);
                 setIsMyTurn(isPlayerFirst);
 
+                // Set initial animations
                 if (isPlayerFirst) {
                     setPlayerAnimationState("picking");
-                    setPlayerPickingIntroComplete(false);
+                    setPlayerPickingIntroComplete(true);
                     setEnemyAnimationState("idle");
                 } else {
                     setEnemyAnimationState("picking");
-                    setEnemyPickingIntroComplete(false);
+                    setEnemyPickingIntroComplete(true);
                     setPlayerAnimationState("idle");
                 }
 
-                // Hide the initial game start screen after 2.5 seconds and show cards
+                // Show battle start animation for exactly 2 seconds
                 setTimeout(() => {
                     setShowGameStart(false);
                     setShowCards(true);
-                }, 2500);
+                }, 2000);
             }
 
             setRandomizing(false);

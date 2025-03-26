@@ -45,6 +45,8 @@ export default function PvpBattle() {
   const [battleState, setBattleState] = useState<BattleState | null>(null);
   const [difficultyMode, setDifficultyMode] = useState<string | null>(null);
   const [studyMaterialId, setStudyMaterialId] = useState<string | null>(null);
+  const [playerHealth, setPlayerHealth] = useState(100);
+  const [opponentHealth, setOpponentHealth] = useState(100);
 
   // Turn-based gameplay state
   const [gameStarted, setGameStarted] = useState(false);
@@ -58,8 +60,6 @@ export default function PvpBattle() {
   const opponentName = isHost ? (guestUsername || "Guest") : (hostUsername || "Host");
   const currentUserId = isHost ? hostId : guestId;
   const opponentId = isHost ? guestId : hostId;
-  const playerHealth = 100;
-  const opponentHealth = 100;
   const maxHealth = 100;
 
   // Animation state for player and enemy
@@ -300,6 +300,39 @@ export default function PvpBattle() {
     fetchBattleSessionData();
   }, [lobbyCode]);
 
+  // Effect to fetch battle scores
+  useEffect(() => {
+    const fetchBattleScores = async () => {
+      if (!battleState?.session_uuid) return;
+
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${battleState.session_uuid}`
+        );
+
+        if (response.data.success && response.data.data) {
+          const scores = response.data.data;
+          // Set health based on whether player is host or guest
+          if (isHost) {
+            setPlayerHealth(scores.host_health);
+            setOpponentHealth(scores.guest_health);
+          } else {
+            setPlayerHealth(scores.guest_health);
+            setOpponentHealth(scores.host_health);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching battle scores:', error);
+      }
+    };
+
+    // Poll for battle scores every 2 seconds
+    const scoresPollInterval = setInterval(fetchBattleScores, 2000);
+    fetchBattleScores(); // Initial fetch
+
+    return () => clearInterval(scoresPollInterval);
+  }, [battleState?.session_uuid, isHost]);
+
   return (
     <div className="w-full h-screen flex flex-col">
       {/* Character animation manager */}
@@ -371,6 +404,9 @@ export default function PvpBattle() {
           hostId={hostId}
           guestId={guestId}
           showRandomizer={showRandomizer}
+          playerPickingIntroComplete={playerPickingIntroComplete}
+          enemyPickingIntroComplete={enemyPickingIntroComplete}
+          battleState={battleState}
           setRandomizationDone={setRandomizationDone}
           setShowRandomizer={setShowRandomizer}
           setShowGameStart={setShowGameStart}

@@ -35,10 +35,12 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     const [showCardOptions, setShowCardOptions] = useState(false);
     const [backCardExitComplete, setBackCardExitComplete] = useState(false);
     const [animationComplete, setAnimationComplete] = useState(false);
-    // Track persistent cards across turns
+
+    // Card state management
+    const [selectedCards, setSelectedCards] = useState<Card[]>([]);
     const [persistentCards, setPersistentCards] = useState<Card[]>([]);
-    // Track the index of the last used card
-    const [lastUsedCardIndex, setLastUsedCardIndex] = useState<number | null>(null);
+    const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
+    const [isFirstTurn, setIsFirstTurn] = useState(true);
 
     // Cards grouped by type for easier selection
     const cardsByType = {
@@ -129,25 +131,28 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         }
     };
 
-    // Choose cards based on probability distribution
-    const selectCardsByProbability = (difficulty: string): Card[] => {
-        // If we have persistent cards, we only need to generate one new card
-        if (persistentCards.length > 0 && lastUsedCardIndex !== null) {
-            // Create a copy of the persistent cards
-            const newCards = [...persistentCards];
-
-            // Replace only the card that was used last turn
-            newCards[lastUsedCardIndex] = selectSingleCardByProbability(difficulty);
-
-            return newCards;
-        } else {
-            // First turn or reset - generate 3 new cards
-            return Array(3).fill(null).map(() => selectSingleCardByProbability(difficulty));
-        }
+    // Generate three random cards
+    const generateThreeRandomCards = (difficulty: string): Card[] => {
+        return Array(3).fill(null).map(() => selectSingleCardByProbability(difficulty));
     };
 
-    // Declare state for selected cards
-    const [selectedCards, setSelectedCards] = useState<Card[]>([]);
+    // Generate cards with persistence between turns
+    const generateCardsForTurn = (difficulty: string): Card[] => {
+        if (isFirstTurn || persistentCards.length === 0) {
+            // First turn or no persistent cards - generate all new
+            return generateThreeRandomCards(difficulty);
+        } else {
+            // Create a new set of cards
+            let newCards: Card[] = [...persistentCards];
+
+            // Replace the card that was used in the previous turn with a new random card
+            if (lastSelectedIndex !== null) {
+                newCards[lastSelectedIndex] = selectSingleCardByProbability(difficulty);
+            }
+
+            return newCards;
+        }
+    };
 
     useEffect(() => {
         if (isMyTurn) {
@@ -157,9 +162,9 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             setBackCardExitComplete(false);
             setAnimationComplete(false);
 
-            // Get cards for this turn - either all new or with 2 persistent cards
-            const newCards = selectCardsByProbability(difficultyMode || "average");
-            setSelectedCards(newCards);
+            // Generate cards for this turn
+            const cardsForThisTurn = generateCardsForTurn(difficultyMode || "average");
+            setSelectedCards(cardsForThisTurn);
 
             // Start the card animation sequence
             const flipTimer = setTimeout(() => {
@@ -185,12 +190,16 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         setShowCardOptions(true);
     };
 
+    // Handle card selection
     const handleCardSelect = (cardId: string, index: number) => {
-        // Store the index of the used card
-        setLastUsedCardIndex(index);
+        // Store the selected index for the next turn
+        setLastSelectedIndex(index);
 
-        // Remember the current cards for the next turn
+        // Save the current cards for persistence
         setPersistentCards([...selectedCards]);
+
+        // No longer the first turn
+        setIsFirstTurn(false);
 
         // Pass the selected card to the parent component
         onCardSelected(cardId);
