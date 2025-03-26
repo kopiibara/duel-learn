@@ -54,6 +54,7 @@ export default function PvpBattle() {
   const [showCards, setShowCards] = useState(false);
   const [showGameStart, setShowGameStart] = useState(false);
   const [gameStartText, setGameStartText] = useState("");
+  const [showCardsAfterDelay, setShowCardsAfterDelay] = useState(false);
 
   // Player info
   const playerName = isHost ? (hostUsername || "Host") : (guestUsername || "Guest");
@@ -111,6 +112,16 @@ export default function PvpBattle() {
     battleState?.battle_started &&
     !battleState?.current_turn &&
     !randomizationDone;
+
+  // Effect to handle delayed card display after game start
+  useEffect(() => {
+    if (gameStarted && !showCardsAfterDelay) {
+      const timer = setTimeout(() => {
+        setShowCardsAfterDelay(true);
+      }, 2000); // 2 second delay
+      return () => clearTimeout(timer);
+    }
+  }, [gameStarted]);
 
   // Handle card selection
   const handleCardSelected = async (cardId: string) => {
@@ -327,7 +338,7 @@ export default function PvpBattle() {
     };
 
     // Poll for battle scores every 2 seconds
-    const scoresPollInterval = setInterval(fetchBattleScores, 2000);
+    const scoresPollInterval = setInterval(fetchBattleScores, 1500);
     fetchBattleScores(); // Initial fetch
 
     return () => clearInterval(scoresPollInterval);
@@ -431,8 +442,8 @@ export default function PvpBattle() {
           gameStartText={gameStartText}
         />
 
-        {/* Card Selection UI - Show after the waiting screen */}
-        {gameStarted && showCards && !waitingForPlayer && (
+        {/* Card Selection UI - Show after the waiting screen and delay */}
+        {gameStarted && showCards && !waitingForPlayer && showCardsAfterDelay && (
           <div className="fixed inset-0 bg-black/40 z-10">
             <CardSelection
               isMyTurn={isMyTurn}
