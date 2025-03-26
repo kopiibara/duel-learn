@@ -57,6 +57,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   });
 
   const [loading, setLoading] = useState(true);
+  const [loadAttempts, setLoadAttempts] = useState(0);
   const { fetchAndUpdateUserData } = useUserData();
   const auth = useAuth(); // Use the AuthContext
 
@@ -81,16 +82,13 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   const loadUserData = async (firebase_uid: string): Promise<User | null> => {
     if (!firebase_uid) {
       console.error("No firebase_uid provided to loadUserData");
-      return null;
-    }
-
-    if (!auth.currentUser || !auth.currentUser.emailVerified) {
-      console.log("Not loading user data - user not authenticated or email not verified");
+      setLoading(false);
       return null;
     }
 
     try {
       setLoading(true);
+      setLoadAttempts(prev => prev + 1);
       console.log(`Attempting to load user data for: ${firebase_uid}`);
       console.log("Fetching user data from main database...");
 
@@ -106,9 +104,31 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         console.log("User data loaded and stored in context");
         return typedUserData;
       }
+      
+      // If we get here, no user data was found - check cache as fallback
+      const cachedData = localStorage.getItem("userData");
+      const parsedData = cachedData ? JSON.parse(cachedData) : null;
+      
+      if (parsedData && parsedData.firebase_uid === firebase_uid) {
+        console.log("Using cached user data as fallback");
+        setUser(parsedData);
+        return parsedData;
+      }
+      
       return null;
     } catch (error) {
       console.error("Error loading user data:", error);
+      
+      // If loading fails, try using cached data as fallback
+      const cachedData = localStorage.getItem("userData");
+      const parsedData = cachedData ? JSON.parse(cachedData) : null;
+      
+      if (parsedData && parsedData.firebase_uid === firebase_uid) {
+        console.log("Using cached user data after load error");
+        setUser(parsedData);
+        return parsedData;
+      }
+      
       return null;
     } finally {
       setLoading(false);
@@ -116,21 +136,43 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const refreshUserData = useCallback(async (): Promise<void> => {
-    if (!user?.firebase_uid || !auth.currentUser || !auth.currentUser.emailVerified) {
-      console.log("Cannot refresh - no user ID or user not authenticated/verified");
+    if (!auth.currentUser) {
+      console.log("Cannot refresh - user not authenticated");
+      setLoading(false);
       return;
     }
 
+    const firebase_uid = auth.currentUser.uid;
+
     try {
       setLoading(true);
-      console.log(`Manually refreshing user data for: ${user.firebase_uid}`);
-      await loadUserData(user.firebase_uid);
+      setLoadAttempts(prev => prev + 1);
+      console.log(`Manually refreshing user data for: ${firebase_uid}`);
+      
+      // Limit number of retry attempts to prevent endless loading
+      if (loadAttempts >= 3) {
+        console.log("Max load attempts reached, using cached data");
+        const cachedData = localStorage.getItem("userData");
+        if (cachedData) {
+          setUser(JSON.parse(cachedData));
+        }
+        setLoading(false);
+        return;
+      }
+      
+      await loadUserData(firebase_uid);
     } catch (error) {
       console.error("Error refreshing user data:", error);
+      
+      // If refresh fails, try using cached data
+      const cachedData = localStorage.getItem("userData");
+      if (cachedData) {
+        setUser(JSON.parse(cachedData));
+      }
     } finally {
       setLoading(false);
     }
-  }, [user?.firebase_uid, auth.currentUser]);
+  }, [auth.currentUser, loadAttempts]);
 
   // Function to handle initial data loading
   const loadData = async () => {
@@ -145,8 +187,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     try {
       setLoading(true);
       
-      // Check if user is authenticated and verified
-      if (auth.currentUser && auth.currentUser.emailVerified) {
+      // Check if user is authenticated
+      if (auth.currentUser) {
         // Check if we already have data in localStorage
         const cachedData = localStorage.getItem("userData");
         const parsedData = cachedData ? JSON.parse(cachedData) : null;
@@ -156,8 +198,12 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
           console.log("Using cached user data from localStorage");
           setUser(parsedData);
           
-          // On initial mount, we won't trigger fresh data load - users can refresh manually if needed
-          // This prevents unnecessary API calls when navigating between pages
+          // On initial mount, refresh in background after a short delay
+          setTimeout(() => {
+            loadUserData(auth.currentUser!.uid).catch(err => {
+              console.error("Background refresh failed:", err);
+            });
+          }, 1000);
         } else {
           // No cached data or user ID mismatch, need to load from API
           console.log("No cached data found, loading from API");
@@ -166,6 +212,15 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       }
     } catch (error) {
       console.error("Error in initial data loading:", error);
+      
+      // If loading fails, try using cached data
+      const cachedData = localStorage.getItem("userData");
+      if (cachedData && auth.currentUser) {
+        const parsedData = JSON.parse(cachedData);
+        if (parsedData.firebase_uid === auth.currentUser.uid) {
+          setUser(parsedData);
+        }
+      }
     } finally {
       setLoading(false);
     }
@@ -176,17 +231,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     if (auth.isLoading) return;
 
     // Only perform fresh data load on auth state change (login/logout)
-    if (auth.currentUser && auth.currentUser.emailVerified) {
+    if (auth.currentUser) {
       loadData();
-    } else if (!auth.currentUser) {
+    } else {
       // Clear data on logout
       clearUserData();
       setLoading(false);
-    } else {
-      // User is logged in but not verified
-      setLoading(false);
     }
-  }, [auth.currentUser, auth.isLoading, auth.isAuthenticated, clearUserData]);
+  }, [auth.currentUser, auth.isLoading, clearUserData]);
 
   const loginAndSetUserData = async (firebase_uid: string, token: string): Promise<User | null> => {
     console.log(`Login and set user data for ${firebase_uid}`);
@@ -201,6 +253,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       return userData;
     } catch (error) {
       console.error("Error in loginAndSetUserData:", error);
+      
+      // Try to use cached data if available
+      const cachedData = localStorage.getItem("userData");
+      if (cachedData) {
+        const parsedData = JSON.parse(cachedData);
+        if (parsedData.firebase_uid === firebase_uid) {
+          setUser(parsedData);
+          return parsedData;
+        }
+      }
+      
       return null;
     } finally {
       setLoading(false);
