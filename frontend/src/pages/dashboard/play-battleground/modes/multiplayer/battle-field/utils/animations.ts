@@ -1,7 +1,7 @@
 // Character animations
-import playerCharacter from "../../../../../../../../assets/characterinLobby/playerCharacter.gif"; // Regular idle animation
-import characterPicking from "../../../../../../../assets/characterinLobby/CharacterPicking.gif"; // Initial picking animation
-import characterPickingLoop from "../../../../../../../assets/characterinLobby/characterPickingLoop.gif"; // Loop animation
+import playerCharacter from "/characterinLobby/playerCharacter.gif"; // Regular idle animation
+import characterPicking from "/characterinLobby/CharacterPicking.gif"; // Initial picking animation
+import characterPickingLoop from "/characterinLobby/CharacterPickingLoop.gif"; // Loop animation
 
 /**
  * Get the appropriate character image based on animation state and intro status
@@ -10,7 +10,11 @@ import characterPickingLoop from "../../../../../../../assets/characterinLobby/c
  * @param introComplete Whether the intro picking animation has completed
  * @returns The appropriate image source for the character
  */
-export function getCharacterImage(baseImage: string, animationState: string, introComplete: boolean): string {
+export function getCharacterImage(
+  baseImage: string,
+  animationState: string,
+  introComplete: boolean
+): string {
   if (animationState === "idle") {
     // Use the regular idle animation
     return baseImage;
@@ -21,7 +25,7 @@ export function getCharacterImage(baseImage: string, animationState: string, int
     // Then continue with the looping "pickingLoop" animation
     return characterPickingLoop;
   }
-  
+
   // Default fallback
   return baseImage;
 }
@@ -32,4 +36,4 @@ export function getCharacterImage(baseImage: string, animationState: string, int
  */
 export function getIntroAnimationDuration(): number {
   return 400; // Duration in ms - adjust to match your actual GIF duration
-} 
+}

@@ -38,14 +38,14 @@ const DashboardLayout = () => {
       </aside>
 
       {/* Main Section */}
-      <Box className="flex-1 flex flex-col overflow-hidden relative">
+      <Box className="flex-1 flex flex-col relative">
         {/* Header - Fixed at the top */}
         <header className="w-full pr-6 sticky top-0 pb-2 z-[100] bg-[#080511]">
           <Header />
         </header>
 
         {/* Main Content Section with its own scrollable area */}
-        <Box className="flex flex-1 overflow-auto">
+        <Box className="flex flex-1">
           <main
             className={`flex-1 pt-3 relative ${
               useMediaQuery("(min-width:1200px)") ? "px-11" : "px-6"
