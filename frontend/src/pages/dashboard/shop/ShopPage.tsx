@@ -1,26 +1,73 @@
-// src/pages/Shop.tsx
-
-import { useState } from "react";
+import { useState, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import PremiumAdsBG from "/shop-picture/premium-ads-bg.png";
 import PremiumActivatedBG from "/shop-picture/PremiumActivatedBG.png";
 import CoinIcon from "/CoinIcon.png";
-import ShopItemModal from "./Modals/ShopItemModal"; // Import the modal component
-import { items, ShopItem } from "./data/itemsData"; // Import items from the new data file
+import ShopItemModal from "./Modals/ShopItemModal";
 import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
+import { ShopItem } from "../../../types/shopObject"; // Import the ShopItem interface
+import axios from "axios";
+import { useUser } from "../../../contexts/UserContext";
 
 const Shop = () => {
   const navigate = useNavigate();
+  const { user, updateUser } = useUser();
+  const userCoins = user?.coins || 0;
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
-
   const [isPremium, _setIsPremium] = useState(false);
+  const [items, setItems] = useState<ShopItem[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Track owned items
+  const [ownedItems, setOwnedItems] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const fetchItems = async () => {
+      try {
+        setLoading(true);
+        // Fetch shop items
+        const itemsResponse = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/shop/items`
+        );
+        setItems(itemsResponse.data);
+
+        // If user is logged in, fetch their owned items
+        if (user?.firebase_uid) {
+          // Fetch user's items
+          const userItemsResponse = await axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/shop/user-item/${
+              user.firebase_uid
+            }`
+          );
+
+          // Use the quantity that now comes directly from the database
+          const owned: Record<string, number> = {};
+          userItemsResponse.data.forEach((item: any) => {
+            owned[item.item_code] = item.quantity;
+          });
+
+          setOwnedItems(owned);
+        }
+
+        setLoading(false);
+      } catch (err) {
+        console.error("Failed to fetch shop data:", err);
+        setError("Failed to load shop data. Please try again later.");
+        setLoading(false);
+      }
+    };
+
+    fetchItems();
+  }, [user?.firebase_uid]);
 
   const openModal = (item: ShopItem) => {
-    if (item.owned < 5) {
+    const ownedCount = ownedItems[item.item_code] || 0;
+    if (ownedCount < 5) {
       setSelectedItem(item);
       setQuantity(1);
       setIsModalOpen(true);
@@ -35,8 +82,11 @@ const Shop = () => {
   };
 
   const handleIncrement = () => {
-    if (quantity < 5) {
-      setQuantity(quantity + 1);
+    if (selectedItem) {
+      const ownedCount = ownedItems[selectedItem.item_code] || 0;
+      if (quantity < 5 - ownedCount) {
+        setQuantity(quantity + 1);
+      }
     }
   };
 
@@ -46,19 +96,77 @@ const Shop = () => {
     }
   };
 
-  const getImagePaddingClass = (itemId: number) => {
-    switch (itemId) {
-      case 1: // Mana Regen Band
+  const handlePurchase = async (
+    itemCode: string,
+    quantity: number,
+    itemName: string,
+    itemPrice: number
+  ) => {
+    if (!user?.firebase_uid) {
+      alert("You need to be logged in to make a purchase.");
+      return false;
+    }
+
+    try {
+      // Send the purchase request with quantity
+      const response = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/shop/buy-item`,
+        {
+          firebase_uid: user.firebase_uid,
+          username: user.username,
+          item_code: itemCode,
+          item_name: itemName,
+          item_price: itemPrice,
+          quantity: quantity,
+        }
+      );
+
+      if (response.data.remainingCoins !== undefined) {
+        // Use the updateUser function from your user context correctly
+        // This will update both state and localStorage
+        updateUser({
+          coins: response.data.remainingCoins,
+        });
+
+        console.log("Updated user coins to:", response.data.remainingCoins);
+      }
+
+      // Update owned items count
+      setOwnedItems((prev) => ({
+        ...prev,
+        [itemCode]: (prev[itemCode] || 0) + quantity,
+      }));
+
+      return true;
+    } catch (err: any) {
+      console.error("Purchase failed:", err);
+      const errorMessage =
+        err.response?.data?.message ||
+        "Failed to complete purchase. Please try again.";
+
+      if (err.response?.data?.message === "Insufficient coins") {
+        alert(`You don't have enough coins for this purchase.`);
+      } else {
+        alert(errorMessage);
+      }
+      return false;
+    }
+  };
+
+  const getImagePaddingClass = (itemCode: string) => {
+    // You can adjust this based on item codes or other properties
+    switch (itemCode) {
+      case "MANAREGEN":
         return "pt-3";
-      case 2: // Tech Pass
+      case "TECHPASS":
         return "pt-4 scale-110";
-      case 3: // Rewards Multiplier Badge
+      case "REWARDMULT":
         return "pt-3";
-      case 4: // Fortune Coin
+      case "FORTUNECOIN":
         return "pt-3";
-      case 5: // Insightful Token
+      case "INSIGHTTOKEN":
         return "pt-3";
-      case 6: // Study Starter Pack
+      case "STUDYPACK":
         return "pt-3 scale-150 pl-2";
       default:
         return "";
@@ -123,73 +231,100 @@ const Shop = () => {
 
         <hr className="border-t-2 border-[#3B354D] mb-6" />
 
+        {/* Loading state */}
+        {loading && (
+          <div className="flex justify-center items-center h-64">
+            <p className="text-xl">Loading shop items...</p>
+          </div>
+        )}
+
+        {/* Error state */}
+        {error && (
+          <div className="flex justify-center items-center h-64">
+            <p className="text-xl text-red-400">{error}</p>
+          </div>
+        )}
+
         {/* Responsive grid for shop items */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="border-[0.2rem] border-[#3B354C] rounded-[1rem] shadow-lg py-4 sm:py-7 px-4 sm:px-7 flex flex-col items-center pb-4 aspect-w-1 aspect-h-1 relative"
-            >
-              <div className="relative">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className={`w-20 h-20 sm:w-24 sm:h-24 object-contain mb-3 sm:mb-4 rounded ${getImagePaddingClass(
-                    item.id
-                  )}`}
-                />
-              </div>
-              <h2 className="text-base sm:text-lg font-bold mb-1 sm:mb-2">
-                {item.name}
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-400 mb-3 sm:mb-4 text-center">
-                {item.description}
-              </p>
-              <div className="flex-grow"></div>
-              <div className="flex gap-2 mb-2 sm:mb-3 w-full">
-                {item.owned > 0 && (
-                  <button className="flex-1 border rounded-lg border-[#afafaf] text-white py-1.5 sm:py-2 text-sm sm:text-base hover:bg-[#544483]">
-                    Use
-                  </button>
-                )}
+        {!loading && !error && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            {items.map((item) => (
+              <div
+                key={item.item_code}
+                className="border-[0.2rem] border-[#3B354C] rounded-[1rem] shadow-lg py-4 sm:py-7 px-4 sm:px-7 flex flex-col items-center pb-4 aspect-w-1 aspect-h-1 relative"
+              >
+                <div className="relative">
+                  <img
+                    src={item.item_picture_url}
+                    alt={item.item_name}
+                    className={`w-20 h-20 sm:w-24 sm:h-24 object-contain mb-3 sm:mb-4 rounded ${getImagePaddingClass(
+                      item.item_code
+                    )}`}
+                  />
+                </div>
+                <h2 className="text-base sm:text-lg font-bold mb-1 sm:mb-2">
+                  {item.item_name}
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-400 mb-3 sm:mb-4 text-center">
+                  {item.item_description}
+                </p>
+                <div className="flex-grow"></div>
+                <div className="flex gap-2 mb-2 sm:mb-3 w-full">
+                  {(ownedItems[item.item_code] || 0) > 0 && (
+                    <button className="flex-1 border rounded-lg border-[#afafaf] text-white py-1.5 sm:py-2 text-sm sm:text-base hover:bg-[#544483]">
+                      Use ({ownedItems[item.item_code] || 0})
+                    </button>
+                  )}
 
-                {item.owned < 5 && item.buyLabel && (
-                  <button
-                    className="flex-1 border rounded-lg border-[#afafaf] text-black py-1.5 sm:py-2 bg-white flex items-center justify-center hover:bg-[#e0e0e0] text-sm sm:text-base"
-                    onClick={() => openModal(item)}
-                  >
-                    <span>Buy for </span>
-                    <img
-                      src={CoinIcon}
-                      alt="Coin"
-                      className="w-4 h-4 sm:w-5 sm:h-5 ml-1 sm:ml-2"
-                    />
-                    <span
-                      style={{
-                        color: "#9C8307",
-                        marginLeft: "5px",
-                        fontWeight: "bold",
-                      }}
+                  {(ownedItems[item.item_code] || 0) < 5 && (
+                    <button
+                      className="flex-1 border rounded-lg border-[#afafaf] text-black py-1.5 sm:py-2 bg-white flex items-center justify-center hover:bg-[#e0e0e0] text-sm sm:text-base"
+                      onClick={() => openModal(item)}
                     >
-                      {item.buyLabel}
-                    </span>
-                  </button>
-                )}
+                      <span>Buy for </span>
+                      <img
+                        src={CoinIcon}
+                        alt="Coin"
+                        className="w-4 h-4 sm:w-5 sm:h-5 ml-1 sm:ml-2"
+                      />
+                      <span
+                        style={{
+                          color: "#9C8307",
+                          marginLeft: "5px",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {item.item_price}
+                      </span>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-        {/* Pass props to the modal */}
+      {/* Shop Item Modal */}
+      {selectedItem && (
         <ShopItemModal
           isModalOpen={isModalOpen}
           closeModal={closeModal}
-          selectedItem={selectedItem}
+          selectedItem={{
+            ...selectedItem,
+            id: parseInt(selectedItem.item_code),
+            name: selectedItem.item_name,
+            buyLabel: String(selectedItem.item_price),
+            owned: ownedItems[selectedItem.item_code] || 0,
+            image: selectedItem.item_picture_url,
+          }}
           quantity={quantity}
           handleIncrement={handleIncrement}
           handleDecrement={handleDecrement}
+          handlePurchase={handlePurchase}
+          userCoins={userCoins}
         />
-      </div>
+      )}
     </PageTransition>
   );
 };

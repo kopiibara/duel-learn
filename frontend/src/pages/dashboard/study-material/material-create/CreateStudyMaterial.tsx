@@ -15,6 +15,7 @@ import {
   Paper,
   IconButton,
   CircularProgress,
+  LinearProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
@@ -23,6 +24,7 @@ import { motion, AnimatePresence } from "framer-motion"; // Importing from Frame
 import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
 import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust the
 import Filter from "../../../../components/Filter"; // Adjust the
+import "../../../../styles/custom-scrollbar.css"; // Add this import
 
 // Add these imports near the top with your other imports
 import {
@@ -97,8 +99,9 @@ const CreateStudyMaterial = () => {
 
   // Add modal state and file handling state
   const [scanModalOpen, setScanModalOpen] = useState(false);
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
 
   // Check if we're in edit mode
   const editMode = location.state?.editMode || false;
@@ -528,7 +531,8 @@ const CreateStudyMaterial = () => {
   // Function to handle closing the scan notes modal
   const handleCloseScanModal = () => {
     setScanModalOpen(false);
-    setUploadedFile(null);
+    setUploadedFiles([]);
+    setUploadProgress(0);
   };
 
   // Function to handle file drag and drop or selection
@@ -538,64 +542,112 @@ const CreateStudyMaterial = () => {
     event.preventDefault();
 
     // Handle both drag and drop events and file input events
-    let file: File | null = null;
+    let newFiles: File[] = [];
 
     if ("dataTransfer" in event) {
       // This is a drag event
-      file = event.dataTransfer.files[0];
+      if (event.dataTransfer.files.length > 0) {
+        newFiles = Array.from(event.dataTransfer.files);
+      }
     } else if (event.target.files && event.target.files.length > 0) {
       // This is a file input event
-      file = event.target.files[0];
+      newFiles = Array.from(event.target.files);
     }
 
-    if (file) {
-      // Check file type
-      const validTypes = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "application/pdf",
-      ];
-      if (!validTypes.includes(file.type)) {
-        handleShowSnackbar("Only JPG, PNG, and PDF files are accepted");
-        return;
-      }
+    if (newFiles.length > 0) {
+      // Check file types and sizes
+      const validFiles = newFiles.filter((file) => {
+        // Check if file exists and is valid
+        if (!file || file.size === 0) {
+          console.error("Empty or invalid file encountered:", file.name);
+          handleShowSnackbar(
+            `File ${file.name} appears to be empty or invalid`
+          );
+          return false;
+        }
 
-      // Check file size
-      if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
-        handleShowSnackbar(
-          `File too large. Maximum size is ${MAX_IMAGE_SIZE_MB}MB`
+        // Check file type - now including PDF
+        const validTypes = [
+          "image/jpeg",
+          "image/jpg",
+          "image/png",
+          "application/pdf",
+        ];
+        if (!validTypes.includes(file.type)) {
+          handleShowSnackbar(
+            `Invalid file type: ${file.name}. Only JPG, PNG, and PDF files are accepted`
+          );
+          return false;
+        }
+
+        // Check file size
+        if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
+          handleShowSnackbar(
+            `File too large: ${file.name}. Maximum size is ${MAX_IMAGE_SIZE_MB}MB`
+          );
+          return false;
+        }
+
+        return true;
+      });
+
+      // Log validation results
+      if (validFiles.length < newFiles.length) {
+        console.log(
+          `Filtered out ${newFiles.length - validFiles.length} invalid files`
         );
-        return;
       }
 
-      setUploadedFile(file);
+      // Check if adding these files would exceed the limit
+      if (uploadedFiles.length + validFiles.length > 5) {
+        handleShowSnackbar("Maximum 5 files can be uploaded at once");
+        // Only add files up to the limit
+        const spaceLeft = 5 - uploadedFiles.length;
+        if (spaceLeft > 0) {
+          setUploadedFiles([
+            ...uploadedFiles,
+            ...validFiles.slice(0, spaceLeft),
+          ]);
+        }
+      } else {
+        // Add all valid files
+        setUploadedFiles([...uploadedFiles, ...validFiles]);
+      }
     }
   };
 
   const handleProcessFile = async () => {
-    if (!uploadedFile) {
-      handleShowSnackbar("Please upload a file first");
+    if (uploadedFiles.length === 0) {
+      handleShowSnackbar("Please upload at least one file");
       return;
     }
 
     try {
       setIsProcessing(true);
+      setUploadProgress(0);
 
-      // Create a FormData object to send the file
+      // Create a FormData object to send the files
       const formData = new FormData();
-      formData.append("file", uploadedFile);
+      uploadedFiles.forEach((file) => {
+        formData.append("files", file);
+      });
 
       // Step 1: Show loading state
-      handleShowSnackbar("Processing your document...");
+      handleShowSnackbar(
+        `Processing ${uploadedFiles.length} ${
+          uploadedFiles.length === 1 ? "file" : "files"
+        }...`
+      );
+      setUploadProgress(10);
 
       // Step 2: Extract text with OCR
       console.log(
         "Sending OCR request to:",
-        `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-text`
+        `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-multiple`
       );
+
       const ocrResponse = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-text`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-multiple`,
         {
           method: "POST",
           body: formData,
@@ -603,24 +655,32 @@ const CreateStudyMaterial = () => {
       );
 
       if (!ocrResponse.ok) {
-        throw new Error(`OCR server responded with ${ocrResponse.status}`);
+        const errorData = await ocrResponse.json().catch(() => ({}));
+        console.error("OCR error response:", errorData);
+        throw new Error(
+          errorData.details || `OCR service error: ${ocrResponse.status}`
+        );
       }
 
       const ocrData = await ocrResponse.json();
       console.log("Extracted text:", ocrData.text);
+      setUploadProgress(50);
 
       if (!ocrData.text || ocrData.text.trim() === "") {
-        handleShowSnackbar("No text could be extracted from the image");
+        handleShowSnackbar("No text could be extracted from the files");
         setIsProcessing(false);
         return;
       }
 
       // Step 3: Process text into term-definition pairs with AI
       handleShowSnackbar("Identifying terms and definitions...");
+      setUploadProgress(70);
+
       console.log(
         "Sending AI request to:",
         `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-pairs`
       );
+
       const aiResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-pairs`,
         {
@@ -630,12 +690,19 @@ const CreateStudyMaterial = () => {
         }
       );
 
+      setUploadProgress(80);
+
       if (!aiResponse.ok) {
-        throw new Error(`AI server responded with ${aiResponse.status}`);
+        const errorData = await aiResponse.json().catch(() => ({}));
+        console.error("AI error response:", errorData);
+        throw new Error(
+          errorData.details || `AI service error: ${aiResponse.status}`
+        );
       }
 
       const aiData = await aiResponse.json();
       console.log("Term-definition pairs:", aiData.pairs);
+      setUploadProgress(90);
 
       // Step 4: Create study material items from the pairs
       if (aiData.pairs && aiData.pairs.length > 0) {
@@ -663,6 +730,7 @@ const CreateStudyMaterial = () => {
 
         // Close the modal after processing
         handleCloseScanModal();
+        setUploadProgress(100);
 
         // Resize textareas after new items are added
         setTimeout(() => {
@@ -677,11 +745,23 @@ const CreateStudyMaterial = () => {
       }
     } catch (error) {
       console.error("Error processing document:", error);
-      handleShowSnackbar("Failed to process the document");
+      // Show the actual error message from the backend if available
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to process the files";
+      handleShowSnackbar(errorMessage);
+      setUploadProgress(0);
     } finally {
       setIsProcessing(false);
     }
   };
+
+  // Add this function to handle removing a file from the list
+  const removeFile = (index: number) => {
+    const newFiles = [...uploadedFiles];
+    newFiles.splice(index, 1);
+    setUploadedFiles(newFiles);
+  };
+
   // Update the handleUploadFile function to open the modal instead
   const handleUploadFile = () => {
     handleOpenScanModal();
@@ -746,7 +826,7 @@ const CreateStudyMaterial = () => {
           />
           <Stack spacing={{ xs: 1.5, sm: 2, md: 2.5 }}>
             {/* Title Input */}
-            <Box className="sticky top-4">
+            <Box className="">
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 spacing={{ xs: 1, sm: 2 }}
@@ -1125,25 +1205,31 @@ const CreateStudyMaterial = () => {
             top: "50%",
             left: "50%",
             transform: "translate(-50%, -50%)",
-            width: 500,
-            maxWidth: "90%",
+            width: 600, // Increased width for better UI
+            maxWidth: "95%",
             bgcolor: "#292639",
             boxShadow: 24,
             p: 4,
             borderRadius: "0.8rem",
             outline: "none",
+            maxHeight: "80vh", // Reduced from 90vh
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden", // Hide overflow on the container
           }}
         >
+          {/* Header - stays fixed */}
           <Box
             sx={{
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              mb: 2,
+              mb: 3,
+              width: "100%",
             }}
           >
             <Typography variant="h6" component="h2" sx={{ color: "#E2DDF3" }}>
-              Scan Your Notes
+              Extract Text from Files
             </Typography>
             <IconButton
               onClick={handleCloseScanModal}
@@ -1153,61 +1239,286 @@ const CreateStudyMaterial = () => {
             </IconButton>
           </Box>
 
-          <Typography variant="body2" sx={{ mb: 3, color: "#9F9BAE" }}>
-            Upload a file (max 10MB) in JPG, PNG, or PDF format. We'll use OCR
-            to extract text and AI to identify terms and definitions.
-          </Typography>
-
-          {/* File Upload Area */}
+          {/* Scrollable content area */}
           <Box
             sx={{
-              border: "2px dashed #4D18E8",
-              borderRadius: "1rem",
-              p: 3,
-              textAlign: "center",
-              backgroundColor: "#3B354D",
-              mb: 3,
-              cursor: "pointer",
-              transition: "all 0.3s ease",
-              "&:hover": {
-                backgroundColor: "#4A435C",
-                borderColor: "#A38CE6",
+              flexGrow: 1,
+              overflow: "auto",
+              mb: 2,
+              pr: 1, // Right padding for scrollbar
+              mr: -1, // Compensate for padding
+              "&::-webkit-scrollbar": {
+                width: "8px",
+              },
+              "&::-webkit-scrollbar-track": {
+                background: "transparent",
+              },
+              "&::-webkit-scrollbar-thumb": {
+                backgroundColor: "#382e53",
+                borderRadius: "4px",
+              },
+              "&::-webkit-scrollbar-thumb:hover": {
+                backgroundColor: "#261d3f",
               },
             }}
-            onClick={() => document.getElementById("file-upload")?.click()}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={handleFileChange}
           >
-            <input
-              type="file"
-              id="file-upload"
-              accept=".jpg,.jpeg,.png,.pdf"
-              style={{ display: "none" }}
-              onChange={handleFileChange}
-            />
+            <Typography variant="body2" sx={{ mb: 1, color: "#9F9BAE" }}>
+              Upload up to 5 files (max 10MB each) in JPG, PNG, or PDF format.
+              We'll use OCR to extract text and AI to identify terms and
+              definitions.
+            </Typography>
 
-            <CloudUploadIcon sx={{ fontSize: 48, color: "#A38CE6", mb: 1 }} />
+            <Typography
+              variant="body2"
+              sx={{ mb: 1, color: "#A38CE6", fontWeight: "bold" }}
+            >
+              Multiple files are processed in order - ideal for multi-page
+              notes!
+            </Typography>
 
-            {uploadedFile ? (
-              <Typography variant="body1" sx={{ color: "#E2DDF3", mt: 1 }}>
-                Selected: {uploadedFile.name}
+            {/* Add informational section about PDFs */}
+            <Box
+              sx={{
+                mb: 3,
+                backgroundColor: "#3B354D",
+                p: 2,
+                borderRadius: "0.5rem",
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ color: "#E2DDF3", mb: 1 }}>
+                File Type Tips:
               </Typography>
-            ) : (
-              <>
+              <Typography variant="body2" sx={{ color: "#9F9BAE", mb: 0.5 }}>
+                • <b>Images (JPG/PNG)</b>: Best for handwritten notes and
+                diagrams
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#9F9BAE", mb: 0.5 }}>
+                • <b>PDFs</b>: Ideal for digital documents, textbooks, and typed
+                notes
+              </Typography>
+              <Typography variant="body2" sx={{ color: "#9F9BAE" }}>
+                For best results with PDFs, ensure they contain actual text
+                rather than scanned images.
+              </Typography>
+            </Box>
+
+            {/* File Upload Area */}
+            <Box
+              sx={{
+                border: "2px dashed #675D84",
+                borderRadius: "1rem",
+                p: 3,
+                textAlign: "center",
+                mb: 3,
+                cursor: "pointer",
+                transition: "all 0.3s ease",
+                "&:hover": {
+                  backgroundColor: "#4A435C",
+                  borderColor: "#A38CE6",
+                },
+              }}
+              onClick={() => document.getElementById("file-upload")?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleFileChange}
+            >
+              <input
+                type="file"
+                id="file-upload"
+                accept=".jpg,.jpeg,.png,.pdf"
+                multiple // Enable multiple file selection
+                style={{ display: "none" }}
+                onChange={handleFileChange}
+              />
+
+              <CloudUploadIcon sx={{ fontSize: 48, color: "#A38CE6", mb: 1 }} />
+
+              {uploadedFiles.length > 0 ? (
                 <Typography variant="body1" sx={{ color: "#E2DDF3", mt: 1 }}>
-                  Drag & drop or click to upload
+                  {uploadedFiles.length}{" "}
+                  {uploadedFiles.length === 1 ? "file" : "files"} selected
                 </Typography>
-                <Typography variant="body2" sx={{ color: "#9F9BAE", mt: 0.5 }}>
-                  JPG, PNG, PDF only (max 10MB)
+              ) : (
+                <>
+                  <Typography variant="body1" sx={{ color: "#E2DDF3", mt: 1 }}>
+                    Drag & drop or click to upload multiple files
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{ color: "#9F9BAE", mt: 0.5 }}
+                  >
+                    JPG, PNG, PDF files accepted (max 5 files, 10MB each)
+                  </Typography>
+                </>
+              )}
+            </Box>
+
+            {/* Show selected files */}
+            {uploadedFiles.length > 0 && (
+              <Box
+                sx={{
+                  mb: 3,
+                  backgroundColor: "#3B354D",
+                  borderRadius: "0.5rem",
+                }}
+              >
+                <Typography
+                  variant="subtitle2"
+                  sx={{
+                    color: "#A38CE6",
+                    pt: 1.5,
+                    pb: 1,
+                    px: 2,
+                    borderBottom: "1px solid #4A435C",
+                    fontWeight: "500",
+                  }}
+                >
+                  Selected Files:
                 </Typography>
-              </>
+                <Box sx={{ p: 1.5 }}>
+                  {uploadedFiles.map((file, index) => (
+                    <Box
+                      key={index}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        p: 1.5,
+                        borderRadius: "0.5rem",
+                        mb: index === uploadedFiles.length - 1 ? 0 : 1,
+                        backgroundColor: "#342D46",
+                        transition: "all 0.2s ease",
+                        "&:hover": {
+                          backgroundColor: "#3F3853",
+                        },
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "#E2DDF3",
+                            mr: 1,
+                            minWidth: "1.5rem",
+                            fontWeight: "500",
+                          }}
+                        >
+                          {index + 1}.
+                        </Typography>
+                        {/* Show PDF icon for PDFs */}
+                        {file.type === "application/pdf" ? (
+                          <Box
+                            component="span"
+                            sx={{
+                              color: "#ff5252",
+                              mr: 1.5,
+                              display: "flex",
+                              alignItems: "center",
+                              fontWeight: "medium",
+                            }}
+                          >
+                            [PDF]
+                          </Box>
+                        ) : (
+                          <Box
+                            component="span"
+                            sx={{
+                              color: "#A38CE6",
+                              mr: 1.5,
+                              display: "flex",
+                              alignItems: "center",
+                              fontWeight: "medium",
+                            }}
+                          >
+                            [IMG]
+                          </Box>
+                        )}
+                        <Typography
+                          variant="body2"
+                          sx={{
+                            color: "#E2DDF3",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                            flexGrow: 1,
+                            maxWidth: "240px",
+                          }}
+                        >
+                          {file.name}
+                        </Typography>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "#9F9BAE",
+                            ml: 1,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          ({(file.size / (1024 * 1024)).toFixed(2)} MB)
+                        </Typography>
+                      </Box>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeFile(index);
+                        }}
+                        sx={{
+                          color: "#9F9BAE",
+                          ml: 1,
+                          "&:hover": {
+                            color: "#E2DDF3",
+                            backgroundColor: "rgba(255,255,255,0.1)",
+                          },
+                        }}
+                      >
+                        <CloseIcon fontSize="small" />
+                      </IconButton>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+            )}
+
+            {/* Processing progress if active */}
+            {isProcessing && (
+              <Box sx={{ width: "100%", mb: 2 }}>
+                <Typography variant="body2" sx={{ color: "#E2DDF3", mb: 1 }}>
+                  Processing {uploadedFiles.length}{" "}
+                  {uploadedFiles.length === 1 ? "file" : "files"}...
+                </Typography>
+                <LinearProgress
+                  variant="determinate"
+                  value={uploadProgress}
+                  sx={{
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: "#3B354D",
+                    "& .MuiLinearProgress-bar": {
+                      backgroundColor: "#A38CE6",
+                    },
+                  }}
+                />
+                <Typography
+                  variant="body2"
+                  sx={{ color: "#9F9BAE", mt: 0.5, textAlign: "right" }}
+                >
+                  {uploadProgress}%
+                </Typography>
+              </Box>
             )}
           </Box>
 
+          {/* Footer with button - stays fixed */}
           <Button
             variant="contained"
             fullWidth
-            disabled={!uploadedFile || isProcessing}
+            disabled={uploadedFiles.length === 0 || isProcessing}
             onClick={handleProcessFile}
             sx={{
               backgroundColor: "#4D18E8",
@@ -1231,7 +1542,9 @@ const CreateStudyMaterial = () => {
                 Processing...
               </>
             ) : (
-              "Generate Flashcards"
+              `Generate cards from ${
+                uploadedFiles.length > 0 ? uploadedFiles.length : ""
+              } ${uploadedFiles.length === 1 ? "File" : "Files"}`
             )}
           </Button>
         </Paper>

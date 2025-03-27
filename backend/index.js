@@ -12,6 +12,7 @@ import openAiRoutes from "./routes/OpenAiRoutes.js";
 import searchRoutes from "./routes/SearchRoutes.js"; // Import search routes
 import adminRoutes from "./routes/admin/AdminRoutes.js"; // Import admin routes
 import ocrRoutes from "./routes/OcrRoutes.js"; // Import OCR routes
+import shopRoutes from "./routes/ShopRoutes.js";
 import { corsMiddleware } from "./middleware/CorsMiddleware.js"; // Import CORS middleware
 import { coopMiddleware } from "./middleware/CoopMiddleware.js"; // Import COOP middleware
 // Load environment variables
@@ -52,5 +53,26 @@ app.use("/api/gameplay", gameplayRoutes);
 app.use("/api/openai", openAiRoutes);
 app.use("/api/admin", adminRoutes); // Mount admin routes under /api/admin
 app.use("/api/ocr", ocrRoutes); // Mount OCR routes under /api/ocr
+app.use("/api/shop", shopRoutes);
+
+// Add global error handler for uncaught exceptions
+app.use((err, req, res, next) => {
+  console.error("Uncaught error:", err);
+
+  // Check if it's a file not found error
+  if (err.code === "ENOENT") {
+    return res.status(500).json({
+      error: "File not found",
+      details:
+        "A required file could not be found. Please check your file paths.",
+    });
+  }
+
+  // Handle other errors
+  return res.status(500).json({
+    error: "Server error",
+    details: err.message || "An unexpected error occurred",
+  });
+});
 
 export default app;
