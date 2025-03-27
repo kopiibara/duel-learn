@@ -21,6 +21,7 @@ import { VictoryModal } from "./modals/BattleModals";
 import CharacterAnimationManager from "./components/CharacterAnimationManager";
 import GameStartAnimation from "./components/GameStartAnimation";
 import GuestWaitingForRandomization from "./components/GuestWaitingForRandomization";
+import QuestionModal from './components/QuestionModal';
 
 // Import utils directly
 import TurnRandomizer from "./utils/TurnRandomizer";
@@ -77,6 +78,10 @@ export default function PvpBattle() {
   const [showVictoryModal, setShowVictoryModal] = useState(false);
   const [victoryMessage, setVictoryMessage] = useState("");
 
+  // Question modal states
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
     lobbyCode,
@@ -125,28 +130,39 @@ export default function PvpBattle() {
 
   // Handle card selection
   const handleCardSelected = async (cardId: string) => {
-    // When player selects a card, it's no longer their turn
+    // Store the selected card ID
+    setSelectedCardId(cardId);
+
+    // Show the question modal instead of immediately updating the battle
+    setShowQuestionModal(true);
+
     // Reset player animations to idle
     setPlayerAnimationState("idle");
     setPlayerPickingIntroComplete(false);
+  };
+
+  // Handle answer submission
+  const handleAnswerSubmit = async (isCorrect: boolean) => {
+    if (!selectedCardId) return;
 
     try {
       // Determine if the current player is host or guest
       const playerType = isHost ? 'host' : 'guest';
 
-      // Update the battle round with the selected card and switch turns
+      // Update the battle round with the selected card, answer result, and switch turns
       const response = await axios.put(
         `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
         {
           session_uuid: battleState?.session_uuid,
           player_type: playerType,
-          card_id: cardId,
+          card_id: selectedCardId,
+          is_correct: isCorrect,
           lobby_code: lobbyCode
         }
       );
 
       if (response.data.success) {
-        console.log(`Card ${cardId} selection successful, turn switched`);
+        console.log(`Card ${selectedCardId} selection and answer submission successful, turn switched`);
 
         // Switch turns locally but keep UI visible
         setIsMyTurn(false);
@@ -160,6 +176,12 @@ export default function PvpBattle() {
     } catch (error) {
       console.error("Error updating battle round:", error);
     }
+  };
+
+  // Handle question modal close
+  const handleQuestionModalClose = () => {
+    setShowQuestionModal(false);
+    setSelectedCardId(null);
   };
 
   // Add polling for turn updates
@@ -487,6 +509,14 @@ export default function PvpBattle() {
           showVictoryModal={showVictoryModal}
           victoryMessage={victoryMessage}
           onConfirm={handleVictoryConfirm}
+        />
+
+        {/* Question Modal */}
+        <QuestionModal
+          isOpen={showQuestionModal}
+          onClose={handleQuestionModalClose}
+          onAnswerSubmit={handleAnswerSubmit}
+          difficultyMode={difficultyMode}
         />
       </div>
     </div>
