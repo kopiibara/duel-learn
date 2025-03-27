@@ -217,7 +217,8 @@ export const initializeBattleSession = async (req, res) => {
             host_in_battle,
             guest_in_battle,
             difficulty_mode,
-            study_material_id
+            study_material_id,
+            question_types
         } = req.body;
 
         // Validate required fields
@@ -248,6 +249,7 @@ export const initializeBattleSession = async (req, res) => {
                     host_in_battle = ?,
                     difficulty_mode = ?,
                     study_material_id = ?,
+                    question_types = ?, 
                     updated_at = CURRENT_TIMESTAMP
                 WHERE lobby_code = ? AND is_active = true
             `;
@@ -258,6 +260,7 @@ export const initializeBattleSession = async (req, res) => {
                 host_in_battle || false,
                 difficulty_mode || null,
                 study_material_id || null,
+                question_types ? JSON.stringify(question_types) : null,
                 lobby_code
             ]);
 
@@ -279,8 +282,8 @@ export const initializeBattleSession = async (req, res) => {
             INSERT INTO battle_sessions 
             (lobby_code, host_id, guest_id, total_rounds, current_turn, is_active, 
              host_in_battle, guest_in_battle, battle_started, session_uuid,
-             difficulty_mode, study_material_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             difficulty_mode, study_material_id, question_types)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const values = [
@@ -293,9 +296,10 @@ export const initializeBattleSession = async (req, res) => {
             host_in_battle || false,
             guest_in_battle || false,
             false, // Battle not started until both players are in
-            sessionUuid, // Add the session UUID
+            sessionUuid,
             difficulty_mode || null,
-            study_material_id || null
+            study_material_id || null,
+            question_types ? JSON.stringify(question_types) : null
         ];
 
         const [result] = await connection.query(query, values);
@@ -616,7 +620,12 @@ export const getBattleSessionWithMaterial = async (req, res) => {
         const query = `
             SELECT bs.*, 
                    bs.difficulty_mode, 
-                   bs.study_material_id
+                   bs.study_material_id,
+                   bs.question_types,
+                   CASE 
+                     WHEN bs.question_types IS NOT NULL THEN JSON_VALID(bs.question_types)
+                     ELSE NULL 
+                   END as has_valid_question_types
             FROM battle_sessions bs
             WHERE bs.lobby_code = ? AND bs.is_active = true
             ORDER BY bs.created_at DESC 
@@ -632,9 +641,21 @@ export const getBattleSessionWithMaterial = async (req, res) => {
             });
         }
 
+        // Parse question_types JSON if it exists and is valid
+        const session = sessions[0];
+        if (session.question_types && session.has_valid_question_types) {
+            try {
+                session.question_types = JSON.parse(session.question_types);
+            } catch (e) {
+                console.error('Error parsing question_types JSON:', e);
+                session.question_types = null;
+            }
+        }
+        delete session.has_valid_question_types; // Remove the helper field
+
         res.json({
             success: true,
-            data: sessions[0]
+            data: session
         });
 
     } catch (error) {
