@@ -48,6 +48,7 @@ export default function PvpBattle() {
   const [studyMaterialId, setStudyMaterialId] = useState<string | null>(null);
   const [playerHealth, setPlayerHealth] = useState(100);
   const [opponentHealth, setOpponentHealth] = useState(100);
+  const [questionTypes, setQuestionTypes] = useState<string[]>([]);
 
   // Turn-based gameplay state
   const [gameStarted, setGameStarted] = useState(false);
@@ -306,6 +307,11 @@ export default function PvpBattle() {
         if (response.data.success && response.data.data) {
           setDifficultyMode(response.data.data.difficulty_mode);
 
+          // Set question types from battle session
+          if (response.data.data.question_types) {
+            setQuestionTypes(response.data.data.question_types);
+          }
+
           // Get the study material id
           if (response.data.data.study_material_id) {
             setStudyMaterialId(response.data.data.study_material_id);
@@ -331,6 +337,11 @@ export default function PvpBattle() {
     };
 
     fetchBattleSessionData();
+
+    // Set up polling for battle session data
+    const pollInterval = setInterval(fetchBattleSessionData, 2000);
+
+    return () => clearInterval(pollInterval);
   }, [lobbyCode]);
 
   // Effect to fetch battle scores
@@ -517,6 +528,7 @@ export default function PvpBattle() {
           onClose={handleQuestionModalClose}
           onAnswerSubmit={handleAnswerSubmit}
           difficultyMode={difficultyMode}
+          questionTypes={questionTypes}
         />
       </div>
     </div>

@@ -6,12 +6,16 @@ interface QuestionModalProps {
     isOpen: boolean;
     onClose: () => void;
     onAnswerSubmit: (isCorrect: boolean) => void;
+    difficultyMode: string | null;
+    questionTypes: string[];
 }
 
 const QuestionModal: React.FC<QuestionModalProps> = ({
     isOpen,
     onClose,
     onAnswerSubmit,
+    difficultyMode,
+    questionTypes
 }) => {
     const [isFlipped, setIsFlipped] = useState(false);
     const [hasAnswered, setHasAnswered] = useState(false);
@@ -25,31 +29,62 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
         wasCorrect: boolean;
     }>>([]);
 
+    // Filter questions based on difficulty and question types
+    const getFilteredQuestions = () => {
+        return questionsData.filter(q => {
+            // Check if question type is in allowed types
+            const typeMatches = questionTypes.length === 0 ||
+                questionTypes.includes(q.questionType);
+
+            return typeMatches;
+        });
+    };
+
     // Function to get a random unused question
     const getRandomUnusedQuestion = () => {
-        if (usedQuestionIndices.length === questionsData.length) {
-            console.log('All questions have been used, resetting...');
-            setUsedQuestionIndices([]);
-            return questionsData[0];
+        const filteredQuestions = getFilteredQuestions();
+
+        if (filteredQuestions.length === 0) {
+            console.error('No questions available for current difficulty and types');
+            return null;
         }
 
-        const availableIndices = questionsData
+        if (usedQuestionIndices.length === filteredQuestions.length) {
+            console.log('All questions have been used, resetting...');
+            setUsedQuestionIndices([]);
+            return filteredQuestions[0];
+        }
+
+        const availableIndices = filteredQuestions
             .map((_, index) => index)
             .filter(index => !usedQuestionIndices.includes(index));
 
         const randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
         setUsedQuestionIndices(prev => [...prev, randomIndex]);
 
-        return questionsData[randomIndex];
+        return filteredQuestions[randomIndex];
     };
 
+    // Reset states when modal closes
     useEffect(() => {
-        if (isOpen) {
+        if (!isOpen) {
             setIsFlipped(false);
             setHasAnswered(false);
             setShowResult(false);
+            setCurrentQuestion(null);
+        }
+    }, [isOpen]);
+
+    // Select a new question only when the modal opens
+    useEffect(() => {
+        if (isOpen && !currentQuestion) {
             const newQuestion = getRandomUnusedQuestion();
-            setCurrentQuestion(newQuestion);
+            if (newQuestion) {
+                setCurrentQuestion(newQuestion);
+            } else {
+                console.error('Could not get a valid question');
+                onClose();
+            }
         }
     }, [isOpen]);
 
@@ -81,7 +116,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
             <div className="p-8 rounded-lg max-w-3xl w-full mx-4 relative">
                 {/* Question Counter */}
                 <div className="mb-4 text-sm text-gray-600">
-                    Question {usedQuestionIndices.length} of {questionsData.length}
+                    Question {usedQuestionIndices.length} of {getFilteredQuestions().length}
                 </div>
 
                 <BattleFlashCard

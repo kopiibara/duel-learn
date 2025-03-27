@@ -22,9 +22,9 @@ const BattleFlashCard: React.FC<BattleFlashCardProps> = ({
     type,
     disabled = false
 }) => {
-    // Handle the reveal button click separately from the card flip
+    // Handle the reveal button click
     const handleRevealClick = (e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent the card flip from also happening
+        e.stopPropagation(); // Prevent any parent click handlers
         if (onReveal && !disabled) {
             onReveal();
         }
@@ -32,13 +32,7 @@ const BattleFlashCard: React.FC<BattleFlashCardProps> = ({
 
     return (
         <div
-            className={`w-full max-w-[900px] h-[380px] mt-[-60px] bg-white rounded-lg p-8 relative ${disabled ? 'cursor-default' : 'cursor-pointer'}`}
-            onClick={() => {
-                if (!disabled && onFlip) {
-                    console.log("FlashCard clicked, isFlipped:", !isFlipped);
-                    onFlip();
-                }
-            }}
+            className={`w-full max-w-[900px] h-[380px] mt-[-60px] bg-white rounded-lg p-8 relative`}
             style={{
                 perspective: "1000px",
                 transformStyle: "preserve-3d",
