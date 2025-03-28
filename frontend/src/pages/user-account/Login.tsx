@@ -438,7 +438,7 @@ const Login = () => {
               className="w-5 h-5 mr-3"
               alt="Google Icon"
             />
-            Sign in with Google
+            Log in with Google
           </button>
 
           {/* Footer */}

@@ -717,4 +717,274 @@ export const initializeBattleRounds = async (req, res) => {
     } finally {
         if (connection) connection.release();
     }
+};
+
+// Add new function to update battle rounds with selected card and switch turns
+export const updateBattleRound = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const {
+            session_uuid,
+            player_type,
+            card_id,
+            lobby_code
+        } = req.body;
+
+        // Validate required fields
+        if (!session_uuid || !player_type || !card_id || !lobby_code) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: session_uuid, player_type, card_id, and lobby_code are required"
+            });
+        }
+
+        // Ensure player_type is valid (host or guest)
+        if (player_type !== 'host' && player_type !== 'guest') {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid player_type. Must be 'host' or 'guest'"
+            });
+        }
+
+        // Get current battle session to determine next player
+        const [sessionResult] = await connection.query(
+            `SELECT * FROM battle_sessions 
+            WHERE session_uuid = ? AND is_active = 1`,
+            [session_uuid]
+        );
+
+        if (sessionResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle session not found or not active"
+            });
+        }
+
+        const session = sessionResult[0];
+        // Determine next player's turn
+        const currentTurn = session.current_turn;
+        const nextTurn = currentTurn === session.host_id ? session.guest_id : session.host_id;
+
+        // Update the battle rounds with selected card
+        const updateField = player_type === 'host' ? 'host_card' : 'guest_card';
+
+        const updateRoundQuery = `
+            UPDATE battle_rounds 
+            SET ${updateField} = ?
+            WHERE session_uuid = ?
+        `;
+
+        await connection.query(updateRoundQuery, [card_id, session_uuid]);
+
+        // Update turn in battle_sessions table
+        const updateTurnQuery = `
+            UPDATE battle_sessions 
+            SET current_turn = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE session_uuid = ? AND is_active = 1
+        `;
+
+        const [updateResult] = await connection.query(updateTurnQuery, [nextTurn, session_uuid]);
+
+        if (updateResult.affectedRows === 0) {
+            return res.status(500).json({
+                success: false,
+                message: "Failed to update battle turn"
+            });
+        }
+
+        // Get the updated battle round data
+        const [updatedRound] = await connection.query(
+            `SELECT * FROM battle_rounds WHERE session_uuid = ?`,
+            [session_uuid]
+        );
+
+        // Get the updated session data
+        const [updatedSession] = await connection.query(
+            `SELECT * FROM battle_sessions WHERE session_uuid = ? AND is_active = 1`,
+            [session_uuid]
+        );
+
+        res.json({
+            success: true,
+            message: `${player_type} card selection recorded and turn switched to the next player`,
+            data: {
+                round: updatedRound[0] || null,
+                session: updatedSession[0] || null
+            }
+        });
+
+    } catch (error) {
+        console.error('Error updating battle round:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update battle round",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+// Add new function to get the current battle round data
+export const getBattleRound = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid } = req.params;
+
+        if (!session_uuid) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required field: session_uuid"
+            });
+        }
+
+        // Get battle round data
+        const [roundResult] = await connection.query(
+            `SELECT * FROM battle_rounds WHERE session_uuid = ?`,
+            [session_uuid]
+        );
+
+        if (roundResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle round not found for this session"
+            });
+        }
+
+        res.json({
+            success: true,
+            data: roundResult[0]
+        });
+
+    } catch (error) {
+        console.error('Error getting battle round data:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to get battle round data",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+export const initializeBattleScores = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid, host_health, guest_health } = req.body;
+
+        // Validate required fields
+        if (!session_uuid) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required field: session_uuid"
+            });
+        }
+
+        // Check if entry already exists for this session
+        const [existingScores] = await connection.query(
+            `SELECT * FROM battle_scores 
+             WHERE session_uuid = ?`,
+            [session_uuid]
+        );
+
+        if (existingScores.length > 0) {
+            return res.json({
+                success: true,
+                message: "Battle scores already initialized",
+                data: existingScores[0]
+            });
+        }
+
+        // Initialize a new entry in battle_scores
+        const query = `
+            INSERT INTO battle_scores 
+            (session_uuid, host_health, guest_health)
+            VALUES (?, ?, ?)
+        `;
+
+        const [result] = await connection.query(query, [
+            session_uuid,
+            host_health || 100,
+            guest_health || 100
+        ]);
+
+        if (result.affectedRows === 0) {
+            return res.status(500).json({
+                success: false,
+                message: "Failed to initialize battle scores"
+            });
+        }
+
+        res.status(201).json({
+            success: true,
+            message: "Battle scores initialized successfully",
+            data: {
+                session_uuid,
+                host_health: host_health || 100,
+                guest_health: guest_health || 100
+            }
+        });
+
+    } catch (error) {
+        console.error('Error initializing battle scores:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to initialize battle scores",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+export const getBattleScores = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid } = req.params;
+
+        if (!session_uuid) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required field: session_uuid"
+            });
+        }
+
+        // Get battle scores data
+        const [scoresResult] = await connection.query(
+            `SELECT * FROM battle_scores WHERE session_uuid = ?`,
+            [session_uuid]
+        );
+
+        if (scoresResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle scores not found for this session"
+            });
+        }
+
+        res.json({
+            success: true,
+            data: scoresResult[0]
+        });
+
+    } catch (error) {
+        console.error('Error getting battle scores:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to get battle scores",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
 }; 

@@ -23,7 +23,8 @@ const UserInfo = {
                     ui.level,
                     ui.exp,
                     ui.mana,
-                    ui.coins
+                    ui.coins,
+                    ui.tech_pass
                 FROM users u
                 LEFT JOIN user_info ui ON u.firebase_uid = ui.firebase_uid
                 WHERE u.firebase_uid = ?`,

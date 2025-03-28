@@ -1,5 +1,5 @@
 // Character animations
-import playerCharacter from "/characterinLobby/playerCharacter.gif"; // Regular idle animation
+
 import characterPicking from "/characterinLobby/CharacterPicking.gif"; // Initial picking animation
 import characterPickingLoop from "/characterinLobby/CharacterPickingLoop.gif"; // Loop animation
 

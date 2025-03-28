@@ -473,47 +473,55 @@ export function useBattle({
                                 // Guest just waits for host to randomize
                                 console.log("Waiting for host to determine who goes first...");
                             } else if (sessionState.battle_started === 1 && sessionState.current_turn) {
-                                // Turn has been decided, start the game
-                                setShowRandomizer(false);
+                                // Battle has started and turns are established - fetch battle round data
+                                try {
+                                    const roundResponse = await axios.get(
+                                        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${sessionState.session_uuid}`
+                                    );
 
-                                if (!gameStarted) {
-                                    setGameStarted(true);
-                                    setShowGameStart(true);
+                                    if (roundResponse.data.success && roundResponse.data.data) {
+                                        const roundData = roundResponse.data.data;
 
-                                    // Determine if it's the current player's turn
-                                    const isCurrentPlayerTurn = isHost
-                                        ? sessionState.current_turn === hostId
-                                        : sessionState.current_turn === guestId;
+                                        // Update the battleState with round data
+                                        setBattleState((prevState: any) => {
+                                            if (!prevState) return null;
 
-                                    // Set the game start text based on whose turn it is
-                                    if (isCurrentPlayerTurn) {
-                                        setGameStartText("You will go first!");
-                                    } else {
-                                        const opponentName = isHost
-                                            ? sessionState.guest_username || "Guest"
-                                            : sessionState.host_username || "Host";
-                                        setGameStartText(`${opponentName} will go first!`);
+                                            return {
+                                                ...prevState,
+                                                host_card: roundData.host_card,
+                                                guest_card: roundData.guest_card,
+                                                round_number: roundData.round_number
+                                            };
+                                        });
+
+                                        // Determine if it's the current player's turn
+                                        const isCurrentPlayerTurn = sessionState.current_turn === currentUserId;
+
+                                        // Enable game UI
+                                        if (!gameStarted) {
+                                            setGameStarted(true);
+                                        }
+
+                                        // Set turn state
+                                        setIsMyTurn(isCurrentPlayerTurn);
+
+                                        // Update UI based on turn
+                                        if (isCurrentPlayerTurn) {
+                                            setShowCards(true);
+                                            setPlayerAnimationState("picking");
+                                            setPlayerPickingIntroComplete(true);
+                                            setEnemyAnimationState("idle");
+                                            setEnemyPickingIntroComplete(false);
+                                        } else {
+                                            setShowCards(false);
+                                            setPlayerAnimationState("idle");
+                                            setPlayerPickingIntroComplete(false);
+                                            setEnemyAnimationState("picking");
+                                            setEnemyPickingIntroComplete(true);
+                                        }
                                     }
-
-                                    // Hide the animation after 2.5 seconds
-                                    setTimeout(() => {
-                                        setShowGameStart(false);
-                                        setShowCards(true);
-                                    }, 2500);
-
-                                    // Set initial turn state
-                                    setIsMyTurn(isCurrentPlayerTurn);
-
-                                    // Set initial animations
-                                    if (isCurrentPlayerTurn) {
-                                        setPlayerAnimationState("picking");
-                                        setPlayerPickingIntroComplete(false);
-                                        setEnemyAnimationState("idle");
-                                    } else {
-                                        setEnemyAnimationState("picking");
-                                        setEnemyPickingIntroComplete(false);
-                                        setPlayerAnimationState("idle");
-                                    }
+                                } catch (error) {
+                                    console.error("Error fetching battle round data:", error);
                                 }
                             }
                         }

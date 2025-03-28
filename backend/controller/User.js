@@ -211,15 +211,15 @@ const storeUser = async (req, res) => {
 
     // Get firebase_uid from request params
     const { firebase_uid } = req.params;
-    
+
     // Check if the token UID matches the requested firebase_uid
     if (decodedToken.uid !== firebase_uid) {
-      return res.status(403).json({ error: "Unauthorized: Token UID doesn't match request UID(store-user)"  });
+      return res.status(403).json({ error: "Unauthorized: Token UID doesn't match request UID(store-user)" });
     }
 
     const { username, email, password, account_type } = req.body;
     console.log("Request body:", { username, email, password: '***', account_type });
-    
+
     // Store user data with UID as key
     const userData = {
       username,
@@ -242,9 +242,9 @@ const storeUser = async (req, res) => {
 
   } catch (error) {
     console.error("Error in storeUser:", error);
-    res.status(500).json({ 
-      error: "Internal server error", 
-      details: error.message 
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message
     });
   }
 };
@@ -274,16 +274,16 @@ const getStoredUser = async (req, res) => {
       return res.status(404).json({ error: "User data not found" });
     }
 
-    res.status(200).json({ 
+    res.status(200).json({
       success: true,
-      user: userDoc.data() 
+      user: userDoc.data()
     });
 
   } catch (error) {
     console.error("Error fetching stored user data:", error);
-    res.status(500).json({ 
-      error: "Internal server error", 
-      details: error.message 
+    res.status(500).json({
+      error: "Internal server error",
+      details: error.message
     });
   }
 };
@@ -293,14 +293,14 @@ export default {
   getUserInfo: async (req, res) => {
     let connection;
     try {
-        const { firebase_uid } = req.params;
+      const { firebase_uid } = req.params;
 
-        // Get a connection from the pool
-        connection = await pool.getConnection();
+      // Get a connection from the pool
+      connection = await pool.getConnection();
 
-        // Fetch combined user data from both tables
-        const [userData] = await connection.execute(
-            `SELECT 
+      // Fetch combined user data from both tables
+      const [userData] = await connection.execute(
+        `SELECT 
                 u.firebase_uid,
                 u.username,
                 u.email,
@@ -312,29 +312,30 @@ export default {
                 ui.level,
                 ui.exp,
                 ui.mana,
-                ui.coins
+                ui.coins,
+                ui.tech_pass
             FROM users u
             LEFT JOIN user_info ui ON u.firebase_uid = ui.firebase_uid
             WHERE u.firebase_uid = ?`,
-            [firebase_uid]
-        );
+        [firebase_uid]
+      );
 
-        if (userData.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
-        }
+      if (userData.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
 
-        // Send the combined data
-        res.status(200).json({
-            message: 'User info fetched successfully',
-            user: userData[0],
-        });
+      // Send the combined data
+      res.status(200).json({
+        message: 'User info fetched successfully',
+        user: userData[0],
+      });
     } catch (error) {
-        console.error('Error fetching user info:', error);
-        res.status(500).json({ error: 'Internal server error', details: error.message });
+      console.error('Error fetching user info:', error);
+      res.status(500).json({ error: 'Internal server error', details: error.message });
     } finally {
-        if (connection) connection.release();
+      if (connection) connection.release();
     }
-},
+  },
   resetPassword: async (req, res) => {
     let connection;
     try {
@@ -588,9 +589,9 @@ export default {
       }
     } catch (error) {
       console.error('Error deleting user account:', error);
-      res.status(500).json({ 
-        error: 'Failed to delete account', 
-        details: error.message 
+      res.status(500).json({
+        error: 'Failed to delete account',
+        details: error.message
       });
     } finally {
       if (connection) connection.release();

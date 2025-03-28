@@ -462,6 +462,7 @@ const ProfileModal = ({
                       )}
                   </div>
                 </div>
+                <Box flex={1} />
 
                 {!isOwnProfile && (
                   <button

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import CoinIcon from "/CoinIcon.png";
 import ManaIcon from "/ManaIcon.png";
 import Tooltip from "@mui/material/Tooltip";
+import TechPassIcon from "/shop-picture/tech-pass.png";
 import ProfilePopover from "./ProfilePopover";
 import { Avatar, Box } from "@mui/material";
 import { useUser } from "../../contexts/UserContext";
@@ -64,6 +65,28 @@ const StatsNProfile = () => {
           </span>
         </div>
       </Tooltip>
+
+      {user?.tech_pass && user.tech_pass > 0 && (
+        <Tooltip
+          title="Tech Pass"
+          arrow
+          sx={{
+            "& .MuiTooltip-tooltip": {
+              padding: "8px 12px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              animation: "fadeInOut 0.3s ease-in-out",
+            },
+          }}
+        >
+          <div className="flex items-center space-x-2">
+            <img src={TechPassIcon} alt="Tech Pass" className="w-6 h-auto" />
+            <span className="text-[#9F9BAE] text-[0.9rem] hover:text-[#E2DDF3] ">
+              {user.tech_pass}
+            </span>
+          </div>
+        </Tooltip>
+      )}
 
       {/* Profile Avatar */}
       <Tooltip

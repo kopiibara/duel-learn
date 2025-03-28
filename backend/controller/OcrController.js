@@ -6,11 +6,8 @@ import os from "os";
 import multer from "multer";
 import { promisify } from "util";
 import { exec } from "child_process";
-import { PDFDocument } from "pdf-lib";
-import { createCanvas } from "canvas";
-import * as pdfjs from "pdfjs-dist";
 import pdfParse from "pdf-parse";
-import pdf2pic from "pdf2pic";
+import sharp from "sharp";
 import dotenv from "dotenv";
 
 // Load environment variables
@@ -332,228 +329,134 @@ async function processPdfDirectlyWithVision(pdfPath) {
       return "";
     }
   } catch (error) {
-    console.error("Error processing PDF directly:", error);
-    throw error;
-  }
-}
-
-// Bypass PDF rendering and send individual page snapshots
-async function processImageBasedPdfPages(pdfPath) {
-  console.log("Processing image-based PDF using direct page extraction");
-  let extractedText = "";
-
-  try {
-    // Create temporary directory for extracted images
-    const tempDir = path.join(os.tmpdir(), `pdf-images-${Date.now()}`);
-    fs.mkdirSync(tempDir, { recursive: true });
-
-    const tempFiles = [];
-
-    try {
-      // Read the PDF file
-      const dataBuffer = fs.readFileSync(pdfPath);
-
-      // Try pure pdf2pic approach first (most reliable for image extraction)
-      try {
-        console.log("Attempting pdf2pic direct extraction...");
-
-        // Configure the conversion
-        const options = {
-          density: 300,
-          saveFilename: "page",
-          savePath: tempDir,
-          format: "png",
-          width: 2000,
-          height: 2000,
-        };
-
-        // Handle potential errors with pdf2pic
-        try {
-          // Use direct file path with pdf2pic
-          const convert = pdf2pic.fromPath(pdfPath, options);
-
-          // Get page count using PDFDocument from pdf-lib
-          const pdfDoc = await PDFDocument.load(dataBuffer);
-          const pageCount = pdfDoc.getPageCount();
-
-          console.log(`PDF has ${pageCount} pages, extracting as images`);
-
-          // Process each page
-          for (let i = 1; i <= pageCount; i++) {
-            console.log(`Converting page ${i} with pdf2pic`);
-
-            try {
-              // Convert the page to image - this will fail if GraphicsMagick is not installed
-              const result = await convert(i);
-
-              if (result && result.path && fs.existsSync(result.path)) {
-                console.log(
-                  `Successfully converted page ${i} to ${result.path}`
-                );
-                tempFiles.push(result.path);
-
-                // Process with OCR
-                const pageText = await processImageWithOCR(result.path);
-                if (pageText && pageText.trim()) {
-                  extractedText += pageText + "\n\n--- Page Break ---\n\n";
-                }
-              } else {
-                console.log(`Failed to convert page ${i} - no result path`);
-              }
-            } catch (pageError) {
-              console.error(`Error converting page ${i}:`, pageError);
-            }
-          }
-
-          if (extractedText.trim()) {
-            return extractedText.trim();
-          }
-        } catch (pdf2picError) {
-          console.error("pdf2pic extraction failed:", pdf2picError);
-        }
-      } catch (error) {
-        console.error("Direct extraction failed:", error);
-      }
-
-      // If we get here, try direct Vision API processing as a last resort
-      console.log("Attempting direct Vision API processing of PDF...");
-      const base64Pdf = dataBuffer.toString("base64");
-
-      const [result] = await visionClient.documentTextDetection({
-        image: { content: base64Pdf },
-        imageContext: {
-          languageHints: ["en", "en-t-i0-handwrit"],
-        },
-      });
-
-      if (result?.fullTextAnnotation?.text) {
-        console.log("Successfully extracted text with direct Vision API call");
-        return result.fullTextAnnotation.text;
-      }
-
-      console.log("All image-based extraction methods failed");
-      return "";
-    } finally {
-      // Clean up temporary files
-      cleanupFiles([...tempFiles, tempDir]);
-    }
-  } catch (error) {
-    console.error("Error in image-based PDF processing:", error);
-    return "";
-  }
-}
-
-// Now update the processPdfWithOCR function with this additional method
-async function processPdfWithOCR(pdfPath) {
-  console.log(`Processing PDF: ${pdfPath}`);
-
-  // Create temporary directory for storing converted images
-  const tempDir = path.join(os.tmpdir(), `pdf-images-${Date.now()}`);
-  fs.mkdirSync(tempDir, { recursive: true });
-  console.log(`Created temporary directory: ${tempDir}`);
-
-  const tempFiles = [];
-  let allText = "";
-
-  try {
-    // First try extracting text directly from PDF
-    try {
-      console.log("Attempt 0: Trying to extract text directly from PDF...");
-      const dataBuffer = fs.readFileSync(pdfPath);
-      const data = await pdfParse(dataBuffer);
-
-      if (data.text && data.text.trim().length > 0) {
-        console.log(
-          `Successfully extracted text directly: ${data.text.length} characters`
-        );
-        return data.text.trim();
-      } else {
-        console.log("No extractable text found in PDF, continuing with OCR...");
-      }
-    } catch (parseError) {
-      console.error("Error extracting text directly:", parseError.message);
-    }
-
-    // Read and parse the PDF document to get page count
-    const pdfBytes = fs.readFileSync(pdfPath);
-    const pdfDoc = await PDFDocument.load(pdfBytes);
-    const pageCount = pdfDoc.getPageCount();
-    console.log(`PDF has ${pageCount} pages`);
-
-    // Try multiple approaches to extract text
-    for (let i = 0; i < pageCount; i++) {
-      console.log(`Processing page ${i + 1} of ${pageCount}`);
-
-      try {
-        // Extract the specific page from the PDF
-        const singlePagePdf = await PDFDocument.create();
-        const [copiedPage] = await singlePagePdf.copyPages(pdfDoc, [i]);
-        singlePagePdf.addPage(copiedPage);
-        const pdfBytes = await singlePagePdf.save();
-
-        // Create a temporary file for this page
-        const pagePdfPath = path.join(tempDir, `page_${i + 1}.pdf`);
-        fs.writeFileSync(pagePdfPath, pdfBytes);
-        tempFiles.push(pagePdfPath);
-
-        // Method 1 and 2 remain the same...
-        // [Your existing code for attempts 1 and 2]
-
-        // If still no text detected, try our pure JavaScript renderer
-        if (!pageText) {
-          console.log(
-            `Attempt 4: Using pure JavaScript PDF renderer for page ${i + 1}`
-          );
-          try {
-            // Convert PDF page to image using our pure JS method
-            const pngPath = await convertPdfToImageWithJs(
-              pagePdfPath,
-              tempDir,
-              1
-            );
-            tempFiles.push(pngPath);
-
-            console.log(`Successfully converted page to image: ${pngPath}`);
-
-            // Process the PNG with OCR
-            pageText = await processImageWithOCR(pngPath);
-          } catch (jsRenderError) {
-            console.error(`Error using JS renderer: ${jsRenderError.message}`);
-          }
-        }
-
-        // Add the page text to our accumulated text if any was found
-        if (pageText && pageText.trim()) {
-          console.log(
-            `Extracted ${pageText.length} characters from page ${i + 1}`
-          );
-          console.log(`Text preview: "${pageText.substring(0, 100)}..."`);
-          allText += pageText + "\n\n--- Page Break ---\n\n";
-        } else {
-          console.log(
-            `No text detected on page ${i + 1} after multiple attempts`
-          );
-        }
-      } catch (pageError) {
-        console.error(`Error processing page ${i + 1}:`, pageError);
-      }
-    }
-
-    // Your existing fallback code for processing the entire PDF...
-
-    return allText.trim();
-  } catch (error) {
-    console.error("Error processing PDF:", error);
-    throw error;
-  } finally {
-    // Clean up all temporary files
-    console.log("Cleaning up temporary PDF processing files");
-    cleanupFiles([...tempFiles, tempDir]);
+    console.error(`Error processing PDF:`, error);
+    return ""; // Return empty string instead of throwing
   }
 }
 
 // Main controller with improved logging
 const ocrController = {
+  // New method to handle multiple images and PDFs
+  extractTextFromMultipleImages: async (req, res) => {
+    try {
+      console.log("=== MULTIPLE FILES OCR PROCESS START ===");
+      console.log(
+        `Request received, files:`,
+        req.files ? `${req.files.length} files` : "None"
+      );
+
+      if (!req.files || req.files.length === 0) {
+        console.log("No files uploaded");
+        return res.status(400).json({ error: "No files uploaded" });
+      }
+
+      if (req.files.length > CONFIG.maxImages) {
+        console.log(`Too many files: ${req.files.length}`);
+        return res.status(400).json({
+          error: `Maximum ${CONFIG.maxImages} files allowed`,
+        });
+      }
+
+      // Process each file sequentially and collect all text
+      const tempFiles = [];
+      let allExtractedText = "";
+      let processedCount = 0;
+      let errorCount = 0;
+
+      // Process each file one by one
+      for (let i = 0; i < req.files.length; i++) {
+        try {
+          const file = req.files[i];
+          const filePath = file.path;
+          const fileName = file.originalname;
+          const fileType = file.mimetype;
+
+          console.log(
+            `Processing file ${i + 1} of ${req.files.length
+            }: ${fileName} (${fileType})`
+          );
+
+          if (!fs.existsSync(filePath)) {
+            console.error(`File not found at path: ${filePath}`);
+            errorCount++;
+            continue; // Skip this file and continue with others
+          }
+
+          let extractedText = "";
+
+          // Handle PDF files differently than images
+          if (fileType === "application/pdf") {
+            console.log(`Detected PDF file: ${fileName}`);
+            extractedText = await processPdfWithOCR(filePath);
+          } else {
+            // Handle image files
+            console.log(`Detected image file: ${fileName}`);
+            // Preprocess the image
+            console.log("Preprocessing image for better OCR results...");
+            const preprocessedImagePath = await preprocessImage(filePath);
+            tempFiles.push(preprocessedImagePath);
+
+            // Extract text from the preprocessed image
+            extractedText = await processImageWithOCR(preprocessedImagePath);
+          }
+
+          if (extractedText && extractedText.trim()) {
+            processedCount++;
+            // Add page marker and the extracted text
+            allExtractedText += `\n\n--- File ${i + 1
+              }: ${fileName} ---\n\n${extractedText}`;
+            console.log(
+              `Successfully extracted ${extractedText.length
+              } characters from file ${i + 1}`
+            );
+          } else {
+            console.log(`No text extracted from file ${i + 1}`);
+            errorCount++;
+          }
+        } catch (processingError) {
+          console.error(`Error processing file ${i + 1}:`, processingError);
+          errorCount++;
+        }
+      }
+
+      // Check if any text was extracted
+      if (!allExtractedText || allExtractedText.trim() === "") {
+        console.log("No text could be extracted from any of the files");
+        return res.status(422).json({
+          error: "No text found",
+          details: "No recognizable text could be extracted from the files",
+        });
+      }
+
+      // Add a summary of the extraction process
+      const summary = `\n\n=== Extraction Summary ===\nSuccessfully processed ${processedCount} of ${req.files.length
+        } files${errorCount > 0 ? ` (${errorCount} files had issues)` : ""}\n`;
+
+      allExtractedText = summary + allExtractedText;
+
+      console.log(
+        `Extracted text from all files, total length: ${allExtractedText.length}`
+      );
+
+      // Clean up temporary files
+      cleanupFiles([...tempFiles, ...req.files.map((f) => f.path)]);
+
+      return res.status(200).json({
+        text: allExtractedText.trim(),
+        fileCount: req.files.length,
+        successCount: processedCount,
+        errorCount: errorCount,
+      });
+    } catch (error) {
+      console.error("Error processing files:", error);
+      return res.status(500).json({
+        error: "An error occurred while processing the files",
+        details: error.message || "Unknown error during OCR processing",
+      });
+    }
+  },
+
+  // Add the old methods with a redirect for compatibility
   extractTextFromImage: async (req, res) => {
     try {
       console.log("=== OCR PROCESS START ===");
@@ -841,82 +744,5 @@ RESPONSE FORMAT: Return ONLY the JSON array with no additional text.
     }
   },
 };
-
-// Preprocessing function
-function preprocessExtractedText(text) {
-  // Remove excessive whitespace
-  let processed = text.replace(/\s+/g, " ").trim();
-
-  // Fix bullet point formatting
-  processed = processed.replace(/•\s*/g, "\n• ");
-
-  // Fix dash formatting (often used in definitions)
-  processed = processed.replace(/\s-\s/g, " - ");
-
-  // Fix arrow formatting (often used in handwritten notes)
-  processed = processed.replace(/\s?→\s?/g, " - ");
-  processed = processed.replace(/\s?->\s?/g, " - ");
-
-  // Try to identify potential terms (capitalized phrases at beginning of lines)
-  const lines = processed.split("\n");
-  const structuredLines = lines.map((line) => {
-    // If line starts with a capitalized word(s) followed by lowercase, add a line break after
-    if (/^[A-Z][A-Za-z\s]+[a-z]\s+[a-z]/.test(line)) {
-      const match = line.match(/^([A-Z][A-Za-z\s]+?[a-z])\s+([a-z].*)/);
-      if (match) {
-        return `${match[1]}\n${match[2]}`;
-      }
-    }
-    return line;
-  });
-
-  // Rejoin and ensure proper spacing around bullet points
-  processed = structuredLines.join("\n");
-
-  // Handle terms with colons
-  processed = processed.replace(/([^:]+):\s*/g, "$1\n");
-
-  // Better handle numbered or bulleted lists which are common in notes
-  processed = processed.replace(/(\d+[\.\)]) /g, "\n$1 ");
-
-  // Better detect section headers (often all caps or numbered)
-  processed = processed.replace(/^([0-9]+\.\s+[A-Z\s]+)$/gm, "\n$1\n");
-
-  return processed;
-}
-
-// Helper function to clean up files
-function cleanupFiles(files) {
-  files.forEach((file) => {
-    try {
-      if (fs.existsSync(file)) {
-        const stats = fs.statSync(file);
-
-        if (stats.isDirectory()) {
-          // Remove directory content first
-          const dirContents = fs.readdirSync(file);
-          dirContents.forEach((item) => {
-            const itemPath = path.join(file, item);
-            if (fs.statSync(itemPath).isFile()) {
-              fs.unlinkSync(itemPath);
-            }
-          });
-
-          // Then remove the directory
-          fs.rmdirSync(file);
-          console.log(`Removed directory: ${file}`);
-        } else {
-          // Remove file
-          fs.unlinkSync(file);
-          console.log(`Removed file: ${file}`);
-        }
-      }
-    } catch (error) {
-      console.error(`Failed to clean up ${file}:`, error);
-    }
-  });
-
-  console.log("Cleanup complete");
-}
 
 export default ocrController;

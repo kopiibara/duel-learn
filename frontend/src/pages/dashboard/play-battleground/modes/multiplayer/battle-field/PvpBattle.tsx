@@ -20,30 +20,13 @@ import CharacterAnimationManager from "./components/CharacterAnimationManager";
 import GameStartAnimation from "./components/GameStartAnimation";
 import GuestWaitingForRandomization from "./components/GuestWaitingForRandomization";
 
-// Import utils
-import { TurnRandomizer, QuestionTimer, getCharacterImage } from "./utils";
+// Import utils directly
+import TurnRandomizer from "./utils/TurnRandomizer";
+import { getCharacterImage } from "./utils/getCharacterImage";
+import QuestionTimer from "./utils/QuestionTimer";
 
-interface BattleState {
-  current_turn: string | null;
-  round_number: number;
-  total_rounds: number;
-  host_card: string | null;
-  guest_card: string | null;
-  host_score: number;
-  guest_score: number;
-  host_health: number;
-  guest_health: number;
-  is_active: boolean;
-  winner_id: string | null;
-  battle_end_reason: string | null;
-  host_in_battle: boolean;
-  guest_in_battle: boolean;
-  battle_started: boolean;
-  host_username: string | null;
-  guest_username: string | null;
-  ID: number;
-  session_uuid: string;
-}
+// Import shared BattleState interface
+import { BattleState } from "./BattleState";
 
 /**
  * PvpBattle component - Main battle screen for player vs player mode
@@ -61,6 +44,8 @@ export default function PvpBattle() {
   const [battleState, setBattleState] = useState<BattleState | null>(null);
   const [difficultyMode, setDifficultyMode] = useState<string | null>(null);
   const [studyMaterialId, setStudyMaterialId] = useState<string | null>(null);
+  const [playerHealth, setPlayerHealth] = useState(100);
+  const [opponentHealth, setOpponentHealth] = useState(100);
 
   // Turn-based gameplay state
   const [gameStarted, setGameStarted] = useState(false);
@@ -68,6 +53,7 @@ export default function PvpBattle() {
   const [showCards, setShowCards] = useState(false);
   const [showGameStart, setShowGameStart] = useState(false);
   const [gameStartText, setGameStartText] = useState("");
+  const [showCardsAfterDelay, setShowCardsAfterDelay] = useState(false);
 
   // Player info
   const playerName = isHost ? hostUsername || "Host" : guestUsername || "Guest";
@@ -76,8 +62,6 @@ export default function PvpBattle() {
     : hostUsername || "Host";
   const currentUserId = isHost ? hostId : guestId;
   const opponentId = isHost ? guestId : hostId;
-  const playerHealth = 100;
-  const opponentHealth = 100;
   const maxHealth = 100;
 
   // Animation state for player and enemy
@@ -133,48 +117,126 @@ export default function PvpBattle() {
     !battleState?.current_turn &&
     !randomizationDone;
 
+  // Effect to handle delayed card display after game start
+  useEffect(() => {
+    if (gameStarted && !showCardsAfterDelay) {
+      const timer = setTimeout(() => {
+        setShowCardsAfterDelay(true);
+      }, 2000); // 2 second delay
+      return () => clearTimeout(timer);
+    }
+  }, [gameStarted]);
+
   // Handle card selection
-  const handleCardSelected = (cardId: string) => {
+  const handleCardSelected = async (cardId: string) => {
     // When player selects a card, it's no longer their turn
     // Reset player animations to idle
     setPlayerAnimationState("idle");
     setPlayerPickingIntroComplete(false);
 
-    // In a real app, you would send this selection to the server
-    // For now, just switch turns
-    setIsMyTurn(false);
+    try {
+      // Determine if the current player is host or guest
+      const playerType = isHost ? 'host' : 'guest';
 
-    // Set enemy animation to picking - they get their turn next
-    setEnemyAnimationState("picking");
-    setEnemyPickingIntroComplete(false);
+      // Update the battle round with the selected card and switch turns
+      const response = await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
+        {
+          session_uuid: battleState?.session_uuid,
+          player_type: playerType,
+          card_id: cardId,
+          lobby_code: lobbyCode
+        }
+      );
 
-    // Simulate opponent's turn (in a real app, this would come from the server)
-    setTimeout(() => {
-      // After 3 seconds, switch back to player's turn
-      setPlayerAnimationState("picking");
-      setPlayerPickingIntroComplete(false);
-      setEnemyAnimationState("idle");
-      setEnemyPickingIntroComplete(false);
-      setIsMyTurn(true);
-    }, 3000);
-  };
+      if (response.data.success) {
+        console.log(`Card ${cardId} selection successful, turn switched`);
 
-  // Update animation states when turns change
-  useEffect(() => {
-    if (gameStarted && !waitingForPlayer) {
-      if (isMyTurn) {
-        // If it's my turn, my character should be picking
-        setPlayerAnimationState("picking");
-        setPlayerPickingIntroComplete(false);
-        setEnemyAnimationState("idle");
-      } else {
-        // If it's opponent's turn, their character should be picking
+        // Switch turns locally but keep UI visible
+        setIsMyTurn(false);
+
+        // Set enemy animation to picking - they get their turn next
         setEnemyAnimationState("picking");
         setEnemyPickingIntroComplete(false);
-        setPlayerAnimationState("idle");
+      } else {
+        console.error("Failed to update battle round:", response.data.message);
       }
+    } catch (error) {
+      console.error("Error updating battle round:", error);
     }
-  }, [isMyTurn, gameStarted, waitingForPlayer]);
+  };
+
+  // Add polling for turn updates
+  useEffect(() => {
+    // Skip if game hasn't started or we're waiting for players
+    if (!gameStarted || waitingForPlayer || !battleState?.session_uuid) return;
+
+    // Function to check if it's our turn
+    const checkTurn = async () => {
+      try {
+        // Get the latest session state
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-state/${lobbyCode}`
+        );
+
+        if (response.data.success && response.data.data) {
+          const sessionData = response.data.data;
+
+          // Update local battle state with proper type safety
+          setBattleState(prevState => {
+            // If prevState is null, we can't update it properly
+            if (!prevState) return null;
+
+            return {
+              ...prevState,
+              current_turn: sessionData.current_turn,
+              // Only set cards if they exist in the session data
+              ...(sessionData.host_card && { host_card: sessionData.host_card }),
+              ...(sessionData.guest_card && { guest_card: sessionData.guest_card })
+            };
+          });
+
+          // Check if it's this player's turn
+          const isCurrentPlayerTurn = sessionData.current_turn === currentUserId;
+
+          // If turn has changed
+          if (isCurrentPlayerTurn !== isMyTurn) {
+            console.log(`Turn changed: ${isMyTurn} → ${isCurrentPlayerTurn}`);
+
+            // Update UI accordingly
+            setIsMyTurn(isCurrentPlayerTurn);
+
+            if (isCurrentPlayerTurn) {
+              // My turn now - update animations 
+              setPlayerAnimationState("picking");
+              setPlayerPickingIntroComplete(false);
+              setEnemyAnimationState("idle");
+              setEnemyPickingIntroComplete(false);
+            } else {
+              // Opponent's turn - update animations
+              setPlayerAnimationState("idle");
+              setPlayerPickingIntroComplete(false);
+              setEnemyAnimationState("picking");
+              setEnemyPickingIntroComplete(false);
+            }
+
+            // Always show cards UI regardless of whose turn it is
+            setShowCards(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking turn status:", error);
+      }
+    };
+
+    // Set up polling for turn updates (every 2 seconds)
+    const turnCheckInterval = setInterval(checkTurn, 2000);
+
+    // Initial check
+    checkTurn();
+
+    return () => clearInterval(turnCheckInterval);
+  }, [gameStarted, waitingForPlayer, battleState?.session_uuid, lobbyCode, currentUserId, isMyTurn]);
 
   // Timer effect
   useEffect(() => {
@@ -260,6 +322,57 @@ export default function PvpBattle() {
     fetchBattleSessionData();
   }, [lobbyCode]);
 
+  // Effect to fetch battle scores
+  useEffect(() => {
+    const fetchBattleScores = async () => {
+      if (!battleState?.session_uuid) return;
+
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${battleState.session_uuid}`
+        );
+
+        if (response.data.success && response.data.data) {
+          const scores = response.data.data;
+          // Set health based on whether player is host or guest
+          if (isHost) {
+            setPlayerHealth(scores.host_health);
+            setOpponentHealth(scores.guest_health);
+
+            // Check for victory/defeat conditions
+            if (scores.host_health <= 0) {
+              setVictoryMessage("You Lost!");
+              setShowVictoryModal(true);
+            } else if (scores.guest_health <= 0) {
+              setVictoryMessage("You Won!");
+              setShowVictoryModal(true);
+            }
+          } else {
+            setPlayerHealth(scores.guest_health);
+            setOpponentHealth(scores.host_health);
+
+            // Check for victory/defeat conditions
+            if (scores.guest_health <= 0) {
+              setVictoryMessage("You Lost!");
+              setShowVictoryModal(true);
+            } else if (scores.host_health <= 0) {
+              setVictoryMessage("You Won!");
+              setShowVictoryModal(true);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching battle scores:', error);
+      }
+    };
+
+    // Poll for battle scores every 1.5 seconds
+    const scoresPollInterval = setInterval(fetchBattleScores, 1500);
+    fetchBattleScores(); // Initial fetch
+
+    return () => clearInterval(scoresPollInterval);
+  }, [battleState?.session_uuid, isHost]);
+
   return (
     <div className="w-full h-screen flex flex-col">
       {/* Character animation manager */}
@@ -339,6 +452,9 @@ export default function PvpBattle() {
           hostId={hostId}
           guestId={guestId}
           showRandomizer={showRandomizer}
+          playerPickingIntroComplete={playerPickingIntroComplete}
+          enemyPickingIntroComplete={enemyPickingIntroComplete}
+          battleState={battleState}
           setRandomizationDone={setRandomizationDone}
           setShowRandomizer={setShowRandomizer}
           setShowGameStart={setShowGameStart}
@@ -363,8 +479,8 @@ export default function PvpBattle() {
           gameStartText={gameStartText}
         />
 
-        {/* Card Selection UI - Show after the waiting screen */}
-        {gameStarted && showCards && !waitingForPlayer && (
+        {/* Card Selection UI - Show after the waiting screen and delay */}
+        {gameStarted && showCards && !waitingForPlayer && showCardsAfterDelay && (
           <div className="fixed inset-0 bg-black/40 z-10">
             <CardSelection
               isMyTurn={isMyTurn}

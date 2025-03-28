@@ -9,7 +9,7 @@ const useProfilePicture = (initialPicture: string) => {
     const loadImages = async () => {
       try {
         const imageModules = import.meta.glob(
-          "/profile-picture/*.{png,jpg,jpeg,svg}"
+          "../../public/profile-picture/*.{png,jpg,jpeg,svg}"
         );
         const imageUrls = await Promise.all(
           Object.values(imageModules).map((importFn) => importFn())
