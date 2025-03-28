@@ -66,7 +66,6 @@ const StatsNProfile = () => {
         </div>
       </Tooltip>
 
-      {/* TechPass Icon - Only show if user has tech passes */}
       {user?.tech_pass && user.tech_pass > 0 && (
         <Tooltip
           title="Tech Pass"

@@ -23,8 +23,8 @@ import TutorialLast from "../pages/user-onboarding/TutorialLast";
 import WelcomeGameMode from "../pages/dashboard/play-battleground/screens/WelcomeGameMode";
 import SetUpTimeQuestion from "../pages/dashboard/play-battleground/components/setup/SetUpTimeQuestion";
 import PVPLobby from "../pages/dashboard/play-battleground/modes/multiplayer/PVPLobby";
-import { useState } from "react";
-import LoadingScreen from "../pages/dashboard/play-battleground/screens/LoadingScreen";
+import { useState, useEffect } from "react";
+import LoadingScreen from "../components/LoadingScreen";
 import SessionReport from "../pages/dashboard/play-battleground/screens/SessionReport";
 import PeacefulMode from "../pages/dashboard/play-battleground/modes/peaceful/PeacefulMode";
 import TimePressuredMode from "../pages/dashboard/play-battleground/modes/time-pressured/TimePressuredMode";
@@ -36,12 +36,23 @@ import PvpBattle from "../pages/dashboard/play-battleground/modes/multiplayer/ba
 import SearchPage from "../pages/dashboard/search/SearchPage";
 
 const PrivateRoutes = () => {
-  const { user, loading: userLoading } = useUser();
+  const { user, loading: userLoading, refreshUserData } = useUser();
   const { isAuthenticated, isLoading: authLoading, currentUser } = useAuth();
   const [_selectedIndex, setSelectedIndex] = useState<number | null>(1);
+  const [loadingTimeout, setLoadingTimeout] = useState(false);
 
-  // Show loading screen if either auth or user data is still loading
-  if (authLoading || userLoading) {
+  // Add loading timeout to prevent infinite loading
+  useEffect(() => {
+    // If still loading after 5 seconds, allow the user to proceed anyway
+    const timer = setTimeout(() => {
+      setLoadingTimeout(true);
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Show loading screen if both auth and user data are still loading and timeout hasn't occurred
+  if ((authLoading || userLoading) && !loadingTimeout) {
     return <LoadingScreen />;
   }
 
@@ -51,12 +62,16 @@ const PrivateRoutes = () => {
   }
 
   // If authenticated but no user data loaded yet, try to load it
-  if (!user) {
+  if (!user && !loadingTimeout) {
+    // Attempt to refresh user data if not loaded
+    if (!userLoading) {
+      refreshUserData();
+    }
     return <LoadingScreen />;
   }
 
-  // If email not verified, redirect to verification page
-  if (!user.email_verified) {
+  // Only check email verification if we actually have user data
+  if (user && !user.email_verified) {
     return <Navigate to="/verify-email" />;
   }
 

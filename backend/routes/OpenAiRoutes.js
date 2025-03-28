@@ -14,19 +14,18 @@ router.get("/status", (req, res) => {
     : "not set";
 
   res.json({
-    status: "OpenAI API routes are configured",
+    status: 'OpenAI API routes are configured',
     apiKeyConfigured: apiKeyExists,
     apiKeyHint: apiKeyFirstChars,
     routesAvailable: [
-      "/api/openai/generate-summary (POST)",
-      "/api/openai/generate-identification (POST)",
-      "/api/openai/generate-true-false (POST)",
-      "/api/openai/generate-multiple-choice (POST)",
-      "/api/openai/cross-reference-definition (POST)",
-      "/api/openai/save-session-results (POST)",
-      "/api/openai/status (GET)",
+      '/api/openai/generate-summary (POST)',
+      '/api/openai/generate-identification (POST)',
+      '/api/openai/generate-true-false (POST)',
+      '/api/openai/generate-multiple-choice (POST)',
+      '/api/openai/save-session-results (POST)',
+      '/api/openai/status (GET)'
     ],
-    serverTime: new Date().toISOString(),
+    serverTime: new Date().toISOString()
   });
 });
 

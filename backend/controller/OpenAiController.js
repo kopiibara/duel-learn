@@ -196,8 +196,7 @@ const storeGeneratedQuestions = async (
 
       if (existingRows && existingRows[0]) {
         console.log(
-          `Found ${existingRows[0].count} existing questions with IDs: ${
-            existingRows[0].ids || "none"
+          `Found ${existingRows[0].count} existing questions with IDs: ${existingRows[0].ids || "none"
           }`
         );
         console.log(
@@ -364,8 +363,7 @@ const storeGeneratedQuestions = async (
         actualItemId = contentItem.itemId; // Keep as string, don't parse
         actualItemNumber = contentItem.itemNumber;
         console.log(
-          `✅ SUCCESS: Using actual item_id ${actualItemId} (type: ${typeof actualItemId}) from study_material_content for term "${
-            item.term
+          `✅ SUCCESS: Using actual item_id ${actualItemId} (type: ${typeof actualItemId}) from study_material_content for term "${item.term
           }"`
         );
       } else {
@@ -454,10 +452,8 @@ const storeGeneratedQuestions = async (
       question.question_type = questionType;
 
       console.log(
-        `\n[Question ${i + 1}/${
-          questions.length
-        }] Processing question of type "${questionType}" for term "${
-          item.term
+        `\n[Question ${i + 1}/${questions.length
+        }] Processing question of type "${questionType}" for term "${item.term
         }"`
       );
 
@@ -756,8 +752,7 @@ const storeGeneratedQuestions = async (
             );
 
             console.log(
-              `Broader search found ${
-                broadVerifyRows?.length || 0
+              `Broader search found ${broadVerifyRows?.length || 0
               } rows for this study material`
             );
 
@@ -995,8 +990,8 @@ const OpenAIController = {
       const prompt = `Generate an overview that will cater the topic of the following details of the study material:  
             Tags: ${tags ? tags.join(", ") : "No tags"}  
             Items: ${items
-              .map((item) => `${item.term}: ${item.definition}`)
-              .join("\n")}  
+          .map((item) => `${item.term}: ${item.definition}`)
+          .join("\n")}  
             
             Make it so that it will gather the attention of the user that will read this overview and will make them interested to read the full study material.
             
@@ -1805,28 +1800,28 @@ Important:
           providedItems.length > 0
             ? providedItems
             : questions.map((q, index) => {
-                // First try to get item from itemInfo
-                if (q.itemInfo && q.itemInfo.term && q.itemInfo.definition) {
-                  console.log(
-                    `Creating item from question ${index + 1} itemInfo:`,
-                    q.itemInfo
-                  );
-                  return {
-                    id: q.itemInfo.itemId || index + 1,
-                    term: q.itemInfo.term,
-                    definition: q.itemInfo.definition,
-                  };
-                } else {
-                  // Fall back to creating from question fields
-                  const item = {
-                    id: index + 1,
-                    term: q.correctAnswer || q.answer || `Item ${index + 1}`,
-                    definition: q.question || `Definition ${index + 1}`,
-                  };
-                  console.log(`Created dummy item ${index + 1}:`, item);
-                  return item;
-                }
-              });
+              // First try to get item from itemInfo
+              if (q.itemInfo && q.itemInfo.term && q.itemInfo.definition) {
+                console.log(
+                  `Creating item from question ${index + 1} itemInfo:`,
+                  q.itemInfo
+                );
+                return {
+                  id: q.itemInfo.itemId || index + 1,
+                  term: q.itemInfo.term,
+                  definition: q.itemInfo.definition,
+                };
+              } else {
+                // Fall back to creating from question fields
+                const item = {
+                  id: index + 1,
+                  term: q.correctAnswer || q.answer || `Item ${index + 1}`,
+                  definition: q.question || `Definition ${index + 1}`,
+                };
+                console.log(`Created dummy item ${index + 1}:`, item);
+                return item;
+              }
+            });
 
         console.log(`Processed ${processedItems.length} items for storage`);
 
@@ -1938,8 +1933,7 @@ Important:
 
               // Fetch the actual item_id from study_material_content with enhanced debugging
               console.log(
-                `Looking up content for identification question ${
-                  i + 1
+                `Looking up content for identification question ${i + 1
                 } with term "${term}"`
               );
               const contentItem = await getItemIdFromStudyMaterial(
@@ -1972,8 +1966,7 @@ Important:
               }
 
               console.log(
-                `Using item_id ${actualItemId} and item_number ${actualItemNumber} for identification question ${
-                  i + 1
+                `Using item_id ${actualItemId} and item_number ${actualItemNumber} for identification question ${i + 1
                 }`
               );
 
@@ -1996,8 +1989,7 @@ Important:
               ];
 
               console.log(
-                `Executing direct insert for identification question ${
-                  i + 1
+                `Executing direct insert for identification question ${i + 1
                 }...`
               );
               console.log(`Direct insert values:`, directInsertValues);
@@ -2011,14 +2003,12 @@ Important:
 
                 if (directResult.affectedRows > 0) {
                   console.log(
-                    `✅ Successfully inserted identification question ${
-                      i + 1
+                    `✅ Successfully inserted identification question ${i + 1
                     } directly`
                   );
                 } else {
                   console.warn(
-                    `⚠️ Direct insertion affected 0 rows for identification question ${
-                      i + 1
+                    `⚠️ Direct insertion affected 0 rows for identification question ${i + 1
                     }`
                   );
                 }
@@ -2053,8 +2043,7 @@ Important:
                     );
                   } else {
                     console.warn(
-                      `⚠️ Update affected 0 rows for identification question ${
-                        i + 1
+                      `⚠️ Update affected 0 rows for identification question ${i + 1
                       }`
                     );
                   }
