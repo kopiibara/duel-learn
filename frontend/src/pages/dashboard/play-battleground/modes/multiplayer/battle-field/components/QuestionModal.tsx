@@ -17,11 +17,11 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     difficultyMode,
     questionTypes
 }) => {
-    const [isFlipped, setIsFlipped] = useState(false);
     const [hasAnswered, setHasAnswered] = useState(false);
     const [currentQuestion, setCurrentQuestion] = useState<any>(null);
     const [showResult, setShowResult] = useState(false);
     const [isCorrect, setIsCorrect] = useState(false);
+    const [selectedAnswer, setSelectedAnswer] = useState<string>("");
     const [usedQuestionIndices, setUsedQuestionIndices] = useState<number[]>([]);
     const [questionHistory, setQuestionHistory] = useState<Array<{
         question: string;
@@ -68,10 +68,10 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     // Reset states when modal closes
     useEffect(() => {
         if (!isOpen) {
-            setIsFlipped(false);
             setHasAnswered(false);
             setShowResult(false);
             setCurrentQuestion(null);
+            setSelectedAnswer("");
         }
     }, [isOpen]);
 
@@ -89,8 +89,9 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     }, [isOpen]);
 
     const handleAnswerSubmit = (answer: string) => {
-        if (!currentQuestion) return;
+        if (!currentQuestion || hasAnswered) return;
 
+        setSelectedAnswer(answer);
         const answerCorrect = answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
         setIsCorrect(answerCorrect);
         setHasAnswered(true);
@@ -109,81 +110,120 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
         }, 1500);
     };
 
+    const getButtonStyle = (option: string) => {
+        if (!hasAnswered) {
+            return 'text-white border-2 border-white-400 hover:border-green-300 transition-colors';
+        }
+
+        const isSelected = selectedAnswer.toLowerCase() === option.toLowerCase();
+        const isCorrectAnswer = option.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+
+        if (isCorrectAnswer) {
+            return 'bg-green-500 text-white border-2 border-green-600';
+        }
+        if (isSelected && !isCorrectAnswer) {
+            return 'bg-red-500 text-white border-2 border-red-600';
+        }
+        return 'text-white border-2 border-gray-300 opacity-50';
+    };
+
     if (!isOpen || !currentQuestion) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="p-8 rounded-lg max-w-3xl w-full mx-4 relative">
+        <div className="fixed inset-0 bg-black/10 flex items-center justify-center z-50">
+            <div className="p-8 rounded-lg max-w-4xl w-full mx-4 relative flex flex-col items-center">
                 {/* Question Counter */}
-                <div className="mb-4 text-sm text-gray-600">
+                <div className="mb-4 text-sm text-white">
                     Question {usedQuestionIndices.length} of {getFilteredQuestions().length}
                 </div>
 
-                <BattleFlashCard
-                    question={currentQuestion.question}
-                    correctAnswer={currentQuestion.correctAnswer}
-                    isFlipped={isFlipped}
-                    onFlip={() => setIsFlipped(!isFlipped)}
-                    type={currentQuestion.questionType}
-                    disabled={hasAnswered}
-                    onReveal={() => setIsFlipped(true)}
-                />
+                <div className="w-full flex justify-center">
+                    <BattleFlashCard
+                        question={currentQuestion.question}
+                        correctAnswer={currentQuestion.correctAnswer}
+                        type={currentQuestion.questionType}
+                        disabled={hasAnswered}
+                    />
+                </div>
 
-                {/* Answer buttons */}
-                <div className="mt-8 flex justify-center gap-4">
-                    {currentQuestion.options ? (
-                        // Multiple choice or true/false
-                        <div className="flex flex-wrap justify-center gap-4">
+                {/* Answer Section */}
+                <div className="mt-9 w-full">
+                    {currentQuestion.questionType === 'multiple-choice' && (
+                        <div className="grid grid-cols-2 gap-4 max-w-3xl mx-auto px-4">
                             {currentQuestion.options.map((option: string, index: number) => (
                                 <button
                                     key={index}
                                     onClick={() => handleAnswerSubmit(option)}
                                     disabled={hasAnswered}
-                                    className={`px-6 py-3 rounded-lg ${hasAnswered
-                                        ? option.toLowerCase() === currentQuestion.correctAnswer.toLowerCase()
-                                            ? 'bg-green-500 text-white'
-                                            : 'bg-red-500 text-white'
-                                        : 'bg-purple-600 text-white hover:bg-purple-700'
-                                        }`}
+                                    className={`h-[100px] px-6 py-4 rounded-lg text-lg font-medium transition-colors whitespace-normal flex items-center justify-center ${getButtonStyle(option)}`}
                                 >
                                     {option}
                                 </button>
                             ))}
                         </div>
-                    ) : (
-                        // Identification
-                        <div className="w-full max-w-md">
-                            <input
-                                type="text"
-                                placeholder="Type your answer..."
-                                className="w-full px-4 py-2 border rounded-lg"
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !hasAnswered) {
-                                        handleAnswerSubmit((e.target as HTMLInputElement).value);
-                                    }
-                                }}
-                                disabled={hasAnswered}
-                            />
-                            <button
-                                onClick={(e) => handleAnswerSubmit((e.currentTarget.previousElementSibling as HTMLInputElement).value)}
-                                disabled={hasAnswered}
-                                className="mt-4 w-full px-6 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700"
-                            >
-                                Submit Answer
-                            </button>
+                    )}
+
+                    {currentQuestion.questionType === 'true-false' && (
+                        <div className="flex justify-center gap-6">
+                            {['True', 'False'].map((option) => (
+                                <button
+                                    key={option}
+                                    onClick={() => handleAnswerSubmit(option)}
+                                    disabled={hasAnswered}
+                                    className={`w-[200px] h-[93.33px] px-6 py-4 rounded-lg text-lg font-medium transition-colors flex items-center justify-center ${getButtonStyle(option)}`}
+                                >
+                                    {option}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
+                    {currentQuestion.questionType === 'identification' && (
+                        <div className="max-w-xl mx-auto">
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    placeholder="Type your answer here ..."
+                                    className={`w-full h-[90px] px-6 text-lg rounded-lg border-2 bg-[#0f0f0f00] text-white placeholder-gray-400 ${hasAnswered
+                                        ? isCorrect
+                                            ? 'border-green-500 bg-green-500/10'
+                                            : 'border-red-500 bg-red-500/10'
+                                        : 'border-[#2C2C2C]'
+                                        } outline-none`}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && !hasAnswered) {
+                                            handleAnswerSubmit((e.target as HTMLInputElement).value);
+                                        }
+                                    }}
+                                    disabled={hasAnswered}
+                                />
+                                {hasAnswered && !isCorrect && (
+                                    <div className="mt-2 text-green-500 text-center">
+                                        Correct answer: {currentQuestion.correctAnswer}
+                                    </div>
+                                )}
+                            </div>
+                            {!hasAnswered && (
+                                <button
+                                    onClick={(e) => handleAnswerSubmit((e.currentTarget.previousElementSibling?.querySelector('input') as HTMLInputElement).value)}
+                                    className="mt-7 w-full px-6 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors text-lg font-medium"
+                                >
+                                    Submit Answer
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
-
-                {/* Result Overlay */}
-                {showResult && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/80 rounded-lg">
-                        <div className={`text-6xl font-bold ${isCorrect ? 'text-green-500' : 'text-red-500'} animate-bounce`}>
-                            {isCorrect ? 'CORRECT!!!' : 'WRONG!!!'}
-                        </div>
-                    </div>
-                )}
             </div>
+
+            {/* Result Overlay */}
+            {showResult && (
+                <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-[60]">
+                    <div className={`text-6xl font-bold ${isCorrect ? 'text-green-500' : 'text-red-500'} animate-bounce`}>
+                        {isCorrect ? 'CORRECT!!!' : 'WRONG!!!'}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
