@@ -14,6 +14,8 @@ import adminRoutes from "./routes/admin/AdminRoutes.js"; // Import admin routes
 import ocrRoutes from "./routes/OcrRoutes.js"; // Import OCR routes
 import { corsMiddleware } from "./middleware/CorsMiddleware.js"; // Import CORS middleware
 import { coopMiddleware } from "./middleware/CoopMiddleware.js"; // Import COOP middleware
+import sessionReportRoutes from './routes/sessionReport.js';
+import { initSessionReportTable } from './models/SessionReport.js';
 // Load environment variables
 dotenv.config();
 
@@ -40,6 +42,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// Initialize tables
+try {
+  await initSessionReportTable();
+} catch (error) {
+  console.error('Error initializing tables:', error);
+}
+
 // Routes
 app.use("/api/study-material", studyMaterialRoutes);
 app.use("/api/user", userRoutes);
@@ -53,6 +62,7 @@ app.use("/api/gameplay", gameplayRoutes);
 app.use("/api/openai", openAiRoutes);
 app.use("/api/admin", adminRoutes); // Mount admin routes under /api/admin
 app.use("/api/ocr", ocrRoutes); // Mount OCR routes under /api/ocr
+app.use('/api/session-report', sessionReportRoutes);
 
 // Add global error handler for uncaught exceptions
 app.use((err, req, res, next) => {
