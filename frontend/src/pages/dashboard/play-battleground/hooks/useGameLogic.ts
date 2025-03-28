@@ -48,70 +48,8 @@ export const useGameLogic = ({
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<any>(null);
   const [questionIndex, setQuestionIndex] = useState(0);
-  const [remainingQuestions, setRemainingQuestions] = useState<any[]>([]);
 
   const navigate = useNavigate();
-
-  // Initialize remaining questions when aiQuestions are received
-  useEffect(() => {
-    if (aiQuestions && aiQuestions.length > 0) {
-      setRemainingQuestions(aiQuestions);
-      setQuestionIndex(0);
-    }
-  }, [aiQuestions]);
-
-  // Handle question updates
-  useEffect(() => {
-    if (remainingQuestions.length > 0 && questionIndex < remainingQuestions.length) {
-      const question = remainingQuestions[questionIndex];
-      console.log(`Processing question ${questionIndex + 1} of ${remainingQuestions.length}`);
-      
-      if (!question) {
-        console.error(`No question found at index ${questionIndex}`);
-        return;
-      }
-
-      console.log("Current question data:", question);
-      
-      // For multiple choice, extract answer from format like "D. AI"
-      let displayAnswer = question.answer;
-      if (question.type === 'multiple-choice' && question.answer && question.answer.includes('. ')) {
-        const parts = question.answer.split('. ');
-        displayAnswer = parts[1] || parts[0];
-      }
-
-      const processedQuestion = {
-        questionType: question.type,
-        type: question.type,
-        question: question.question || "Question loading...",
-        correctAnswer: displayAnswer || "Answer loading...",
-        options: question.type === 'multiple-choice' && question.options ? 
-          Object.values(question.options) : 
-          undefined,
-        rawOptions: question.options,
-        answer: question.answer
-      };
-
-      console.log("Processed question for UI:", processedQuestion);
-      setCurrentQuestion(processedQuestion);
-    } else if (remainingQuestions.length > 0 && questionIndex >= remainingQuestions.length) {
-      // All questions have been answered, navigate to summary
-      handleGameComplete();
-    }
-  }, [remainingQuestions, questionIndex]);
-
-  const handleNextQuestion = () => {
-    if (questionIndex < remainingQuestions.length - 1) {
-      setIsFlipped(false);
-      setSelectedAnswer(null);
-      setInputAnswer("");
-      setShowResult(false);
-      setShowNextButton(false);
-      setQuestionIndex(prev => prev + 1);
-    } else {
-      handleGameComplete();
-    }
-  };
 
   // Filter questions based on mode and selected types
   const filteredQuestions = questionsData.filter(
@@ -134,6 +72,63 @@ export const useGameLogic = ({
       console.log("AI questions received in hook:", aiQuestions);
     }
   }, []);
+
+  useEffect(() => {
+    if (aiQuestions && aiQuestions.length > 0) {
+      console.log(`Processing AI question at index ${questionIndex} of ${aiQuestions.length}`);
+      const question = aiQuestions[questionIndex];
+      
+      // Check if question exists at this index
+      if (!question) {
+        console.error(`No question found at index ${questionIndex}`);
+        return;
+      }
+
+      console.log("Raw question data from API:", question);
+      console.log("Question type:", question.type);
+      console.log("Question text:", question.question);
+      console.log("Question answer:", question.answer);
+      
+      if (question.type === 'multiple-choice') {
+        console.log("Multiple choice options:", question.options);
+        
+        // Log the options as an array to confirm format
+        if (question.options) {
+          console.log("Options as array:", Object.values(question.options));
+        }
+      }
+
+      // For multiple choice, extract answer from format like "D. AI"
+      let displayAnswer = question.answer;
+      if (question.type === 'multiple-choice' && question.answer && question.answer.includes('. ')) {
+        const parts = question.answer.split('. ');
+        displayAnswer = parts[1] || parts[0]; // Fallback to full answer if no split
+        console.log("Extracted display answer:", displayAnswer);
+      }
+
+      const processedQuestion = {
+        questionType: question.type,
+        type: question.type,
+        question: question.question || "Question loading...",
+        correctAnswer: displayAnswer || "Answer loading...",
+        options: question.type === 'multiple-choice' && question.options ? 
+          Object.values(question.options) : 
+          undefined,
+        rawOptions: question.options,
+        answer: question.answer
+      };
+
+      console.log("Processed question for UI:", processedQuestion);
+      setCurrentQuestion(processedQuestion);
+    } else {
+      console.log("No AI questions available or empty array");
+    }
+  }, [aiQuestions, questionIndex]);
+
+  // Update the isLastQuestion logic to check for AI questions
+  const isLastQuestion = aiQuestions 
+    ? questionIndex === aiQuestions.length - 1
+    : currentQuestionIndex === filteredQuestions.length - 1;
 
   // Timer logic for Time Pressured mode
   useEffect(() => {
@@ -253,6 +248,34 @@ export const useGameLogic = ({
     setIsFlipped(true);
   };
 
+  const handleNextQuestion = () => {
+    if (aiQuestions && questionIndex < aiQuestions.length - 1) {
+      // If we have more AI questions, increment the index
+      setQuestionIndex(prev => prev + 1);
+      
+      // Reset UI state for next question
+      setIsFlipped(false);
+      setSelectedAnswer(null);
+      setInputAnswer("");
+      setShowResult(false);
+      setShowNextButton(false);
+    } else if (!aiQuestions && !isLastQuestion) {
+      // Handle regular (non-AI) questions
+      setIsFlipped(false);
+      setTimeout(() => {
+        setCurrentQuestionIndex((prev) => prev + 1);
+        setSelectedAnswer(null);
+        setInputAnswer("");
+        setShowResult(false);
+        setShowNextButton(false);
+      }, 300);
+    } else {
+      // This is the last question, complete the game
+      console.log("All questions answered, completing game");
+      handleGameComplete();
+    }
+  };
+
   const handleGameComplete = () => {
     const endTime = new Date();
     const timeDiff = endTime.getTime() - startTime.getTime();
@@ -268,6 +291,8 @@ export const useGameLogic = ({
       incorrectCount,
       mode,
       material,
+      questionsAnswered: aiQuestions ? questionIndex + 1 : currentQuestionIndex + 1,
+      totalQuestions: aiQuestions ? aiQuestions.length : filteredQuestions.length
     });
 
     console.log("Highest Streak before navigating:", highestStreak);
@@ -282,6 +307,7 @@ export const useGameLogic = ({
         highestStreak,
         masteredCount,
         unmasteredCount,
+        aiQuestions: aiQuestions || [], // Pass the questions to the summary
       },
     });
   };
@@ -355,8 +381,8 @@ export const useGameLogic = ({
     setInputAnswer,
     handleMastered,
     handleUnmastered,
-    handleRevealAnswer,
-    cardDisabled: showResult,
+    handleRevealAnswer, // New function to reveal answer and mark as wrong
+    cardDisabled: showResult, // Pass whether the card should be disabled
   };
 };
 

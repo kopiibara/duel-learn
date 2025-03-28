@@ -70,6 +70,63 @@ const UserInfo = {
             if (connection) connection.release();
         }
     },
+
+    /**
+     * Get user profile information by user ID
+     * Specifically designed for the battle UI to fetch display pictures
+     */
+    getUserProfileById: async (req, res) => {
+        let connection;
+        try {
+            connection = await pool.getConnection();
+            const { userId } = req.params;
+
+            if (!userId) {
+                return res.status(400).json({
+                    success: false,
+                    message: "User ID is required"
+                });
+            }
+
+            console.log(`Fetching profile for user: ${userId}`);
+
+            const [userResult] = await connection.query(
+                `SELECT firebase_uid, username, display_picture, level 
+                 FROM user_info 
+                 WHERE firebase_uid = ?`,
+                [userId]
+            );
+
+            if (userResult.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                });
+            }
+
+            const userData = userResult[0];
+
+            res.json({
+                success: true,
+                data: {
+                    firebase_uid: userData.firebase_uid,
+                    username: userData.username,
+                    display_picture: userData.display_picture,
+                    level: userData.level
+                }
+            });
+
+        } catch (error) {
+            console.error("Error fetching user profile:", error);
+            res.status(500).json({
+                success: false,
+                message: "Failed to fetch user profile",
+                error: error.message
+            });
+        } finally {
+            if (connection) connection.release(); // Always release the connection
+        }
+    },
 };
 
 export default UserInfo;

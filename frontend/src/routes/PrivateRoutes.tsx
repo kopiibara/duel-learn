@@ -125,7 +125,7 @@ const PrivateRoutes = () => {
         path="/select-difficulty/pvp/player2"
         element={<Player2ModeSelection />}
       />
-      <Route path="/pvp-battle" element={<PvpBattle />} />
+      <Route path="/pvp-battle/:lobbyCode?" element={<PvpBattle />} />
     </Routes>
   );
 };
