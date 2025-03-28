@@ -117,6 +117,7 @@ const ProfileModal = ({
             account_type: userData.account_type || "standard",
             mana: userData.mana || 0,
             coin: userData.coin || 0,
+            tech_pass: userData.tech_pass || 0,
           });
 
           // Fetch friendship status

@@ -208,16 +208,52 @@ const Shop = () => {
 
       console.log("Item use response:", response.data);
 
-      // Update the UI
-      setOwnedItems((prev) => {
-        const updated = { ...prev };
-        if (updated[itemCode] <= 1) {
-          delete updated[itemCode];
-        } else {
-          updated[itemCode] = updated[itemCode] - 1;
+      // For starter pack specifically, we'll handle it differently
+      if (itemCode === "ITEM006SSP") {
+        try {
+          // First remove the starter pack
+          setOwnedItems((prev) => {
+            const updated = { ...prev };
+            delete updated[itemCode]; // Starter pack is fully consumed
+
+            // Immediately add the fortune coin to the same state update
+            // Using ITEM004FC as the item code for Fortune Coin
+            updated["ITEM004FC"] = (updated["ITEM004FC"] || 0) + 1;
+
+            console.log("Updated inventory with fortune coin added:", updated);
+            return updated;
+          });
+
+          // Also fetch fresh data from server to ensure everything is in sync
+          const userItemsResponse = await axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/shop/user-item/${
+              user.firebase_uid
+            }`
+          );
+
+          // Update with the complete inventory from server
+          const owned: Record<string, number> = {};
+          userItemsResponse.data.forEach((item: any) => {
+            owned[item.item_code] = item.quantity;
+          });
+
+          setOwnedItems(owned);
+          console.log("Server inventory after starter pack use:", owned);
+        } catch (err) {
+          console.error("Failed to refresh inventory:", err);
         }
-        return updated;
-      });
+      } else {
+        // Handle regular items as before
+        setOwnedItems((prev) => {
+          const updated = { ...prev };
+          if (updated[itemCode] <= 1) {
+            delete updated[itemCode];
+          } else {
+            updated[itemCode] = updated[itemCode] - 1;
+          }
+          return updated;
+        });
+      }
 
       // Show success message using snackbar
       showSnackbar(response.data.message || `${itemName} used successfully!`);
@@ -228,11 +264,8 @@ const Shop = () => {
       }
     } catch (err: any) {
       console.error("Failed to use item:", err);
-
-      // Show the error details for debugging
       const errorMessage = err.response?.data?.message || "Failed to use item";
       const errorDetail = err.response?.data?.error || "";
-
       showSnackbar(
         `${errorMessage}${errorDetail ? " Details: " + errorDetail : ""}`
       );
