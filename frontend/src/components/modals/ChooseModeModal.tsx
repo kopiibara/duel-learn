@@ -13,9 +13,18 @@ import ModalFriendList from "../../assets/General/ModalFriendList.png";
 import SelectStudyMaterialModal from "./SelectStudyMaterialModal"; // Assuming it's in the same folder
 import { useAudio } from "../../contexts/AudioContext";
 
+// Add modeToTypesMap
+const modeToTypesMap = {
+  "Peaceful Mode": ["identification", "multiple-choice", "true-false"],
+  "Time Pressured": ["identification", "multiple-choice", "true-false"],
+  "PvP Mode": ["identification", "multiple-choice", "true-false"],
+};
+
 interface CustomModalProps {
   open: boolean;
   handleClose: () => void;
+  preSelectedMaterial?: any;
+  onModeSelect?: (mode: string) => void;
 }
 
 interface ButtonData {
@@ -30,11 +39,16 @@ interface ButtonData {
   textColor: string;
 }
 
-const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
+const ChooseModeModal: React.FC<CustomModalProps> = ({ 
+  open, 
+  handleClose,
+  preSelectedMaterial,
+  onModeSelect 
+}) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
-  const [selectedTypes, _setSelectedTypes] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const { setActiveModeAudio } = useAudio();
 
   const buttonData: ButtonData[] = [
@@ -67,20 +81,35 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
     },
   ];
 
-  const handleMaterialSelect = (_material: any) => {
-    // Handle the material selection logic here
-  };
-
-  const handleModeSelect = (_mode: string) => {
-    // Handle the mode selection logic here
-  };
-
   const handleModeClick = (mode: string) => {
     setSelectedMode(mode);
-    setModalOpen(true);
+    setSelectedTypes(modeToTypesMap[mode as keyof typeof modeToTypesMap] || []);
 
-    // Remove audio trigger from here - it should only play on the welcome page
-    // setActiveModeAudio(mode);
+    if (preSelectedMaterial) {
+      // If we have pre-selected material, call onModeSelect directly
+      if (onModeSelect) {
+        onModeSelect(mode);
+      }
+      handleClose();
+    } else {
+      // Show material selection modal for normal flow
+      setModalOpen(true);
+    }
+  };
+
+  const handleMaterialSelect = (material: any) => {
+    // Handle material selection for non-preselected flow
+    setModalOpen(false);
+    if (selectedMode && onModeSelect) {
+      onModeSelect(selectedMode);
+    }
+  };
+
+  const handleModeSelect = (mode: string) => {
+    // Handle mode selection for non-preselected flow
+    if (onModeSelect) {
+      onModeSelect(mode);
+    }
   };
 
   return (
@@ -268,11 +297,11 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
       {/* Select Study Material Modal */}
       <SelectStudyMaterialModal
         open={modalOpen}
-        handleClose={() => setModalOpen(false)} // This closes the study material modal
-        mode={selectedMode} // Pass the selected mode
-        onMaterialSelect={handleMaterialSelect} // Pass the selection handler
-        onModeSelect={handleModeSelect} // Pass the mode selection handler
-        selectedTypes={selectedTypes} // Pass selectedTypes to the modal
+        handleClose={() => setModalOpen(false)}
+        mode={selectedMode}
+        onMaterialSelect={handleMaterialSelect}
+        onModeSelect={handleModeSelect}
+        selectedTypes={selectedTypes}
       />
     </>
   );

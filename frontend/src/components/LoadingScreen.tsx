@@ -6,7 +6,7 @@ interface LoadingScreenProps {
   text?: string;
 }
 
-export const LoadingScreen: React.FC<LoadingScreenProps> = ({ text }) => {
+export const GeneralLoadingScreen: React.FC<LoadingScreenProps> = ({ text }) => {
   const loadingLines = [
     "For relaxed practice and review. The best way to retain those lessons in your head, Magician.",
     "A true Magician never stops learning. Prepare your spells of knowledge!",
@@ -64,4 +64,4 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ text }) => {
   );
 };
 
-export default LoadingScreen;
+export default GeneralLoadingScreen;

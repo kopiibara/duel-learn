@@ -24,7 +24,8 @@ import WelcomeGameMode from "../pages/dashboard/play-battleground/screens/Welcom
 import SetUpTimeQuestion from "../pages/dashboard/play-battleground/components/setup/SetUpTimeQuestion";
 import PVPLobby from "../pages/dashboard/play-battleground/modes/multiplayer/PVPLobby";
 import { useState, useEffect } from "react";
-import LoadingScreen from "../components/LoadingScreen";
+import LoadingScreen from "../pages/dashboard/play-battleground/screens/LoadingScreen";
+import GeneralLoadingScreen from "../components/LoadingScreen"
 import SessionReport from "../pages/dashboard/play-battleground/screens/SessionReport";
 import PeacefulMode from "../pages/dashboard/play-battleground/modes/peaceful/PeacefulMode";
 import TimePressuredMode from "../pages/dashboard/play-battleground/modes/time-pressured/TimePressuredMode";
@@ -53,7 +54,7 @@ const PrivateRoutes = () => {
 
   // Show loading screen if both auth and user data are still loading and timeout hasn't occurred
   if ((authLoading || userLoading) && !loadingTimeout) {
-    return <LoadingScreen />;
+    return <GeneralLoadingScreen />;
   }
 
   // If not authenticated, redirect to landing page
@@ -67,7 +68,7 @@ const PrivateRoutes = () => {
     if (!userLoading) {
       refreshUserData();
     }
-    return <LoadingScreen />;
+    return <GeneralLoadingScreen />;
   }
 
   // Only check email verification if we actually have user data

@@ -12,6 +12,7 @@ import { useState } from "react";
 import SelectStudyMaterialModal from "./modals/SelectStudyMaterialModal";
 import { StudyMaterial } from "../types/studyMaterialObject";
 import { useAudio } from "../contexts/AudioContext";
+import { useLocation, useNavigate } from "react-router-dom";
 
 // Using a function to make the styled component responsive with theme access
 const ModeCard = styled(Card)(({ theme }) => {
@@ -59,11 +60,13 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
   onSelectMode,
   onSelectMaterial,
 }) => {
-  // State to control the material selection modal
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { preSelectedMaterial, skipMaterialSelection } = location.state || {};
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [isLobby, setIsLobby] = useState(false); // Add this state
+  const [isLobby, setIsLobby] = useState(false);
   const theme = useTheme();
   const isXsScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const { setActiveModeAudio } = useAudio();
@@ -83,19 +86,34 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
     }
   };
 
-  // New handler similar to ChooseModeModal
+  // New handler for mode selection with pre-selected material
   const handleModeClick = (mode: string) => {
     setSelectedMode(mode);
-    // Set types based on the mode selected
     setSelectedTypes(modeToTypesMap[mode as keyof typeof modeToTypesMap] || []);
-
-    // Set isLobby flag based on the mode
     setIsLobby(mode === "PvP Mode");
 
-    // Remove audio trigger from here - it should only play on the welcome page
-    // setActiveModeAudio(mode);
+    // If we have a pre-selected material, skip the modal
+    if (skipMaterialSelection && preSelectedMaterial) {
+      if (onSelectMode) {
+        onSelectMode(mode);
+      }
+      if (onSelectMaterial) {
+        onSelectMaterial(preSelectedMaterial);
+      }
 
-    setModalOpen(true);
+      // Navigate directly to welcome screen
+      navigate("/dashboard/welcome-game-mode", {
+        state: { 
+          mode, 
+          material: preSelectedMaterial,
+          preSelectedMaterial,
+          skipMaterialSelection: true
+        }
+      });
+    } else {
+      // Show material selection modal for normal flow
+      setModalOpen(true);
+    }
   };
 
   return (
