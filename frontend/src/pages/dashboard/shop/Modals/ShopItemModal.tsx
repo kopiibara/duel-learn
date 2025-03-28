@@ -18,13 +18,13 @@ interface ShopItemModalProps {
   closeModal: () => void;
   selectedItem: ShopItemExtended | null;
   quantity: number;
-
   handleIncrement: () => void;
   handleDecrement: () => void;
   handlePurchase: (
     itemCode: string,
     quantity: number,
     itemName: string,
+    itemEffect: string,
     itemPrice: number
   ) => Promise<boolean>;
   userCoins: number;
@@ -35,7 +35,6 @@ const ShopItemModal: React.FC<ShopItemModalProps> = ({
   closeModal,
   selectedItem,
   quantity,
-
   handleIncrement,
   handleDecrement,
   handlePurchase,
@@ -71,6 +70,7 @@ const ShopItemModal: React.FC<ShopItemModalProps> = ({
         selectedItem.item_code,
         quantity,
         selectedItem.item_name,
+        selectedItem.item_effect,
         selectedItem.item_price || 0
       );
 

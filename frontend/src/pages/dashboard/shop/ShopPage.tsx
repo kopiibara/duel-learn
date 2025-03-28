@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import PremiumAdsBG from "/shop-picture/premium-ads-bg.png";
 import PremiumActivatedBG from "/shop-picture/PremiumActivatedBG.png";
@@ -9,6 +9,7 @@ import PageTransition from "../../../styles/PageTransition";
 import { ShopItem } from "../../../types/shopObject"; // Import the ShopItem interface
 import axios from "axios";
 import { useUser } from "../../../contexts/UserContext";
+import AutoHideSnackbar from "../../../components/ErrorsSnackbar";
 
 const Shop = () => {
   const navigate = useNavigate();
@@ -25,6 +26,31 @@ const Shop = () => {
 
   // Track owned items
   const [ownedItems, setOwnedItems] = useState<Record<string, number>>({});
+
+  // Snackbar state
+  const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
+  const [snackbarMessage, setSnackbarMessage] = useState<string>("");
+  const [isSnackbarAction, setIsSnackbarAction] = useState<boolean>(false);
+  const [refreshCallback, setRefreshCallback] = useState<
+    (() => void) | undefined
+  >(undefined);
+
+  // Handle closing the snackbar
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
+
+  // Show a message in the snackbar
+  const showSnackbar = (
+    message: string,
+    action: boolean = false,
+    callback?: () => void
+  ) => {
+    setSnackbarMessage(message);
+    setIsSnackbarAction(action);
+    setRefreshCallback(callback);
+    setSnackbarOpen(true);
+  };
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -72,7 +98,7 @@ const Shop = () => {
       setQuantity(1);
       setIsModalOpen(true);
     } else {
-      alert("You cannot own more than 5 of this item.");
+      showSnackbar("You cannot own more than 5 of this item.");
     }
   };
 
@@ -100,10 +126,11 @@ const Shop = () => {
     itemCode: string,
     quantity: number,
     itemName: string,
+    itemEffect: string,
     itemPrice: number
   ) => {
     if (!user?.firebase_uid) {
-      alert("You need to be logged in to make a purchase.");
+      showSnackbar("You need to be logged in to make a purchase.");
       return false;
     }
 
@@ -116,20 +143,26 @@ const Shop = () => {
           username: user.username,
           item_code: itemCode,
           item_name: itemName,
+          item_effect: itemEffect,
           item_price: itemPrice,
           quantity: quantity,
         }
       );
 
-      if (response.data.remainingCoins !== undefined) {
-        // Use the updateUser function from your user context correctly
-        // This will update both state and localStorage
-        updateUser({
-          coins: response.data.remainingCoins,
-        });
+      // Create an update object with the coin balance
+      const userUpdate: Partial<typeof user> = {
+        coins: response.data.remainingCoins,
+      };
 
-        console.log("Updated user coins to:", response.data.remainingCoins);
+      // If this is a tech pass purchase, also update the tech_pass count
+      if (itemCode === "ITEM002TP" && response.data.tech_pass !== undefined) {
+        userUpdate.tech_pass = response.data.tech_pass;
       }
+
+      // Update user state with all the changes
+      updateUser(userUpdate);
+
+      console.log("Updated user data:", userUpdate);
 
       // Update owned items count
       setOwnedItems((prev) => ({
@@ -137,39 +170,98 @@ const Shop = () => {
         [itemCode]: (prev[itemCode] || 0) + quantity,
       }));
 
+      // Use the itemName parameter here instead of a generic message
+      showSnackbar(`Successfully purchased ${quantity} ${itemName}!`);
       return true;
     } catch (err: any) {
+      // Error handling remains the same
       console.error("Purchase failed:", err);
       const errorMessage =
         err.response?.data?.message ||
         "Failed to complete purchase. Please try again.";
 
       if (err.response?.data?.message === "Insufficient coins") {
-        alert(`You don't have enough coins for this purchase.`);
+        showSnackbar("You don't have enough coins for this purchase.");
       } else {
-        alert(errorMessage);
+        showSnackbar(errorMessage);
       }
       return false;
+    }
+  };
+
+  const handleUseItem = async (itemCode: string, itemName: string) => {
+    if (!user?.firebase_uid) {
+      showSnackbar("You need to be logged in to use an item.");
+      return;
+    }
+
+    try {
+      console.log(`Using item ${itemCode} for user ${user.firebase_uid}`);
+
+      const response = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/api/shop/use-item`,
+        {
+          firebase_uid: user.firebase_uid,
+          item_code: itemCode,
+        }
+      );
+
+      console.log("Item use response:", response.data);
+
+      // Update the UI
+      setOwnedItems((prev) => {
+        const updated = { ...prev };
+        if (updated[itemCode] <= 1) {
+          delete updated[itemCode];
+        } else {
+          updated[itemCode] = updated[itemCode] - 1;
+        }
+        return updated;
+      });
+
+      // Show success message using snackbar
+      showSnackbar(response.data.message || `${itemName} used successfully!`);
+
+      // Update user stats in context based on response
+      if (response.data.updatedStats) {
+        updateUser(response.data.updatedStats);
+      }
+    } catch (err: any) {
+      console.error("Failed to use item:", err);
+
+      // Show the error details for debugging
+      const errorMessage = err.response?.data?.message || "Failed to use item";
+      const errorDetail = err.response?.data?.error || "";
+
+      showSnackbar(
+        `${errorMessage}${errorDetail ? " Details: " + errorDetail : ""}`
+      );
     }
   };
 
   const getImagePaddingClass = (itemCode: string) => {
     // You can adjust this based on item codes or other properties
     switch (itemCode) {
-      case "MANAREGEN":
+      case "ITEM001MNB":
         return "pt-3";
-      case "TECHPASS":
+      case "ITEM002TP":
         return "pt-4 scale-110";
-      case "REWARDMULT":
+      case "ITEM003RMB":
         return "pt-3";
-      case "FORTUNECOIN":
+      case "ITEM004FC":
         return "pt-3";
-      case "INSIGHTTOKEN":
+      case "ITEM005IT":
         return "pt-3";
-      case "STUDYPACK":
+      case "ITEM006SSP":
         return "pt-3 scale-150 pl-2";
       default:
         return "";
+    }
+  };
+
+  const handleRefresh = () => {
+    if (refreshCallback) {
+      refreshCallback();
     }
   };
 
@@ -271,11 +363,15 @@ const Shop = () => {
                 <div className="flex-grow"></div>
                 <div className="flex gap-2 mb-2 sm:mb-3 w-full">
                   {(ownedItems[item.item_code] || 0) > 0 && (
-                    <button className="flex-1 border rounded-lg border-[#afafaf] text-white py-1.5 sm:py-2 text-sm sm:text-base hover:bg-[#544483]">
+                    <button
+                      className="flex-1 border rounded-lg border-[#afafaf] text-white py-1.5 sm:py-2 text-sm sm:text-base hover:bg-[#544483]"
+                      onClick={() =>
+                        handleUseItem(item.item_code, item.item_name)
+                      }
+                    >
                       Use ({ownedItems[item.item_code] || 0})
                     </button>
                   )}
-
                   {(ownedItems[item.item_code] || 0) < 5 && (
                     <button
                       className="flex-1 border rounded-lg border-[#afafaf] text-black py-1.5 sm:py-2 bg-white flex items-center justify-center hover:bg-[#e0e0e0] text-sm sm:text-base"
@@ -325,6 +421,15 @@ const Shop = () => {
           userCoins={userCoins}
         />
       )}
+
+      {/* Snackbar for notifications */}
+      <AutoHideSnackbar
+        open={snackbarOpen}
+        message={snackbarMessage}
+        onClose={handleSnackbarClose}
+        onClick={handleRefresh}
+        action={isSnackbarAction}
+      />
     </PageTransition>
   );
 };

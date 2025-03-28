@@ -7,6 +7,7 @@ export interface UserInfo {
   exp: number;
   mana: number;
   coin: number;
+  tech_pass: number;
   is_friend?: boolean;
   friendship_status?:
     | "friend"

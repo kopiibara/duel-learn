@@ -25,6 +25,7 @@ interface User {
   exp: number;
   mana: number;
   coins: number;
+  tech_pass: number;
 }
 
 export interface Friend {
@@ -42,7 +43,10 @@ interface UserContextProps {
   loadUserData: (firebase_uid: string) => Promise<User | null>;
   updateUser: (updates: Partial<User>) => void;
   clearUserData: () => void;
-  loginAndSetUserData: (firebase_uid: string, token: string) => Promise<User | null>;
+  loginAndSetUserData: (
+    firebase_uid: string,
+    token: string
+  ) => Promise<User | null>;
   refreshUserData: () => Promise<void>;
 }
 
@@ -70,7 +74,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   const updateUser = useCallback((updates: Partial<User>) => {
     setUser((prevUser) => {
       if (!prevUser) return null;
-      
+
       const updatedUser = { ...prevUser, ...updates };
       localStorage.setItem("userData", JSON.stringify(updatedUser));
       return updatedUser;
@@ -85,7 +89,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     }
 
     if (!auth.currentUser || !auth.currentUser.emailVerified) {
-      console.log("Not loading user data - user not authenticated or email not verified");
+      console.log(
+        "Not loading user data - user not authenticated or email not verified"
+      );
       return null;
     }
 
@@ -98,11 +104,11 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       if (userData) {
         // Cast to User type to ensure it has all required fields
         const typedUserData = userData as User;
-        
+
         // Update local state and storage
         setUser(typedUserData);
         localStorage.setItem("userData", JSON.stringify(typedUserData));
-        
+
         console.log("User data loaded and stored in context");
         return typedUserData;
       }
@@ -116,8 +122,14 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   const refreshUserData = useCallback(async (): Promise<void> => {
-    if (!user?.firebase_uid || !auth.currentUser || !auth.currentUser.emailVerified) {
-      console.log("Cannot refresh - no user ID or user not authenticated/verified");
+    if (
+      !user?.firebase_uid ||
+      !auth.currentUser ||
+      !auth.currentUser.emailVerified
+    ) {
+      console.log(
+        "Cannot refresh - no user ID or user not authenticated/verified"
+      );
       return;
     }
 
@@ -135,27 +147,30 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
   // Function to handle initial data loading
   const loadData = async () => {
     // Skip loading for static pages
-    const staticPages = ['/privacy-policy', '/terms-and-conditions', '/'];
-    if (staticPages.some(page => window.location.pathname.includes(page))) {
-      console.log("Skipping API call for static page:", window.location.pathname);
+    const staticPages = ["/privacy-policy", "/terms-and-conditions", "/"];
+    if (staticPages.some((page) => window.location.pathname.includes(page))) {
+      console.log(
+        "Skipping API call for static page:",
+        window.location.pathname
+      );
       setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      
+
       // Check if user is authenticated and verified
       if (auth.currentUser && auth.currentUser.emailVerified) {
         // Check if we already have data in localStorage
         const cachedData = localStorage.getItem("userData");
         const parsedData = cachedData ? JSON.parse(cachedData) : null;
-        
+
         // Use cached data if available and the user ID matches
         if (parsedData && parsedData.firebase_uid === auth.currentUser.uid) {
           console.log("Using cached user data from localStorage");
           setUser(parsedData);
-          
+
           // On initial mount, we won't trigger fresh data load - users can refresh manually if needed
           // This prevents unnecessary API calls when navigating between pages
         } else {
@@ -188,14 +203,17 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [auth.currentUser, auth.isLoading, auth.isAuthenticated, clearUserData]);
 
-  const loginAndSetUserData = async (firebase_uid: string, token: string): Promise<User | null> => {
+  const loginAndSetUserData = async (
+    firebase_uid: string,
+    token: string
+  ): Promise<User | null> => {
     console.log(`Login and set user data for ${firebase_uid}`);
     setLoading(true);
 
     try {
       // Set the token for API call
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      
+
       // Load user data
       const userData = await loadUserData(firebase_uid);
       return userData;
@@ -217,7 +235,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         updateUser,
         clearUserData,
         loginAndSetUserData,
-        refreshUserData
+        refreshUserData,
       }}
     >
       {children}

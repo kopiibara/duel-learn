@@ -92,7 +92,7 @@ interface TermDefinitionPair {
 const CreateStudyMaterial = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Add this line
-  const { user } = useUser();
+  const { user, updateUser } = useUser();
 
   // Properly type the socket state
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -525,6 +525,14 @@ const CreateStudyMaterial = () => {
 
   // Function to handle opening the scan notes modal
   const handleOpenScanModal = () => {
+    // Check if user has tech passes before allowing them to process
+    if (!user || !user.tech_pass || user.tech_pass <= 0) {
+      handleShowSnackbar(
+        "You need a Tech Pass to use the scanning feature. Purchase Tech Passes from the shop."
+      );
+      return;
+    }
+
     setScanModalOpen(true);
   };
 
@@ -727,6 +735,35 @@ const CreateStudyMaterial = () => {
         handleShowSnackbar(
           `Added ${newItems.length} new terms and definitions!`
         );
+
+        // Deduct a tech pass using the API
+        try {
+          if (user?.firebase_uid) {
+            const techPassResponse = await fetch(
+              `${import.meta.env.VITE_BACKEND_URL}/api/shop/use-tech-pass/${
+                user.firebase_uid
+              }`,
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              }
+            );
+
+            if (techPassResponse.ok) {
+              // Update the user context with updated tech pass count
+              updateUser({
+                ...user,
+                tech_pass: user.tech_pass - 1,
+              });
+            } else {
+              console.error("Failed to deduct tech pass, but feature was used");
+            }
+          }
+        } catch (passError) {
+          console.error("Error deducting tech pass:", passError);
+        }
 
         // Close the modal after processing
         handleCloseScanModal();
@@ -1105,7 +1142,7 @@ const CreateStudyMaterial = () => {
                       color: "#E2DDF3",
                     },
                   }}
-                  onClick={handleUploadFile}
+                  onClick={handleOpenScanModal}
                 >
                   Scan Notes
                 </Button>
@@ -1518,17 +1555,28 @@ const CreateStudyMaterial = () => {
           <Button
             variant="contained"
             fullWidth
-            disabled={uploadedFiles.length === 0 || isProcessing}
+            disabled={
+              uploadedFiles.length === 0 ||
+              isProcessing ||
+              !user?.tech_pass ||
+              user.tech_pass <= 0
+            }
             onClick={handleProcessFile}
             sx={{
-              backgroundColor: "#4D18E8",
-              color: "#E2DDF3",
+              backgroundColor:
+                user?.tech_pass && user.tech_pass > 0 ? "#4D18E8" : "#3B354D",
+              color:
+                user?.tech_pass && user.tech_pass > 0 ? "#E2DDF3" : "#9F9BAE",
               borderRadius: "0.8rem",
               padding: "0.8rem",
               transition: "all 0.3s ease",
               "&:hover": {
-                backgroundColor: "#6939FF",
-                transform: "scale(1.02)",
+                backgroundColor:
+                  user?.tech_pass && user.tech_pass > 0 ? "#6939FF" : "#3B354D",
+                transform:
+                  user?.tech_pass && user.tech_pass > 0
+                    ? "scale(1.02)"
+                    : "scale(1)",
               },
               "&.Mui-disabled": {
                 backgroundColor: "#3B354D",
@@ -1541,10 +1589,22 @@ const CreateStudyMaterial = () => {
                 <CircularProgress size={24} sx={{ color: "#E2DDF3", mr: 1 }} />
                 Processing...
               </>
+            ) : user?.tech_pass && user.tech_pass > 0 ? (
+              <>
+                Generate cards from{" "}
+                {uploadedFiles.length > 0 ? uploadedFiles.length : ""}
+                {uploadedFiles.length === 1 ? " File" : " Files"}
+                <span className="ml-2 text-[#A38CE6] font-medium">
+                  (Uses 1 Tech Pass)
+                </span>
+              </>
             ) : (
-              `Generate cards from ${
-                uploadedFiles.length > 0 ? uploadedFiles.length : ""
-              } ${uploadedFiles.length === 1 ? "File" : "Files"}`
+              <>
+                Generate cards
+                <span className="ml-2 text-[#8b6d8d] font-medium">
+                  (No Tech Pass Available)
+                </span>
+              </>
             )}
           </Button>
         </Paper>

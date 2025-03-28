@@ -291,7 +291,7 @@ const HeroSection = () => {
                     variant="contained"
                     color="primary"
                     size="large"
-                    onClick={() => navigate("/admin-sign-up")}
+                    onClick={() => navigate("/sign-up")}
                     sx={{
                       borderRadius: "10px",
                       px: 4,

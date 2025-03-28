@@ -2,6 +2,7 @@ export interface ShopItem {
   item_code: string;
   item_name: string;
   item_description: string;
+  item_effect: string;
   item_price: number;
   item_picture_url: string;
 }
