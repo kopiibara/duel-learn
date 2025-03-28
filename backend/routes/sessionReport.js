@@ -1,5 +1,5 @@
 import express from 'express';
-import { saveSessionReport } from '../controllers/SessionReportController.js';
+import { saveSessionReport } from '../controller/SessionReportController.js';
 
 const router = express.Router();
 
