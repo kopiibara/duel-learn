@@ -820,10 +820,12 @@ export const updateBattleRound = async (req, res) => {
             if (typeof is_correct !== 'undefined') {
                 // Update battle scores based on answer correctness
                 const damage_amount = 10; // Default damage amount
-                if (!is_correct) {
+                if (is_correct) {
+                    // If player answers correctly, reduce opponent's health
+                    const opponentType = player_type === 'host' ? 'guest' : 'host';
                     const updateScoreQuery = `
                         UPDATE battle_scores 
-                        SET ${player_type}_health = GREATEST(0, ${player_type}_health - ?)
+                        SET ${opponentType}_health = GREATEST(0, ${opponentType}_health - ?)
                         WHERE session_uuid = ?
                     `;
                     await connection.query(updateScoreQuery, [damage_amount, session_uuid]);
