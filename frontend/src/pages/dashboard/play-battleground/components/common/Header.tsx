@@ -15,6 +15,7 @@ interface HeaderProps {
   mode: string;
   material: {
     title: string;
+    study_material_id: string;
   } | null;
   correct: number;
   incorrect: number;
@@ -22,6 +23,7 @@ interface HeaderProps {
   highestStreak: number;
   masteredCount: number;
   unmasteredCount: number;
+  onEndGame?: () => Promise<void>;
 }
 
 const commonDialogStyle = {
@@ -64,6 +66,7 @@ export default function Header({
   highestStreak,
   masteredCount,
   unmasteredCount,
+  onEndGame,
 }: HeaderProps) {
   const navigate = useNavigate();
   const [openGameOptionsDialog, setOpenGameOptionsDialog] = useState(false);
@@ -89,7 +92,17 @@ export default function Header({
     navigate("/dashboard/home");
   };
 
-  const handleConfirmEndGame = () => {
+  const handleConfirmEndGame = async () => {
+    setOpenEndGameDialog(false);
+    
+    if (onEndGame) {
+      try {
+        await onEndGame();
+      } catch (error) {
+        console.error("Error ending game:", error);
+      }
+    }
+
     const endTime = new Date();
     const timeDiff = endTime.getTime() - startTime.getTime();
     const minutes = Math.floor(timeDiff / 60000);

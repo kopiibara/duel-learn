@@ -1,5 +1,5 @@
 import express from "express";
-import OpenAiController from "../controller/OpenAiController.js";
+import { OpenAiController } from "../controller/OpenAiController.js";
 const router = express.Router();
 
 router.get("/status", (req, res) => {
@@ -30,24 +30,14 @@ router.get("/status", (req, res) => {
   });
 });
 
-router.post("/generate-summary", OpenAiController.generateSummary);
-router.post(
-  "/generate-identification",
-  OpenAiController.generateIdentification
-);
-router.post("/generate-true-false", OpenAiController.generateTrueFalse);
-router.post(
-  "/generate-multiple-choice",
-  OpenAiController.generateMultipleChoice
-);
-router.post("/save-session-results", OpenAiController.saveSessionResults);
-router.delete(
-  "/clear-questions/:studyMaterialId",
-  OpenAiController.clearQuestions
-);
-router.post(
-  "/cross-reference-definition",
-  OpenAiController.crossReferenceDefinition
-);
+router.post('/generate-summary', OpenAiController.generateSummary);
+router.post('/generate-identification', OpenAiController.generateIdentification);
+router.post('/generate-true-false', OpenAiController.generateTrueFalse);
+router.post('/generate-multiple-choice', OpenAiController.generateMultipleChoice);
+router.post('/save-session-results', OpenAiController.saveSessionResults);
+router.delete('/clear-questions/:studyMaterialId', OpenAiController.clearQuestionsForMaterial);
+router.get('/test', (req, res) => {
+  res.json({ success: true, message: 'API is working' });
+});
 
 export default router;
