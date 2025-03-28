@@ -154,6 +154,47 @@ const shopController = {
         }
     },
 
+    useUserTechPass: async (req, res) => {
+        const { firebase_uid } = req.params;
+
+        try {
+
+            const [rows] = await pool.query("SELECT tech_pass FROM user_info WHERE firebase_uid = ?", [firebase_uid]);
+
+            if (rows[0].tech_pass < 1) {
+                return res.status(400).json({ message: "You don't have any Tech Passes!" });
+            }
+
+            const [rows2] = await pool.query("SELECT * FROM user_items WHERE firebase_uid = ? AND item_code = 'ITEM002TP'", [firebase_uid]);
+
+            if (rows2.length === 0) {
+                return res.status(400).json({ message: "You don't have any Tech Passes!" });
+            }
+
+            const connection = await pool.getConnection();
+            await connection.beginTransaction();
+
+            try {
+                await connection.query("UPDATE user_info SET tech_pass = tech_pass - 1 WHERE firebase_uid = ?", [firebase_uid]);
+
+                await connection.query("UPDATE user_items SET quantity = quantity - 1 WHERE firebase_uid = ? AND item_code = 'ITEM002TP'", [firebase_uid]);
+
+                await connection.commit();
+                connection.release();
+
+                res.json({ message: "Tech Pass used successfully!" });
+            } catch (error) {
+                await connection.rollback();
+                connection.release();
+                throw error;
+            }
+        }
+        catch (error) {
+            console.error("Error executing query: ", error);
+            res.status(500).json({ message: "Error executing query" });
+        }
+    },
+
     useItem: async (req, res) => {
         const { firebase_uid, item_code } = req.body;
 
@@ -248,10 +289,40 @@ const shopController = {
                         break;
 
                     case "starter_pack":
-
+                        // Update user stats
                         updateQuery = "UPDATE user_info SET coins = coins + 500, exp = exp + 500, mana = 200 WHERE firebase_uid = ?";
-                        updateValues = [firebase_uid];  // FIXED: Only include firebase_uid since that's the only parameter
-                        resultMessage = `${item_name} applied! You got 500 coins, 500 exp, and full mana!`;
+                        updateValues = [firebase_uid];
+
+                        // First check if the user already has a Fortune Coin
+                        const [existingFortuneCoin] = await connection.query(
+                            "SELECT item_code, quantity FROM user_items WHERE firebase_uid = ? AND item_code = 'ITEM004FC'",
+                            [firebase_uid]
+                        );
+
+                        if (existingFortuneCoin.length > 0) {
+                            // User already has Fortune Coins, increment quantity
+                            await connection.query(
+                                "UPDATE user_items SET quantity = quantity + 1 WHERE firebase_uid = ? AND item_code = 'ITEM004FC'",
+                                [firebase_uid]
+                            );
+                            console.log(`Updated fortune coin count for user ${firebase_uid}`);
+                        } else {
+                            // User does not have Fortune Coins yet, insert new row
+                            await connection.query(
+                                `INSERT INTO user_items (firebase_uid, username, item_code, item_name, item_price, quantity, total_price) 
+                                     SELECT ?, 
+                                        (SELECT username FROM user_info WHERE firebase_uid = ?), 
+                                        'ITEM004FC', 
+                                        (SELECT item_name FROM shop_items WHERE item_code = 'ITEM004FC'), 
+                                        (SELECT item_price FROM shop_items WHERE item_code = 'ITEM004FC'), 
+                                        1, 
+                                        (SELECT item_price FROM shop_items WHERE item_code = 'ITEM004FC')`,
+                                [firebase_uid, firebase_uid]
+                            );
+                            console.log(`Added first fortune coin for user ${firebase_uid}`);
+                        }
+
+                        resultMessage = `${item_name} applied! You got 500 coins, 500 exp, full mana, and 1 Fortune Coin added to your inventory!`;
                         break;
 
                     default:
@@ -311,48 +382,6 @@ const shopController = {
             });
         }
     },
-
-    useUserTechPass: async (req, res) => {
-        const { firebase_uid } = req.params;
-
-        try {
-
-            const [rows] = await pool.query("SELECT tech_pass FROM user_info WHERE firebase_uid = ?", [firebase_uid]);
-
-            if (rows[0].tech_pass < 1) {
-                return res.status(400).json({ message: "You don't have any Tech Passes!" });
-            }
-
-            const [rows2] = await pool.query("SELECT * FROM user_items WHERE firebase_uid = ? AND item_code = 'ITEM002TP'", [firebase_uid]);
-
-            if (rows2.length === 0) {
-                return res.status(400).json({ message: "You don't have any Tech Passes!" });
-            }
-
-            const connection = await pool.getConnection();
-            await connection.beginTransaction();
-
-            try {
-                await connection.query("UPDATE user_info SET tech_pass = tech_pass - 1 WHERE firebase_uid = ?", [firebase_uid]);
-
-                await connection.query("UPDATE user_items SET quantity = quantity - 1 WHERE firebase_uid = ? AND item_code = 'ITEM002TP'", [firebase_uid]);
-
-                await connection.commit();
-                connection.release();
-
-                res.json({ message: "Tech Pass used successfully!" });
-            } catch (error) {
-                await connection.rollback();
-                connection.release();
-                throw error;
-            }
-        }
-        catch (error) {
-            console.error("Error executing query: ", error);
-            res.status(500).json({ message: "Error executing query" });
-        }
-    },
-
 
 };
 
