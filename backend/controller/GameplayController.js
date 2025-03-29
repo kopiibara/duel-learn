@@ -797,6 +797,16 @@ export const updateBattleRound = async (req, res) => {
             const updateField = player_type === 'host' ? 'host_card' : 'guest_card';
             const answerField = player_type === 'host' ? 'host_answer_correct' : 'guest_answer_correct';
 
+            // Set card_id appropriately
+            let finalCardId = card_id;
+            if (card_id === "no-card-selected") {
+                // Use a standardized value for no card selected
+                finalCardId = "no-card-selected";
+
+                // Log that no card was selected
+                console.log(`${player_type} did not select a card within the time limit`);
+            }
+
             const updateRoundQuery = `
                 UPDATE battle_rounds 
                 SET ${updateField} = ?,
@@ -804,7 +814,7 @@ export const updateBattleRound = async (req, res) => {
                 WHERE session_uuid = ?
             `;
 
-            await connection.query(updateRoundQuery, [card_id, is_correct, session_uuid]);
+            await connection.query(updateRoundQuery, [finalCardId, is_correct, session_uuid]);
 
             // Update turn in battle_sessions table
             const updateTurnQuery = `

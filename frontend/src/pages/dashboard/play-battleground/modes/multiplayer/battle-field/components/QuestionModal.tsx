@@ -8,6 +8,7 @@ interface QuestionModalProps {
     onAnswerSubmit: (isCorrect: boolean) => void;
     difficultyMode: string | null;
     questionTypes: string[];
+    selectedCardId?: string | null;
 }
 
 const QuestionModal: React.FC<QuestionModalProps> = ({
@@ -15,7 +16,8 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     onClose,
     onAnswerSubmit,
     difficultyMode,
-    questionTypes
+    questionTypes,
+    selectedCardId
 }) => {
     const [hasAnswered, setHasAnswered] = useState(false);
     const [currentQuestion, setCurrentQuestion] = useState<any>(null);
@@ -75,7 +77,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
         }
     }, [isOpen]);
 
-    // Select a new question only when the modal opens
+    // Select a new question when the modal opens
     useEffect(() => {
         if (isOpen && !currentQuestion) {
             const newQuestion = getRandomUnusedQuestion();
@@ -130,7 +132,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     if (!isOpen || !currentQuestion) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/10 flex items-center justify-center z-50">
             <div className="p-8 rounded-lg max-w-4xl w-full mx-4 mt-10 relative flex flex-col items-center">
                 {/* Question Counter */}
                 <div className="mb-4 text-sm text-white">

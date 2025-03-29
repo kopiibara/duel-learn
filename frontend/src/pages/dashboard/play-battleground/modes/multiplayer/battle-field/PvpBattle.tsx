@@ -134,7 +134,7 @@ export default function PvpBattle() {
     // Store the selected card ID
     setSelectedCardId(cardId);
 
-    // Show the question modal instead of immediately updating the battle
+    // Show the question modal
     setShowQuestionModal(true);
 
     // Reset player animations to idle
@@ -529,6 +529,7 @@ export default function PvpBattle() {
           onAnswerSubmit={handleAnswerSubmit}
           difficultyMode={difficultyMode}
           questionTypes={questionTypes}
+          selectedCardId={selectedCardId}
         />
       </div>
     </div>
