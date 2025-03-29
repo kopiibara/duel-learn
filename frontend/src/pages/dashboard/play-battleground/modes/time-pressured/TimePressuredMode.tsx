@@ -44,6 +44,9 @@ interface SessionPayload {
   exp_gained: number;
   coins_gained: number | null;
   game_mode: string | null;
+  total_time: string;
+  mastered: number;
+  unmastered: number;
 }
 
 const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
@@ -450,6 +453,13 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
       // Calculate XP based on completion status
       const expGained = calculateExpGained(isComplete, totalItems);
       
+      // Log the values we're about to send
+      console.log("Preparing session report with values:", {
+        timeSpent: sessionData.timeSpent,
+        correctCount: sessionData.correctCount,
+        incorrectCount: sessionData.incorrectCount
+      });
+
       const payload: SessionPayload = {
         session_id: sessionId,
         study_material_id: material.study_material_id,
@@ -459,23 +469,15 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
         session_by_username: user?.username || '',
         status: isComplete ? "completed" : "incomplete",
         ends_at: new Date().toISOString(),
-        exp_gained: expGained, // This will be 0 for incomplete sessions
+        exp_gained: expGained,
         coins_gained: null,
-        game_mode: mode.toLowerCase()
+        game_mode: mode.toLowerCase(),
+        total_time: sessionData.timeSpent,        // Using timeSpent directly
+        mastered: sessionData.correctCount,       // Using correctCount directly
+        unmastered: sessionData.incorrectCount    // Using incorrectCount directly
       };
 
-      console.log("=== SAVING SESSION REPORT ===");
-      console.log("Session Data:", sessionData);
-      console.log("Session Status:", isComplete ? "completed" : "incomplete");
-      console.log("Game Mode:", mode.toLowerCase());
-      console.log("Total Items:", totalItems);
-      console.log("XP Calculation:", {
-        mode: mode.toLowerCase(),
-        totalItems,
-        expGained,
-        isComplete
-      });
-      console.log("Full Payload:", payload);
+      console.log("Sending payload to server:", payload);
 
       const response = await axios.post<SessionReportResponse>(endpoint, payload);
       
