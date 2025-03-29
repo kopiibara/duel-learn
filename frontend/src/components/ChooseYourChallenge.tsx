@@ -86,6 +86,16 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
     }
   };
 
+  // Handle back button from study material modal
+  const handleStudyMaterialBack = () => {
+    setModalOpen(false);
+  };
+
+  // Handle close (X button) from study material modal
+  const handleStudyMaterialClose = () => {
+    setModalOpen(false);
+  };
+
   // Update handleModeClick to match ChooseModeModal's pattern
   const handleModeClick = (mode: string) => {
     setSelectedMode(mode);
@@ -111,7 +121,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         }
       });
     } else {
-      // Same as ChooseModeModal - show material selection modal
+      // Show material selection modal
       setModalOpen(true);
     }
   };
@@ -285,15 +295,16 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         </ModeCard>
       </Box>
 
-      {/* Material Selection Modal */}
+      {/* Material Selection Modal with separate back and close handlers */}
       <SelectStudyMaterialModal
         open={modalOpen}
-        handleClose={() => setModalOpen(false)} // This closes the study material modal
-        mode={selectedMode} // Pass the selected mode
-        isLobby={isLobby} // Pass the isLobby flag
-        onMaterialSelect={handleMaterialSelect} // Pass the selection handler
-        onModeSelect={handleModeSelect} // Pass the mode selection handler
-        selectedTypes={selectedTypes} // Pass selectedTypes to the modal
+        handleClose={handleStudyMaterialClose} // X button behavior
+        handleBack={handleStudyMaterialBack} // Back button behavior
+        mode={selectedMode}
+        isLobby={isLobby}
+        onMaterialSelect={handleMaterialSelect}
+        onModeSelect={handleModeSelect}
+        selectedTypes={selectedTypes}
       />
     </>
   );

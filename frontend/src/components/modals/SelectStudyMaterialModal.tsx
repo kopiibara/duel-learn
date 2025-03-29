@@ -27,6 +27,7 @@ import { StudyMaterial } from "../../types/studyMaterialObject";
 interface SelectStudyMaterialModalProps {
   open: boolean;
   handleClose: () => void;
+  handleBack?: () => void;
   mode: string | null;
   isLobby?: boolean;
   onMaterialSelect: (material: StudyMaterial) => void;
@@ -37,6 +38,7 @@ interface SelectStudyMaterialModalProps {
 const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   open,
   handleClose,
+  handleBack,
   mode,
   isLobby = false,
   onMaterialSelect,
@@ -189,7 +191,7 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
         >
           <IconButton
             aria-label="back"
-            onClick={handleClose}
+            onClick={handleBack || handleClose}
             sx={{
               position: "absolute",
               top: 16,

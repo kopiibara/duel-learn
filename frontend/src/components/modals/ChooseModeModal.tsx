@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Modal,
@@ -49,7 +49,13 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [chooseModeOpen, setChooseModeOpen] = useState<boolean>(open);
   const { setActiveModeAudio } = useAudio();
+
+  // Update when the parent open state changes
+  useEffect(() => {
+    setChooseModeOpen(open);
+  }, [open]);
 
   const buttonData: ButtonData[] = [
     {
@@ -92,9 +98,22 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
       }
       handleClose();
     } else {
-      // Show material selection modal for normal flow
+      // Hide this modal and show the material selection modal
+      setChooseModeOpen(false);
       setModalOpen(true);
     }
+  };
+
+  // Handle back button from study material modal
+  const handleStudyMaterialBack = () => {
+    setModalOpen(false);
+    setChooseModeOpen(true);
+  };
+
+  // Handle close (X button) from study material modal
+  const handleStudyMaterialClose = () => {
+    setModalOpen(false);
+    handleClose(); // Close everything
   };
 
   const handleMaterialSelect = (material: any) => {
@@ -115,7 +134,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
   return (
     <>
       <Modal
-        open={open}
+        open={chooseModeOpen}
         onClose={handleClose}
         closeAfterTransition
         BackdropComponent={Backdrop}
@@ -126,7 +145,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
           },
         }}
       >
-        <Fade in={open}>
+        <Fade in={chooseModeOpen}>
           <Box
             sx={{
               position: "absolute",
@@ -294,10 +313,11 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
         </Fade>
       </Modal>
 
-      {/* Select Study Material Modal */}
+      {/* The study material modal with separate back and close handlers */}
       <SelectStudyMaterialModal
         open={modalOpen}
-        handleClose={() => setModalOpen(false)}
+        handleClose={handleStudyMaterialClose}
+        handleBack={handleStudyMaterialBack}
         mode={selectedMode}
         onMaterialSelect={handleMaterialSelect}
         onModeSelect={handleModeSelect}
