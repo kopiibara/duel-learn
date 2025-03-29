@@ -10,14 +10,17 @@ import pvpModeAsset from "/game-mode-selection/pvp-mode.svg";
 const WelcomeGameMode: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { mode, material } = location.state || {};
+  const { mode, material, preSelectedMaterial, skipMaterialSelection } = location.state || {};
   const [fadeOut, setFadeOut] = useState(false);
   const [setupIsReady, setSetupIsReady] = useState(false);
   const { setActiveModeAudio, stopAllAudio } = useAudio();
   const [audioInitialized, setAudioInitialized] = useState(false);
 
   // Add console log to debug
-  console.log("WelcomeGameMode received state:", { mode, material });
+  console.log("WelcomeGameMode received state:", { mode, material, preSelectedMaterial, skipMaterialSelection });
+
+  // Use preSelectedMaterial if available
+  const selectedMaterial = preSelectedMaterial || material;
 
   // Function to determine which asset to use based on the mode
   const getModeAsset = () => {
@@ -92,15 +95,15 @@ const WelcomeGameMode: React.FC = () => {
           navigate("/dashboard/setup/questions", {
             state: {
               mode,
-              material:
-                typeof material === "string" ? { title: material } : material,
+              material: selectedMaterial,
               fromWelcome: true,
+              skipMaterialSelection
             },
           });
         }, 1000);
       }, 1500); // 1.5 second delay
     }
-  }, [setupIsReady, navigate, mode, material]);
+  }, [setupIsReady, navigate, mode, selectedMaterial, skipMaterialSelection]);
 
   return (
     <motion.div
