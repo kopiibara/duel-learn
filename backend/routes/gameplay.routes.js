@@ -12,7 +12,8 @@ import {
     updateBattleRound,
     getBattleRound,
     initializeBattleScores,
-    getBattleScores
+    getBattleScores,
+    updateBattleScores
 } from '../controller/GameplayController.js';
 
 const router = express.Router();
@@ -32,6 +33,7 @@ router.get('/battle/round/:session_uuid', getBattleRound);
 // Battle scores
 router.post('/battle/initialize-scores', initializeBattleScores);
 router.get('/battle/scores/:session_uuid', getBattleScores);
+router.put('/battle/update-scores', updateBattleScores);
 
 // End the battle
 router.post('/battle/end', endBattle);

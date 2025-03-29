@@ -10,7 +10,7 @@ const openai = new OpenAI({
 
 // Updated helper function to fetch item_id from study_material_content with corrected column names
 const getItemIdFromStudyMaterial = async (
-  studyMaterialId,
+      studyMaterialId,
   term,
   itemNumber
 ) => {
@@ -105,56 +105,63 @@ const storeGeneratedQuestions = async (studyMaterialId, items, questions, gameMo
     // Clear existing questions only once at the start
     await clearQuestionsForMaterial(studyMaterialId, normalizedGameMode);
     
-    // Generate a question for each item
+    // Store all questions in a batch
+    const { pool } = await import('../config/db.js');
+    
+    // Prepare batch insert values
+    const insertValues = [];
+    const insertQuery = `
+      INSERT INTO generated_material 
+      (study_material_id, item_id, item_number, term, definition, 
+       question_type, question, answer, choices, game_mode) 
+      VALUES ?
+    `;
+
+    // Process each item and its corresponding questions
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      // Use the same question template but with different items
-      const questionTemplate = questions[0]; // Use the first question as template
       
-      try {
-        const { pool } = await import('../config/db.js');
-        
-        console.log(`Processing item ${i + 1}/${items.length}:`, {
-          item_number: item.item_number,
-          term: item.term
-        });
-        
-        // Process choices for multiple-choice questions
+      // For each question template, create a question for this item
+      for (const question of questions) {
+        let questionText = question.question;
         let choicesJSON = null;
-        if (questionTemplate.type === 'multiple-choice' && questionTemplate.options) {
-          choicesJSON = JSON.stringify(questionTemplate.options);
-        }
-        
-        const insertQuery = `
-          INSERT INTO generated_material 
-          (study_material_id, item_id, item_number, term, definition, 
-           question_type, question, answer, choices, game_mode) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
+        let answer;
 
-        const insertValues = [
+        // Handle different question types
+        if (question.type === 'true-false') {
+          questionText = `Is this statement true or false: ${item.definition}`;
+          answer = question.answer; // Use the True/False answer from the question
+        } else if (question.type === 'multiple-choice' && question.options) {
+          choicesJSON = JSON.stringify(question.options);
+          answer = item.term; // For multiple choice, use the term as answer
+        } else {
+          // For identification questions
+          answer = item.term;
+        }
+
+        // Add to batch values
+        insertValues.push([
           studyMaterialId,
           item.id,
           item.item_number,
           item.term,
           item.definition,
-          questionTemplate.type,
-          `Which term is defined as: ${item.definition}`,
-          item.term,
+          question.type,
+          questionText,
+          answer, // Now using the appropriate answer based on question type
           choicesJSON,
           normalizedGameMode
-        ];
-        
-        const [result] = await pool.execute(insertQuery, insertValues);
-        console.log(`✅ Stored question ${i + 1} successfully (ID: ${result.insertId})`);
-        
-      } catch (error) {
-        console.error(`Error storing question for item ${i + 1}:`, error);
+        ]);
       }
     }
-    
+
+    // Execute batch insert if we have values
+    if (insertValues.length > 0) {
+      const [result] = await pool.query(insertQuery, [insertValues]);
+      console.log(`✅ Stored ${result.affectedRows} questions successfully`);
+    }
+
     // Verify storage
-    const { pool } = await import('../config/db.js');
     const [storedQuestions] = await pool.query(
       'SELECT * FROM generated_material WHERE study_material_id = ? AND game_mode = ?',
       [studyMaterialId, normalizedGameMode]
@@ -295,7 +302,7 @@ export const OpenAiController = {
         itemNumber,
         gameMode = "peaceful",
       } = req.body;
-
+      
       // Normalize the game mode
       let normalizedGameMode = gameMode
         ? gameMode.toLowerCase().replace(/\s+/g, "-")
@@ -306,7 +313,7 @@ export const OpenAiController = {
       ) {
         normalizedGameMode = "time-pressured";
       }
-
+      
       console.log("Game mode for identification question:", {
         original: gameMode,
         normalized: normalizedGameMode,
@@ -328,7 +335,7 @@ export const OpenAiController = {
             answer = VALUES(answer),
             updated_at = CURRENT_TIMESTAMP
           `;
-
+          
           const insertParams = [
             studyMaterialId,
           itemId || '1',
@@ -378,6 +385,7 @@ export const OpenAiController = {
     try {
       console.log("Received true/false question request");
       const {
+        material, // Add material to receive all items at once
         term,
         definition,
         numberOfItems = 1,
@@ -386,17 +394,11 @@ export const OpenAiController = {
         itemNumber,
         gameMode = "peaceful",
       } = req.body;
-
+      
       // Normalize the game mode
       let normalizedGameMode = gameMode
         ? gameMode.toLowerCase().replace(/\s+/g, "-")
         : "peaceful";
-      if (
-        normalizedGameMode === "time-pressured" ||
-        normalizedGameMode === "time-pressure"
-      ) {
-        normalizedGameMode = "time-pressured";
-      }
 
       console.log("Game mode for true/false question:", {
         original: gameMode,
@@ -407,21 +409,20 @@ export const OpenAiController = {
       const cleanedTerm = term.replace(/^[A-D]\.\s+/, "");
 
       const prompt = `Generate ${numberOfItems} true/false question(s) based on this term and definition:
-Term: "${cleanedTerm}"
-Definition: "${definition}"
-Rules:
-1. Use the definition to create statement(s) that can be true or false
-2. The statement(s) should be clear and unambiguous
-3. The answer should be either "True" or "False"
-Format the response exactly as JSON:
-[
-  {
-    "type": "true-false",
-    "question": "(statement based on the definition)",
-    "answer": "(True or False)"
-  }
-]
-If generating multiple questions, include them all in the array.`;
+        Term: "${cleanedTerm}"
+        Definition: "${definition}"
+        Rules:
+        1. Use the definition to create statement(s) that can be true or false
+        2. The statement(s) should be clear and unambiguous
+        3. The answer should be either "True" or "False"
+        Format the response exactly as JSON:
+        [
+          {
+            "type": "true-false",
+            "question": "(statement based on the definition)",
+            "answer": "(True or False)"
+          }
+        ]`;
 
       console.log("Calling OpenAI for true/false questions");
       const completion = await openai.chat.completions.create({
@@ -429,8 +430,7 @@ If generating multiple questions, include them all in the array.`;
         messages: [
           {
             role: "system",
-            content:
-              "You are a helpful AI that generates true/false questions. Create clear statements that can be definitively answered as True or False based on the given term and definition.",
+            content: "You are a helpful AI that generates true/false questions.",
           },
           { role: "user", content: prompt },
         ],
@@ -453,61 +453,33 @@ If generating multiple questions, include them all in the array.`;
           studyMaterialId
         );
         try {
-          // Check if this specific question type already exists for this material and mode
-          const { pool } = await import("../config/db.js");
-          const [rows] = await pool.query(
-            "SELECT COUNT(*) as count FROM generated_material WHERE study_material_id = ? AND game_mode = ? AND question_type = ? AND term = ?",
-            [studyMaterialId, normalizedGameMode, "true-false", cleanedTerm]
+          // Get all items at once
+          const { pool } = await import('../config/db.js');
+          const [items] = await pool.query(
+            'SELECT * FROM study_material_content WHERE study_material_id = ?',
+            [studyMaterialId]
           );
 
-          const existingCount = parseInt(rows[0].count || "0");
-          console.log(
-            `Found ${existingCount} existing true-false questions for this term`
-          );
-
-          // Fetch the actual item_id from study_material_content with enhanced debugging
-          console.log(
-            `Looking up content for true/false question with term "${cleanedTerm}"`
-          );
-          const contentItem = await getItemIdFromStudyMaterial(
-            studyMaterialId,
-            cleanedTerm,
-            itemNumber
-          );
-          let actualItemId, actualItemNumber;
-
-          if (contentItem && contentItem.itemId) {
-            actualItemId = contentItem.itemId; // Keep as string
-            actualItemNumber = contentItem.itemNumber;
-            console.log(
-              `✅ SUCCESS: Using actual item_id ${actualItemId} (type: ${typeof actualItemId}) from study_material_content for term "${cleanedTerm}"`
-            );
-          } else {
-            console.warn(
-              `❌ FAILURE: Couldn't find item_id in study_material_content for term "${cleanedTerm}"`
-            );
-            actualItemId = itemId || String(1); // Ensure string format
-            actualItemNumber = itemNumber || 1;
+          if (!items || items.length === 0) {
+            throw new Error('No items found for study material');
           }
 
-          console.log(
-            `Using item_id ${actualItemId} and item_number ${actualItemNumber} for true/false question`
-          );
+          // Create array of items with proper structure
+          const itemsToStore = items.map(item => ({
+            id: item.item_id,
+            term: item.term,
+            definition: item.definition,
+            item_number: item.item_number
+          }));
 
-          // Always store the question, replacing if it exists
+          // Store all questions at once
           await storeGeneratedQuestions(
             studyMaterialId,
-            [
-              {
-                id: actualItemId,
-                term: cleanedTerm,
-                definition,
-                item_number: actualItemNumber,
-              },
-            ],
+            itemsToStore,
             questions,
             normalizedGameMode
           );
+          
           console.log("Successfully stored true/false questions");
         } catch (storeError) {
           console.error("Error storing true/false questions:", storeError);
@@ -540,7 +512,7 @@ If generating multiple questions, include them all in the array.`;
         itemNumber,
         gameMode = "peaceful",
       } = req.body;
-
+      
       // Normalize the game mode
       let normalizedGameMode = gameMode
         ? gameMode.toLowerCase().replace(/\s+/g, "-")
@@ -551,7 +523,7 @@ If generating multiple questions, include them all in the array.`;
       ) {
         normalizedGameMode = "time-pressured";
       }
-
+      
       console.log("Game mode for multiple choice question:", {
         original: gameMode,
         normalized: normalizedGameMode,
@@ -646,7 +618,7 @@ Important:
         questions = questions.map((q) => {
           // Ensure the question has the correct type
           q.type = "multiple-choice";
-
+          
           // Clean up options - remove any "similar to..." text
           if (q.options) {
             Object.keys(q.options).forEach((key) => {
@@ -657,7 +629,7 @@ Important:
                 .trim();
             });
           }
-
+          
           return q;
         });
 
@@ -841,13 +813,13 @@ Important:
     try {
       console.log("=== SAVE SESSION RESULTS - START ===");
       console.log("Received session results request body:", req.body);
-
-      const {
-        studyMaterialId,
-        timeSpent,
-        correctCount,
-        incorrectCount,
-        mode,
+      
+      const { 
+        studyMaterialId, 
+        timeSpent, 
+        correctCount, 
+        incorrectCount, 
+        mode, 
         highestStreak,
         masteredCount,
         unmasteredCount,
@@ -860,7 +832,7 @@ Important:
       let gameMode = mode
         ? mode.toLowerCase().replace(/\s+/g, "-")
         : "peaceful";
-
+      
       // Special handling for "Time Pressured" mode
       if (gameMode === "time-pressured" || gameMode === "time-pressure") {
         gameMode = "time-pressured";
@@ -889,7 +861,7 @@ Important:
 
       if (!studyMaterialId) {
         console.error("Missing studyMaterialId in request");
-        return res.status(400).json({
+        return res.status(400).json({ 
           success: false,
           error: "Missing studyMaterialId",
         });
@@ -898,7 +870,7 @@ Important:
       // Check if we have questions to store
       if (Array.isArray(questions) && questions.length > 0) {
         console.log(`Processing ${questions.length} questions for storage`);
-
+        
         // Log question types to help with debugging
         const questionTypes = questions
           .map((q) => q.type || q.questionType)
@@ -907,9 +879,9 @@ Important:
           acc[type] = (acc[type] || 0) + 1;
           return acc;
         }, {});
-
+        
         console.log("Question types in payload:", typeCounts);
-
+        
         // First declaration (keep this one)
         const identificationQuestions = questions.filter(
           (q) =>
@@ -925,11 +897,11 @@ Important:
           console.log(
             "Identification question samples:",
             identificationQuestions.map((q) => ({
-              type: q.type,
-              questionType: q.questionType,
-              question_type: q.question_type,
+            type: q.type,
+            questionType: q.questionType,
+            question_type: q.question_type,
               term: q.itemInfo?.term || "unknown",
-              question: q.question,
+            question: q.question,
               answer: q.answer || q.correctAnswer,
             }))
           );
@@ -941,47 +913,47 @@ Important:
           providedItems.length > 0
             ? providedItems
             : questions.map((q, index) => {
-                // First try to get item from itemInfo
-                if (q.itemInfo && q.itemInfo.term && q.itemInfo.definition) {
+          // First try to get item from itemInfo
+          if (q.itemInfo && q.itemInfo.term && q.itemInfo.definition) {
                   console.log(
                     `Creating item from question ${index + 1} itemInfo:`,
                     q.itemInfo
                   );
-                  return {
-                    id: q.itemInfo.itemId || index + 1,
-                    term: q.itemInfo.term,
+            return {
+              id: q.itemInfo.itemId || index + 1,
+              term: q.itemInfo.term,
                     definition: q.itemInfo.definition,
-                  };
-                } else {
-                  // Fall back to creating from question fields
-                  const item = {
-                    id: index + 1,
+            };
+          } else {
+            // Fall back to creating from question fields
+            const item = {
+              id: index + 1,
                     term: q.correctAnswer || q.answer || `Item ${index + 1}`,
                     definition: q.question || `Definition ${index + 1}`,
-                  };
+            };
                   console.log(`Created dummy item ${index + 1}:`, item);
-                  return item;
-                }
-              });
-
+            return item;
+          }
+        });
+        
         console.log(`Processed ${processedItems.length} items for storage`);
-
+        
         // Filter out duplicate questions (same term and question type)
         const uniqueQuestions = [];
         const seenKeys = new Set(); // Track unique term + question_type combinations
-
+        
         console.log("Filtering questions to ensure uniqueness...");
-
+        
         for (const question of questions) {
           const term =
             question.itemInfo?.term ||
             question.correctAnswer ||
             question.answer;
           const questionType = question.type || question.questionType;
-
+          
           // Create a unique key for this term and question type
           const key = `${term}:${questionType}`;
-
+          
           if (!seenKeys.has(key)) {
             seenKeys.add(key);
             uniqueQuestions.push(question);
@@ -994,22 +966,22 @@ Important:
             );
           }
         }
-
+        
         console.log(
           `Filtered questions: ${questions.length} -> ${uniqueQuestions.length}`
         );
         console.log(`Unique term+type combinations: ${seenKeys.size}`);
-
+        
         // Right before calling storeGeneratedQuestions, check the items format
         console.log(
           "Items before storage:",
           items.map((item) => ({
-            id: item.id,
-            term: item.term,
+          id: item.id,
+          term: item.term,
             definition: item.definition,
           }))
         );
-
+        
         // Store the questions
         try {
           console.log("Calling storeGeneratedQuestions with:", {
@@ -1050,11 +1022,11 @@ Important:
           console.log(
             `Found ${identificationQuestionsForDebug.length} identification questions`
           );
-
+          
           // For each identification question, try to store it directly
           for (let i = 0; i < identificationQuestionsForDebug.length; i++) {
             const q = identificationQuestionsForDebug[i];
-
+            
             // Extract all relevant data
             const term =
               q.itemInfo?.term || q.correctAnswer || q.answer || "Unknown Term";
@@ -1062,13 +1034,13 @@ Important:
               q.itemInfo?.definition || q.question || "Unknown Definition";
             const question = q.question || "Unknown Question";
             const answer = q.correctAnswer || q.answer || term;
-
+            
             console.log(`Identification question ${i + 1}:`);
             console.log(` - Term: ${term}`);
             console.log(` - Definition: ${definition}`);
             console.log(` - Question: ${question}`);
             console.log(` - Answer: ${answer}`);
-
+            
             try {
               const { pool } = await import("../config/db.js");
 
@@ -1112,14 +1084,14 @@ Important:
                   i + 1
                 }`
               );
-
+              
               // Try simple manual insertion
               const directInsertQuery = `
                 INSERT INTO generated_material 
                 (study_material_id, item_id, item_number, term, definition, question_type, question, answer, game_mode) 
                 VALUES (?, ?, ?, ?, ?, 'identification', ?, ?, ?)
               `;
-
+              
               const directInsertValues = [
                 studyMaterialId,
                 actualItemId, // Use the properly fetched item_id
@@ -1144,7 +1116,7 @@ Important:
                   directInsertValues
                 );
                 console.log(`Direct insertion result:`, directResult);
-
+                
                 if (directResult.affectedRows > 0) {
                   console.log(
                     `✅ Successfully inserted identification question ${
@@ -1160,7 +1132,7 @@ Important:
                 }
               } catch (directError) {
                 console.error(`❌ Error with direct insertion:`, directError);
-
+                
                 // Try update if insert failed
                 try {
                   const updateQuery = `
@@ -1168,7 +1140,7 @@ Important:
                     SET definition = ?, question = ?, answer = ?
                     WHERE study_material_id = ? AND term = ? AND question_type = 'identification' AND game_mode = 'peaceful'
                   `;
-
+                  
                   const updateValues = [
                     definition,
                     question,
@@ -1176,13 +1148,13 @@ Important:
                     studyMaterialId,
                     term,
                   ];
-
+                  
                   const [updateResult] = await pool.execute(
                     updateQuery,
                     updateValues
                   );
                   console.log(`Update result:`, updateResult);
-
+                  
                   if (updateResult.affectedRows > 0) {
                     console.log(
                       `✅ Successfully updated identification question ${i + 1}`
@@ -1198,13 +1170,13 @@ Important:
                   console.error(`❌ Error with update:`, updateError);
                 }
               }
-
+              
               // Verify by query
               const [verifyResult] = await pool.query(
                 `SELECT * FROM generated_material WHERE study_material_id = ? AND term = ? AND question_type = 'identification'`,
                 [studyMaterialId, term]
               );
-
+              
               if (verifyResult && verifyResult.length > 0) {
                 console.log(
                   `✅ Verification found identification question in DB:`,

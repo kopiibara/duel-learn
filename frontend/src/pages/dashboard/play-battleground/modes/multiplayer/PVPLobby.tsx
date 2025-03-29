@@ -387,8 +387,8 @@ const PVPLobby: React.FC = () => {
               isHost: true,
               hostUsername: user?.username,
               guestUsername: invitedPlayer?.username || players[1]?.username || "Guest",
-              hostId: hostId, // Pass the actual ID
-              guestId: guestId // Pass the actual ID
+              hostId: hostId,
+              guestId: guestId
             }
           });
         }
