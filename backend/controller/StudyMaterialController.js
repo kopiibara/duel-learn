@@ -1153,10 +1153,67 @@ const studyMaterialController = {
     } finally {
       connection.release();
     }
+  },
+
+  getStudyMaterialInfo: async (req, res) => {
+    let connection;
+    try {
+      const { studyMaterialId } = req.params;
+
+      if (!studyMaterialId) {
+        return res.status(400).json({
+          success: false,
+          message: "Study material ID is required"
+        });
+      }
+
+      // Try to get from cache first
+      const cacheKey = `study_material_info_${studyMaterialId}`;
+      const cachedInfo = studyMaterialCache.get(cacheKey);
+
+      if (cachedInfo) {
+        return res.json({
+          success: true,
+          data: cachedInfo
+        });
+      }
+
+      // Not in cache, get from database
+      connection = await pool.getConnection();
+
+      const [result] = await connection.query(
+        `SELECT study_material_id, title, tags, total_items, visibility, status, created_by, created_by_id
+         FROM study_material_info 
+         WHERE study_material_id = ?`,
+        [studyMaterialId]
+      );
+
+      if (result.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Study material not found"
+        });
+      }
+
+      // Store in cache for future requests
+      studyMaterialCache.set(cacheKey, result[0], 600); // Cache for 10 minutes
+
+      return res.json({
+        success: true,
+        data: result[0]
+      });
+
+    } catch (error) {
+      console.error("Error fetching study material info:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch study material info",
+        error: error.message
+      });
+    } finally {
+      if (connection) connection.release();
+    }
   }
-
-
-
 };
 
 export default studyMaterialController;

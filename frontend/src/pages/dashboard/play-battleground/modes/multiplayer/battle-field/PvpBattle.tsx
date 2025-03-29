@@ -2,58 +2,51 @@
 
 import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
+import { useLocation } from "react-router-dom";
+import axios from "axios";
 
 // Character animations
 import playerCharacter from "../../../../../../assets/characterinLobby/playerCharacter.gif"; // Regular idle animation for player
 import enemyCharacter from "../../../../../../assets/characterinLobby/playerCharacter.gif"; // Regular idle animation for enemy
-import characterPicking from "../../../../../../assets/characterinLobby/CharacterPicking.gif"; // Initial picking animation (non-looping)
-import characterPickingLoop from "../../../../../../assets/characterinLobby/CharacterPickingLoop.gif"; // Continuous picking animation (looping)
-
-import { useLocation } from "react-router-dom";
-import axios from "axios";
-import { motion, AnimatePresence } from "framer-motion";
 
 // Import components
 import PlayerInfo from "./components/PlayerInfo";
-import QuestionTimer from "./components/QuestionTimer";
 import Character from "./components/Character";
-import WaitingOverlay from "./components/WaitingOverlay";
 import CardSelection from "./components/CardSelection";
 
-interface BattleState {
-  current_turn: string | null;
-  round_number: number;
-  total_rounds: number;
-  host_card: string | null;
-  guest_card: string | null;
-  host_score: number;
-  guest_score: number;
-  host_health: number;
-  guest_health: number;
-  is_active: boolean;
-  winner_id: string | null;
-  battle_end_reason: string | null;
-  host_in_battle: boolean;
-  guest_in_battle: boolean;
-  battle_started: boolean;
-}
+// Import consolidated components
+import { useBattle } from "./hooks/useBattle";
+import { WaitingOverlay, LoadingOverlay } from "./overlays/BattleOverlays";
+import { VictoryModal } from "./modals/BattleModals";
+import CharacterAnimationManager from "./components/CharacterAnimationManager";
+import GameStartAnimation from "./components/GameStartAnimation";
+import GuestWaitingForRandomization from "./components/GuestWaitingForRandomization";
+
+// Import utils directly
+import TurnRandomizer from "./utils/TurnRandomizer";
+import { getCharacterImage } from "./utils/getCharacterImage";
+import QuestionTimer from "./utils/QuestionTimer";
+
+// Import shared BattleState interface
+import { BattleState } from "./BattleState";
 
 /**
  * PvpBattle component - Main battle screen for player vs player mode
  */
 export default function PvpBattle() {
   const location = useLocation();
-  const { hostUsername, guestUsername, isHost, lobbyCode } = location.state || {};
-
-  // Debug the values received from location state
-  console.log('PvpBattle state:', { hostUsername, guestUsername, isHost, lobbyCode });
+  const { hostUsername, guestUsername, isHost, lobbyCode, hostId, guestId } = location.state || {};
 
   // Game state
   const [timeLeft, setTimeLeft] = useState(25);
   const [currentQuestion, setCurrentQuestion] = useState(1);
-  const totalQuestions = 30;
+  const [totalItems, setTotalItems] = useState(30); // Default value, will be updated from study material
   const [waitingForPlayer, setWaitingForPlayer] = useState(true);
   const [battleState, setBattleState] = useState<BattleState | null>(null);
+  const [difficultyMode, setDifficultyMode] = useState<string | null>(null);
+  const [studyMaterialId, setStudyMaterialId] = useState<string | null>(null);
+  const [playerHealth, setPlayerHealth] = useState(100);
+  const [opponentHealth, setOpponentHealth] = useState(100);
 
   // Turn-based gameplay state
   const [gameStarted, setGameStarted] = useState(false);
@@ -61,16 +54,14 @@ export default function PvpBattle() {
   const [showCards, setShowCards] = useState(false);
   const [showGameStart, setShowGameStart] = useState(false);
   const [gameStartText, setGameStartText] = useState("");
+  const [showCardsAfterDelay, setShowCardsAfterDelay] = useState(false);
 
   // Player info
   const playerName = isHost ? (hostUsername || "Host") : (guestUsername || "Guest");
   const opponentName = isHost ? (guestUsername || "Guest") : (hostUsername || "Host");
-  const playerHealth = 100;
-  const opponentHealth = 100;
+  const currentUserId = isHost ? hostId : guestId;
+  const opponentId = isHost ? guestId : hostId;
   const maxHealth = 100;
-
-  // Debug the assigned player names
-  console.log('Assigned names:', { playerName, opponentName, isHost });
 
   // Animation state for player and enemy
   const [enemyAnimationState, setEnemyAnimationState] = useState("idle");
@@ -78,183 +69,170 @@ export default function PvpBattle() {
   const [enemyPickingIntroComplete, setEnemyPickingIntroComplete] = useState(false);
   const [playerPickingIntroComplete, setPlayerPickingIntroComplete] = useState(false);
 
-  // New states for turn randomizer
+  // Turn randomizer states
   const [showRandomizer, setShowRandomizer] = useState(false);
-  const [randomizing, setRandomizing] = useState(false);
   const [randomizationDone, setRandomizationDone] = useState(false);
 
-  // Check for both players and battle start
+  // Victory modal states
+  const [showVictoryModal, setShowVictoryModal] = useState(false);
+  const [victoryMessage, setVictoryMessage] = useState("");
+
+  // Use the Battle hooks
+  const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
+    lobbyCode,
+    hostId,
+    guestId,
+    isHost,
+    battleState,
+    currentUserId,
+    opponentName,
+    gameStarted,
+    randomizationDone,
+    showVictoryModal,
+    showGameStart,
+    setWaitingForPlayer,
+    setShowRandomizer,
+    setBattleState,
+    setGameStarted,
+    setShowGameStart,
+    setGameStartText,
+    setIsMyTurn,
+    setPlayerAnimationState,
+    setPlayerPickingIntroComplete,
+    setEnemyAnimationState,
+    setEnemyPickingIntroComplete,
+    setShowCards,
+    setShowVictoryModal,
+    setVictoryMessage
+  });
+
+  // Function to determine if guest is waiting for randomization
+  const isGuestWaitingForRandomization = !isHost &&
+    !waitingForPlayer &&
+    battleState?.battle_started &&
+    !battleState?.current_turn &&
+    !randomizationDone;
+
+  // Effect to handle delayed card display after game start
   useEffect(() => {
-    const checkBattleStatus = async () => {
-      try {
-        if (lobbyCode) {
-          const response = await axios.get(
-            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/state/${lobbyCode}`
-          );
-
-          if (response.data.success) {
-            const battleState = response.data.data;
-            setBattleState(battleState);
-
-            // Update waiting state based on both players being in battle
-            if (battleState.host_in_battle && battleState.guest_in_battle) {
-              setWaitingForPlayer(false);
-
-              // Show randomizer to host if battle started but no current_turn set
-              // Only show if randomization hasn't been done yet
-              if (battleState.battle_started && !battleState.current_turn && isHost && !randomizationDone) {
-                setShowRandomizer(true);
-              } else if (battleState.battle_started && !battleState.current_turn && !randomizationDone) {
-                // Guest just waits for host to randomize
-                console.log("Waiting for host to determine who goes first...");
-              } else if (battleState.battle_started && battleState.current_turn) {
-                // Turn has been decided, start the game
-                setShowRandomizer(false);
-
-                if (!gameStarted) {
-                  setGameStarted(true);
-                  setShowGameStart(true);
-
-                  // Determine if it's the current player's turn
-                  const isCurrentPlayerTurn = isHost
-                    ? battleState.current_turn === hostUsername
-                    : battleState.current_turn === guestUsername;
-
-                  // Set the game start text based on whose turn it is
-                  if (isCurrentPlayerTurn) {
-                    setGameStartText("You will go first!");
-                  } else {
-                    const opponentName = isHost
-                      ? battleState.guest_username || "Guest"
-                      : battleState.host_username || "Host";
-                    setGameStartText(`${opponentName} will go first!`);
-                  }
-
-                  // Hide the animation after 2.5 seconds
-                  setTimeout(() => {
-                    setShowGameStart(false);
-                    setShowCards(true);
-                  }, 2500);
-
-                  // Set initial turn state
-                  setIsMyTurn(isCurrentPlayerTurn);
-
-                  // Set initial animations
-                  if (isCurrentPlayerTurn) {
-                    setPlayerAnimationState("picking");
-                    setPlayerPickingIntroComplete(false);
-                    setEnemyAnimationState("idle");
-                  } else {
-                    setEnemyAnimationState("picking");
-                    setEnemyPickingIntroComplete(false);
-                    setPlayerAnimationState("idle");
-                  }
-                }
-              }
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error checking battle status:", error);
-      }
-    };
-
-    // Check immediately
-    checkBattleStatus();
-
-    // Then check every 1.2 seconds
-    const interval = setInterval(checkBattleStatus, 1200);
-
-    return () => clearInterval(interval);
-  }, [lobbyCode, hostUsername, guestUsername, isHost, gameStarted, randomizationDone]);
+    if (gameStarted && !showCardsAfterDelay) {
+      const timer = setTimeout(() => {
+        setShowCardsAfterDelay(true);
+      }, 2000); // 2 second delay
+      return () => clearTimeout(timer);
+    }
+  }, [gameStarted]);
 
   // Handle card selection
-  const handleCardSelected = (cardId: string) => {
-    console.log(`Selected card: ${cardId}`);
-
+  const handleCardSelected = async (cardId: string) => {
     // When player selects a card, it's no longer their turn
     // Reset player animations to idle
     setPlayerAnimationState("idle");
     setPlayerPickingIntroComplete(false);
 
-    // In a real app, you would send this selection to the server
-    // For now, just switch turns
-    setIsMyTurn(false);
+    try {
+      // Determine if the current player is host or guest
+      const playerType = isHost ? 'host' : 'guest';
 
-    // Set enemy animation to picking - they get their turn next
-    // Start with the intro animation (non-looping)
-    setEnemyAnimationState("picking");
-    setEnemyPickingIntroComplete(false);
+      // Update the battle round with the selected card and switch turns
+      const response = await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
+        {
+          session_uuid: battleState?.session_uuid,
+          player_type: playerType,
+          card_id: cardId,
+          lobby_code: lobbyCode
+        }
+      );
 
-    // Simulate opponent's turn (in a real app, this would come from the server)
-    setTimeout(() => {
-      // After 3 seconds, switch back to player's turn
-      // Start with the intro animation again (non-looping)
-      setPlayerAnimationState("picking");
-      setPlayerPickingIntroComplete(false);
-      setEnemyAnimationState("idle");
-      setEnemyPickingIntroComplete(false);
-      setIsMyTurn(true);
-    }, 3000);
-  };
+      if (response.data.success) {
+        console.log(`Card ${cardId} selection successful, turn switched`);
 
-  // Update animation states when turns change
-  useEffect(() => {
-    if (gameStarted && !waitingForPlayer) {
-      if (isMyTurn) {
-        // If it's my turn, my character should be picking
-        setPlayerAnimationState("picking");
-        setPlayerPickingIntroComplete(false); // Start with the non-looping intro animation
-        setEnemyAnimationState("idle");
-      } else {
-        // If it's opponent's turn, their character should be picking
+        // Switch turns locally but keep UI visible
+        setIsMyTurn(false);
+
+        // Set enemy animation to picking - they get their turn next
         setEnemyAnimationState("picking");
-        setEnemyPickingIntroComplete(false); // Start with the non-looping intro animation
-        setPlayerAnimationState("idle");
+        setEnemyPickingIntroComplete(false);
+      } else {
+        console.error("Failed to update battle round:", response.data.message);
       }
+    } catch (error) {
+      console.error("Error updating battle round:", error);
     }
-  }, [isMyTurn, gameStarted, waitingForPlayer]);
-
-  // Handle completion of picking intro animation for player - only runs ONCE per turn
-  useEffect(() => {
-    if (playerAnimationState === "picking" && !playerPickingIntroComplete) {
-      // Set a timer for the exact duration of the characterPicking.gif
-      const introDuration = 400; // Duration in ms - adjust to match your actual GIF duration
-
-      const introTimer = setTimeout(() => {
-        // After intro animation completes exactly once, switch to the looping animation
-        setPlayerPickingIntroComplete(true);
-        console.log("Player picking intro completed, switching to loop animation");
-      }, introDuration);
-
-      return () => clearTimeout(introTimer);
-    }
-  }, [playerAnimationState, playerPickingIntroComplete]);
-
-  // Handle completion of picking intro animation for enemy - only runs ONCE per turn
-  useEffect(() => {
-    if (enemyAnimationState === "picking" && !enemyPickingIntroComplete) {
-      // Set a timer for the exact duration of the characterPicking.gif
-      const introDuration = 400; // Duration in ms - adjust to match your actual GIF duration
-
-      const introTimer = setTimeout(() => {
-        // After intro animation completes exactly once, switch to the looping animation
-        setEnemyPickingIntroComplete(true);
-        console.log("Enemy picking intro completed, switching to loop animation");
-      }, introDuration);
-
-      return () => clearTimeout(introTimer);
-    }
-  }, [enemyAnimationState, enemyPickingIntroComplete]);
-
-  // Helper function to get the correct animation image for a character
-  const getCharacterImage = (baseImage: string, animationState: string, introComplete: boolean): string => {
-    if (animationState === "picking") {
-      // If in picking state, show intro animation until it completes, then show loop
-      return introComplete ? characterPickingLoop : characterPicking;
-    }
-    return baseImage;
   };
+
+  // Add polling for turn updates
+  useEffect(() => {
+    // Skip if game hasn't started or we're waiting for players
+    if (!gameStarted || waitingForPlayer || !battleState?.session_uuid) return;
+
+    // Function to check if it's our turn
+    const checkTurn = async () => {
+      try {
+        // Get the latest session state
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-state/${lobbyCode}`
+        );
+
+        if (response.data.success && response.data.data) {
+          const sessionData = response.data.data;
+
+          // Update local battle state with proper type safety
+          setBattleState(prevState => {
+            // If prevState is null, we can't update it properly
+            if (!prevState) return null;
+
+            return {
+              ...prevState,
+              current_turn: sessionData.current_turn,
+              // Only set cards if they exist in the session data
+              ...(sessionData.host_card && { host_card: sessionData.host_card }),
+              ...(sessionData.guest_card && { guest_card: sessionData.guest_card })
+            };
+          });
+
+          // Check if it's this player's turn
+          const isCurrentPlayerTurn = sessionData.current_turn === currentUserId;
+
+          // If turn has changed
+          if (isCurrentPlayerTurn !== isMyTurn) {
+            console.log(`Turn changed: ${isMyTurn} → ${isCurrentPlayerTurn}`);
+
+            // Update UI accordingly
+            setIsMyTurn(isCurrentPlayerTurn);
+
+            if (isCurrentPlayerTurn) {
+              // My turn now - update animations 
+              setPlayerAnimationState("picking");
+              setPlayerPickingIntroComplete(false);
+              setEnemyAnimationState("idle");
+              setEnemyPickingIntroComplete(false);
+            } else {
+              // Opponent's turn - update animations
+              setPlayerAnimationState("idle");
+              setPlayerPickingIntroComplete(false);
+              setEnemyAnimationState("picking");
+              setEnemyPickingIntroComplete(false);
+            }
+
+            // Always show cards UI regardless of whose turn it is
+            setShowCards(true);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking turn status:", error);
+      }
+    };
+
+    // Set up polling for turn updates (every 2 seconds)
+    const turnCheckInterval = setInterval(checkTurn, 2000);
+
+    // Initial check
+    checkTurn();
+
+    return () => clearInterval(turnCheckInterval);
+  }, [gameStarted, waitingForPlayer, battleState?.session_uuid, lobbyCode, currentUserId, isMyTurn]);
 
   // Timer effect
   useEffect(() => {
@@ -263,129 +241,153 @@ export default function PvpBattle() {
     return () => clearTimeout(timer);
   }, [timeLeft, waitingForPlayer]);
 
-  // Function to handle the randomizer button click
-  const handleRandomizeTurn = async () => {
-    if (!battleState || randomizing) return;
+  // Handle victory confirmation
+  const handleVictoryConfirm = () => {
+    // Remove all event listeners to prevent confirmation dialog
+    window.onbeforeunload = null;
 
-    setRandomizing(true);
-
-    // Visual randomization effect (alternating between host and guest)
-    let duration = 3000; // 3 seconds of animation
-    let toggleInterval = 100; // Start fast (100ms)
-    let currentTime = 0;
-
-    // Start with a random player
-    let currentTurn = Math.random() < 0.5 ? hostUsername : guestUsername;
-
-    // Set initial game start text
-    setGameStartText(`${currentTurn} will go first!`);
-
-    // Create a div to show the alternating names
-    const turnInterval = setInterval(() => {
-      currentTime += toggleInterval;
-
-      // Slow down the toggle as we approach the end
-      if (currentTime > duration / 2) {
-        toggleInterval = 200; // Slow down midway
-      }
-      if (currentTime > duration * 0.75) {
-        toggleInterval = 300; // Slow down further
-      }
-
-      // Toggle between host and guest
-      currentTurn = currentTurn === hostUsername ? guestUsername : hostUsername;
-
-      // Update UI to show current selection
-      setGameStartText(`${currentTurn} will go first!`);
-
-      // End the animation after duration
-      if (currentTime >= duration) {
-        clearInterval(turnInterval);
-
-        // Make a final decision - this ensures we don't get stuck on a rapidly changing value
-        const finalSelection = currentTurn;
-        setGameStartText(`${finalSelection} will go first!`);
-
-        finalizeRandomization(finalSelection);
-      }
-    }, toggleInterval);
+    // Navigate directly to dashboard without creating a history entry
+    window.location.replace('/dashboard/home');
   };
 
-  // Function to finalize the random selection
-  const finalizeRandomization = async (selectedPlayer: string) => {
-    try {
-      // Use the actual username as the current_turn value
-      console.log(`Finalizing turn randomization: selected ${selectedPlayer}`);
+  // Handle settings button click
+  const handleSettingsClick = async () => {
+    // Prevent multiple calls
+    if (isEndingBattle) return;
 
-      // Set randomizationDone immediately to prevent further randomization attempts
-      setRandomizationDone(true);
+    // Show confirmation dialog
+    const confirmLeave = window.confirm(
+      "Are you sure you want to leave the battle? Your progress will be lost and the battle will end."
+    );
 
-      // Hide the randomizer UI immediately, don't wait for the polling
-      setShowRandomizer(false);
-
-      // Show the final selection in the game start text
-      setShowGameStart(true);
-
-      // Instead of just updating turn, do a full initialization to also set battle_started=true
-      // This helps both host and guest get synchronized quickly
-      await axios.put(
-        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-turn`,
-        {
-          lobby_code: lobbyCode,
-          current_turn: selectedPlayer
-        }
-      );
-
-      // Optionally, we could extend our state to include who was selected to go first
-      // This would let us start rendering things even before the polling catches up
-      if (isHost) {
-        const isPlayerFirst = selectedPlayer === hostUsername;
-        // Setup initial game state based on who goes first
-        setGameStarted(true);
-        setIsMyTurn(isPlayerFirst);
-
-        if (isPlayerFirst) {
-          setPlayerAnimationState("picking");
-          setPlayerPickingIntroComplete(false);
-          setEnemyAnimationState("idle");
-        } else {
-          setEnemyAnimationState("picking");
-          setEnemyPickingIntroComplete(false);
-          setPlayerAnimationState("idle");
-        }
-
-        // Hide the initial game start screen after 2.5 seconds and show cards
-        setTimeout(() => {
-          setShowGameStart(false);
-          setShowCards(true);
-        }, 2500);
+    if (confirmLeave) {
+      try {
+        await handleLeaveBattle();
+      } catch (error) {
+        console.error("Error leaving battle:", error);
+        // Force navigation anyway on error
+        window.location.replace('/dashboard/home');
       }
-
-      setRandomizing(false);
-
-      // The next polling cycle will detect the turn is set and proceed with the game
-    } catch (error) {
-      console.error("Error setting turn:", error);
-      setRandomizing(false);
-      // If there's an error, allow retrying
-      setRandomizationDone(false);
     }
   };
 
+  // Fetch battle session data to get difficulty mode and study material id
+  useEffect(() => {
+    const fetchBattleSessionData = async () => {
+      if (!lobbyCode) return;
+
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-with-material/${lobbyCode}`
+        );
+
+        if (response.data.success && response.data.data) {
+          setDifficultyMode(response.data.data.difficulty_mode);
+
+          // Get the study material id
+          if (response.data.data.study_material_id) {
+            setStudyMaterialId(response.data.data.study_material_id);
+
+            // Fetch study material info to get total items
+            try {
+              const studyMaterialResponse = await axios.get(
+                `${import.meta.env.VITE_BACKEND_URL}/api/study-material/info/${response.data.data.study_material_id}`
+              );
+
+              if (studyMaterialResponse.data.success && studyMaterialResponse.data.data &&
+                studyMaterialResponse.data.data.total_items) {
+                setTotalItems(studyMaterialResponse.data.data.total_items);
+              }
+            } catch (error) {
+              console.error("Error fetching study material info:", error);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching battle session data:", error);
+      }
+    };
+
+    fetchBattleSessionData();
+  }, [lobbyCode]);
+
+  // Effect to fetch battle scores
+  useEffect(() => {
+    const fetchBattleScores = async () => {
+      if (!battleState?.session_uuid) return;
+
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${battleState.session_uuid}`
+        );
+
+        if (response.data.success && response.data.data) {
+          const scores = response.data.data;
+          // Set health based on whether player is host or guest
+          if (isHost) {
+            setPlayerHealth(scores.host_health);
+            setOpponentHealth(scores.guest_health);
+
+            // Check for victory/defeat conditions
+            if (scores.host_health <= 0) {
+              setVictoryMessage("You Lost!");
+              setShowVictoryModal(true);
+            } else if (scores.guest_health <= 0) {
+              setVictoryMessage("You Won!");
+              setShowVictoryModal(true);
+            }
+          } else {
+            setPlayerHealth(scores.guest_health);
+            setOpponentHealth(scores.host_health);
+
+            // Check for victory/defeat conditions
+            if (scores.guest_health <= 0) {
+              setVictoryMessage("You Lost!");
+              setShowVictoryModal(true);
+            } else if (scores.host_health <= 0) {
+              setVictoryMessage("You Won!");
+              setShowVictoryModal(true);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching battle scores:', error);
+      }
+    };
+
+    // Poll for battle scores every 1.5 seconds
+    const scoresPollInterval = setInterval(fetchBattleScores, 1500);
+    fetchBattleScores(); // Initial fetch
+
+    return () => clearInterval(scoresPollInterval);
+  }, [battleState?.session_uuid, isHost]);
+
   return (
     <div className="w-full h-screen flex flex-col">
+      {/* Character animation manager */}
+      <CharacterAnimationManager
+        playerAnimationState={playerAnimationState}
+        enemyAnimationState={enemyAnimationState}
+        setPlayerPickingIntroComplete={setPlayerPickingIntroComplete}
+        setEnemyPickingIntroComplete={setEnemyPickingIntroComplete}
+        playerPickingIntroComplete={playerPickingIntroComplete}
+        enemyPickingIntroComplete={enemyPickingIntroComplete}
+      />
+
       {/* Top UI Bar */}
       <div className="w-full py-4 px-4 sm:px-8 md:px-16 lg:px-32 xl:px-80 mt-4 lg:mt-12 flex items-center justify-between">
         <PlayerInfo
           name={playerName}
           health={playerHealth}
           maxHealth={maxHealth}
+          userId={currentUserId}
         />
 
         <QuestionTimer
           timeLeft={timeLeft}
           currentQuestion={currentQuestion}
-          totalQuestions={totalQuestions}
+          totalQuestions={totalItems}
+          difficultyMode={difficultyMode}
         />
 
         <PlayerInfo
@@ -393,10 +395,14 @@ export default function PvpBattle() {
           health={opponentHealth}
           maxHealth={maxHealth}
           isRightAligned
+          userId={opponentId}
         />
 
         {/* Settings button */}
-        <button className="absolute right-2 sm:right-4 top-2 sm:top-4 text-white">
+        <button
+          className="absolute right-2 sm:right-4 top-2 sm:top-4 text-white"
+          onClick={handleSettingsClick}
+        >
           <Settings size={16} className="sm:w-[20px] sm:h-[20px]" />
         </button>
       </div>
@@ -418,80 +424,51 @@ export default function PvpBattle() {
           isRight
         />
 
-        {/* Randomizer Overlay (only shown to host when both players are ready but no turn decided) */}
-        {showRandomizer && isHost && (
-          <div className="fixed inset-0 bg-black/80 z-40 flex flex-col items-center justify-center">
-            <div className="text-center">
-              <h2 className="text-purple-300 text-4xl font-bold mb-8">Ready to Battle!</h2>
-              <p className="text-white text-xl mb-12">Both players have joined. Who will go first?</p>
-
-              {randomizing ? (
-                <div className="mb-8">
-                  <div className="text-white text-3xl font-bold animate-pulse mb-4">
-                    Randomizing...
-                  </div>
-                  <div className="text-white text-4xl font-bold">
-                    {gameStartText}
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={handleRandomizeTurn}
-                  className="px-8 py-4 bg-purple-700 hover:bg-purple-600 text-white text-xl font-bold rounded-lg transition-colors"
-                >
-                  Randomize First Turn
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Turn Randomizer (only shown to host) */}
+        <TurnRandomizer
+          isHost={isHost}
+          lobbyCode={lobbyCode}
+          hostUsername={hostUsername}
+          guestUsername={guestUsername}
+          hostId={hostId}
+          guestId={guestId}
+          showRandomizer={showRandomizer}
+          playerPickingIntroComplete={playerPickingIntroComplete}
+          enemyPickingIntroComplete={enemyPickingIntroComplete}
+          battleState={battleState}
+          setRandomizationDone={setRandomizationDone}
+          setShowRandomizer={setShowRandomizer}
+          setShowGameStart={setShowGameStart}
+          setGameStartText={setGameStartText}
+          setGameStarted={setGameStarted}
+          setIsMyTurn={setIsMyTurn}
+          setPlayerAnimationState={setPlayerAnimationState}
+          setPlayerPickingIntroComplete={setPlayerPickingIntroComplete}
+          setEnemyAnimationState={setEnemyAnimationState}
+          setEnemyPickingIntroComplete={setEnemyPickingIntroComplete}
+          setShowCards={setShowCards}
+        />
 
         {/* Waiting for host to randomize (shown to guest) */}
-        {!waitingForPlayer && battleState?.battle_started && !battleState?.current_turn && !isHost && !randomizationDone && (
-          <div className="fixed inset-0 bg-black/80 z-40 flex flex-col items-center justify-center">
-            <div className="text-center">
-              <h2 className="text-purple-300 text-4xl font-bold mb-8">Ready to Battle!</h2>
-              <p className="text-white text-xl mb-12">Waiting for host to determine who goes first...</p>
-              <div className="flex space-x-4 justify-center">
-                <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-              </div>
-            </div>
-          </div>
-        )}
+        <GuestWaitingForRandomization
+          waitingForRandomization={isGuestWaitingForRandomization}
+        />
 
         {/* Game Start Animation */}
-        <AnimatePresence>
-          {showGameStart && (
-            <motion.div
-              className="fixed inset-0 bg-black/70 z-30 flex items-center justify-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <motion.div
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                exit={{ scale: 1.5, opacity: 0 }}
-                transition={{ duration: 0.5 }}
-                className="flex flex-col items-center"
-              >
-                <div className="text-purple-300 text-5xl font-bold mb-4">BATTLE START!</div>
-                <div className="text-white text-2xl">{gameStartText}</div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <GameStartAnimation
+          showGameStart={showGameStart}
+          gameStartText={gameStartText}
+        />
 
-        {/* Card Selection UI - Show after the waiting screen */}
-        {gameStarted && showCards && !waitingForPlayer && (
+        {/* Card Selection UI - Show after the waiting screen and delay */}
+        {gameStarted && showCards && !waitingForPlayer && showCardsAfterDelay && (
           <div className="fixed inset-0 bg-black/40 z-10">
             <CardSelection
               isMyTurn={isMyTurn}
               opponentName={opponentName}
               playerName={playerName}
               onCardSelected={handleCardSelected}
+              difficultyMode={difficultyMode}
             />
           </div>
         )}
@@ -500,6 +477,16 @@ export default function PvpBattle() {
         <WaitingOverlay
           isVisible={waitingForPlayer}
           message="Waiting for your opponent to connect..."
+        />
+
+        {/* Loading overlay when ending battle */}
+        <LoadingOverlay isVisible={isEndingBattle} />
+
+        {/* Victory Modal */}
+        <VictoryModal
+          showVictoryModal={showVictoryModal}
+          victoryMessage={victoryMessage}
+          onConfirm={handleVictoryConfirm}
         />
       </div>
     </div>

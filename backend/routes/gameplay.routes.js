@@ -1,31 +1,44 @@
 import express from 'express';
 import {
-    initializeBattle,
-    getBattleState,
-    playCard,
-    getCurrentTurn,
-    getBattleStatus,
-    updateTurn
+    endBattle,
+    initializeBattleSession,
+    updateBattleSession,
+    getBattleSessionState,
+    getBattleEndStatus,
+    getBattleEndStatusById,
+    getBattleEndStatusByLobby,
+    getBattleSessionWithMaterial,
+    initializeBattleRounds,
+    updateBattleRound,
+    getBattleRound,
+    initializeBattleScores,
+    getBattleScores
 } from '../controller/GameplayController.js';
 
 const router = express.Router();
 
-// Initialize a new battle when both players enter
-router.post('/battle/initialize', initializeBattle);
 
-// Get current battle state
-router.get('/battle/state/:lobby_code', getBattleState);
+// New routes for battle_sessions
+router.post('/battle/initialize-session', initializeBattleSession);
+router.put('/battle/update-session', updateBattleSession);
+router.get('/battle/session-state/:lobby_code', getBattleSessionState);
+router.get('/battle/session-with-material/:lobby_code', getBattleSessionWithMaterial);
 
-// Play a card
-router.post('/battle/play-card', playCard);
+// Battle rounds
+router.post('/battle/initialize-rounds', initializeBattleRounds);
+router.put('/battle/update-round', updateBattleRound);
+router.get('/battle/round/:session_uuid', getBattleRound);
 
-// Get current turn
-router.get('/battle/turn/:lobby_code', getCurrentTurn);
+// Battle scores
+router.post('/battle/initialize-scores', initializeBattleScores);
+router.get('/battle/scores/:session_uuid', getBattleScores);
 
-// Get battle status (active, ended, etc)
-router.get('/battle/status/:lobby_code', getBattleStatus);
+// End the battle
+router.post('/battle/end', endBattle);
 
-// Update the current turn
-router.put('/battle/update-turn', updateTurn);
+// Check battle end status - several ways to query
+router.get('/battle/end-status/:session_uuid', getBattleEndStatus);
+router.get('/battle/end-status-by-id/:session_id', getBattleEndStatusById);
+router.get('/battle/end-status-by-lobby/:lobby_code', getBattleEndStatusByLobby);
 
 export default router; 
