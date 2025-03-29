@@ -91,7 +91,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     incorrectCount,
     showResult,
     showNextButton,
-    handleNextQuestion,
+    handleNextQuestion: originalHandleNextQuestion,
     getButtonStyle,
     questionTimer,
     timerProgress,
@@ -326,6 +326,12 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 
     // Call the original handler
     originalHandleAnswerSubmit(answer);
+  };
+
+  // Create a wrapper for handleNextQuestion that also clears the input
+  const handleNextQuestion = () => {
+    setInputAnswer(''); // Clear the input
+    originalHandleNextQuestion(); // Call the original handler
   };
 
   // Remove the custom loading UI since LoadingScreen.tsx is already handling this
