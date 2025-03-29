@@ -22,6 +22,7 @@ const getItemIdFromStudyMaterial = async (
     console.log(`- Term: "${term}"`);
     console.log(`- Item Number: ${itemNumber}`);
 
+    
     // Try exact term match
     const [exactTermResults] = await pool.query(
       `SELECT item_id, item_number FROM study_material_content 
