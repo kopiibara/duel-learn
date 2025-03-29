@@ -93,6 +93,12 @@ const setupSocket = (server) => {
         // Store in active users map
         activeUsers.set(userId, socket.id);
         socket.emit("connected", { success: true, socketId: socket.id });
+
+        // Broadcast user online status to others
+        socket.broadcast.emit("userStatusChanged", {
+          userId,
+          online: true
+        });
       } catch (error) {
         console.error("Error in setup:", error);
         socket.emit("error", {
@@ -369,6 +375,13 @@ const setupSocket = (server) => {
     socket.on("disconnect", (reason) => {
       if (socket.userId) {
         activeUsers.delete(socket.userId);
+        
+        // Broadcast user offline status
+        socket.broadcast.emit("userStatusChanged", {
+          userId: socket.userId,
+          online: false
+        });
+        
         console.log(`👋 User ${socket.userId} disconnected (${reason})`);
       }
 
@@ -391,7 +404,35 @@ const setupSocket = (server) => {
         details: error.message,
       });
     });
+
+    // Handle online status request
+    createEventHandler(
+      socket,
+      "requestOnlineStatus",
+      ["userIds"],
+      "👥",
+      (data) => {
+        const { userIds } = data;
+        const onlineStatuses = {};
+        
+        if (Array.isArray(userIds)) {
+          userIds.forEach(userId => {
+            onlineStatuses[userId] = isUserOnline(userId);
+          });
+        }
+        
+        socket.emit("onlineStatusResponse", onlineStatuses);
+      }
+    );
   });
+
+  // After creating the activeUsers Map, add these helper functions 
+
+  // After this line: const activeUsers = new Map(); 
+  // Add this function to check if a user is online
+  const isUserOnline = (userId) => {
+    return activeUsers.has(userId);
+  };
 
   return io;
 };
