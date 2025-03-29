@@ -46,10 +46,34 @@ const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
   };
 
   return (
-    <div>
-      <Dialog open={open} onClose={onClose} sx={{ borderRadius: "16px" }}>
-        <div className="flex justify-center bg-[#080511] px-20 py-20 items-center h-full overflow-x-hidden overflow-y-hidden">
-          <div className="paper-container  flex flex-col items-center justify-center max-h-full overflow-y-hidden w-full">
+    <>
+      <Dialog 
+        open={open} 
+        onClose={onClose} 
+        PaperProps={{
+          style: {
+            backgroundColor: 'transparent',
+            boxShadow: 'none',
+            maxWidth: 'none',
+            margin: 0,
+            padding: 0,
+            overflow: 'visible'
+          },
+        }}
+        fullWidth
+        maxWidth="md"
+      >
+        {/* Centered Paper Container with same styling as SetUpQuestionType */}
+        <div className="flex justify-center items-center h-full overflow-hidden">
+          <div className="paper-container flex flex-col items-center justify-center max-h-full overflow-y-hidden w-full">
+            {/* Top Scroll Bar */}
+            <div className="scroll-wrapper">
+              <div className="scroll-holder"></div>
+              <div className="scroll-bar"></div>
+              <div className="scroll-holder"></div>
+            </div>
+
+            {/* Paper Content (Perfectly Centered) */}
             <div className="paper flex justify-center items-center p-4 sm:p-6 md:p-8 w-full max-w-xs sm:max-w-sm md:max-w-md">
               <div className="w-full text-center">
                 <h3 className="text-[20px] sm:text-[22px] md:text-[24px] lg:text-[26px] font-bold text-black">
@@ -58,6 +82,8 @@ const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
                 <p className="text-[12px] sm:text-[14px] w-[200px] sm:w-[250px] md:w-[300px] mx-auto text-gray-700">
                   Tailor your study flow and focus on what suits you best!
                 </p>
+
+                {/* Question Type Selection */}
                 <div className="mt-5 space-y-2">
                   {questionTypes.map((type) => (
                     <div
@@ -67,15 +93,13 @@ const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
                       <span className="font-bold text-[14px] sm:text-[16px]">
                         {type.display}
                       </span>
+
+                      {/* Toggle Button */}
                       <div
                         onClick={() => toggleSelection(type.value)}
-                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all ${
-                          localSelectedTypes.includes(type.value)
-                            ? "bg-black"
-                            : "bg-black"
-                        }
-                                            `}
+                        className={`relative w-12 sm:w-14 md:w-16 h-7 sm:h-8 md:h-9 flex items-center justify-between px-[4px] sm:px-[5px] md:px-[6px] rounded-md cursor-pointer transition-all bg-black`}
                       >
+                        {/* Check Icon */}
                         <div
                           className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded-md transition-all ${
                             localSelectedTypes.includes(type.value)
@@ -85,6 +109,8 @@ const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
                         >
                           <CloseIcon />
                         </div>
+
+                        {/* Uncheck Icon */}
                         <div
                           className={`w-5 sm:w-6 h-5 sm:h-6 flex items-center justify-center rounded transition-all ${
                             localSelectedTypes.includes(type.value)
@@ -98,6 +124,8 @@ const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
                     </div>
                   ))}
                 </div>
+
+                {/* Save Changes Button styled like START LEARNING! button */}
                 <div className="flex justify-center">
                   <button
                     onClick={handleSaveChanges}
@@ -108,12 +136,20 @@ const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Bottom Scroll Bar */}
+            <div className="scroll-wrapper">
+              <div className="scroll-holder"></div>
+              <div className="scroll-bar"></div>
+              <div className="scroll-holder"></div>
+            </div>
           </div>
         </div>
       </Dialog>
-      {/* Top Alert (for question type selection) */}
+
+      {/* Alert for no question type selected */}
       <Snackbar
-        open={openAlert} // Show the alert if openAlert is true
+        open={openAlert}
         autoHideDuration={6000}
         onClose={handleCloseAlert}
       >
@@ -125,7 +161,7 @@ const QuestionTypeSelectionModal: React.FC<QuestionTypeSelectionModalProps> = ({
           Please select a question type before proceeding.
         </Alert>
       </Snackbar>
-    </div>
+    </>
   );
 };
 

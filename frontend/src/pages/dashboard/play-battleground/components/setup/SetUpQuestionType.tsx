@@ -15,7 +15,7 @@ const SetUpQuestionType: React.FC = () => {
   // Move all hooks to the top before any conditional logic
   const location = useLocation();
   const navigate = useNavigate();
-  const { mode, material, fromWelcome } = location.state || {};
+  const { mode, material, fromWelcome, lobbyCode, isPvpLobbyCreation, role } = location.state || {};
   const [isComponentReady, setIsComponentReady] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [questionTypes] = useState([
@@ -98,18 +98,29 @@ const SetUpQuestionType: React.FC = () => {
       return;
     }
 
-    // Pass selectedTypes but don't generate AI questions yet
+    // Pass role information in navigation state
     const navigationState = {
       mode,
       material,
       selectedTypes,
+      lobbyCode,
+      role: role || 'host' // Default to host if not specified
     };
 
     console.log("Navigation state being passed:", navigationState);
     console.log("Mode type:", typeof mode, "Mode value:", mode);
 
-    // Navigate based on mode with strict equality check
-    // Update this section of your handleStartLearning function:
+    // Check if this is for PvP lobby creation
+    if (isPvpLobbyCreation && lobbyCode) {
+      // Navigate directly to the PVP lobby with the selected question types
+      navigate(`/dashboard/pvp-lobby/${lobbyCode}`, {
+        state: { 
+          ...navigationState,
+          fromWelcome: true
+        }
+      });
+      return;
+    }
 
     // Navigate based on mode with more flexible mode checks
     if (mode === "Time Pressured" || mode === "Time Pressured Mode") {

@@ -10,9 +10,11 @@ import {
 import { styled } from "@mui/system";
 import { useState } from "react";
 import SelectStudyMaterialModal from "./modals/SelectStudyMaterialModal";
+import PvPOptionsModal from "./modals/PvPOptionsModal";
 import { StudyMaterial } from "../types/studyMaterialObject";
 import { useAudio } from "../contexts/AudioContext";
 import { useLocation, useNavigate } from "react-router-dom";
+import { createNewLobby, joinExistingLobby, navigateToWelcomeScreen } from "../services/pvpLobbyService";
 
 // Using a function to make the styled component responsive with theme access
 const ModeCard = styled(Card)(({ theme }) => {
@@ -67,9 +69,18 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [isLobby, setIsLobby] = useState(false);
+  const [pvpOptionsOpen, setPvpOptionsOpen] = useState(false);
   const theme = useTheme();
   const isXsScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const { setActiveModeAudio } = useAudio();
+  const [modalHistoryStack, setModalHistoryStack] = useState<string[]>([]);
+
+  // Close all modals
+  const closeAllModals = () => {
+    setModalOpen(false);
+    setPvpOptionsOpen(false);
+    setModalHistoryStack([]);
+  };
 
   // Handler for material selection
   const handleMaterialSelect = (material: StudyMaterial) => {
@@ -77,6 +88,21 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
       onSelectMaterial(material);
     }
     setModalOpen(false);
+
+    // If this is for PVP mode, use the lobby service
+    if (selectedMode === "PvP Mode" || selectedMode === "PvP") {
+      const lobbyState = createNewLobby(selectedMode, material);
+      navigateToWelcomeScreen(navigate, lobbyState);
+    } else {
+      // Regular flow for other modes
+      navigate("/dashboard/welcome-game-mode", {
+        state: { 
+          mode: selectedMode, 
+          material,
+          skipMaterialSelection: skipMaterialSelection
+        }
+      });
+    }
   };
 
   // Handler for mode selection
@@ -86,24 +112,52 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
     }
   };
 
-  // Handle back button from study material modal
+  // Handler for back button from study material modal
   const handleStudyMaterialBack = () => {
     setModalOpen(false);
+    
+    // Check if we have a previous modal to go back to
+    if (modalHistoryStack.length > 0) {
+      const prevModal = modalHistoryStack[modalHistoryStack.length - 1];
+      setModalHistoryStack(stack => stack.slice(0, -1)); // Remove current modal from history
+      
+      if (prevModal === 'pvpOptions') {
+        setPvpOptionsOpen(true);
+      }
+    }
   };
 
-  // Handle close (X button) from study material modal
+  // Handler for material selection modal close button
   const handleStudyMaterialClose = () => {
-    setModalOpen(false);
+    closeAllModals();
   };
 
-  // Update handleModeClick to match ChooseModeModal's pattern
+  // Handler for PvP options modal back button
+  const handlePvPOptionsBack = () => {
+    setPvpOptionsOpen(false);
+    setModalHistoryStack([]);
+  };
+
+  // Handler for PvP options modal close button
+  const handlePvPOptionsClose = () => {
+    closeAllModals();
+  };
+
+  // Update handleModeClick to update modal history
   const handleModeClick = (mode: string) => {
     setSelectedMode(mode);
     setSelectedTypes(modeToTypesMap[mode as keyof typeof modeToTypesMap] || []);
-    setIsLobby(mode === "PvP Mode");
     
+    // If it's PvP mode, show the options modal and update history
+    if (mode === "PvP Mode") {
+      setIsLobby(true);
+      setPvpOptionsOpen(true);
+      setModalHistoryStack([]);
+      return;
+    }
+    
+    // For other modes, show material selection
     if (skipMaterialSelection && preSelectedMaterial) {
-      // This is equivalent to ChooseModeModal's preSelectedMaterial handling
       if (onSelectMode) {
         onSelectMode(mode);
       }
@@ -111,7 +165,6 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         onSelectMaterial(preSelectedMaterial);
       }
 
-      // Keep the navigation logic which is specific to ChooseYourChallenge
       navigate("/dashboard/welcome-game-mode", {
         state: { 
           mode, 
@@ -123,7 +176,25 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
     } else {
       // Show material selection modal
       setModalOpen(true);
+      setModalHistoryStack([]);
     }
+  };
+
+  // Handler for creating a new lobby
+  const handleCreateLobby = () => {
+    setPvpOptionsOpen(false);
+    setModalOpen(true);
+    // Update history stack to remember we came from pvpOptions
+    setModalHistoryStack(['pvpOptions']);
+  };
+
+  // Handler for joining an existing lobby
+  const handleJoinLobby = (lobbyCode: string) => {
+    setPvpOptionsOpen(false);
+    
+    // Use the lobby service for joining
+    const lobbyState = joinExistingLobby(lobbyCode, selectedMode || "PvP Mode");
+    navigateToWelcomeScreen(navigate, lobbyState);
   };
 
   return (
@@ -295,11 +366,20 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         </ModeCard>
       </Box>
 
-      {/* Material Selection Modal with separate back and close handlers */}
+      {/* PvP Options Modal */}
+      <PvPOptionsModal
+        open={pvpOptionsOpen}
+        handleClose={handlePvPOptionsClose} // X button closes everything
+        handleBack={handlePvPOptionsBack} // Back button returns to choose mode
+        onCreateLobby={handleCreateLobby}
+        onJoinLobby={handleJoinLobby}
+      />
+
+      {/* Material Selection Modal */}
       <SelectStudyMaterialModal
         open={modalOpen}
-        handleClose={handleStudyMaterialClose} // X button behavior
-        handleBack={handleStudyMaterialBack} // Back button behavior
+        handleClose={handleStudyMaterialClose} // X button closes everything
+        handleBack={handleStudyMaterialBack} // Back button navigates based on history
         mode={selectedMode}
         isLobby={isLobby}
         onMaterialSelect={handleMaterialSelect}

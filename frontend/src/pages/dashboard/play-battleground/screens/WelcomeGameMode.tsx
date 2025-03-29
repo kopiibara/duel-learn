@@ -6,21 +6,40 @@ import { useAudio } from "../../../../contexts/AudioContext"; // Import the useA
 import peacefulModeAsset from "/game-mode-selection/peaceful-mode.svg";
 import timePressuredModeAsset from "/game-mode-selection/time-pressured-mode.svg";
 import pvpModeAsset from "/game-mode-selection/pvp-mode.svg";
+import { PvPLobbyUser } from "../../../../services/pvpLobbyService";
 
 const WelcomeGameMode: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { mode, material, preSelectedMaterial, skipMaterialSelection } = location.state || {};
+  const { 
+    mode, 
+    material, 
+    preSelectedMaterial, 
+    skipMaterialSelection, 
+    lobbyCode,
+    isJoining,
+    role,
+    selectedTypes 
+  } = location.state || {};
   const [fadeOut, setFadeOut] = useState(false);
   const [setupIsReady, setSetupIsReady] = useState(false);
   const { setActiveModeAudio, stopAllAudio } = useAudio();
   const [audioInitialized, setAudioInitialized] = useState(false);
 
   // Add console log to debug
-  console.log("WelcomeGameMode received state:", { mode, material, preSelectedMaterial, skipMaterialSelection });
+  console.log("WelcomeGameMode received state:", { 
+    mode, 
+    material, 
+    preSelectedMaterial, 
+    skipMaterialSelection,
+    lobbyCode,
+    isJoining,
+    role,
+    selectedTypes
+  });
 
-  // Use preSelectedMaterial if available
-  const selectedMaterial = preSelectedMaterial || material;
+  // Use preSelectedMaterial if available, ensure it's never undefined
+  const selectedMaterial = preSelectedMaterial || material || null;
 
   // Function to determine which asset to use based on the mode
   const getModeAsset = () => {
@@ -85,25 +104,74 @@ const WelcomeGameMode: React.FC = () => {
     };
   }, [mode, setActiveModeAudio, stopAllAudio, audioInitialized]);
 
-  // Only start transition when setup is ready
+  // Handle different navigation paths based on user role and mode
   useEffect(() => {
     if (setupIsReady) {
       // Add 1.5 second delay before starting transition
       setTimeout(() => {
         setFadeOut(true);
         setTimeout(() => {
-          navigate("/dashboard/setup/questions", {
-            state: {
-              mode,
-              material: selectedMaterial,
-              fromWelcome: true,
-              skipMaterialSelection
-            },
-          });
+          // PVP Mode - Handle different roles
+          if ((mode === "PvP" || mode === "PvP Mode")) {
+            if (isJoining) {
+              // Guest user - Go directly to the lobby
+              navigate(`/dashboard/pvp-lobby/${lobbyCode}`, {
+                state: {
+                  mode,
+                  material: selectedMaterial,
+                  lobbyCode,
+                  isJoining: true,
+                  isGuest: true,
+                  role: 'guest',
+                  fromWelcome: true
+                },
+              });
+            } else {
+              // Host user - Go to question type selection
+              navigate("/dashboard/setup/questions", {
+                state: {
+                  mode,
+                  material: selectedMaterial,
+                  lobbyCode,
+                  role: 'host',
+                  fromWelcome: true,
+                  isPvpLobbyCreation: true
+                },
+              });
+            }
+          } else {
+            // Normal flow for other modes
+            navigate("/dashboard/setup/questions", {
+              state: {
+                mode,
+                material: selectedMaterial,
+                fromWelcome: true,
+                skipMaterialSelection
+              },
+            });
+          }
         }, 1000);
       }, 1500); // 1.5 second delay
     }
-  }, [setupIsReady, navigate, mode, selectedMaterial, skipMaterialSelection]);
+  }, [setupIsReady, navigate, mode, selectedMaterial, skipMaterialSelection, isJoining, lobbyCode, selectedTypes, role]);
+
+  // Update the welcome message based on the role
+  const getWelcomeMessage = () => {
+    if ((mode === "Peaceful" || mode === "Peaceful Mode")) {
+      return "Take your time, master at your own pace! ✨";
+    } 
+    else if ((mode === "Time Pressured" || mode === "Time Pressured Mode")) {
+      return "Beat the clock, unleash your magical prowess! ⚡";
+    }
+    else if ((mode === "PvP" || mode === "PvP Mode")) {
+      if (role === 'guest' || isJoining) {
+        return "Joining the battle arena as a guest! 🏆";
+      } else {
+        return "Creating a new magical battle arena! 🏆";
+      }
+    }
+    return "Prepare for a magical learning adventure! ✨";
+  };
 
   return (
     <motion.div
@@ -144,12 +212,7 @@ const WelcomeGameMode: React.FC = () => {
               marginTop: "1.7rem",
             }}
           >
-            {(mode === "Peaceful" || mode === "Peaceful Mode") &&
-              "Take your time, master at your own pace! ✨"}
-            {(mode === "Time Pressured" || mode === "Time Pressured Mode") &&
-              "Beat the clock, unleash your magical prowess! ⚡"}
-            {(mode === "PvP" || mode === "PvP Mode") &&
-              "Battle head-to-head for magical supremacy! 🏆"}
+            {getWelcomeMessage()}
           </motion.p>
         </>
       )}

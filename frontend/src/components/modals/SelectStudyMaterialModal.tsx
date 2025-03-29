@@ -23,6 +23,7 @@ import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 import { useUser } from "../../contexts/UserContext";
 import { generateCode } from "../../pages/dashboard/play-battleground/utils/codeGenerator";
 import { StudyMaterial } from "../../types/studyMaterialObject";
+import { createNewLobby, navigateToWelcomeScreen } from "../../services/pvpLobbyService";
 
 interface SelectStudyMaterialModalProps {
   open: boolean;
@@ -119,37 +120,36 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
     onModeSelect(mode || "");
     handleClose();
 
-    // Always navigate to welcome screen first, regardless of mode
-    const formattedMode =
-      mode === "Peaceful Mode"
-        ? "Peaceful"
-        : mode === "Time Pressured"
-        ? "Time Pressured"
-        : mode === "PvP Mode"
-        ? "PvP"
-        : mode;
+    // Format mode string consistently, ensure it's never null
+    const formattedMode = mode === "Peaceful Mode"
+      ? "Peaceful"
+      : mode === "Time Pressured"
+      ? "Time Pressured"
+      : mode === "PvP Mode"
+      ? "PvP"
+      : mode || "Unknown"; // Default to "Unknown" if null
 
-    // Store lobby info in state to be used after welcome screen if needed
-    const navigationState: any = {
-      mode: formattedMode,
-      material: {
-        ...material,
-        items: material.items.map((item) => ({
-          term: item.term,
-          definition: item.definition,
-          image: item.image || null,
-        })),
-      }
-    };
-    
-    // If it's PVP mode, include the lobby code in the state
+    // For PVP mode, use the lobby service
     if (formattedMode === "PvP" || mode === "PvP Mode") {
-      const generatedLobbyCode = generateCode();
-      navigationState.lobbyCode = generatedLobbyCode;
-      navigationState.selectedTypes = selectedTypes;
+      // Instead of creating a new object, use the original material
+      // This preserves all required properties including item_number
+      const lobbyState = createNewLobby(formattedMode, material);
+      
+      // Add selected types if available
+      if (selectedTypes && selectedTypes.length > 0) {
+        lobbyState.selectedTypes = selectedTypes;
+      }
+      
+      navigateToWelcomeScreen(navigate, lobbyState);
+    } else {
+      // For other modes, navigate with the full material object
+      navigate("/dashboard/welcome-game-mode", { 
+        state: {
+          mode: formattedMode,
+          material // Use the original material directly
+        }
+      });
     }
-    
-    navigate("/dashboard/welcome-game-mode", { state: navigationState });
   };
 
   return (
