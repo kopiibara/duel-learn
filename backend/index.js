@@ -13,6 +13,7 @@ import searchRoutes from "./routes/SearchRoutes.js"; // Import search routes
 import adminRoutes from "./routes/admin/AdminRoutes.js"; // Import admin routes
 import ocrRoutes from "./routes/OcrRoutes.js"; // Import OCR routes
 import shopRoutes from "./routes/ShopRoutes.js";
+import achivementRoutes from "./routes/AchievementRoutes.js"; // Import achievement routes
 import { corsMiddleware } from "./middleware/CorsMiddleware.js"; // Import CORS middleware
 import { coopMiddleware } from "./middleware/CoopMiddleware.js"; // Import COOP middleware
 // Load environment variables
@@ -54,5 +55,7 @@ app.use("/api/openai", openAiRoutes);
 app.use("/api/admin", adminRoutes); // Mount admin routes under /api/admin
 app.use("/api/ocr", ocrRoutes); // Mount OCR routes under /api/ocr
 app.use("/api/shop", shopRoutes);
+app.use("/api/achievement", achivementRoutes);
+
 
 export default app;
