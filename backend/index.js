@@ -16,6 +16,8 @@ import shopRoutes from "./routes/ShopRoutes.js";
 import achivementRoutes from "./routes/AchievementRoutes.js"; // Import achievement routes
 import { corsMiddleware } from "./middleware/CorsMiddleware.js"; // Import CORS middleware
 import { coopMiddleware } from "./middleware/CoopMiddleware.js"; // Import COOP middleware
+import sessionReportRoutes from './routes/sessionReport.js';
+import { initSessionReportTable } from './models/SessionReport.js';
 // Load environment variables
 dotenv.config();
 
@@ -42,6 +44,13 @@ app.use((req, res, next) => {
   next();
 });
 
+// Initialize tables
+try {
+  await initSessionReportTable();
+} catch (error) {
+  console.error('Error initializing tables:', error);
+}
+
 // Routes
 app.use("/api/study-material", studyMaterialRoutes);
 app.use("/api/user", userRoutes);
@@ -56,6 +65,8 @@ app.use("/api/admin", adminRoutes); // Mount admin routes under /api/admin
 app.use("/api/ocr", ocrRoutes); // Mount OCR routes under /api/ocr
 app.use("/api/shop", shopRoutes);
 app.use("/api/achievement", achivementRoutes);
+app.use('/api/session-report', sessionReportRoutes);
+
 
 
 export default app;

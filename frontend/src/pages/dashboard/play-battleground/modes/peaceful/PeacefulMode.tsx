@@ -7,11 +7,46 @@ import axios from "axios";
 import { useAudio } from "../../../../../contexts/AudioContext";
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
+import { nanoid } from "nanoid";
+import { useUser } from "../../../../../contexts/UserContext";
+import { useNavigate } from "react-router-dom";
 
 interface PeacefulModeProps {
   mode: string;
   material: any;
   selectedTypes: string[];
+}
+
+// Add interface for API response
+interface SessionReportResponse {
+  success: boolean;
+  message: string;
+  sessionId?: string;
+  error?: string;
+}
+
+// Add interface for session data
+interface SessionData {
+  correctCount: number;
+  incorrectCount: number;
+  highestStreak: number;
+  earnedXP: number;
+  timeSpent: string;
+}
+
+// Add interface for session payload
+interface SessionPayload {
+  session_id: string;
+  study_material_id: string;
+  title: string;
+  summary: string;
+  session_by_user_id: string;
+  session_by_username: string;
+  status: string;
+  ends_at: string;
+  exp_gained: number;
+  coins_gained: number | null;
+  game_mode: string | null;
 }
 
 const PeacefulMode: React.FC<PeacefulModeProps> = ({
@@ -22,6 +57,17 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
   const [isGeneratingAI, setIsGeneratingAI] = useState(true);
   const [aiQuestions, setAiQuestions] = useState<any[]>([]);
   const { playCorrectAnswerSound, playIncorrectAnswerSound } = useAudio();
+  const { user } = useUser();
+  const navigate = useNavigate();
+
+  // Add state for session ID
+  const [sessionId] = useState(nanoid());
+
+  // Add state to track if session has been saved
+  const [hasSessionSaved, setHasSessionSaved] = useState(false);
+
+  // Add state to track if game is ended by user
+  const [isGameEndedByUser, setIsGameEndedByUser] = useState(false);
 
   // Generate AI questions when component mounts
   useEffect(() => {
@@ -210,6 +256,9 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     handleNextQuestion,
     handleRevealAnswer,
     cardDisabled,
+    correctCount,
+    incorrectCount,
+    highestStreak,
   } = useGameLogic({
     mode,
     material,
@@ -257,6 +306,169 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [showResult, isCorrect, handleMastered, handleUnmastered]);
+
+  // Update the handleEndGame function
+  const handleEndGame = async () => {
+    console.log("Handling early game end in peaceful mode...");
+    
+    if (hasSessionSaved) {
+      console.log("Session already saved, skipping save");
+      return;
+    }
+
+    const timeSpent = calculateTimeSpent(startTime, new Date());
+    const navigationState = {
+      timeSpent,
+      correctCount,
+      incorrectCount,
+      mode,
+      material: material?.title || "Unknown Material",
+      earlyEnd: true,
+      highestStreak,
+      masteredCount,
+      unmasteredCount,
+      earnedXP: 0 // Always 0 for early end
+    };
+
+    try {
+      const sessionData: SessionData = {
+        correctCount,
+        incorrectCount,
+        highestStreak,
+        earnedXP: 0, // Force 0 XP for early end
+        timeSpent
+      };
+
+      await saveSessionReport(sessionData, false);
+      
+      setIsGameEndedByUser(true);
+      setHasSessionSaved(true);
+
+      // Use navigate instead of window.location
+      navigate("/dashboard/study/session-summary", {
+        replace: true,
+        state: navigationState
+      });
+    } catch (error) {
+      console.error("Failed to save incomplete session:", error);
+      
+      // Still try to navigate even if save fails
+      navigate("/dashboard/study/session-summary", {
+        replace: true,
+        state: navigationState
+      });
+    }
+  };
+
+  // Add this helper function to calculate XP based on number of items
+  const calculateExpGained = (isComplete: boolean, gameMode: string, totalItems: number): number => {
+    if (gameMode.toLowerCase() === 'peaceful') {
+      return isComplete ? 5 : 0; // Peaceful mode: 5 XP if complete, 0 if incomplete
+    } else if (gameMode.toLowerCase() === 'time-pressured') {
+      // Calculate XP based on number of items (5 XP per 10 items)
+      return Math.floor(totalItems / 10) * 5;
+    }
+    return 0; // Default case
+  };
+
+  // Update the saveSessionReport function
+  const saveSessionReport = async (sessionData: SessionData, isComplete: boolean = true) => {
+    if (hasSessionSaved) {
+      console.log("Session already saved, skipping duplicate save");
+      return;
+    }
+
+    try {
+      const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/session-report/save`;
+      
+      // Get total number of items from material
+      const totalItems = material?.items?.length || 0;
+      
+      // Calculate XP based on game mode and number of items
+      const expGained = calculateExpGained(isComplete, mode, totalItems);
+      
+      const payload: SessionPayload = {
+        session_id: sessionId,
+        study_material_id: material.study_material_id,
+        title: material.title || '',
+        summary: material.summary || '',
+        session_by_user_id: user?.firebase_uid || '',
+        session_by_username: user?.username || '',
+        status: isComplete ? "completed" : "incomplete",
+        ends_at: new Date().toISOString(),
+        exp_gained: expGained,
+        coins_gained: null,
+        game_mode: mode.toLowerCase()
+      };
+
+      console.log("=== SAVING SESSION REPORT ===");
+      console.log("Session Data:", sessionData);
+      console.log("Session Status:", isComplete ? "completed" : "incomplete");
+      console.log("Game Mode:", mode.toLowerCase());
+      console.log("Total Items:", totalItems);
+      console.log("XP Calculation:", {
+        mode: mode.toLowerCase(),
+        totalItems,
+        expGained,
+        isComplete
+      });
+      console.log("Full Payload:", payload);
+
+      const response = await axios.post<SessionReportResponse>(endpoint, payload);
+      
+      if (response.data.success) {
+        console.log("Session report saved successfully:", response.data);
+        setHasSessionSaved(true);
+        return response.data;
+      } else {
+        console.error("Failed to save session report:", response.data);
+        throw new Error(response.data.message || "Failed to save session report");
+      }
+    } catch (error: unknown) {
+      console.error("Error in saveSessionReport:", error);
+      if (error && typeof error === 'object' && 'isAxiosError' in error) {
+        const axiosError = error as any;
+        console.error("Axios error details:", {
+          message: axiosError.message,
+          status: axiosError.response?.status,
+          data: axiosError.response?.data,
+        });
+      }
+      throw error;
+    }
+  };
+
+  // Remove the cleanup effect since we're handling early endings explicitly through handleEndGame
+  useEffect(() => {
+    const saveSession = async () => {
+      // Only save when the session is complete (all questions answered)
+      if (correctCount + incorrectCount === aiQuestions.length && aiQuestions.length > 0 && !hasSessionSaved) {
+        const sessionData: SessionData = {
+          correctCount,
+          incorrectCount,
+          highestStreak,
+          earnedXP: 5,
+          timeSpent: calculateTimeSpent(startTime, new Date())
+        };
+
+        try {
+          await saveSessionReport(sessionData, true);
+        } catch (error) {
+          console.error("Failed to save completed session:", error);
+        }
+      }
+    };
+
+    saveSession();
+  }, [correctCount, incorrectCount, aiQuestions.length, highestStreak, hasSessionSaved]);
+
+  // Helper function to calculate time spent
+  const calculateTimeSpent = (start: Date, end: Date) => {
+    const diff = Math.floor((end.getTime() - start.getTime()) / 1000); // difference in seconds
+    const minutes = Math.floor(diff / 60);
+    const seconds = diff % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   // Remove the custom loading UI since LoadingScreen.tsx is already handling this
   if (isGeneratingAI) {
@@ -389,12 +601,13 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
       <Header
         material={material}
         mode={mode}
-        correct={0}
-        incorrect={0}
+        correct={correctCount}
+        incorrect={incorrectCount}
         startTime={startTime}
-        highestStreak={0}
+        highestStreak={highestStreak}
         masteredCount={masteredCount}
         unmasteredCount={unmasteredCount}
+        onEndGame={handleEndGame}
       />
       <main className="pt-24 px-4">
         <div className="mx-auto max-w-[1200px] flex flex-col items-center gap-8 h-[calc(100vh-96px)] justify-center">
