@@ -31,6 +31,60 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
         wasCorrect: boolean;
     }>>([]);
 
+    // Timer states
+    const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+    const [timerProgress, setTimerProgress] = useState(100);
+
+    // Get time limit based on difficulty
+    const getTimeLimit = (): number => {
+        const difficultyNormalized = difficultyMode?.toLowerCase().trim() || 'average';
+
+        if (difficultyNormalized.includes('easy')) return 20;
+        if (difficultyNormalized.includes('hard')) return 10;
+        return 15; // average difficulty default
+    };
+
+    // Initialize timer when question is shown
+    useEffect(() => {
+        if (isOpen && !hasAnswered) {
+            const timeLimit = getTimeLimit();
+            setTimeRemaining(timeLimit);
+
+            // Start the timer countdown
+            const timer = setInterval(() => {
+                setTimeRemaining(prev => {
+                    if (prev === null) return null;
+                    if (prev <= 0) return 0;
+                    return prev - 0.1;
+                });
+            }, 100);
+
+            return () => clearInterval(timer);
+        }
+    }, [isOpen, hasAnswered, difficultyMode]);
+
+    // Update timer progress
+    useEffect(() => {
+        if (timeRemaining !== null) {
+            const timeLimit = getTimeLimit();
+            setTimerProgress((timeRemaining / timeLimit) * 100);
+
+            // If time runs out and user hasn't answered
+            if (timeRemaining <= 0 && !hasAnswered && currentQuestion) {
+                // Automatically mark as incorrect
+                setHasAnswered(true);
+                setIsCorrect(false);
+                setShowResult(true);
+
+                // Wait for result overlay before closing
+                setTimeout(() => {
+                    onAnswerSubmit(false);
+                    onClose();
+                }, 1500);
+            }
+        }
+    }, [timeRemaining, hasAnswered, currentQuestion, onAnswerSubmit, onClose]);
+
     // Filter questions based on difficulty and question types
     const getFilteredQuestions = () => {
         return questionsData.filter(q => {
@@ -74,6 +128,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
             setShowResult(false);
             setCurrentQuestion(null);
             setSelectedAnswer("");
+            setTimeRemaining(null);
         }
     }, [isOpen]);
 
@@ -129,10 +184,46 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
         return 'text-white border-2 border-gray-300 opacity-50';
     };
 
+    // Functions for visual effects based on timer
+    const isCriticalTime = timeRemaining !== null && timeRemaining <= getTimeLimit() / 2;
+    const isNearZero = timeRemaining !== null && timeRemaining <= 3;
+    const isZero = timeRemaining !== null && timeRemaining <= 0;
+
+    // Remove all animation effects
+    const getHeartbeatClass = () => {
+        return "";
+    };
+
+    const getBorderClass = () => {
+        return "";
+    };
+
+    const getLowHealthEffects = () => {
+        return "";
+    };
+
+    const getProgressBarWidth = () => {
+        if (isZero) return '2%';
+        return `${timerProgress}%`;
+    };
+
+    const getProgressBarClass = () => {
+        if (isZero) {
+            return 'h-full bg-red-600 opacity-80';
+        }
+        if (isNearZero) {
+            return 'h-full bg-red-500 opacity-90';
+        }
+        if (isCriticalTime) {
+            return 'h-full bg-red-500';
+        }
+        return 'h-full bg-[#fff]';
+    };
+
     if (!isOpen || !currentQuestion) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/10 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
             <div className="p-8 rounded-lg max-w-4xl w-full mx-4 mt-10 relative flex flex-col items-center">
                 {/* Question Counter */}
                 <div className="mb-4 text-sm text-white">
@@ -216,6 +307,18 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
                         </div>
                     )}
                 </div>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="fixed bottom-0 left-0 right-0 w-full h-1.5 bg-gray-700/50 overflow-hidden z-[9999]">
+                <div
+                    className={getProgressBarClass()}
+                    style={{
+                        width: getProgressBarWidth(),
+                        height: '100%',
+                        transition: 'all 0.1s linear'
+                    }}
+                />
             </div>
 
             {/* Result Overlay */}
