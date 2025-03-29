@@ -130,8 +130,8 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     if (!isOpen || !currentQuestion) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/10 flex items-center justify-center z-50">
-            <div className="p-8 rounded-lg max-w-4xl w-full mx-4 relative flex flex-col items-center">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div className="p-8 rounded-lg max-w-4xl w-full mx-4 mt-10 relative flex flex-col items-center">
                 {/* Question Counter */}
                 <div className="mb-4 text-sm text-white">
                     Question {usedQuestionIndices.length} of {getFilteredQuestions().length}
