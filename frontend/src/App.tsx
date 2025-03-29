@@ -36,10 +36,10 @@ function App() {
               <HelmetProvider>
                 <ThemeProvider theme={theme}>
                   <CssBaseline />
+                  <InvitationLobbySnackbar />
                   <AppRoutes />
                   <GlobalSnackbar />
                   <SnackbarConnector />
-                  <InvitationLobbySnackbar />
                 </ThemeProvider>
               </HelmetProvider>
             </SnackbarProvider>

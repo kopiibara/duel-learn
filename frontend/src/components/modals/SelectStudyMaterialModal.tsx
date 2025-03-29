@@ -113,43 +113,41 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   }, [searchQuery, filter, studyMaterials]);
 
   const handleMaterialSelect = (material: StudyMaterial) => {
-    if (isLobby) {
-      const generatedLobbyCode = generateCode(); // Generate a new lobby code
-      console.log("Generated lobby code:", generatedLobbyCode);
+    onMaterialSelect(material);
+    onModeSelect(mode || "");
+    handleClose();
 
-      onMaterialSelect(material);
-      onModeSelect(mode || "");
-      handleClose();
+    // Always navigate to welcome screen first, regardless of mode
+    const formattedMode =
+      mode === "Peaceful Mode"
+        ? "Peaceful"
+        : mode === "Time Pressured"
+        ? "Time Pressured"
+        : mode === "PvP Mode"
+        ? "PvP"
+        : mode;
 
-      navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
-        state: {
-          mode,
-          material,
-          selectedTypes,
-          lobbyCode: generatedLobbyCode, // Add lobby code to state
-        },
-      });
-    } else {
-      const formattedMode =
-        mode === "Peaceful Mode"
-          ? "Peaceful"
-          : mode === "PvP Mode"
-          ? "PvP"
-          : mode;
-      navigate("/dashboard/welcome-game-mode", {
-        state: {
-          mode: formattedMode,
-          material: {
-            ...material,
-            items: material.items.map((item) => ({
-              term: item.term,
-              definition: item.definition,
-              image: item.image || null,
-            })),
-          },
-        },
-      });
+    // Store lobby info in state to be used after welcome screen if needed
+    const navigationState: any = {
+      mode: formattedMode,
+      material: {
+        ...material,
+        items: material.items.map((item) => ({
+          term: item.term,
+          definition: item.definition,
+          image: item.image || null,
+        })),
+      }
+    };
+    
+    // If it's PVP mode, include the lobby code in the state
+    if (formattedMode === "PvP" || mode === "PvP Mode") {
+      const generatedLobbyCode = generateCode();
+      navigationState.lobbyCode = generatedLobbyCode;
+      navigationState.selectedTypes = selectedTypes;
     }
+    
+    navigate("/dashboard/welcome-game-mode", { state: navigationState });
   };
 
   return (

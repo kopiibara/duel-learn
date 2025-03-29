@@ -49,11 +49,11 @@ interface ChooseYourChallengeProps {
   onSelectMaterial?: (material: StudyMaterial) => void;
 }
 
-// First, let's map game types to each mode
+// Update the mode names and types to match ChooseModeModal
 const modeToTypesMap = {
-  "Peaceful Mode": ["matching", "flashcards", "quiz"],
-  "Time Pressured Mode": ["matching", "flashcards", "quiz"],
-  "PvP Mode": ["matching", "quiz"],
+  "Peaceful Mode": ["identification", "multiple-choice", "true-false"],
+  "Time Pressured": ["identification", "multiple-choice", "true-false"],
+  "PvP Mode": ["identification", "multiple-choice", "true-false"],
 };
 
 const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
@@ -86,14 +86,14 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
     }
   };
 
-  // New handler for mode selection with pre-selected material
+  // Update handleModeClick to match ChooseModeModal's pattern
   const handleModeClick = (mode: string) => {
     setSelectedMode(mode);
     setSelectedTypes(modeToTypesMap[mode as keyof typeof modeToTypesMap] || []);
     setIsLobby(mode === "PvP Mode");
-
-    // If we have a pre-selected material, skip the modal
+    
     if (skipMaterialSelection && preSelectedMaterial) {
+      // This is equivalent to ChooseModeModal's preSelectedMaterial handling
       if (onSelectMode) {
         onSelectMode(mode);
       }
@@ -101,7 +101,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         onSelectMaterial(preSelectedMaterial);
       }
 
-      // Navigate directly to welcome screen
+      // Keep the navigation logic which is specific to ChooseYourChallenge
       navigate("/dashboard/welcome-game-mode", {
         state: { 
           mode, 
@@ -111,7 +111,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         }
       });
     } else {
-      // Show material selection modal for normal flow
+      // Same as ChooseModeModal - show material selection modal
       setModalOpen(true);
     }
   };
@@ -183,7 +183,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         </ModeCard>
 
         {/* Time Pressured Mode */}
-        <ModeCard onClick={() => handleModeClick("Time Pressured Mode")}>
+        <ModeCard onClick={() => handleModeClick("Time Pressured")}>
           <CardMedia
             component="svg"
             className="cardMedia"
