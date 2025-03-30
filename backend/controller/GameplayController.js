@@ -217,7 +217,8 @@ export const initializeBattleSession = async (req, res) => {
             host_in_battle,
             guest_in_battle,
             difficulty_mode,
-            study_material_id
+            study_material_id,
+            question_types
         } = req.body;
 
         // Validate required fields
@@ -248,6 +249,7 @@ export const initializeBattleSession = async (req, res) => {
                     host_in_battle = ?,
                     difficulty_mode = ?,
                     study_material_id = ?,
+                    question_types = ?, 
                     updated_at = CURRENT_TIMESTAMP
                 WHERE lobby_code = ? AND is_active = true
             `;
@@ -258,6 +260,7 @@ export const initializeBattleSession = async (req, res) => {
                 host_in_battle || false,
                 difficulty_mode || null,
                 study_material_id || null,
+                question_types ? JSON.stringify(question_types) : null,
                 lobby_code
             ]);
 
@@ -279,8 +282,8 @@ export const initializeBattleSession = async (req, res) => {
             INSERT INTO battle_sessions 
             (lobby_code, host_id, guest_id, total_rounds, current_turn, is_active, 
              host_in_battle, guest_in_battle, battle_started, session_uuid,
-             difficulty_mode, study_material_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             difficulty_mode, study_material_id, question_types)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
 
         const values = [
@@ -293,9 +296,10 @@ export const initializeBattleSession = async (req, res) => {
             host_in_battle || false,
             guest_in_battle || false,
             false, // Battle not started until both players are in
-            sessionUuid, // Add the session UUID
+            sessionUuid,
             difficulty_mode || null,
-            study_material_id || null
+            study_material_id || null,
+            question_types ? JSON.stringify(question_types) : null
         ];
 
         const [result] = await connection.query(query, values);
@@ -616,7 +620,12 @@ export const getBattleSessionWithMaterial = async (req, res) => {
         const query = `
             SELECT bs.*, 
                    bs.difficulty_mode, 
-                   bs.study_material_id
+                   bs.study_material_id,
+                   bs.question_types,
+                   CASE 
+                     WHEN bs.question_types IS NOT NULL THEN JSON_VALID(bs.question_types)
+                     ELSE NULL 
+                   END as has_valid_question_types
             FROM battle_sessions bs
             WHERE bs.lobby_code = ? AND bs.is_active = true
             ORDER BY bs.created_at DESC 
@@ -632,9 +641,21 @@ export const getBattleSessionWithMaterial = async (req, res) => {
             });
         }
 
+        // Parse question_types JSON if it exists and is valid
+        const session = sessions[0];
+        if (session.question_types && session.has_valid_question_types) {
+            try {
+                session.question_types = JSON.parse(session.question_types);
+            } catch (e) {
+                console.error('Error parsing question_types JSON:', e);
+                session.question_types = null;
+            }
+        }
+        delete session.has_valid_question_types; // Remove the helper field
+
         res.json({
             success: true,
-            data: sessions[0]
+            data: session
         });
 
     } catch (error) {
@@ -729,6 +750,7 @@ export const updateBattleRound = async (req, res) => {
             session_uuid,
             player_type,
             card_id,
+            is_correct, // Add this new parameter
             lobby_code
         } = req.body;
 
@@ -767,54 +789,93 @@ export const updateBattleRound = async (req, res) => {
         const currentTurn = session.current_turn;
         const nextTurn = currentTurn === session.host_id ? session.guest_id : session.host_id;
 
-        // Update the battle rounds with selected card
-        const updateField = player_type === 'host' ? 'host_card' : 'guest_card';
+        // Start a transaction
+        await connection.beginTransaction();
 
-        const updateRoundQuery = `
-            UPDATE battle_rounds 
-            SET ${updateField} = ?
-            WHERE session_uuid = ?
-        `;
+        try {
+            // Update the battle rounds with selected card and answer result
+            const updateField = player_type === 'host' ? 'host_card' : 'guest_card';
+            const answerField = player_type === 'host' ? 'host_answer_correct' : 'guest_answer_correct';
 
-        await connection.query(updateRoundQuery, [card_id, session_uuid]);
+            // Set card_id appropriately
+            let finalCardId = card_id;
+            if (card_id === "no-card-selected") {
+                // Use a standardized value for no card selected
+                finalCardId = "no-card-selected";
 
-        // Update turn in battle_sessions table
-        const updateTurnQuery = `
-            UPDATE battle_sessions 
-            SET current_turn = ?,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE session_uuid = ? AND is_active = 1
-        `;
-
-        const [updateResult] = await connection.query(updateTurnQuery, [nextTurn, session_uuid]);
-
-        if (updateResult.affectedRows === 0) {
-            return res.status(500).json({
-                success: false,
-                message: "Failed to update battle turn"
-            });
-        }
-
-        // Get the updated battle round data
-        const [updatedRound] = await connection.query(
-            `SELECT * FROM battle_rounds WHERE session_uuid = ?`,
-            [session_uuid]
-        );
-
-        // Get the updated session data
-        const [updatedSession] = await connection.query(
-            `SELECT * FROM battle_sessions WHERE session_uuid = ? AND is_active = 1`,
-            [session_uuid]
-        );
-
-        res.json({
-            success: true,
-            message: `${player_type} card selection recorded and turn switched to the next player`,
-            data: {
-                round: updatedRound[0] || null,
-                session: updatedSession[0] || null
+                // Log that no card was selected
+                console.log(`${player_type} did not select a card within the time limit`);
             }
-        });
+
+            const updateRoundQuery = `
+                UPDATE battle_rounds 
+                SET ${updateField} = ?,
+                    ${answerField} = ?
+                WHERE session_uuid = ?
+            `;
+
+            await connection.query(updateRoundQuery, [finalCardId, is_correct, session_uuid]);
+
+            // Update turn in battle_sessions table
+            const updateTurnQuery = `
+                UPDATE battle_sessions 
+                SET current_turn = ?,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE session_uuid = ? AND is_active = 1
+            `;
+
+            await connection.query(updateTurnQuery, [nextTurn, session_uuid]);
+
+            // If answer was provided, update battle scores
+            if (typeof is_correct !== 'undefined') {
+                // Update battle scores based on answer correctness
+                const damage_amount = 10; // Default damage amount
+                if (is_correct) {
+                    // If player answers correctly, reduce opponent's health
+                    const opponentType = player_type === 'host' ? 'guest' : 'host';
+                    const updateScoreQuery = `
+                        UPDATE battle_scores 
+                        SET ${opponentType}_health = GREATEST(0, ${opponentType}_health - ?)
+                        WHERE session_uuid = ?
+                    `;
+                    await connection.query(updateScoreQuery, [damage_amount, session_uuid]);
+                }
+            }
+
+            // Commit the transaction
+            await connection.commit();
+
+            // Get the updated data
+            const [updatedRound] = await connection.query(
+                `SELECT * FROM battle_rounds WHERE session_uuid = ?`,
+                [session_uuid]
+            );
+
+            const [updatedSession] = await connection.query(
+                `SELECT * FROM battle_sessions WHERE session_uuid = ? AND is_active = 1`,
+                [session_uuid]
+            );
+
+            const [updatedScores] = await connection.query(
+                `SELECT * FROM battle_scores WHERE session_uuid = ?`,
+                [session_uuid]
+            );
+
+            res.json({
+                success: true,
+                message: `${player_type} card selection and answer recorded, turn switched to the next player`,
+                data: {
+                    round: updatedRound[0] || null,
+                    session: updatedSession[0] || null,
+                    scores: updatedScores[0] || null
+                }
+            });
+
+        } catch (error) {
+            // If anything fails, roll back the transaction
+            await connection.rollback();
+            throw error;
+        }
 
     } catch (error) {
         console.error('Error updating battle round:', error);
@@ -982,6 +1043,95 @@ export const getBattleScores = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to get battle scores",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+// Add new function to update battle scores based on question answers
+export const updateBattleScores = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const {
+            session_uuid,
+            player_type,
+            is_correct,
+            damage_amount = 10 // Default damage amount when wrong
+        } = req.body;
+
+        // Validate required fields
+        if (!session_uuid || !player_type) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: session_uuid and player_type are required"
+            });
+        }
+
+        // Get current battle scores
+        const [currentScores] = await connection.query(
+            `SELECT * FROM battle_scores WHERE session_uuid = ?`,
+            [session_uuid]
+        );
+
+        if (currentScores.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle scores not found for this session"
+            });
+        }
+
+        // Calculate new health based on answer correctness
+        let updateQuery;
+        let updateParams;
+
+        if (player_type === 'host') {
+            // If host answers incorrectly, reduce host's health
+            if (!is_correct) {
+                updateQuery = `
+                    UPDATE battle_scores 
+                    SET host_health = GREATEST(0, host_health - ?)
+                    WHERE session_uuid = ?
+                `;
+                updateParams = [damage_amount, session_uuid];
+            }
+        } else {
+            // If guest answers incorrectly, reduce guest's health
+            if (!is_correct) {
+                updateQuery = `
+                    UPDATE battle_scores 
+                    SET guest_health = GREATEST(0, guest_health - ?)
+                    WHERE session_uuid = ?
+                `;
+                updateParams = [damage_amount, session_uuid];
+            }
+        }
+
+        // Only update if health needs to be reduced
+        if (updateQuery && updateParams) {
+            await connection.query(updateQuery, updateParams);
+        }
+
+        // Get updated scores
+        const [updatedScores] = await connection.query(
+            `SELECT * FROM battle_scores WHERE session_uuid = ?`,
+            [session_uuid]
+        );
+
+        res.json({
+            success: true,
+            message: "Battle scores updated successfully",
+            data: updatedScores[0]
+        });
+
+    } catch (error) {
+        console.error('Error updating battle scores:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to update battle scores",
             error: error.message
         });
     } finally {

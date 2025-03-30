@@ -35,6 +35,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     const [showCardOptions, setShowCardOptions] = useState(false);
     const [backCardExitComplete, setBackCardExitComplete] = useState(false);
     const [animationComplete, setAnimationComplete] = useState(false);
+    const [selectionTimer, setSelectionTimer] = useState(8); // 8 second timer
+    const [timerActive, setTimerActive] = useState(false);
 
     // Card state management
     const [selectedCards, setSelectedCards] = useState<Card[]>([]);
@@ -154,6 +156,44 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         }
     };
 
+    // Handle timer timeout - automatically select "no-card"
+    const handleTimeExpired = () => {
+        console.log("Time expired, no card selected");
+
+        // Show a brief on-screen message
+        const messageElement = document.createElement('div');
+        messageElement.className = 'fixed inset-0 flex items-center justify-center z-50';
+        messageElement.innerHTML = `
+            <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                No card selected! Proceeding to question...
+            </div>
+        `;
+        document.body.appendChild(messageElement);
+
+        // Remove the message after 1.2 seconds
+        setTimeout(() => {
+            document.body.removeChild(messageElement);
+
+            // No card selected, use a special "no-card" ID
+            onCardSelected("no-card-selected");
+            setShowCardOptions(false);
+            setTimerActive(false);
+        }, 1200);
+    };
+
+    // Timer effect
+    useEffect(() => {
+        if (timerActive && selectionTimer > 0) {
+            const timer = setTimeout(() => {
+                setSelectionTimer(selectionTimer - 1);
+            }, 1000);
+            return () => clearTimeout(timer);
+        } else if (timerActive && selectionTimer === 0) {
+            // Time's up
+            handleTimeExpired();
+        }
+    }, [timerActive, selectionTimer]);
+
     useEffect(() => {
         if (isMyTurn) {
             // Reset animation states
@@ -161,6 +201,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             setShowCardOptions(false);
             setBackCardExitComplete(false);
             setAnimationComplete(false);
+            setSelectionTimer(8); // Reset timer to 8 seconds
+            setTimerActive(false); // Don't start timer yet
 
             // Generate cards for this turn
             const cardsForThisTurn = generateCardsForTurn(difficultyMode || "average");
@@ -181,6 +223,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             setShowCardOptions(false);
             setBackCardExitComplete(false);
             setAnimationComplete(false);
+            setTimerActive(false);
         }
     }, [isMyTurn, difficultyMode]);
 
@@ -188,10 +231,14 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     const handleBackCardExitComplete = () => {
         setBackCardExitComplete(true);
         setShowCardOptions(true);
+        setTimerActive(true); // Start the selection timer
     };
 
     // Handle card selection
     const handleCardSelect = (cardId: string, index: number) => {
+        // Stop the timer
+        setTimerActive(false);
+
         // Store the selected index for the next turn
         setLastSelectedIndex(index);
 
@@ -255,6 +302,13 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                             </motion.div>
                         )}
                     </AnimatePresence>
+
+                    {/* Timer display when it's the player's turn and options are shown */}
+                    {showCardOptions && backCardExitComplete && (
+                        <div className="absolute top-[150px] text-white text-2xl font-bold">
+                            Time remaining: <span className={selectionTimer <= 3 ? "text-red-500" : "text-white"}>{selectionTimer}s</span>
+                        </div>
+                    )}
 
                     <AnimatePresence>
                         {showCardOptions && backCardExitComplete && (

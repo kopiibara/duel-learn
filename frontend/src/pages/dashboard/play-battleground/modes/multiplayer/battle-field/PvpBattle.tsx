@@ -21,6 +21,7 @@ import { VictoryModal } from "./modals/BattleModals";
 import CharacterAnimationManager from "./components/CharacterAnimationManager";
 import GameStartAnimation from "./components/GameStartAnimation";
 import GuestWaitingForRandomization from "./components/GuestWaitingForRandomization";
+import QuestionModal from './components/QuestionModal';
 
 // Import utils directly
 import TurnRandomizer from "./utils/TurnRandomizer";
@@ -47,6 +48,7 @@ export default function PvpBattle() {
   const [studyMaterialId, setStudyMaterialId] = useState<string | null>(null);
   const [playerHealth, setPlayerHealth] = useState(100);
   const [opponentHealth, setOpponentHealth] = useState(100);
+  const [questionTypes, setQuestionTypes] = useState<string[]>([]);
 
   // Turn-based gameplay state
   const [gameStarted, setGameStarted] = useState(false);
@@ -76,6 +78,10 @@ export default function PvpBattle() {
   // Victory modal states
   const [showVictoryModal, setShowVictoryModal] = useState(false);
   const [victoryMessage, setVictoryMessage] = useState("");
+
+  // Question modal states
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
@@ -125,28 +131,39 @@ export default function PvpBattle() {
 
   // Handle card selection
   const handleCardSelected = async (cardId: string) => {
-    // When player selects a card, it's no longer their turn
+    // Store the selected card ID
+    setSelectedCardId(cardId);
+
+    // Show the question modal
+    setShowQuestionModal(true);
+
     // Reset player animations to idle
     setPlayerAnimationState("idle");
     setPlayerPickingIntroComplete(false);
+  };
+
+  // Handle answer submission
+  const handleAnswerSubmit = async (isCorrect: boolean) => {
+    if (!selectedCardId) return;
 
     try {
       // Determine if the current player is host or guest
       const playerType = isHost ? 'host' : 'guest';
 
-      // Update the battle round with the selected card and switch turns
+      // Update the battle round with the selected card, answer result, and switch turns
       const response = await axios.put(
         `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
         {
           session_uuid: battleState?.session_uuid,
           player_type: playerType,
-          card_id: cardId,
+          card_id: selectedCardId,
+          is_correct: isCorrect,
           lobby_code: lobbyCode
         }
       );
 
-      if (response.data.success) {
-        console.log(`Card ${cardId} selection successful, turn switched`);
+      if (response && response.data && response.data.success) {
+        console.log(`Card ${selectedCardId} selection and answer submission successful, turn switched`);
 
         // Switch turns locally but keep UI visible
         setIsMyTurn(false);
@@ -155,11 +172,17 @@ export default function PvpBattle() {
         setEnemyAnimationState("picking");
         setEnemyPickingIntroComplete(false);
       } else {
-        console.error("Failed to update battle round:", response.data.message);
+        console.error("Failed to update battle round:", response?.data?.message || "Unknown error");
       }
     } catch (error) {
       console.error("Error updating battle round:", error);
     }
+  };
+
+  // Handle question modal close
+  const handleQuestionModalClose = () => {
+    setShowQuestionModal(false);
+    setSelectedCardId(null);
   };
 
   // Add polling for turn updates
@@ -175,7 +198,7 @@ export default function PvpBattle() {
           `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-state/${lobbyCode}`
         );
 
-        if (response.data.success && response.data.data) {
+        if (response && response.data && response.data.success && response.data.data) {
           const sessionData = response.data.data;
 
           // Update local battle state with proper type safety
@@ -281,8 +304,13 @@ export default function PvpBattle() {
           `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-with-material/${lobbyCode}`
         );
 
-        if (response.data.success && response.data.data) {
+        if (response && response.data && response.data.success && response.data.data) {
           setDifficultyMode(response.data.data.difficulty_mode);
+
+          // Set question types from battle session
+          if (response.data.data.question_types) {
+            setQuestionTypes(response.data.data.question_types);
+          }
 
           // Get the study material id
           if (response.data.data.study_material_id) {
@@ -294,8 +322,9 @@ export default function PvpBattle() {
                 `${import.meta.env.VITE_BACKEND_URL}/api/study-material/info/${response.data.data.study_material_id}`
               );
 
-              if (studyMaterialResponse.data.success && studyMaterialResponse.data.data &&
-                studyMaterialResponse.data.data.total_items) {
+              if (studyMaterialResponse && studyMaterialResponse.data && 
+                  studyMaterialResponse.data.success && studyMaterialResponse.data.data &&
+                  studyMaterialResponse.data.data.total_items) {
                 setTotalItems(studyMaterialResponse.data.data.total_items);
               }
             } catch (error) {
@@ -309,6 +338,11 @@ export default function PvpBattle() {
     };
 
     fetchBattleSessionData();
+
+    // Set up polling for battle session data
+    const pollInterval = setInterval(fetchBattleSessionData, 2000);
+
+    return () => clearInterval(pollInterval);
   }, [lobbyCode]);
 
   // Effect to fetch battle scores
@@ -321,7 +355,7 @@ export default function PvpBattle() {
           `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${battleState.session_uuid}`
         );
 
-        if (response.data.success && response.data.data) {
+        if (response && response.data && response.data.success && response.data.data) {
           const scores = response.data.data;
           // Set health based on whether player is host or guest
           if (isHost) {
@@ -487,6 +521,16 @@ export default function PvpBattle() {
           showVictoryModal={showVictoryModal}
           victoryMessage={victoryMessage}
           onConfirm={handleVictoryConfirm}
+        />
+
+        {/* Question Modal */}
+        <QuestionModal
+          isOpen={showQuestionModal}
+          onClose={handleQuestionModalClose}
+          onAnswerSubmit={handleAnswerSubmit}
+          difficultyMode={difficultyMode}
+          questionTypes={questionTypes}
+          selectedCardId={selectedCardId}
         />
       </div>
     </div>
