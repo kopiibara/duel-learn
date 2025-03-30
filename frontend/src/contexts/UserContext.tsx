@@ -5,8 +5,6 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { getDoc, doc } from "firebase/firestore";
-import { db } from "../services/firebase";
 import useUserData from "../hooks/api.hooks/useUserData";
 import { useAuth } from "./AuthContext";
 import axios from "axios";
