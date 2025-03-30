@@ -35,12 +35,16 @@ import HostModeSelection from "../pages/dashboard/play-battleground/modes/multip
 import Player2ModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/Player2ModeSelection";
 import PvpBattle from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/PvpBattle";
 import SearchPage from "../pages/dashboard/search/SearchPage";
+import SocketService from "../services/socketService";
 
 const PrivateRoutes = () => {
-  const { user, loading: userLoading, refreshUserData } = useUser();
+  const { user, loading: userLoading, refreshUserData, socketConnected } = useUser();
   const { isAuthenticated, isLoading: authLoading, currentUser } = useAuth();
   const [_selectedIndex, setSelectedIndex] = useState<number | null>(1);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
+  
+  // Reference to socket service
+  const socketService = SocketService.getInstance();
 
   // Add loading timeout to prevent infinite loading
   useEffect(() => {
@@ -51,6 +55,45 @@ const PrivateRoutes = () => {
 
     return () => clearTimeout(timer);
   }, []);
+
+  // Monitor and maintain socket connection throughout protected routes
+  useEffect(() => {
+    // Only attempt to connect if we have a valid user and authentication
+    if (user && currentUser && !socketConnected) {
+      console.log("PrivateRoutes: Socket connection not detected, reconnecting...");
+      
+      // Connect using the user's firebase_uid
+      socketService.connect(user.firebase_uid);
+      
+      // Log connection status after a short delay
+      setTimeout(() => {
+        const socket = socketService.getSocket();
+        console.log(`Socket connection status check: ${socket?.connected ? 'Connected' : 'Disconnected'}`);
+      }, 1000);
+    }
+    
+    // Set up periodic connection check 
+    const connectionMonitor = setInterval(() => {
+      if (user && currentUser) {
+        const socket = socketService.getSocket();
+        
+        // If socket exists but is disconnected, attempt reconnection
+        if (socket && !socket.connected) {
+          console.log("Socket disconnected, attempting to reconnect...");
+          socketService.connect(user.firebase_uid);
+        } 
+        // If no socket at all, create new connection
+        else if (!socket) {
+          console.log("No socket instance found, creating new connection");
+          socketService.connect(user.firebase_uid);
+        }
+      }
+    }, 30000); // Check every 30 seconds
+    
+    return () => {
+      clearInterval(connectionMonitor);
+    };
+  }, [user, currentUser, socketConnected]);
 
   // Show loading screen if both auth and user data are still loading and timeout hasn't occurred
   if ((authLoading || userLoading) && !loadingTimeout) {
@@ -77,72 +120,92 @@ const PrivateRoutes = () => {
   }
 
   return (
-    <Routes>
-      {/* Onboarding and Tutorial Routes */}
-      <Route path="welcome" element={<WelcomePage />} />
-      <Route path="tutorial/step-one" element={<TutorialOnePage />} />
-      <Route path="tutorial/step-two" element={<TutorialTwo />} />
-      <Route path="tutorial/step-three" element={<TutorialThree />} />
-      <Route path="tutorial/step-four" element={<TutorialFour />} />
-      <Route path="tutorial/step-five" element={<TutorialFive />} />
-      <Route path="tutorial/step-six" element={<TutorialSix />} />
-      <Route path="tutorial/last-step" element={<TutorialLast />} />
-      <Route path="my-preferences" element={<Personalization />} />
-
-      {/* Routes for the main dashboard after onboarding */}
-      <Route element={<DashboardLayout />}>
-        <Route
-          path="home"
-          element={<Home setSelectedIndex={setSelectedIndex} />}
+    <>
+      {/* Optional: Socket connection status indicator (only in development) */}
+      {process.env.NODE_ENV === 'development' && (
+        <div 
+          style={{
+            position: 'fixed',
+            bottom: '10px',
+            right: '10px',
+            zIndex: 9999,
+            width: '15px',
+            height: '15px',
+            borderRadius: '50%',
+            background: socketConnected ? '#4CAF50' : '#F44336',
+            boxShadow: '0 0 5px rgba(0,0,0,0.5)'
+          }}
+          title={socketConnected ? "Socket Connected" : "Socket Disconnected"}
         />
-        <Route path="explore" element={<Explore />} />
-        <Route path="my-library" element={<YourLibrary />} />
-        <Route path="profile" element={<Profile />} />
-        <Route path="shop" element={<Shop />} />
-        <Route path="study-material/create" element={<CreateStudyMaterial />} />
+      )}
+    
+      <Routes>
+        {/* Onboarding and Tutorial Routes */}
+        <Route path="welcome" element={<WelcomePage />} />
+        <Route path="tutorial/step-one" element={<TutorialOnePage />} />
+        <Route path="tutorial/step-two" element={<TutorialTwo />} />
+        <Route path="tutorial/step-three" element={<TutorialThree />} />
+        <Route path="tutorial/step-four" element={<TutorialFour />} />
+        <Route path="tutorial/step-five" element={<TutorialFive />} />
+        <Route path="tutorial/step-six" element={<TutorialSix />} />
+        <Route path="tutorial/last-step" element={<TutorialLast />} />
+        <Route path="my-preferences" element={<Personalization />} />
+
+        {/* Routes for the main dashboard after onboarding */}
+        <Route element={<DashboardLayout />}>
+          <Route
+            path="home"
+            element={<Home setSelectedIndex={setSelectedIndex} />}
+          />
+          <Route path="explore" element={<Explore />} />
+          <Route path="my-library" element={<YourLibrary />} />
+          <Route path="profile" element={<Profile />} />
+          <Route path="shop" element={<Shop />} />
+          <Route path="study-material/create" element={<CreateStudyMaterial />} />
+          <Route
+            path="study-material/view/:studyMaterialId"
+            element={<ViewStudyMaterial />}
+          />
+          <Route path="search" element={<SearchPage />} />
+          <Route path="account-settings" element={<AccountSettings />} />
+        </Route>
+
+        {/* Premium Routes */}
+        <Route path="/buy-premium-account" element={<BuyPremium />} />
+
+        {/* Game Setup Routes */}
+        <Route path="/welcome-game-mode" element={<WelcomeGameMode />} />
+        <Route path="/setup/questions" element={<SetUpQuestionType />} />
+        <Route path="/setup/timer" element={<SetUpTimeQuestion />} />
+        <Route path="/loading-screen" element={<LoadingScreen />} />
+
+        {/* Game Mode Routes */}
         <Route
-          path="study-material/view/:studyMaterialId"
-          element={<ViewStudyMaterial />}
+          path="/study/peaceful-mode"
+          element={
+            <GameModeWrapper>
+              {(props) => <PeacefulMode {...props} />}
+            </GameModeWrapper>
+          }
         />
-        <Route path="search" element={<SearchPage />} />
-        <Route path="account-settings" element={<AccountSettings />} />
-      </Route>
-
-      {/* Premium Routes */}
-      <Route path="/buy-premium-account" element={<BuyPremium />} />
-
-      {/* Game Setup Routes */}
-      <Route path="/welcome-game-mode" element={<WelcomeGameMode />} />
-      <Route path="/setup/questions" element={<SetUpQuestionType />} />
-      <Route path="/setup/timer" element={<SetUpTimeQuestion />} />
-      <Route path="/loading-screen" element={<LoadingScreen />} />
-
-      {/* Game Mode Routes */}
-      <Route
-        path="/study/peaceful-mode"
-        element={
-          <GameModeWrapper>
-            {(props) => <PeacefulMode {...props} />}
-          </GameModeWrapper>
-        }
-      />
-      <Route
-        path="/study/time-pressured-mode"
-        element={
-          <GameModeWrapper>
-            {(props) => <TimePressuredMode {...props} />}
-          </GameModeWrapper>
-        }
-      />
-      <Route path="/pvp-lobby/:lobbyCode?" element={<PVPLobby />} />
-      <Route path="/study/session-summary" element={<SessionReport />} />
-      <Route path="/select-difficulty/pvp" element={<HostModeSelection />} />
-      <Route
-        path="/select-difficulty/pvp/player2"
-        element={<Player2ModeSelection />}
-      />
-      <Route path="/pvp-battle/:lobbyCode?" element={<PvpBattle />} />
-    </Routes>
+        <Route
+          path="/study/time-pressured-mode"
+          element={
+            <GameModeWrapper>
+              {(props) => <TimePressuredMode {...props} />}
+            </GameModeWrapper>
+          }
+        />
+        <Route path="/pvp-lobby/:lobbyCode?" element={<PVPLobby />} />
+        <Route path="/study/session-summary" element={<SessionReport />} />
+        <Route path="/select-difficulty/pvp" element={<HostModeSelection />} />
+        <Route
+          path="/select-difficulty/pvp/player2"
+          element={<Player2ModeSelection />}
+        />
+        <Route path="/pvp-battle/:lobbyCode?" element={<PvpBattle />} />
+      </Routes>
+    </>
   );
 };
 

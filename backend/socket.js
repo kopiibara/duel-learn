@@ -1,4 +1,5 @@
 import { Server } from "socket.io";
+import { pool } from './config/db.js';
 
 let io;
 

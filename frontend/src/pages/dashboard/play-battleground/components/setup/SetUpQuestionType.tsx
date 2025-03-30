@@ -85,7 +85,7 @@ const SetUpQuestionType: React.FC = () => {
     navigate("/dashboard/home");
   };
 
-  const handleStartLearning = async () => {
+  const handleStartLearning = () => {
     // If no question type is selected, show the alert
     if (selectedTypes.length === 0) {
       setOpenAlert(true);
@@ -97,9 +97,6 @@ const SetUpQuestionType: React.FC = () => {
       setOpenManaAlert(true);
       return;
     }
-
-    // Set loading state
-    setIsGenerating(true);
 
     // Pass role information in navigation state
     const navigationState = {
@@ -113,85 +110,33 @@ const SetUpQuestionType: React.FC = () => {
     console.log("Navigation state being passed:", navigationState);
     console.log("Mode type:", typeof mode, "Mode value:", mode);
 
-    // For PvP mode: Create initial battle lobby
-    if ((mode === "PvP" || mode === "PvP Mode") && (isPvpLobbyCreation || !navigationState.role || navigationState.role === 'host')) {
-      try {
-        // Get current user details from localStorage or context
-        const currentUser = JSON.parse(localStorage.getItem('user') || '{}');
-        
-        const lobbyCodeToUse = lobbyCode || generateCode();
-        
-        // Create battle lobby using the new endpoint
-        const response = await axios.post(`${import.meta.env.VITE_BACKEND_URL}/api/battle/initial-lobby`, {
-          sender_id: currentUser.firebase_uid,
-          sender_username: currentUser.username || 'Host',
-          sender_level: currentUser.level || 1,
-          lobby_code: lobbyCodeToUse,
-          question_types: selectedTypes,
-          study_material_title: material?.title || 'Custom study material'
-        });
+    // Check if this is for PvP lobby creation
+    if (isPvpLobbyCreation && lobbyCode) {
+      // Navigate directly to the PVP lobby with the selected question types
+      navigate(`/dashboard/pvp-lobby/${lobbyCode}`, {
+        state: { 
+          ...navigationState,
+          fromWelcome: true
+        }
+      });
+      return;
+    }
 
-        console.log("Battle lobby created:", response.data);
-        
-        // After successful lobby creation, navigate to the appropriate screen
-        if (isPvpLobbyCreation) {
-          // Navigate directly to the PVP lobby with the selected question types
-          navigate(`/dashboard/pvp-lobby/${lobbyCodeToUse}`, {
-            state: { 
-              ...navigationState,
-              lobbyCode: lobbyCodeToUse,
-              fromWelcome: true
-            }
-          });
-        } else if (mode === "Time Pressured" || mode === "Time Pressured Mode") {
-          console.log("Navigating to timer setup");
-          navigate("/dashboard/setup/timer", { state: navigationState });
-        } else if (mode === "Peaceful" || mode === "Peaceful Mode") {
-          console.log("Navigating to peaceful mode");
-          navigate("/dashboard/loading-screen", {
-            state: { ...navigationState, timeLimit: null },
-          });
-        } else {
-          // For regular PVP mode not from lobby creation
-          const generatedLobbyCode = lobbyCodeToUse;
-          navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
-            state: { ...navigationState, lobbyCode: generatedLobbyCode },
-          });
-        }
-        
-      } catch (error) {
-        console.error("Error creating battle lobby:", error);
-        
-        // Continue with navigation even if the API call fails
-        if (isPvpLobbyCreation && lobbyCode) {
-          navigate(`/dashboard/pvp-lobby/${lobbyCode}`, {
-            state: { 
-              ...navigationState,
-              fromWelcome: true
-            }
-          });
-        } else if (mode === "Time Pressured" || mode === "Time Pressured Mode") {
-          navigate("/dashboard/setup/timer", { state: navigationState });
-        } else if (mode === "Peaceful" || mode === "Peaceful Mode") {
-          navigate("/dashboard/loading-screen", {
-            state: { ...navigationState, timeLimit: null },
-          });
-        }
-      } finally {
-        setIsGenerating(false);
-      }
+    // Navigate based on mode with more flexible mode checks
+    if (mode === "Time Pressured" || mode === "Time Pressured Mode") {
+      console.log("Navigating to timer setup");
+      navigate("/dashboard/setup/timer", { state: navigationState });
+    } else if (mode === "Peaceful" || mode === "Peaceful Mode") {
+      console.log("Navigating to peaceful mode");
+      navigate("/dashboard/loading-screen", {
+        state: { ...navigationState, timeLimit: null },
+      });
     } else {
-      // Non-PVP modes or guest role
-      if (mode === "Time Pressured" || mode === "Time Pressured Mode") {
-        console.log("Navigating to timer setup");
-        navigate("/dashboard/setup/timer", { state: navigationState });
-      } else if (mode === "Peaceful" || mode === "Peaceful Mode") {
-        console.log("Navigating to peaceful mode");
-        navigate("/dashboard/loading-screen", {
-          state: { ...navigationState, timeLimit: null },
-        });
-      }
-      setIsGenerating(false);
+      console.log("Navigating to PVP mode");
+      const generatedLobbyCode = generateCode();
+      navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
+        state: { ...navigationState, lobbyCode: generatedLobbyCode },
+      });
     }
   };
 
@@ -352,15 +297,13 @@ const SetUpQuestionType: React.FC = () => {
                   <button
                     onClick={handleStartLearning}
                     disabled={isGenerating}
-                    className={`bg-[#4D1EE3] hover:bg-purple-800 text-white font-semibold py-3 rounded-md w-40 sm:w-48 md:w-52 shadow-lg mt-6 flex items-center justify-center ${
-                      isGenerating ? 'opacity-70 cursor-not-allowed' : ''
-                    }`}
+                    className="mt-8 w-[240px] sm:w-[280px] md:w-[320px] py-2 sm:py-3 border-2 border-black text-black rounded-lg text-md sm:text-lg shadow-lg hover:bg-purple-700 hover:text-white hover:border-transparent flex items-center justify-center"
                   >
-                    {isGenerating ? (
-                      <div className="w-6 h-6 border-t-2 border-white rounded-full animate-spin"></div>
-                    ) : (
-                      'Start Learning'
-                    )}
+                    {isGenerating
+                      ? "Generating Questions..."
+                      : mode === "Time Pressured"
+                      ? "Continue"
+                      : "START LEARNING!"}
                   </button>
                 </div>
               </div>

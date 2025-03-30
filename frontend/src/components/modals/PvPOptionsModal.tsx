@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Modal,
@@ -9,10 +9,13 @@ import {
   TextField,
   Button,
   Backdrop,
+  CircularProgress,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ModalFriendList from "../../assets/General/ModalFriendList.png";
+import SocketService from "../../services/socketService";
+import { useUser } from "../../contexts/UserContext";
 
 interface PvPOptionsModalProps {
   open: boolean;
@@ -32,6 +35,45 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
   const [showJoinForm, setShowJoinForm] = useState(false);
   const [lobbyCode, setLobbyCode] = useState("");
   const [error, setError] = useState("");
+  const [isJoining, setIsJoining] = useState(false);
+  const [validatingLobby, setValidatingLobby] = useState(false);
+  const { user } = useUser();
+  
+  // Get socket instance
+  const socketService = SocketService.getInstance();
+  const socket = socketService.getSocket();
+
+  // Listen for lobby validation response
+  useEffect(() => {
+    if (!socket) return;
+    
+    const handleLobbyValidationResponse = (data: { 
+      exists: boolean, 
+      lobbyCode: string, 
+      error?: string 
+    }) => {
+      setValidatingLobby(false);
+      
+      if (data.error) {
+        setError(data.error);
+        return;
+      }
+      
+      if (data.exists && data.lobbyCode === lobbyCode) {
+        setIsJoining(true);
+        // Proceed with joining the lobby
+        onJoinLobby(lobbyCode);
+      } else {
+        setError("Lobby not found or no longer active");
+      }
+    };
+    
+    socket.on("lobbyValidationResponse", handleLobbyValidationResponse);
+    
+    return () => {
+      socket.off("lobbyValidationResponse", handleLobbyValidationResponse);
+    };
+  }, [socket, lobbyCode, onJoinLobby]);
 
   const handleCreateLobby = () => {
     onCreateLobby();
@@ -47,13 +89,37 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
       return;
     }
     
-    // Validate lobby code format if needed
-    if (lobbyCode.length < 4) {
-      setError("Invalid lobby code format");
+    // Ensure consistent format - uppercase and trim whitespace
+    const formattedLobbyCode = lobbyCode.trim().toUpperCase();
+    
+    // Validate lobby code format more strictly
+    if (!/^[A-Z0-9]{4,6}$/.test(formattedLobbyCode)) {
+      setError("Invalid lobby code format. Should be 4-6 alphanumeric characters.");
       return;
     }
     
-    onJoinLobby(lobbyCode);
+    if (!user) {
+      setError("You must be logged in to join a lobby");
+      return;
+    }
+    
+    // First validate if the lobby exists via socket
+    setValidatingLobby(true);
+    setError("");
+    
+    // Request lobby validation through socket
+    if (socket) {
+      socket.emit("validateLobby", {
+        lobbyCode: formattedLobbyCode,
+        playerId: user.firebase_uid,
+        playerName: user.username,
+        playerLevel: user.level,
+        playerPicture: user.display_picture
+      });
+    } else {
+      setValidatingLobby(false);
+      setError("Connection error. Please try again.");
+    }
   };
 
   const handleBackNavigation = () => {
@@ -230,12 +296,13 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
                 fullWidth
                 value={lobbyCode}
                 onChange={(e) => {
-                  setLobbyCode(e.target.value);
+                  setLobbyCode(e.target.value.toUpperCase());
                   setError("");
                 }}
                 placeholder="Enter lobby code"
                 error={!!error}
                 helperText={error}
+                disabled={isJoining || validatingLobby}
                 sx={{
                   mb: 3,
                   width: "80%",
@@ -255,6 +322,7 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
 
               <Button
                 onClick={handleJoinSubmit}
+                disabled={isJoining || validatingLobby}
                 sx={{
                   backgroundColor: "#E2DDF3",
                   color: "#303869",
@@ -265,9 +333,19 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
                   "&:hover": {
                     backgroundColor: "#9F9BAE",
                   },
+                  "&.Mui-disabled": {
+                    backgroundColor: "#6F658D",
+                    color: "#9F9BAE"
+                  }
                 }}
               >
-                Join Battle
+                {validatingLobby ? (
+                  <CircularProgress size={24} color="inherit" />
+                ) : isJoining ? (
+                  "Joining..."
+                ) : (
+                  "Join Battle"
+                )}
               </Button>
             </>
           )}

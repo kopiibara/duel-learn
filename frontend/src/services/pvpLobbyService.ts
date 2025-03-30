@@ -60,4 +60,34 @@ export const navigateToWelcomeScreen = (navigate: any, lobbyState: PvPLobbyUser)
       selectedTypes: 'selectedTypes' in lobbyState ? lobbyState.selectedTypes : undefined,
     }
   });
+};
+
+// Add this function to connect with socket when creating a lobby
+export const createLobbyWithSocket = (lobbyCode: string, user: any, socket: any): void => {
+  if (!socket || !user) return;
+  
+  socket.emit("createLobby", {
+    lobbyCode,
+    hostId: user.firebase_uid,
+    hostName: user.username,
+    hostLevel: user.level,
+    hostPicture: user.display_picture || null
+  });
+  
+  console.log(`Socket notification sent: Host created lobby ${lobbyCode}`);
+};
+
+// Add this function for joining a lobby via socket
+export const joinLobbyWithSocket = (lobbyCode: string, user: any, socket: any): void => {
+  if (!socket || !user) return;
+  
+  socket.emit("validateLobby", {
+    lobbyCode,
+    playerId: user.firebase_uid,
+    playerName: user.username,
+    playerLevel: user.level,
+    playerPicture: user.display_picture || null
+  });
+  
+  console.log(`Socket validation requested for lobby ${lobbyCode}`);
 }; 

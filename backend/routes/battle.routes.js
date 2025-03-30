@@ -1,13 +1,10 @@
 import express from 'express';
-import { createBattleInvitation, updateBattleInvitationStatus, getHostInfo, updateInvitationStatusByLobbyCode, getInvitationDetails, updateLobbySettings, updatePlayerReadyState, getReadyState, getLobbySettings, updateBattleStatus, getBattleStatus, updateDifficulty, getDifficulty, createInitialBattleLobby } from '../controller/BattleInvitationController.js';
+import { createBattleInvitation, updateBattleInvitationStatus, getHostInfo, updateInvitationStatusByLobbyCode, getInvitationDetails, updateLobbySettings, updatePlayerReadyState, getReadyState, getLobbySettings, updateBattleStatus, getBattleStatus, updateDifficulty, getDifficulty } from '../controller/BattleInvitationController.js';
 
 const router = express.Router();
 
 // Create a new battle invitation
 router.post('/invitations-lobby', createBattleInvitation);
-
-// Create an initial battle lobby without a guest player
-router.post('/initial-lobby', createInitialBattleLobby);
 
 // Update battle invitation status
 router.put('/invitations-lobby/:id/status', updateBattleInvitationStatus);
