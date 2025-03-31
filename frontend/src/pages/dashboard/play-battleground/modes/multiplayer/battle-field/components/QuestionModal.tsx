@@ -503,25 +503,6 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
         return null;
     };
 
-    // Add this debug function to help diagnose issues
-    const renderDebugInfo = () => {
-        // Only show in development environment
-        if (import.meta.env.DEV) {
-            const isHost = sessionStorage.getItem('is_host') === 'true';
-            const playerType = isHost ? 'host' : 'guest';
-
-            return (
-                <div className="absolute bottom-8 left-4 bg-black/70 text-xs text-white p-2 rounded">
-                    <div>Player: {playerType} (isHost: {String(isHost)})</div>
-                    <div>Card effects: {cardEffects.length}</div>
-                    <div>Time reduction: {timeReductionEffect ? 'YES' : 'NO'}</div>
-                    <div>Base timer: {difficultyMode || 'average'}</div>
-                </div>
-            );
-        }
-        return null;
-    };
-
     if (!isOpen || !currentQuestion) return null;
 
     return (
@@ -535,9 +516,6 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
 
                 {/* Time reduction animation (only shown briefly) */}
                 {showTimeReductionAnimation()}
-
-                {/* Debug information */}
-                {renderDebugInfo()}
 
                 {/* Question Counter */}
                 <div className="mb-4 text-sm text-white">
