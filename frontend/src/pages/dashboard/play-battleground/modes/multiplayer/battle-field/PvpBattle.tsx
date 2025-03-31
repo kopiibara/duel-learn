@@ -198,6 +198,44 @@ export default function PvpBattle() {
             setTimeout(() => {
               document.body.removeChild(messageElement);
             }, 2000);
+          } else if (response.data.data.card_effect.type === 'epic-1' && isCorrect) {
+            // Show notification for Answer Shield card effect
+            const messageElement = document.createElement('div');
+            messageElement.className = 'fixed inset-0 flex items-center justify-center z-50';
+            messageElement.innerHTML = `
+              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                Answer Shield Card: Opponent's next card selection will be blocked!
+              </div>
+            `;
+            document.body.appendChild(messageElement);
+
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+              document.body.removeChild(messageElement);
+            }, 2000);
+          } else if (response.data.data.card_effect.type === 'epic-2' && isCorrect) {
+            // Show notification for Regeneration card effect
+            const messageElement = document.createElement('div');
+            messageElement.className = 'fixed inset-0 flex items-center justify-center z-50';
+            const healthAmount = response.data.data.card_effect.health_amount || 10;
+            messageElement.innerHTML = `
+              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                Regeneration Card: Your health increased by ${healthAmount} HP!
+              </div>
+            `;
+            document.body.appendChild(messageElement);
+
+            // Update health locally if we can
+            if (isHost) {
+              setPlayerHealth(prev => Math.min(prev + healthAmount, 100));
+            } else {
+              setPlayerHealth(prev => Math.min(prev + healthAmount, 100));
+            }
+
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+              document.body.removeChild(messageElement);
+            }, 2000);
           }
         }
 

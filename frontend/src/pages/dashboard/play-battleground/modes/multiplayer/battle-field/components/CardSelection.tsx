@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios"; // Import axios for API calls
 
 // Import the actual card images
 import cardBackImage from "../../../../../../../assets/General/CardDesignBack.png";
@@ -43,6 +44,11 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     const [persistentCards, setPersistentCards] = useState<Card[]>([]);
     const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
     const [isFirstTurn, setIsFirstTurn] = useState(true);
+
+    // New state for card blocking effect
+    const [hasCardBlocking, setHasCardBlocking] = useState(false);
+    const [blockedCardCount, setBlockedCardCount] = useState(0);
+    const [visibleCardIndices, setVisibleCardIndices] = useState<number[]>([]);
 
     // Cards grouped by type for easier selection
     const cardsByType = {
@@ -269,6 +275,96 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         }
     };
 
+    // Check for card blocking effects
+    useEffect(() => {
+        if (isMyTurn) {
+            const checkForCardBlocking = async () => {
+                try {
+                    // Get session UUID and player type from sessionStorage (set in PvpBattle.tsx)
+                    const sessionUuid = sessionStorage.getItem('battle_session_uuid');
+                    const isHost = sessionStorage.getItem('is_host') === 'true';
+                    const playerType = isHost ? 'host' : 'guest';
+
+                    if (!sessionUuid) return;
+
+                    // Check if this player has any card blocking effects active
+                    const response = await axios.get(
+                        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/card-blocking-effects/${sessionUuid}/${playerType}`
+                    );
+
+                    if (response.data.success && response.data.data) {
+                        setHasCardBlocking(response.data.data.has_blocking_effect);
+                        setBlockedCardCount(response.data.data.cards_blocked);
+
+                        // If there's a blocking effect, randomly select which cards to hide
+                        if (response.data.data.has_blocking_effect) {
+                            const numCardsToShow = 3 - response.data.data.cards_blocked;
+
+                            // Create an array of available indices (0, 1, 2)
+                            const availableIndices = [0, 1, 2];
+
+                            // Shuffle the indices
+                            for (let i = availableIndices.length - 1; i > 0; i--) {
+                                const j = Math.floor(Math.random() * (i + 1));
+                                [availableIndices[i], availableIndices[j]] = [availableIndices[j], availableIndices[i]];
+                            }
+
+                            // Take only the number of cards we want to show
+                            const indicesToShow = availableIndices.slice(0, numCardsToShow);
+                            setVisibleCardIndices(indicesToShow);
+
+                            // Show notification about blocked cards
+                            const messageElement = document.createElement('div');
+                            messageElement.className = 'fixed inset-0 flex items-center justify-center z-50';
+                            messageElement.innerHTML = `
+                                <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                                    Answer Shield: ${response.data.data.cards_blocked} of your cards have been blocked!
+                                </div>
+                            `;
+                            document.body.appendChild(messageElement);
+
+                            // Remove the message after 2 seconds
+                            setTimeout(() => {
+                                document.body.removeChild(messageElement);
+                            }, 2000);
+
+                            // Mark the blocking effect as used
+                            if (response.data.data.effects && response.data.data.effects.length > 0) {
+                                const effectToConsume = response.data.data.effects[0];
+
+                                // Consume the effect
+                                await axios.post(
+                                    `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/consume-card-effect`,
+                                    {
+                                        session_uuid: sessionUuid,
+                                        player_type: playerType,
+                                        effect_type: effectToConsume.type
+                                    }
+                                );
+
+                                console.log(`Card blocking effect consumed`);
+                            }
+                        } else {
+                            // No blocking, show all cards
+                            setVisibleCardIndices([0, 1, 2]);
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error checking for card blocking effects:", error);
+                    // Default to showing all cards on error
+                    setVisibleCardIndices([0, 1, 2]);
+                }
+            };
+
+            checkForCardBlocking();
+        } else {
+            // Reset when not player's turn
+            setHasCardBlocking(false);
+            setBlockedCardCount(0);
+            setVisibleCardIndices([0, 1, 2]);
+        }
+    }, [isMyTurn]);
+
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120">
             {/* Only show turn indicator when it's NOT the player's turn */}
@@ -313,37 +409,44 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                     <AnimatePresence>
                         {showCardOptions && backCardExitComplete && (
                             <div className="flex gap-4">
-                                {selectedCards.map((card, index) => (
-                                    <motion.div
-                                        key={card.id + "-" + index} // Add index to key to ensure uniqueness when the same card appears twice
-                                        className={`w-[200px] h-[300px] rounded-xl overflow-hidden cursor-pointer shadow-lg relative ${getCardBackground(card.type)} border-2 border-white/20`}
-                                        initial={{ opacity: 0, y: 20, rotateY: -90 }}
-                                        animate={{ opacity: 1, y: 0, rotateY: 0 }}
-                                        transition={{
-                                            duration: 0.4,
-                                            delay: index * 0.15,
-                                            ease: "easeOut"
-                                        }}
-                                        onClick={() => handleCardSelect(card.id, index)}
-                                        whileHover={{
-                                            y: -10,
-                                            scale: 1.05,
-                                            transition: { duration: 0.2 }
-                                        }}
-                                    >
-                                        {/* For all cards, display the card name and info */}
-                                        <div className="flex flex-col h-full p-4 text-white">
-                                            <div className="text-lg font-bold mb-2">{card.name}</div>
-                                            <div className="text-xs italic mb-4">{card.type}</div>
-                                            <div className="border-t border-white/20 my-2 pt-2">
-                                                <p className="text-sm">{card.description}</p>
+                                {selectedCards.map((card, index) => {
+                                    // Only render this card if it's in the visibleCardIndices array
+                                    if (!visibleCardIndices.includes(index) && hasCardBlocking) {
+                                        return null; // Skip this card if it's blocked
+                                    }
+
+                                    return (
+                                        <motion.div
+                                            key={card.id + "-" + index} // Add index to key to ensure uniqueness when the same card appears twice
+                                            className={`w-[200px] h-[300px] rounded-xl overflow-hidden cursor-pointer shadow-lg relative ${getCardBackground(card.type)} border-2 border-white/20`}
+                                            initial={{ opacity: 0, y: 20, rotateY: -90 }}
+                                            animate={{ opacity: 1, y: 0, rotateY: 0 }}
+                                            transition={{
+                                                duration: 0.4,
+                                                delay: index * 0.15,
+                                                ease: "easeOut"
+                                            }}
+                                            onClick={() => handleCardSelect(card.id, index)}
+                                            whileHover={{
+                                                y: -10,
+                                                scale: 1.05,
+                                                transition: { duration: 0.2 }
+                                            }}
+                                        >
+                                            {/* For all cards, display the card name and info */}
+                                            <div className="flex flex-col h-full p-4 text-white">
+                                                <div className="text-lg font-bold mb-2">{card.name}</div>
+                                                <div className="text-xs italic mb-4">{card.type}</div>
+                                                <div className="border-t border-white/20 my-2 pt-2">
+                                                    <p className="text-sm">{card.description}</p>
+                                                </div>
+                                                <div className="mt-auto flex justify-end">
+                                                    <div className="text-xs italic opacity-60">Card ID: {card.id}</div>
+                                                </div>
                                             </div>
-                                            <div className="mt-auto flex justify-end">
-                                                <div className="text-xs italic opacity-60">Card ID: {card.id}</div>
-                                            </div>
-                                        </div>
-                                    </motion.div>
-                                ))}
+                                        </motion.div>
+                                    );
+                                })}
                             </div>
                         )}
                     </AnimatePresence>
@@ -354,6 +457,15 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                         </div>
                     )}
                 </>
+            )}
+
+            {/* Show notification if cards are blocked */}
+            {hasCardBlocking && blockedCardCount > 0 && isMyTurn && (
+                <div className="absolute top-[100px] text-red-400 text-xl font-semibold">
+                    {blockedCardCount === 1 ?
+                        "Your opponent used Answer Shield: 1 card has been blocked!" :
+                        `Your opponent used Answer Shield: ${blockedCardCount} cards have been blocked!`}
+                </div>
             )}
         </div>
     );

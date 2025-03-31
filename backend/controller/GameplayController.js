@@ -815,6 +815,36 @@ export const updateBattleRound = async (req, res) => {
                     target: player_type  // Current player keeps their turn
                 };
                 console.log(`Card effect: ${player_type} used Quick Draw to answer twice in a row`);
+            } else if (card_id === "epic-1") {
+                // Answer Shield: Block one card used by opponent
+                const targetPlayer = player_type === 'host' ? 'guest' : 'host';
+                cardEffect = {
+                    type: "epic-1",
+                    effect: "block_card",
+                    target: targetPlayer,
+                    block_count: 1  // Block one card in opponent's next turn
+                };
+                console.log(`Card effect: ${player_type} used Answer Shield to block one card for ${targetPlayer}`);
+            } else if (card_id === "epic-2") {
+                // Regeneration: Gain +10 HP if the question is answered correctly
+                // Apply the effect immediately
+                cardEffect = {
+                    type: "epic-2",
+                    effect: "regenerate",
+                    target: player_type,
+                    health_amount: 10
+                };
+
+                // Execute regeneration effect right away
+                const healthField = player_type === 'host' ? 'host_health' : 'guest_health';
+                await connection.query(
+                    `UPDATE battle_scores 
+                    SET ${healthField} = LEAST(${healthField} + ?, 100)
+                    WHERE session_uuid = ?`,
+                    [10, session_uuid]
+                );
+
+                console.log(`Card effect: ${player_type} used Regeneration to gain +10 HP`);
             }
         }
 
@@ -983,9 +1013,13 @@ export const updateBattleRound = async (req, res) => {
 
             if (cardEffect && is_correct) {
                 if (card_id === "normal-1") {
-                    responseMessage = `${player_type} used Time Manipulation card: Opponent's answer time will be reduced by 30% (min 5s)`;
+                    responseMessage = `${player_type} used Time Manipulation card: Opponent's answer time will be reduced by 30% (min 5s)`
                 } else if (card_id === "normal-2") {
                     responseMessage = `${player_type} used Quick Draw card: Player gets another turn`;
+                } else if (card_id === "epic-1") {
+                    responseMessage = `${player_type} used Answer Shield card: Opponent's next card will be blocked`;
+                } else if (card_id === "epic-2") {
+                    responseMessage = `${player_type} used Regeneration card: Player's health increased by 10 HP`;
                 }
             }
 
@@ -1430,6 +1464,84 @@ export const consumeCardEffect = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to consume card effect",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+// Add this new function to check if a player has any card blocking effects
+export const checkCardBlockingEffects = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid, player_type } = req.params;
+
+        if (!session_uuid || !player_type) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: session_uuid and player_type"
+            });
+        }
+
+        console.log(`Checking card blocking effects for ${player_type} in session ${session_uuid}`);
+
+        // Get the battle session to access active card effects
+        const [sessionResult] = await connection.query(
+            `SELECT active_card_effects FROM battle_sessions 
+            WHERE session_uuid = ? AND is_active = 1`,
+            [session_uuid]
+        );
+
+        if (sessionResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle session not found or not active"
+            });
+        }
+
+        // Extract active card effects
+        let activeCardEffects = [];
+        let blockingEffects = [];
+
+        if (sessionResult[0].active_card_effects) {
+            try {
+                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
+
+                // Filter for blocking effects that target this player and are not used
+                blockingEffects = activeCardEffects.filter(effect =>
+                    effect.target === player_type &&
+                    effect.effect === "block_card" &&
+                    !effect.used
+                );
+
+                console.log(`Card blocking effects for ${player_type}: ${JSON.stringify(blockingEffects)}`);
+            } catch (e) {
+                console.error('Error parsing active_card_effects:', e);
+            }
+        }
+
+        const hasBlockingEffect = blockingEffects.length > 0;
+        const numCardsBlocked = hasBlockingEffect
+            ? blockingEffects.reduce((total, effect) => total + (effect.block_count || 1), 0)
+            : 0;
+
+        res.json({
+            success: true,
+            data: {
+                has_blocking_effect: hasBlockingEffect,
+                cards_blocked: numCardsBlocked,
+                effects: blockingEffects
+            }
+        });
+
+    } catch (error) {
+        console.error('Error checking card blocking effects:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to check card blocking effects",
             error: error.message
         });
     } finally {
