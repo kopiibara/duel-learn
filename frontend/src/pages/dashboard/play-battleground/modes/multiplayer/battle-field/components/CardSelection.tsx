@@ -50,6 +50,10 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     const [blockedCardCount, setBlockedCardCount] = useState(0);
     const [visibleCardIndices, setVisibleCardIndices] = useState<number[]>([]);
 
+    // New state for mind control effect
+    const [hasMindControl, setHasMindControl] = useState(false);
+    const [mindControlActive, setMindControlActive] = useState(false);
+
     // Cards grouped by type for easier selection
     const cardsByType = {
         basic: [
@@ -365,6 +369,83 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         }
     }, [isMyTurn]);
 
+    // Check for mind control effects
+    useEffect(() => {
+        if (isMyTurn) {
+            const checkForMindControl = async () => {
+                try {
+                    // Get session UUID and player type from sessionStorage (set in PvpBattle.tsx)
+                    const sessionUuid = sessionStorage.getItem('battle_session_uuid');
+                    const isHost = sessionStorage.getItem('is_host') === 'true';
+                    const playerType = isHost ? 'host' : 'guest';
+
+                    if (!sessionUuid) return;
+
+                    // Check if this player has any mind control effects active
+                    const response = await axios.get(
+                        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/mind-control-effects/${sessionUuid}/${playerType}`
+                    );
+
+                    if (response.data.success && response.data.data) {
+                        setHasMindControl(response.data.data.has_mind_control_effect);
+
+                        // If there's a mind control effect active, the player can't select cards
+                        if (response.data.data.has_mind_control_effect) {
+                            setMindControlActive(true);
+
+                            // Show notification about mind control
+                            const messageElement = document.createElement('div');
+                            messageElement.className = 'fixed inset-0 flex items-center justify-center z-50';
+                            messageElement.innerHTML = `
+                                <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                                    Mind Control: You cannot select a card this turn!
+                                </div>
+                            `;
+                            document.body.appendChild(messageElement);
+
+                            // Remove the message after 2 seconds
+                            setTimeout(() => {
+                                document.body.removeChild(messageElement);
+                            }, 2000);
+
+                            // Mark the mind control effect as used
+                            if (response.data.data.effects && response.data.data.effects.length > 0) {
+                                const effectToConsume = response.data.data.effects[0];
+
+                                // Consume the effect
+                                await axios.post(
+                                    `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/consume-card-effect`,
+                                    {
+                                        session_uuid: sessionUuid,
+                                        player_type: playerType,
+                                        effect_type: effectToConsume.type
+                                    }
+                                );
+
+                                console.log(`Mind control effect consumed`);
+
+                                // Auto-select "no-card" after a delay to simulate no card selection
+                                setTimeout(() => {
+                                    onCardSelected("no-card-selected");
+                                    setShowCardOptions(false);
+                                    setTimerActive(false);
+                                }, 3000);
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error("Error checking for mind control effects:", error);
+                }
+            };
+
+            checkForMindControl();
+        } else {
+            // Reset when not player's turn
+            setHasMindControl(false);
+            setMindControlActive(false);
+        }
+    }, [isMyTurn, onCardSelected]);
+
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120">
             {/* Only show turn indicator when it's NOT the player's turn */}
@@ -407,7 +488,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                     )}
 
                     <AnimatePresence>
-                        {showCardOptions && backCardExitComplete && (
+                        {showCardOptions && backCardExitComplete && !mindControlActive && (
                             <div className="flex gap-4">
                                 {selectedCards.map((card, index) => {
                                     // Only render this card if it's in the visibleCardIndices array
@@ -456,6 +537,18 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                             Choose a card to use in this round
                         </div>
                     )}
+
+                    {/* Show information about mind control if active */}
+                    {mindControlActive && showCardOptions && (
+                        <div className="flex flex-col items-center gap-4">
+                            <div className="bg-yellow-600 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-yellow-500/50">
+                                Mind Control Active: Cannot select a card!
+                            </div>
+                            <div className="text-white text-lg">
+                                Opponent used Mind Control - proceeding without a card...
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
 
@@ -465,6 +558,13 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                     {blockedCardCount === 1 ?
                         "Your opponent used Answer Shield: 1 card has been blocked!" :
                         `Your opponent used Answer Shield: ${blockedCardCount} cards have been blocked!`}
+                </div>
+            )}
+
+            {/* Show notification if mind control is active */}
+            {hasMindControl && mindControlActive && isMyTurn && (
+                <div className="absolute top-[100px] text-red-400 text-xl font-semibold">
+                    Mind Control: Your opponent has prevented you from using cards this turn!
                 </div>
             )}
         </div>

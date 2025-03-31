@@ -16,7 +16,9 @@ import {
     updateBattleScores,
     getActiveCardEffects,
     consumeCardEffect,
-    checkCardBlockingEffects
+    checkCardBlockingEffects,
+    checkMindControlEffects,
+    applyPoisonEffects
 } from '../controller/GameplayController.js';
 
 const router = express.Router();
@@ -37,6 +39,8 @@ router.get('/battle/round/:session_uuid', getBattleRound);
 router.get('/battle/card-effects/:session_uuid/:player_type', getActiveCardEffects);
 router.post('/battle/consume-card-effect', consumeCardEffect);
 router.get('/battle/card-blocking-effects/:session_uuid/:player_type', checkCardBlockingEffects);
+router.get('/battle/mind-control-effects/:session_uuid/:player_type', checkMindControlEffects);
+router.post('/battle/apply-poison-effects', applyPoisonEffects);
 
 // Battle scores
 router.post('/battle/initialize-scores', initializeBattleScores);
