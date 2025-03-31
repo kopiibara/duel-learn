@@ -13,7 +13,9 @@ import {
     getBattleRound,
     initializeBattleScores,
     getBattleScores,
-    updateBattleScores
+    updateBattleScores,
+    getActiveCardEffects,
+    consumeCardEffect
 } from '../controller/GameplayController.js';
 
 const router = express.Router();
@@ -29,6 +31,10 @@ router.get('/battle/session-with-material/:lobby_code', getBattleSessionWithMate
 router.post('/battle/initialize-rounds', initializeBattleRounds);
 router.put('/battle/update-round', updateBattleRound);
 router.get('/battle/round/:session_uuid', getBattleRound);
+
+// Card effects
+router.get('/battle/card-effects/:session_uuid/:player_type', getActiveCardEffects);
+router.post('/battle/consume-card-effect', consumeCardEffect);
 
 // Battle scores
 router.post('/battle/initialize-scores', initializeBattleScores);

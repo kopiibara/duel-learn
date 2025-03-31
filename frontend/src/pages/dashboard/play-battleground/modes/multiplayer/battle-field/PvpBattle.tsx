@@ -165,6 +165,42 @@ export default function PvpBattle() {
       if (response.data.success) {
         console.log(`Card ${selectedCardId} selection and answer submission successful, turn switched`);
 
+        // Check if a card effect was applied
+        if (response.data.data.card_effect) {
+          if (response.data.data.card_effect.type === 'normal-2' && isCorrect) {
+            // Show notification for Quick Draw card effect
+            const messageElement = document.createElement('div');
+            messageElement.className = 'fixed inset-0 flex items-center justify-center z-50';
+            messageElement.innerHTML = `
+              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                Quick Draw Card: You get another turn!
+              </div>
+            `;
+            document.body.appendChild(messageElement);
+
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+              document.body.removeChild(messageElement);
+            }, 2000);
+          } else if (response.data.data.card_effect.type === 'normal-1' && isCorrect) {
+            // Show notification for Time Manipulation card effect
+            const messageElement = document.createElement('div');
+            messageElement.className = 'fixed inset-0 flex items-center justify-center z-50';
+            const reductionPercent = response.data.data.card_effect.reduction_percent || 30;
+            messageElement.innerHTML = `
+              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                Time Manipulation Card: Opponent's time will be reduced by ${reductionPercent}%!
+              </div>
+            `;
+            document.body.appendChild(messageElement);
+
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+              document.body.removeChild(messageElement);
+            }, 2000);
+          }
+        }
+
         // Switch turns locally but keep UI visible
         setIsMyTurn(false);
 
@@ -294,7 +330,7 @@ export default function PvpBattle() {
     }
   };
 
-  // Fetch battle session data to get difficulty mode and study material id
+  // Effect to fetch battle session data to get difficulty mode and study material id
   useEffect(() => {
     const fetchBattleSessionData = async () => {
       if (!lobbyCode) return;
@@ -330,6 +366,12 @@ export default function PvpBattle() {
               console.error("Error fetching study material info:", error);
             }
           }
+
+          // Store session UUID and player role in sessionStorage for card effects
+          if (response.data.data.session_uuid) {
+            sessionStorage.setItem('battle_session_uuid', response.data.data.session_uuid);
+            sessionStorage.setItem('is_host', isHost.toString());
+          }
         }
       } catch (error) {
         console.error("Error fetching battle session data:", error);
@@ -341,8 +383,13 @@ export default function PvpBattle() {
     // Set up polling for battle session data
     const pollInterval = setInterval(fetchBattleSessionData, 2000);
 
-    return () => clearInterval(pollInterval);
-  }, [lobbyCode]);
+    return () => {
+      clearInterval(pollInterval);
+      // Clean up session storage when component unmounts
+      sessionStorage.removeItem('battle_session_uuid');
+      sessionStorage.removeItem('is_host');
+    };
+  }, [lobbyCode, isHost]);
 
   // Effect to fetch battle scores
   useEffect(() => {
@@ -495,7 +542,7 @@ export default function PvpBattle() {
 
         {/* Card Selection UI - Show after the waiting screen and delay */}
         {gameStarted && showCards && !waitingForPlayer && showCardsAfterDelay && (
-          <div className="fixed inset-0 bg-black/40 z-10">
+          <div className="fixed inset-0 bg-black/20 z-10">
             <CardSelection
               isMyTurn={isMyTurn}
               opponentName={opponentName}

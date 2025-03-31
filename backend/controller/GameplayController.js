@@ -787,7 +787,36 @@ export const updateBattleRound = async (req, res) => {
         const session = sessionResult[0];
         // Determine next player's turn
         const currentTurn = session.current_turn;
-        const nextTurn = currentTurn === session.host_id ? session.guest_id : session.host_id;
+        let nextTurn = currentTurn === session.host_id ? session.guest_id : session.host_id;
+
+        // Apply card effects if answer is correct
+        let cardEffect = null;
+        if (is_correct) {
+            // Handle special card effects
+            if (card_id === "normal-1") {
+                // Time Manipulation: Reduce opponent's answer time
+                // The opponent is the target of the effect
+                const targetPlayer = player_type === 'host' ? 'guest' : 'host';
+                cardEffect = {
+                    type: "normal-1",
+                    effect: "reduce_time",
+                    target: targetPlayer, // FIXED: Target is the opponent
+                    reduction_percent: 30, // Reduce time by 30%
+                    min_time: 5           // Minimum time in seconds
+                };
+                console.log(`Card effect: ${player_type} used Time Manipulation to reduce answer time for ${targetPlayer} by 30% (min 5s)`);
+            } else if (card_id === "normal-2") {
+                // Quick Draw: Answer twice in a row
+                // Keep the turn with the current player
+                nextTurn = currentTurn;
+                cardEffect = {
+                    type: "normal-2",
+                    effect: "double_turn",
+                    target: player_type  // Current player keeps their turn
+                };
+                console.log(`Card effect: ${player_type} used Quick Draw to answer twice in a row`);
+            }
+        }
 
         // Start a transaction
         await connection.beginTransaction();
@@ -796,6 +825,7 @@ export const updateBattleRound = async (req, res) => {
             // Update the battle rounds with selected card and answer result
             const updateField = player_type === 'host' ? 'host_card' : 'guest_card';
             const answerField = player_type === 'host' ? 'host_answer_correct' : 'guest_answer_correct';
+            const cardEffectField = player_type === 'host' ? 'host_card_effect' : 'guest_card_effect';
 
             // Set card_id appropriately
             let finalCardId = card_id;
@@ -807,24 +837,111 @@ export const updateBattleRound = async (req, res) => {
                 console.log(`${player_type} did not select a card within the time limit`);
             }
 
-            const updateRoundQuery = `
-                UPDATE battle_rounds 
-                SET ${updateField} = ?,
-                    ${answerField} = ?
-                WHERE session_uuid = ?
-            `;
+            // Check if the card_effect columns exist
+            let updateRoundQuery;
+            let updateRoundParams;
 
-            await connection.query(updateRoundQuery, [finalCardId, is_correct, session_uuid]);
+            const [columns] = await connection.query(`
+                SHOW COLUMNS FROM battle_rounds 
+                WHERE Field IN ('host_card_effect', 'guest_card_effect')
+            `);
+
+            if (columns.length >= 2) {
+                // Columns exist, include them in the update
+                updateRoundQuery = `
+                    UPDATE battle_rounds 
+                    SET ${updateField} = ?,
+                        ${answerField} = ?,
+                        ${cardEffectField} = ?
+                    WHERE session_uuid = ?
+                `;
+                updateRoundParams = [
+                    finalCardId,
+                    is_correct,
+                    cardEffect ? JSON.stringify(cardEffect) : null,
+                    session_uuid
+                ];
+            } else {
+                // Add the columns first
+                console.log("Adding card effect columns to battle_rounds table");
+                await connection.query(`
+                    ALTER TABLE battle_rounds 
+                    ADD COLUMN host_card_effect JSON NULL,
+                    ADD COLUMN guest_card_effect JSON NULL
+                `);
+
+                // Then perform the update
+                updateRoundQuery = `
+                    UPDATE battle_rounds 
+                    SET ${updateField} = ?,
+                        ${answerField} = ?,
+                        ${cardEffectField} = ?
+                    WHERE session_uuid = ?
+                `;
+                updateRoundParams = [
+                    finalCardId,
+                    is_correct,
+                    cardEffect ? JSON.stringify(cardEffect) : null,
+                    session_uuid
+                ];
+            }
+
+            await connection.query(updateRoundQuery, updateRoundParams);
+
+            // Update battle_sessions to store active card effects
+            // First check if the active_card_effects column exists
+            const [sessionColumns] = await connection.query(`
+                SHOW COLUMNS FROM battle_sessions 
+                WHERE Field = 'active_card_effects'
+            `);
+
+            if (sessionColumns.length === 0) {
+                // Add the column
+                console.log("Adding active_card_effects column to battle_sessions table");
+                await connection.query(`
+                    ALTER TABLE battle_sessions 
+                    ADD COLUMN active_card_effects JSON NULL
+                `);
+            }
+
+            // Update or set active card effects
+            let activeCardEffects = [];
+
+            if (session.active_card_effects) {
+                try {
+                    activeCardEffects = JSON.parse(session.active_card_effects);
+                    if (!Array.isArray(activeCardEffects)) {
+                        activeCardEffects = [];
+                    }
+                } catch (e) {
+                    console.error('Error parsing active_card_effects:', e);
+                    activeCardEffects = [];
+                }
+            }
+
+            // Add new card effect if present and answer was correct
+            if (cardEffect && is_correct) {
+                activeCardEffects.push({
+                    ...cardEffect,
+                    applied_at: new Date().toISOString(),
+                    used: false
+                });
+            }
 
             // Update turn in battle_sessions table
             const updateTurnQuery = `
                 UPDATE battle_sessions 
                 SET current_turn = ?,
+                    active_card_effects = ?,
                     updated_at = CURRENT_TIMESTAMP
                 WHERE session_uuid = ? AND is_active = 1
             `;
 
-            await connection.query(updateTurnQuery, [nextTurn, session_uuid]);
+            await connection.query(updateTurnQuery, [
+                nextTurn,
+                JSON.stringify(activeCardEffects),
+                session_uuid
+            ]);
 
             // If answer was provided, update battle scores
             if (typeof is_correct !== 'undefined') {
@@ -861,13 +978,25 @@ export const updateBattleRound = async (req, res) => {
                 [session_uuid]
             );
 
+            // Format the response based on card effects
+            let responseMessage = `${player_type} card selection and answer recorded, turn switched to the next player`;
+
+            if (cardEffect && is_correct) {
+                if (card_id === "normal-1") {
+                    responseMessage = `${player_type} used Time Manipulation card: Opponent's answer time will be reduced by 30% (min 5s)`;
+                } else if (card_id === "normal-2") {
+                    responseMessage = `${player_type} used Quick Draw card: Player gets another turn`;
+                }
+            }
+
             res.json({
                 success: true,
-                message: `${player_type} card selection and answer recorded, turn switched to the next player`,
+                message: responseMessage,
                 data: {
                     round: updatedRound[0] || null,
                     session: updatedSession[0] || null,
-                    scores: updatedScores[0] || null
+                    scores: updatedScores[0] || null,
+                    card_effect: cardEffect
                 }
             });
 
@@ -1132,6 +1261,175 @@ export const updateBattleScores = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to update battle scores",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+// Add this new function to get active card effects for a player
+export const getActiveCardEffects = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid, player_type } = req.params;
+
+        if (!session_uuid || !player_type) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: session_uuid and player_type"
+            });
+        }
+
+        console.log(`Getting active card effects for ${player_type} in session ${session_uuid}`);
+
+        // Get the battle session to access active card effects
+        const [sessionResult] = await connection.query(
+            `SELECT active_card_effects FROM battle_sessions 
+            WHERE session_uuid = ? AND is_active = 1`,
+            [session_uuid]
+        );
+
+        if (sessionResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle session not found or not active"
+            });
+        }
+
+        // Extract active card effects
+        let activeCardEffects = [];
+        let playerEffects = [];
+
+        if (sessionResult[0].active_card_effects) {
+            try {
+                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
+                console.log(`All active card effects: ${JSON.stringify(activeCardEffects)}`);
+
+                // Filter effects targeting this player
+                playerEffects = activeCardEffects.filter(effect =>
+                    effect.target === player_type && !effect.used
+                );
+
+                console.log(`Card effects targeting ${player_type}: ${JSON.stringify(playerEffects)}`);
+            } catch (e) {
+                console.error('Error parsing active_card_effects:', e);
+            }
+        } else {
+            console.log(`No active card effects found for session ${session_uuid}`);
+        }
+
+        res.json({
+            success: true,
+            data: {
+                player_type,
+                effects: playerEffects
+            }
+        });
+
+    } catch (error) {
+        console.error('Error getting active card effects:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to get active card effects",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+// Add this function to mark a card effect as used
+export const consumeCardEffect = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid, player_type, effect_type } = req.body;
+
+        if (!session_uuid || !player_type || !effect_type) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: session_uuid, player_type, and effect_type"
+            });
+        }
+
+        // Get the current active card effects
+        const [sessionResult] = await connection.query(
+            `SELECT active_card_effects FROM battle_sessions 
+            WHERE session_uuid = ? AND is_active = 1`,
+            [session_uuid]
+        );
+
+        if (sessionResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle session not found or not active"
+            });
+        }
+
+        // Parse and update the active card effects
+        let activeCardEffects = [];
+        let updated = false;
+
+        if (sessionResult[0].active_card_effects) {
+            try {
+                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
+
+                // Find and mark the effect as used
+                for (let i = 0; i < activeCardEffects.length; i++) {
+                    if (activeCardEffects[i].target === player_type &&
+                        activeCardEffects[i].type === effect_type &&
+                        !activeCardEffects[i].used) {
+                        activeCardEffects[i].used = true;
+                        activeCardEffects[i].consumed_at = new Date().toISOString();
+                        updated = true;
+                        break;
+                    }
+                }
+            } catch (e) {
+                console.error('Error parsing active_card_effects:', e);
+                return res.status(500).json({
+                    success: false,
+                    message: "Error processing card effects",
+                    error: e.message
+                });
+            }
+        }
+
+        if (!updated) {
+            return res.status(404).json({
+                success: false,
+                message: "No matching active card effect found"
+            });
+        }
+
+        // Update the session with the modified card effects
+        await connection.query(
+            `UPDATE battle_sessions 
+            SET active_card_effects = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE session_uuid = ? AND is_active = 1`,
+            [JSON.stringify(activeCardEffects), session_uuid]
+        );
+
+        res.json({
+            success: true,
+            message: `Card effect ${effect_type} consumed for ${player_type}`,
+            data: {
+                remaining_effects: activeCardEffects.filter(effect =>
+                    effect.target === player_type && !effect.used
+                )
+            }
+        });
+
+    } catch (error) {
+        console.error('Error consuming card effect:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to consume card effect",
             error: error.message
         });
     } finally {
