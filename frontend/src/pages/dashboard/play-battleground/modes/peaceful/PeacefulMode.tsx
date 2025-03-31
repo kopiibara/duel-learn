@@ -531,115 +531,132 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     const rightArrowStyle = "absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 bg-[#080511] rounded-full w-[25px] h-[25px] flex items-center justify-center border border-[#FF3B3F]";
 
     // First, render the answer buttons if we're showing results
-    if (showResult) {
-      if (isCorrect) {
-        return (
-          <div className="w-full flex flex-col items-center">
-            <div className="text-sm text-gray-400 whitespace-nowrap opacity-80 mb-2">
-              Use ← → arrow keys or click buttons
-            </div>
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={handleMastered}
-                className={masterButtonStyle}
-              >
-                <div className={leftArrowStyle}>
-                  <KeyboardArrowLeftIcon sx={{ fontSize: 20 }} />
-                </div>
-                Mastered!
-              </button>
-              <button
-                onClick={handleUnmastered}
-                className={retakeButtonStyle}
-              >
-                Retake
-                <div className={rightArrowStyle}>
-                  <KeyboardArrowRightIcon sx={{ fontSize: 20 }} />
-                </div>
-              </button>
-            </div>
+    if (showResult && isCorrect) {
+      return (
+        <div className="w-full flex flex-col items-center">
+          <div className="text-sm text-gray-400 whitespace-nowrap opacity-80 mb-2">
+            Use ← → arrow keys or click buttons
           </div>
-        );
-      } else {
-        return (
-          <div className="w-full flex justify-center">
+          <div className="flex gap-4 justify-center">
             <button
-              onClick={handleNextQuestion}
-              className="mt-6 px-8 py-3 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
+              onClick={handleMastered}
+              className={masterButtonStyle}
             >
-              Next Question
+              <div className={leftArrowStyle}>
+                <KeyboardArrowLeftIcon sx={{ fontSize: 20 }} />
+              </div>
+              Mastered!
+            </button>
+            <button
+              onClick={handleUnmastered}
+              className={retakeButtonStyle}
+            >
+              Retake
+              <div className={rightArrowStyle}>
+                <KeyboardArrowRightIcon sx={{ fontSize: 20 }} />
+              </div>
             </button>
           </div>
-        );
-      }
+        </div>
+      );
     }
 
-    // If not showing results, render the question options
+    // If not showing results or answer is incorrect, render the question options
     switch (currentQuestion.questionType) {
       case "multiple-choice":
         return (
-          <div className="w-full max-w-[1000px] mx-auto">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              {currentQuestion.options?.map((option: string, index: number) => (
-                <button
-                  key={index}
-                  onClick={() => handleAnswerSubmit(option)}
-                  disabled={showResult}
-                  className={`h-[100px] w-full bg-transparent 
-                    ${getButtonStyle(option)}
-                    rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                    disabled:cursor-not-allowed px-4 text-center`}
-                >
-                  {option}
-                </button>
-              ))}
+          <div className="w-full flex flex-col items-center gap-4">
+            <div className="w-full max-w-[1000px] mx-auto">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                {currentQuestion.options?.map((option: string, index: number) => (
+                  <button
+                    key={index}
+                    onClick={() => !showResult && handleAnswerSubmit(option)}
+                    disabled={showResult}
+                    className={`h-[100px] w-full bg-transparent 
+                      ${getButtonStyle(option)}
+                      rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                      disabled:cursor-not-allowed px-4 text-center`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
             </div>
+            {showResult && !isCorrect && (
+              <button
+                onClick={handleNextQuestion}
+                className="mt-4 px-8 py-3 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
+              >
+                Next Question
+              </button>
+            )}
           </div>
         );
 
       case "identification":
         return (
-          <div className="w-full max-w-[500px] mt-3 mx-auto">
-            <input
-              type="text"
-              value={inputAnswer}
-              onChange={(e) => setInputAnswer(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === "Enter" && !showResult) {
-                  handleAnswerSubmit(inputAnswer);
-                }
-              }}
-              disabled={showResult}
-              className={`w-full p-4 rounded-lg bg-transparent py-10 px-10 border-2 text-center
-                ${
-                  showResult
-                    ? isCorrect
-                      ? "border-[#52A647]"
-                      : "border-[#FF3B3F]"
-                    : "border-gray-600"
-                }
-                text-white focus:outline-none placeholder:text-[#6F658D]`}
-              placeholder="Type your answer here..."
-            />
+          <div className="w-full flex flex-col items-center gap-4">
+            <div className="w-full max-w-[500px] mt-3 mx-auto">
+              <input
+                type="text"
+                value={inputAnswer}
+                onChange={(e) => setInputAnswer(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === "Enter" && !showResult) {
+                    handleAnswerSubmit(inputAnswer);
+                  }
+                }}
+                disabled={showResult}
+                className={`w-full p-4 rounded-lg bg-transparent py-10 px-10 border-2 text-center
+                  ${
+                    showResult
+                      ? isCorrect
+                        ? "border-[#52A647]"
+                        : "border-[#FF3B3F]"
+                      : "border-gray-600"
+                  }
+                  text-white focus:outline-none placeholder:text-[#6F658D]`}
+                placeholder="Type your answer here..."
+              />
+            </div>
+            {showResult && !isCorrect && (
+              <button
+                onClick={handleNextQuestion}
+                className="mt-4 px-8 py-3 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
+              >
+                Next Question
+              </button>
+            )}
           </div>
         );
 
       case "true-false":
         return (
-          <div className="w-full flex justify-center gap-4">
-            {["true", "false"].map((option) => (
+          <div className="w-full flex flex-col items-center gap-4">
+            <div className="w-full flex justify-center gap-4">
+              {["true", "false"].map((option) => (
+                <button
+                  key={option}
+                  onClick={() => !showResult && handleAnswerSubmit(option)}
+                  disabled={showResult}
+                  className={`h-[100px] w-[200px] bg-transparent 
+                    ${getButtonStyle(option)}
+                    rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                    disabled:cursor-not-allowed`}
+                >
+                  {option.toUpperCase()}
+                </button>
+              ))}
+            </div>
+            {showResult && !isCorrect && (
               <button
-                key={option}
-                onClick={() => handleAnswerSubmit(option)}
-                disabled={showResult}
-                className={`h-[100px] w-[200px] bg-transparent 
-                  ${getButtonStyle(option)}
-                  rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                  disabled:cursor-not-allowed`}
+                onClick={handleNextQuestion}
+                className="mt-4 px-8 py-3 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
               >
-                {option.toUpperCase()}
+                Next Question
               </button>
-            ))}
+            )}
           </div>
         );
     }

@@ -10,6 +10,7 @@ const openai = new OpenAI({
 
 // Add this at the top of the file, after the openai initialization
 let answerDistribution = { A: 0, B: 0, C: 0, D: 0 };
+let trueFalseDistribution = { True: 0, False: 0 };
 
 // Updated helper function to fetch item_id from study_material_content with corrected column names
 const getItemIdFromStudyMaterial = async (
@@ -233,6 +234,28 @@ const getBalancedAnswerPosition = (currentDistribution, totalQuestions) => {
   return availableOptions[Math.floor(Math.random() * availableOptions.length)];
 };
 
+// Add this helper function near getBalancedAnswerPosition
+const getBalancedTrueFalseAnswer = (currentDistribution, totalQuestions) => {
+  // Initialize distribution if not provided
+  const distribution = currentDistribution || { True: 0, False: 0 };
+  
+  // Calculate target distribution (roughly equal)
+  const targetPerOption = Math.ceil(totalQuestions / 2);
+  
+  // Get available options that haven't exceeded target distribution
+  const availableOptions = Object.entries(distribution)
+    .filter(([_, count]) => count < targetPerOption)
+    .map(([answer]) => answer);
+  
+  // If no available options, reset distribution and pick randomly
+  if (availableOptions.length === 0) {
+    return Math.random() < 0.5 ? "True" : "False";
+  }
+  
+  // Randomly select from available options
+  return availableOptions[Math.floor(Math.random() * availableOptions.length)];
+};
+
 export const OpenAiController = {
   generateSummary: async (req, res) => {
     try {
@@ -411,10 +434,8 @@ export const OpenAiController = {
     try {
       console.log("Received true/false question request");
       const {
-        material, // Add material to receive all items at once
         term,
         definition,
-        numberOfItems = 1,
         studyMaterialId,
         itemId,
         itemNumber,
@@ -426,40 +447,60 @@ export const OpenAiController = {
         ? gameMode.toLowerCase().replace(/\s+/g, "-")
         : "peaceful";
 
-      console.log("Game mode for true/false question:", {
-        original: gameMode,
-        normalized: normalizedGameMode,
-      });
-
-      // Clean the term by removing any letter prefix
+      // Clean the term
       const cleanedTerm = term.replace(/^[A-D]\.\s+/, "");
 
-      const prompt = `Generate ${numberOfItems} true/false question(s) based on this term and definition:
-        Term: "${cleanedTerm}"
-        Definition: "${definition}"
-        Rules:
-        1. Use the definition to create statement(s) that can be true or false
-        2. The statement(s) should be clear and unambiguous
-        3. The answer should be either "True" or "False"
-        Format the response exactly as JSON:
-        [
-          {
-            "type": "true-false",
-            "question": "(statement based on the definition)",
-            "answer": "(True or False)"
-          }
-        ]`;
+      // Get balanced true/false answer
+      const targetAnswer = getBalancedTrueFalseAnswer(trueFalseDistribution, 10);
+      
+      // Update the distribution
+      trueFalseDistribution[targetAnswer]++;
 
-      console.log("Calling OpenAI for true/false questions");
+      const prompt = `Generate exactly one true/false question based on this term and definition:
+Term: "${cleanedTerm}"
+Definition: "${definition}"
+
+STRICT RULES:
+1. Generate EXACTLY ONE statement that should be ${targetAnswer}
+2. If generating a TRUE statement:
+   - Create a factually correct statement based on the definition
+   - Do not simply repeat the definition word-for-word
+   - Make it engaging and test understanding
+3. If generating a FALSE statement:
+   - Create a statement that is clearly false but plausible
+   - Change only one or two key aspects of the definition
+   - Keep the false statement relevant to the topic
+   - Make it subtle enough to require thought but clear enough to be definitely false
+4. The statement should be clear and unambiguous
+5. Do not use phrases like "is defined as" or "refers to"
+6. Create an engaging statement that tests understanding
+7. CRITICAL: Keep statements short and concise - maximum 15 words
+8. NO paragraphs or lengthy explanations
+
+Example Statements:
+For term "Photosynthesis":
+✓ GOOD: "Plants use photosynthesis to convert water and carbon dioxide into oxygen."
+✓ GOOD: "Photosynthesis occurs in animal cells to produce energy." (False)
+✗ BAD: "In the complex biological process that occurs within the chloroplasts of plant cells during daylight hours, photosynthesis is responsible for converting light energy into chemical energy through a series of complex biochemical reactions involving chlorophyll molecules."
+
+Format the response exactly as JSON:
+{
+  "type": "true-false",
+  "question": "(your concise statement here)",
+  "answer": "${targetAnswer}"
+}`;
+
+      console.log("Calling OpenAI for true/false question");
       const completion = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
-            content: "You are a helpful AI that generates true/false questions.",
+            content: "You are an expert at creating engaging true/false questions that test understanding rather than just memorization. Your statements are clear, unambiguous, and require careful thought to answer correctly.",
           },
           { role: "user", content: prompt },
         ],
+        temperature: 0.7,
       });
 
       const text = completion.choices[0].message.content;
@@ -467,53 +508,23 @@ export const OpenAiController = {
 
       // Parse and validate the response
       const cleanedText = text.replace(/```json|```/g, "").trim();
-      let questions = JSON.parse(cleanedText);
+      let question = JSON.parse(cleanedText);
 
-      // Ensure it's in array format
-      questions = Array.isArray(questions) ? questions : [questions];
-
-      // Store the generated questions if studyMaterialId is provided
-      if (studyMaterialId) {
-        console.log(
-          "Storing true/false questions with studyMaterialId:",
-          studyMaterialId
-        );
-        try {
-          // Get all items at once
-          const { pool } = await import('../config/db.js');
-          const [items] = await pool.query(
-            'SELECT * FROM study_material_content WHERE study_material_id = ?',
-            [studyMaterialId]
-          );
-
-          if (!items || items.length === 0) {
-            throw new Error('No items found for study material');
-          }
-
-          // Create array of items with proper structure
-          const itemsToStore = items.map(item => ({
-            id: item.item_id,
-            term: item.term,
-            definition: item.definition,
-            item_number: item.item_number
-          }));
-
-          // Store all questions at once
-          await storeGeneratedQuestions(
-            studyMaterialId,
-            itemsToStore,
-            questions,
-            normalizedGameMode
-          );
-          
-          console.log("Successfully stored true/false questions");
-        } catch (storeError) {
-          console.error("Error storing true/false questions:", storeError);
+      // Format for response
+      const formattedQuestion = {
+        ...question,
+        itemInfo: {
+          term: cleanedTerm,
+          definition: definition,
+          itemId: itemId || '1',
+          itemNumber: itemNumber || 1
         }
-      }
+      };
 
-      console.log("Sending true/false questions:", questions);
-      res.json(questions);
+      console.log("Generated true/false question:", formattedQuestion);
+      console.log("Current true/false distribution:", trueFalseDistribution);
+
+      res.json([formattedQuestion]);
     } catch (error) {
       console.error("Error in generate-true-false route:", error);
       res.status(500).json({
@@ -560,11 +571,15 @@ STRICT RULES FOR QUESTION GENERATION:
 8. DO NOT include phrases like "similar to..." in the options
 9. Create an engaging question that tests understanding of the concept
 10. DO NOT use the format "Which term is defined as..."
+11. CRITICAL: Keep questions short and concise - maximum 15 words
+12. NO paragraphs or lengthy explanations in questions
 
 Example Questions:
 For term "Photosynthesis" with definition "Process of converting light energy into chemical energy":
 ✓ GOOD: "What biological process do plants use to convert sunlight into food?"
+✓ GOOD: "Which process allows plants to make their own food?"
 ✗ BAD: "Which term is defined as: Process of converting light energy into chemical energy?"
+✗ BAD: "In the complex process of energy transformation that occurs within plant cells during daylight hours, which biological mechanism is responsible for converting solar radiation into glucose that can be used by the organism?"
 
 Example Options:
 For term "Photosynthesis":
