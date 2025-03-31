@@ -10,6 +10,7 @@ import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import { nanoid } from "nanoid";
 import { useUser } from "../../../../../contexts/UserContext";
 import { useNavigate } from "react-router-dom";
+import GeneralLoadingScreen from "../../../../../components/LoadingScreen";
 
 interface PeacefulModeProps {
   mode: string;
@@ -77,18 +78,19 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     const generateAIQuestions = async () => {
       if (aiQuestions.length > 0) {
         console.log("Questions already exist in state, skipping generation");
+        setIsGeneratingAI(false);
         return;
       }
 
       if (!material?.study_material_id) {
         console.error("No study material ID provided");
+        setIsGeneratingAI(false);
         return;
       }
 
       console.log("Starting AI question generation in PeacefulMode");
       setIsGeneratingAI(true);
-      const generatedQuestions = [];
-
+      
       try {
         // Clear existing questions first
         const clearEndpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/clear-questions/${material.study_material_id}`;
@@ -165,6 +167,9 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
           term: item.term
         })));
 
+        // Create a temporary array to store generated questions
+        const generatedQuestions: any[] = [];
+
         // Generate questions according to the distribution
         let currentItemIndex = 0;
 
@@ -176,7 +181,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
             const item = shuffledItems[currentItemIndex];
             
             console.log(`Processing item:`, {
-              item_id: item.item_id, // Use item_id instead of id
+              item_id: item.item_id,
               item_number: item.item_number,
               term: item.term
             });
@@ -209,6 +214,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
                   }
                 }));
                 
+                // Push to temporary array instead of aiQuestions
                 generatedQuestions.push(...questionsWithItemInfo);
                 console.log(`✓ Successfully generated ${type} question for "${item.term}" with item_id: ${item.item_id}`);
               } else {
@@ -230,6 +236,8 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
         // Shuffle the questions for final presentation
         const shuffledQuestions = generatedQuestions.sort(() => Math.random() - 0.5);
         console.log("Setting AI questions:", shuffledQuestions);
+        
+        // Set the state with the complete array of questions
         setAiQuestions(shuffledQuestions);
       } catch (error) {
         console.error("Error in question generation process:", error);
@@ -240,7 +248,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     };
 
     generateAIQuestions();
-  }, [material?.study_material_id, selectedTypes]); // Only depend on material ID and selectedTypes
+  }, [material?.study_material_id, selectedTypes]);
 
   const {
     currentQuestion,
@@ -472,9 +480,14 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  // Remove the custom loading UI since LoadingScreen.tsx is already handling this
+  // Show loading screen while generating questions
   if (isGeneratingAI) {
-    return null; // Return null to let the parent component handle loading state
+    return <GeneralLoadingScreen text="Generating Questions" isLoading={isGeneratingAI} />;
+  }
+
+  // Show loading screen if we don't have questions yet
+  if (aiQuestions.length === 0) {
+    return <GeneralLoadingScreen text="Preparing Study Session" isLoading={true} />;
   }
 
   const renderQuestionContent = () => {

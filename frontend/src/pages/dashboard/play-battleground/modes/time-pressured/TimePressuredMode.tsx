@@ -9,6 +9,7 @@ import { useAudio } from "../../../../../contexts/AudioContext";
 import { nanoid } from "nanoid";
 import { useUser } from "../../../../../contexts/UserContext";
 import { useNavigate } from "react-router-dom";
+import { GeneralLoadingScreen } from "../../../../../components/LoadingScreen";
 
 interface TimePressuredModeProps {
   mode: string;
@@ -137,18 +138,17 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 
   useEffect(() => {
     const generateAIQuestions = async () => {
-      // Skip if we already have questions or are currently generating
-      if (aiQuestions.length > 0 || isGenerating) {
-        console.log("Questions already exist or generation in progress, skipping...");
+      // Skip if we already have questions
+      if (aiQuestions.length > 0) {
+        setIsGeneratingAI(false);
         return;
       }
 
       try {
-        setIsGenerating(true);
+        setIsGeneratingAI(true);
         console.log("Starting AI question generation in TimePressuredMode");
         console.log("Selected question types:", selectedTypes);
         console.log("Mode received:", mode);
-        setIsGeneratingAI(true);
 
         // Clear existing questions with explicit game mode
         const clearEndpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/clear-questions/${material.study_material_id}`;
@@ -261,7 +261,6 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
         console.error("Error generating AI questions:", error);
       } finally {
         setIsGeneratingAI(false);
-        setIsGenerating(false);
       }
     };
 
@@ -334,9 +333,14 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     originalHandleNextQuestion(); // Call the original handler
   };
 
-  // Remove the custom loading UI since LoadingScreen.tsx is already handling this
+  // Show loading screen while generating questions
   if (isGeneratingAI) {
-    return null; // Return null to let the parent component handle loading state
+    return <GeneralLoadingScreen text="Generating Questions" isLoading={isGeneratingAI} />;
+  }
+
+  // Show loading screen if we don't have questions yet
+  if (aiQuestions.length === 0) {
+    return <GeneralLoadingScreen text="Preparing Challenge" isLoading={true} />;
   }
 
   const renderQuestionContent = () => {
