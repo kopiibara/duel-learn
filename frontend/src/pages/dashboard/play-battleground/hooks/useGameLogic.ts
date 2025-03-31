@@ -160,55 +160,9 @@ export const useGameLogic = ({
   const handleAnswerSubmit = (answer: string) => {
     if (showResult || !currentQuestion) return;
 
-    let isAnswerCorrect = false;
-    
-    if (currentQuestion.type === 'multiple-choice') {
-      // For multiple choice, find the letter prefix from the correct answer
-      const correctAnswerParts = currentQuestion.answer.split('. ');
-      const correctLetter = correctAnswerParts[0];
-      
-      // Get the selected option's letter based on the answer
-      const selectedLetter = Object.entries(currentQuestion.rawOptions || {})
-        .find(([_, value]) => value === answer)?.[0];
-        
-      console.log('Answer check:', { correctLetter, selectedLetter, answer });
-      isAnswerCorrect = selectedLetter === correctLetter;
-    } else if (currentQuestion.type === 'true-false') {
-      // For true-false, normalize both answers and detect various forms of true/false
-      const normalizedUserAnswer = answer.toLowerCase().trim();
-      const normalizedCorrectAnswer = currentQuestion.answer.toLowerCase().trim();
-      
-      console.log('True-False answer check:', { 
-        userAnswer: normalizedUserAnswer, 
-        correctAnswer: normalizedCorrectAnswer,
-        exactMatch: normalizedUserAnswer === normalizedCorrectAnswer
-      });
-      
-      // Check for exact match or if both are some form of true/false
-      if (normalizedUserAnswer === normalizedCorrectAnswer) {
-        isAnswerCorrect = true;
-      } else {
-        // Check various forms of "true"/"false" responses
-        const trueValues = ['true', 't', 'yes', 'y', '1'];
-        const falseValues = ['false', 'f', 'no', 'n', '0'];
-        
-        const userAnswerIsTruthy = trueValues.includes(normalizedUserAnswer);
-        const userAnswerIsFalsy = falseValues.includes(normalizedUserAnswer);
-        const correctAnswerIsTruthy = trueValues.includes(normalizedCorrectAnswer);
-        const correctAnswerIsFalsy = falseValues.includes(normalizedCorrectAnswer);
-        
-        isAnswerCorrect = (userAnswerIsTruthy && correctAnswerIsTruthy) || 
-                           (userAnswerIsFalsy && correctAnswerIsFalsy);
-      }
-    } else {
-      // For other types (like identification)
-      isAnswerCorrect = answer.toLowerCase().trim() === currentQuestion.correctAnswer.toLowerCase().trim();
-    }
-
-    // Store the correctness in the question object for reference
-    currentQuestion.isCorrect = isAnswerCorrect;
-    
+    const isAnswerCorrect = answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
     setIsCorrect(isAnswerCorrect);
+    setShowResult(true);
 
     if (isAnswerCorrect) {
       setCorrectCount((prev) => prev + 1);
@@ -229,7 +183,6 @@ export const useGameLogic = ({
 
     setSelectedAnswer(answer);
     setIsFlipped(true);
-    setShowResult(true);
     setShowNextButton(true);
   };
 

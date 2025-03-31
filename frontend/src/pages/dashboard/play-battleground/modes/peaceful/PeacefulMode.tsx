@@ -132,8 +132,24 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
         }
 
         // Create an array of items and shuffle it
-        const items = [...material.items];
+        const items = [...material.items].map(item => ({
+          ...item,
+          item_id: item.id || item.item_id, // Handle both possible property names
+          item_number: item.item_number || item.itemNumber, // Handle both possible property names
+          term: item.term,
+          definition: item.definition // Make sure definition is included
+        }));
+        
         const shuffledItems = items.sort(() => Math.random() - 0.5);
+        
+        // Log the first few items to verify the data structure
+        console.log("First few items with full data:", shuffledItems.slice(0, 3).map(item => ({
+          item_id: item.item_id,
+          item_number: item.item_number,
+          term: item.term,
+          definition: item.definition // Verify definition is present
+        })));
+
         const totalItems = items.length;
         const typesCount = selectedTypes.length;
 
@@ -160,18 +176,9 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
           console.log(`- ${type}: ${count} questions`);
         });
 
-        // Log the first few items to verify the data structure
-        console.log("First few items:", shuffledItems.slice(0, 3).map(item => ({
-          item_id: item.item_id, // Use item_id instead of id
-          item_number: item.item_number,
-          term: item.term
-        })));
-
-        // Create a temporary array to store generated questions
-        const generatedQuestions: any[] = [];
-
         // Generate questions according to the distribution
         let currentItemIndex = 0;
+        const generatedQuestions = [];
 
         for (const type of selectedTypes) {
           const questionsOfThisType = distribution[type];
@@ -180,10 +187,17 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
           for (let i = 0; i < questionsOfThisType; i++) {
             const item = shuffledItems[currentItemIndex];
             
+            if (!item.definition) {
+              console.error(`Missing definition for item:`, item);
+              currentItemIndex++;
+              continue;
+            }
+
             console.log(`Processing item:`, {
               item_id: item.item_id,
               item_number: item.item_number,
-              term: item.term
+              term: item.term,
+              definition: item.definition // Log definition to verify
             });
 
             const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
@@ -199,6 +213,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
             };
 
             try {
+              console.log(`Sending request for ${type} question:`, requestPayload);
               const response = await axios.post<any[]>(endpoint, requestPayload);
               
               if (response.data && Array.isArray(response.data) && response.data.length > 0) {
@@ -214,14 +229,29 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
                   }
                 }));
                 
-                // Push to temporary array instead of aiQuestions
                 generatedQuestions.push(...questionsWithItemInfo);
                 console.log(`✓ Successfully generated ${type} question for "${item.term}" with item_id: ${item.item_id}`);
               } else {
-                console.warn(`⚠ No question generated for "${item.term}" of type ${type}`);
+                // Log the full response for debugging
+                console.error(`Invalid response for "${item.term}" of type ${type}:`, {
+                  status: response.status,
+                  statusText: response.statusText,
+                  data: response.data
+                });
               }
             } catch (error) {
-              console.error(`Error generating ${type} question:`, error);
+              // Enhanced error logging
+              if (error instanceof Error) {
+                const axiosError = error as any;
+                console.error(`Error generating ${type} question:`, {
+                  message: error.message,
+                  response: axiosError.response?.data,
+                  status: axiosError.response?.status,
+                  term: item.term
+                });
+              } else {
+                console.error(`Error generating ${type} question:`, error);
+              }
             }
 
             currentItemIndex++;
@@ -497,115 +527,119 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     const masterButtonStyle = "relative h-[100px] w-[200px] bg-[#16251C] rounded-lg text-white hover:opacity-90 transition-colors border-2 border-[#6DBE45] flex items-center justify-center";
     const retakeButtonStyle = "relative h-[100px] w-[200px] bg-[#39101B] rounded-lg text-white hover:opacity-90 transition-colors border-2 border-[#FF3B3F] flex items-center justify-center";
     
-    // Updated sizes for the arrow indicators (25x25)
     const leftArrowStyle = "absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#080511] rounded-full w-[25px] h-[25px] flex items-center justify-center border border-[#6DBE45]";
     const rightArrowStyle = "absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 bg-[#080511] rounded-full w-[25px] h-[25px] flex items-center justify-center border border-[#FF3B3F]";
 
-    const renderMasteredRetakeButtons = () => (
-      <div className="w-full flex flex-col items-center">
-        <div className="text-sm text-gray-400 whitespace-nowrap opacity-80 mb-2">
-          Use ← → arrow keys or click buttons
-        </div>
-        <div className="flex gap-4 justify-center">
-          <button
-            onClick={handleMastered}
-            className={masterButtonStyle}
-          >
-            <div className={leftArrowStyle}>
-              <KeyboardArrowLeftIcon sx={{ fontSize: 20 }} />
+    // First, render the answer buttons if we're showing results
+    if (showResult) {
+      if (isCorrect) {
+        return (
+          <div className="w-full flex flex-col items-center">
+            <div className="text-sm text-gray-400 whitespace-nowrap opacity-80 mb-2">
+              Use ← → arrow keys or click buttons
             </div>
-            Mastered!
-          </button>
-          <button
-            onClick={handleUnmastered}
-            className={retakeButtonStyle}
-          >
-            Retake
-            <div className={rightArrowStyle}>
-              <KeyboardArrowRightIcon sx={{ fontSize: 20 }} />
+            <div className="flex gap-4 justify-center">
+              <button
+                onClick={handleMastered}
+                className={masterButtonStyle}
+              >
+                <div className={leftArrowStyle}>
+                  <KeyboardArrowLeftIcon sx={{ fontSize: 20 }} />
+                </div>
+                Mastered!
+              </button>
+              <button
+                onClick={handleUnmastered}
+                className={retakeButtonStyle}
+              >
+                Retake
+                <div className={rightArrowStyle}>
+                  <KeyboardArrowRightIcon sx={{ fontSize: 20 }} />
+                </div>
+              </button>
             </div>
-          </button>
-        </div>
-      </div>
-    );
+          </div>
+        );
+      } else {
+        return (
+          <div className="w-full flex justify-center">
+            <button
+              onClick={handleNextQuestion}
+              className="mt-6 px-8 py-3 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
+            >
+              Next Question
+            </button>
+          </div>
+        );
+      }
+    }
 
+    // If not showing results, render the question options
     switch (currentQuestion.questionType) {
       case "multiple-choice":
         return (
           <div className="w-full max-w-[1000px] mx-auto">
-            {showResult && isCorrect ? (
-              renderMasteredRetakeButtons()
-            ) : (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                {currentQuestion.options?.map((option: string, index: number) => (
-                  <button
-                    key={index}
-                    onClick={() => handleAnswerSubmit(option)}
-                    disabled={showResult}
-                    className={`h-[100px] w-full bg-transparent 
-                      ${getButtonStyle(option)}
-                      rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                      disabled:cursor-not-allowed px-4 text-center`}
-                  >
-                    {option}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {currentQuestion.options?.map((option: string, index: number) => (
+                <button
+                  key={index}
+                  onClick={() => handleAnswerSubmit(option)}
+                  disabled={showResult}
+                  className={`h-[100px] w-full bg-transparent 
+                    ${getButtonStyle(option)}
+                    rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                    disabled:cursor-not-allowed px-4 text-center`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
           </div>
         );
 
       case "identification":
         return (
           <div className="w-full max-w-[500px] mt-3 mx-auto">
-            {showResult && isCorrect ? (
-              renderMasteredRetakeButtons()
-            ) : (
-              <input
-                type="text"
-                value={inputAnswer}
-                onChange={(e) => setInputAnswer(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter" && !showResult) {
-                    handleAnswerSubmit(inputAnswer);
-                  }
-                }}
-                disabled={showResult}
-                className={`w-full p-4 rounded-lg bg-transparent py-10 px-10 border-2 text-center
-                  ${
-                    showResult
-                      ? isCorrect
-                        ? "border-[#52A647]"
-                        : "border-[#FF3B3F]"
-                      : "border-gray-600"
-                  }
-                  text-white focus:outline-none placeholder:text-[#6F658D]`}
-                placeholder="Type your answer here..."
-              />
-            )}
+            <input
+              type="text"
+              value={inputAnswer}
+              onChange={(e) => setInputAnswer(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === "Enter" && !showResult) {
+                  handleAnswerSubmit(inputAnswer);
+                }
+              }}
+              disabled={showResult}
+              className={`w-full p-4 rounded-lg bg-transparent py-10 px-10 border-2 text-center
+                ${
+                  showResult
+                    ? isCorrect
+                      ? "border-[#52A647]"
+                      : "border-[#FF3B3F]"
+                    : "border-gray-600"
+                }
+                text-white focus:outline-none placeholder:text-[#6F658D]`}
+              placeholder="Type your answer here..."
+            />
           </div>
         );
 
       case "true-false":
         return (
-          <div className="w-full flex justify-center">
-            {showResult && isCorrect ? (
-              renderMasteredRetakeButtons()
-            ) : (
-              ["true", "false"].map((option) => (
-                <button
-                  key={option}
-                  onClick={() => handleAnswerSubmit(option)}
-                  disabled={showResult}
-                  className={`h-[100px] w-[200px] bg-transparent 
-                    ${getButtonStyle(option)}
-                    rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                    disabled:cursor-not-allowed`}
-                >
-                  {option.toUpperCase()}
-                </button>
-              ))
-            )}
+          <div className="w-full flex justify-center gap-4">
+            {["true", "false"].map((option) => (
+              <button
+                key={option}
+                onClick={() => handleAnswerSubmit(option)}
+                disabled={showResult}
+                className={`h-[100px] w-[200px] bg-transparent 
+                  ${getButtonStyle(option)}
+                  rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                  disabled:cursor-not-allowed`}
+              >
+                {option.toUpperCase()}
+              </button>
+            ))}
           </div>
         );
     }
@@ -644,14 +678,6 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
             highestStreak={0}
             showTimerUI={false}
           />
-          {showResult && isCorrect === false && (
-            <button
-              onClick={handleNextQuestion}
-              className="mt-6 px-8 py-3 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
-            >
-              Next Question
-            </button>
-          )}
         </div>
       </main>
     </div>

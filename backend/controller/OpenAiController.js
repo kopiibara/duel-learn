@@ -8,6 +8,9 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Add this at the top of the file, after the openai initialization
+let answerDistribution = { A: 0, B: 0, C: 0, D: 0 };
+
 // Updated helper function to fetch item_id from study_material_content with corrected column names
 const getItemIdFromStudyMaterial = async (
       studyMaterialId,
@@ -206,6 +209,28 @@ const clearQuestionsForMaterial = async (studyMaterialId, gameMode) => {
     console.error("Error clearing questions:", error);
     throw error;
   }
+};
+
+// Add this helper function at the top of the file
+const getBalancedAnswerPosition = (currentDistribution, totalQuestions) => {
+  // Initialize distribution if not provided
+  const distribution = currentDistribution || { A: 0, B: 0, C: 0, D: 0 };
+  
+  // Calculate target distribution (roughly equal)
+  const targetPerOption = Math.ceil(totalQuestions / 4);
+  
+  // Get available options that haven't exceeded target distribution
+  const availableOptions = Object.entries(distribution)
+    .filter(([_, count]) => count < targetPerOption)
+    .map(([letter]) => letter);
+  
+  // If no available options, reset distribution
+  if (availableOptions.length === 0) {
+    return ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)];
+  }
+  
+  // Randomly select from available options
+  return availableOptions[Math.floor(Math.random() * availableOptions.length)];
 };
 
 export const OpenAiController = {
@@ -500,10 +525,7 @@ export const OpenAiController = {
 
   generateMultipleChoice: async (req, res) => {
     try {
-      console.log(
-        "Received multiple choice question request with body:",
-        req.body
-      );
+      console.log("Received multiple choice question request with body:", req.body);
       const {
         term,
         definition,
@@ -513,186 +535,120 @@ export const OpenAiController = {
         itemNumber,
         gameMode = "peaceful",
       } = req.body;
-      
-      // Normalize the game mode
-      let normalizedGameMode = gameMode
-        ? gameMode.toLowerCase().replace(/\s+/g, "-")
-        : "peaceful";
-      if (
-        normalizedGameMode === "time-pressured" ||
-        normalizedGameMode === "time-pressure"
-      ) {
-        normalizedGameMode = "time-pressured";
-      }
-      
-      console.log("Game mode for multiple choice question:", {
-        original: gameMode,
-        normalized: normalizedGameMode,
-      });
 
-      // Validate required parameters
-      if (!term || !definition) {
-        console.log("Missing required parameters:", { term, definition });
-        return res.status(400).json({ error: "Missing term or definition" });
-      }
-
-      if (!studyMaterialId) {
-        console.log("Missing studyMaterialId");
-        return res.status(400).json({ error: "Missing studyMaterialId" });
-      }
-
-      // Clean the term by removing any letter prefix
+      // Clean the term
       const cleanedTerm = term.replace(/^[A-D]\.\s+/, "");
-      console.log("Cleaned term:", cleanedTerm);
 
-      // Updated prompt to generate similar options to the term
-      const prompt = `Generate ${numberOfItems} multiple choice questions based on this term and definition:
+      // Get balanced position for the correct answer
+      const correctPosition = getBalancedAnswerPosition(answerDistribution, 10);
+      
+      // Update the distribution
+      answerDistribution[correctPosition]++;
+
+      const prompt = `Generate a multiple-choice question based on this term and definition:
 Term: "${cleanedTerm}"
 Definition: "${definition}"
 
-Rules for generating the question:
-1. The question should ask which term matches the definition
-2. Generate 3 plausible but incorrect options that are similar to the original term "${cleanedTerm}"
-3. The original term MUST be one of the options
-4. Options must be complete words or phrases, NEVER single letters
-5. Each option should be similar in nature to the original term "${cleanedTerm}"
-6. CRITICAL: All options MUST be of similar length and style to the original term "${cleanedTerm}"
-7. IMPORTANT: The incorrect options should be terms that someone might confuse with "${cleanedTerm}", NOT terms related to the definition
-8. The options should be in the same category or domain as "${cleanedTerm}"
-9. DO NOT include phrases like "similar to..." in the options
+STRICT RULES FOR QUESTION GENERATION:
+1. Generate 3 plausible but incorrect options that are similar to "${cleanedTerm}"
+2. The term "${cleanedTerm}" MUST be one of the options
+3. Options must be complete words or phrases, NEVER single letters
+4. Each option should be similar in nature to "${cleanedTerm}"
+5. CRITICAL: All options MUST be of similar length and style to "${cleanedTerm}"
+6. IMPORTANT: The incorrect options should be terms that someone might confuse with "${cleanedTerm}", NOT terms related to the definition
+7. The options should be in the same category or domain as "${cleanedTerm}"
+8. DO NOT include phrases like "similar to..." in the options
+9. Create an engaging question that tests understanding of the concept
+10. DO NOT use the format "Which term is defined as..."
 
-Format the response exactly as JSON array:
-[
-  {
-    "type": "multiple-choice",
-    "question": "Which term is defined as: ${definition}",
-    "options": {
-      "A": "(first option - similar to ${cleanedTerm})",
-      "B": "(second option - similar to ${cleanedTerm})",
-      "C": "(third option - similar to ${cleanedTerm})",
-      "D": "(fourth option - similar to ${cleanedTerm})"
-    },
-    "answer": "(letter). ${cleanedTerm}"
-  }
-]
-If generating multiple questions, include them all in the array.
+Example Questions:
+For term "Photosynthesis" with definition "Process of converting light energy into chemical energy":
+✓ GOOD: "What biological process do plants use to convert sunlight into food?"
+✗ BAD: "Which term is defined as: Process of converting light energy into chemical energy?"
 
-Important:
-- The answer format must be "letter. term" where letter matches where the term appears in options
-- Never use single letters or numbers as options
-- Keep options similar to the original term in style and meaning
-- The original term must appear exactly as provided in one of the options
-- Make sure all options are plausible alternatives that someone might confuse with the correct term
-- The incorrect options should be terms that could be mistaken for "${cleanedTerm}", not terms related to the definition
-- Do not include explanatory text like "similar to..." in the options`;
+Example Options:
+For term "Photosynthesis":
+✓ GOOD options (similar length, style, could be confused with term):
+- Chemosynthesis
+- Photorespiration
+- Phototropism
+- Photosynthesis
 
-      console.log("Calling OpenAI for multiple choice questions");
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content:
-              'You are a helpful AI that generates multiple-choice questions. Create questions where the user must select the correct term that matches a definition. Include the original term as one of the options, and ensure all other options are similar terms that might be confused with the correct answer. The incorrect options should be terms that could be mistaken for the original term, not terms related to the definition. Format the answer as "letter. term" where the letter matches where the term appears in the options. DO NOT include phrases like "similar to..." in the options.',
-          },
-          { role: "user", content: prompt },
-        ],
-      });
+✗ BAD options (different lengths, styles, or related to definition):
+- Light
+- Energy conversion process
+- Solar powered reaction
+- Chemical transformation
 
-      const text = completion.choices[0].message.content;
-      console.log("AI response for multiple choice received:", text);
-
-      // Remove any Markdown formatting from the response
-      const cleanedText = text.replace(/```json|```/g, "").trim();
-      console.log("Cleaned AI response:", cleanedText);
+Format the response exactly as:
+{
+  "question": "(your engaging question here)",
+  "options": {
+    "A": "(first option)",
+    "B": "(second option)",
+    "C": "(third option)",
+    "D": "(fourth option)"
+  },
+  "answer": "${correctPosition}. ${cleanedTerm}"
+}`;
 
       try {
-        console.log("Parsing AI response");
-        let questions = JSON.parse(cleanedText);
-
-        // Ensure questions is always an array
-        if (!Array.isArray(questions)) {
-          questions = [questions];
-        }
-
-        // Process and clean up the questions
-        questions = questions.map((q) => {
-          // Ensure the question has the correct type
-          q.type = "multiple-choice";
-          
-          // Clean up options - remove any "similar to..." text
-          if (q.options) {
-            Object.keys(q.options).forEach((key) => {
-              // Remove any text like "similar to..." from options
-              q.options[key] = q.options[key]
-                .replace(/similar to .+/i, "")
-                .replace(/\(.+\)/g, "")
-                .trim();
-            });
-          }
-          
-          return q;
+        const completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: "You are an expert at creating multiple-choice questions where all options are similar terms that could be easily confused with each other. Focus on generating options that are of similar length, style, and from the same domain as the correct answer.",
+            },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.7,
         });
 
-        // In the generateMultipleChoice function, update the storage section:
-        if (studyMaterialId) {
-          console.log(
-            "Storing multiple choice questions with studyMaterialId:",
-            studyMaterialId
-          );
-          try {
-            const { pool } = await import('../config/db.js');
-            
-            // Get all items for this study material
-            const [allItems] = await pool.query(
-              'SELECT * FROM study_material_content WHERE study_material_id = ? ORDER BY item_number',
-              [studyMaterialId]
-            );
-            
-            console.log(`Found ${allItems.length} items for study material`);
-            
-            // Create an array of items with the same length as questions
-            const itemsToStore = allItems.map(item => ({
-              id: item.item_id,
-              term: item.term,
-              definition: item.definition,
-              item_number: item.item_number
-            }));
+        // Parse the response
+        const responseText = completion.choices[0].message.content;
+        console.log("Raw OpenAI response:", responseText);
+        
+        try {
+          const questionData = JSON.parse(responseText);
+          
+          // Transform the response into the expected format
+          const formattedQuestion = {
+            type: "multiple-choice",
+            questionType: "multiple-choice",
+            question: questionData.question,
+            options: Object.values(questionData.options),
+            correctAnswer: cleanedTerm,
+            answer: cleanedTerm
+          };
 
-            // Store all questions with their corresponding items
-            await storeGeneratedQuestions(studyMaterialId, itemsToStore, questions, normalizedGameMode);
-            console.log("Successfully stored multiple choice questions");
-          } catch (storeError) {
-            console.error(
-              "Error storing multiple choice questions:",
-              storeError
-            );
-          }
+          console.log("Formatted question:", formattedQuestion);
+          console.log("Current answer distribution:", answerDistribution);
+          
+          return res.json([formattedQuestion]);
+
+        } catch (parseError) {
+          console.error("Error parsing OpenAI response:", parseError);
+          console.log("Raw response that failed to parse:", responseText);
+          return res.status(500).json({
+            error: "Failed to parse OpenAI response",
+            details: parseError.message
+          });
         }
 
-        console.log("Sending multiple choice questions:", questions);
-        res.json(questions);
-      } catch (parseError) {
-        console.error("Failed to parse AI response as JSON:", cleanedText);
-        console.error("Parse error:", parseError);
-        res.status(500).json({
-          error: "Failed to parse questions",
-          rawResponse: cleanedText,
-          parseError: parseError.message,
+      } catch (openaiError) {
+        console.error("OpenAI API error:", openaiError);
+        return res.status(500).json({
+          error: "OpenAI API error",
+          details: openaiError.message
         });
       }
+
     } catch (error) {
-      console.error("Error in generate-multiple-choice route:", error);
-      console.error("Error details:", {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-        body: req.body,
-      });
-      res.status(500).json({
-        error: "Failed to generate multiple choice questions",
-        details: error.message,
-        stack: error.stack,
+      console.error("Error in generateMultipleChoice:", error);
+      return res.status(500).json({
+        error: "Internal server error",
+        details: error.message
       });
     }
   },
