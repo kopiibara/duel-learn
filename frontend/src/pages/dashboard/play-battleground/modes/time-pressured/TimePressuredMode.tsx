@@ -166,11 +166,37 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
           console.warn("Error clearing existing questions:", clearError);
         }
 
-        // Create an array of items and shuffle it
-        const items = [...material.items];
-        const shuffledItems = items.sort(() => Math.random() - 0.5);
+        // Create an array of items with proper IDs and image handling
+        const items = [...material.items].map((item, index) => {
+          const itemId = index + 1;
+          const hasImage = item.image && item.image.startsWith('data:image');
+          
+          return {
+            ...item,
+            id: itemId,
+            item_id: itemId,
+            item_number: itemId,
+            term: item.term,
+            definition: item.definition,
+            // Only include image URL if the item has an image
+            ...(hasImage ? {
+              image: `${import.meta.env.VITE_BACKEND_URL}/api/study-material/image/${itemId}`
+            } : {
+              image: null
+            })
+          };
+        });
 
-        // Calculate how many questions of each type we need
+        // Log the first few items to verify the data structure
+        console.log("First few items with full data:", items.slice(0, 3).map(item => ({
+          item_id: item.item_id,
+          item_number: item.item_number,
+          term: item.term,
+          definition: item.definition,
+          image: item.image
+        })));
+
+        const shuffledItems = items.sort(() => Math.random() - 0.5);
         const totalItems = items.length;
         const typesCount = selectedTypes.length;
         
@@ -213,7 +239,21 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 
           for (let i = 0; i < questionsOfThisType; i++) {
             const item = shuffledItems[currentItemIndex];
-            console.log(`[${type}] Question ${i + 1}/${questionsOfThisType} using item: "${item.term}"`);
+            
+            console.log("Processing item:", {
+              item_id: item.item_id,
+              item_number: item.item_number,
+              term: item.term,
+              definition: item.definition,
+              image: item.image
+            });
+
+            // Add this logging when processing items
+            console.log("Processing item with image:", {
+              term: item.term,
+              image: item.image,
+              fullItem: item
+            });
 
             const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
             const requestPayload = {
@@ -221,44 +261,87 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
               definition: item.definition,
               numberOfItems: 1,
               studyMaterialId: material.study_material_id,
-              itemId: currentItemIndex + 1,
-              gameMode: "time-pressured",  // Ensure this is consistent
-              timestamp: new Date().getTime()
+              itemId: item.item_id,
+              itemNumber: item.item_number,
+              gameMode: "time-pressured",
+              timestamp: new Date().getTime(),
+              // Add additional context to help AI generate better questions
+              context: {
+                termAndDefinition: `${item.term} - ${item.definition}`,
+                requireBothTermAndDefinition: true,
+                questionGuidelines: {
+                  trueOrFalse: [
+                    "Create statements that test understanding of both term and its definition",
+                    "Include false statements that mix up relationships between terms and definitions",
+                    "Ensure statements reference both the term and its meaning"
+                  ],
+                  multipleChoice: [
+                    "Include options that test both term recognition and definition understanding",
+                    "Create distractors that relate to both term and definition",
+                    "Ensure question text references both the concept and its explanation"
+                  ]
+                }
+              }
             };
 
-            const response = await axios.post<any[]>(endpoint, requestPayload);
-            
-            if (response.data && Array.isArray(response.data) && response.data.length > 0) {
-              const questionsWithItemInfo = response.data.map(q => ({
-                ...q,
-                itemInfo: {
-                  term: item.term,
-                  definition: item.definition,
-                  itemId: currentItemIndex + 1
-                },
-                gameMode: "time-pressured"  // Add game mode to question object
-              }));
+            try {
+              const response = await axios.post<any[]>(endpoint, requestPayload);
               
-              generatedQuestions.push(...questionsWithItemInfo);
-              console.log(`✓ Successfully generated ${type} question for "${item.term}"`);
-            } else {
-              console.warn(`⚠ No question generated for "${item.term}" of type ${type}`);
+              if (response.data && Array.isArray(response.data) && response.data.length > 0) {
+                const questionsWithItemInfo = response.data.map(q => ({
+                  ...q,
+                  item_id: item.item_id,
+                  item_number: item.item_number,
+                  itemInfo: {
+                    term: item.term,
+                    definition: item.definition,
+                    itemId: item.item_id,
+                    itemNumber: item.item_number,
+                    // Only include image if it exists
+                    ...(item.image ? { image: item.image } : {})
+                  }
+                }));
+                
+                // Add debug logging
+                console.log("Created question with full data:", {
+                  question: questionsWithItemInfo[0],
+                  hasImage: !!questionsWithItemInfo[0].itemInfo?.image,
+                  imageUrl: questionsWithItemInfo[0].itemInfo?.image,
+                  fullItem: item
+                });
+                
+                generatedQuestions.push(...questionsWithItemInfo);
+                console.log(`✓ Successfully generated ${type} question for "${item.term}" with definition "${item.definition}"`);
+              }
+            } catch (error) {
+              console.error(`Error generating ${type} question:`, error);
             }
 
             currentItemIndex++;
           }
         }
 
-        console.log("\nQuestion generation summary:");
-        console.log(`- Total items: ${totalItems}`);
-        console.log(`- Questions generated: ${generatedQuestions.length}`);
-        console.log(`- Types distribution:`, distribution);
+        // When setting the AI questions state
+        const finalQuestions = generatedQuestions.map(q => ({
+          ...q,
+          // Ensure itemInfo is preserved
+          itemInfo: {
+            ...q.itemInfo,
+            image: q.itemInfo?.image || null
+          }
+        }));
 
-        // Shuffle the questions for final presentation
-        const shuffledQuestions = generatedQuestions.sort(() => Math.random() - 0.5);
-        setAiQuestions(shuffledQuestions);
+        console.log("Final questions before setting state:", finalQuestions.map(q => ({
+          question: q.question,
+          answer: q.answer,
+          hasImage: !!q.itemInfo?.image,
+          imageUrl: q.itemInfo?.image
+        })));
+
+        setAiQuestions(finalQuestions);
       } catch (error) {
-        console.error("Error generating AI questions:", error);
+        console.error("Error in question generation process:", error);
+        setAiQuestions([]);
       } finally {
         setIsGeneratingAI(false);
       }
@@ -600,6 +683,8 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
                 timeRemaining={questionTimer}
                 type={currentQuestion?.type}
                 disabled={cardDisabled}
+                image={currentQuestion?.itemInfo?.image || null}
+                currentQuestion={currentQuestion}
               />
             </div>
             {renderQuestionContent()}

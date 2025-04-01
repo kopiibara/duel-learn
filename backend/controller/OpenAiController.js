@@ -256,6 +256,59 @@ const getBalancedTrueFalseAnswer = (currentDistribution, totalQuestions) => {
   return availableOptions[Math.floor(Math.random() * availableOptions.length)];
 };
 
+const generateTrueFalseQuestion = async (term, definition, context) => {
+  const prompt = `
+    Create a true/false question about the following term and its definition:
+    Term: ${term}
+    Definition: ${definition}
+
+    Requirements:
+    1. The question must incorporate both the term AND its definition
+    2. If creating a false statement, modify the relationship between the term and definition
+    3. Make the question challenging but clear
+    4. Ensure the question tests understanding of both the term and its meaning
+    5. Avoid overly simple questions that only test the term without its definition
+
+    Format:
+    Return a JSON object with:
+    {
+      "question": "your question here",
+      "answer": "True" or "False",
+      "explanation": "brief explanation of why the answer is true or false"
+    }
+  `;
+
+  // Your OpenAI API call here
+};
+
+const generateMultipleChoiceQuestion = async (term, definition, context) => {
+  const prompt = `
+    Create a multiple-choice question about the following term and its definition:
+    Term: ${term}
+    Definition: ${definition}
+
+    Requirements:
+    1. The question must test understanding of both the term AND its definition
+    2. Create 4 options where:
+       - One is correct
+       - Three are plausible but incorrect
+       - All options should relate to both the term and definition
+    3. Make distractors that test common misconceptions
+    4. Ensure the question requires understanding both the term and its meaning
+
+    Format:
+    Return a JSON object with:
+    {
+      "question": "your question here",
+      "options": ["option1", "option2", "option3", "option4"],
+      "correctAnswer": "the correct option",
+      "explanation": "brief explanation of why this is the correct answer"
+    }
+  `;
+
+  // Your OpenAI API call here
+};
+
 export const OpenAiController = {
   generateSummary: async (req, res) => {
     try {

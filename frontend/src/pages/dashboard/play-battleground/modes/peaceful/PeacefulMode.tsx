@@ -121,24 +121,29 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
           return;
         }
 
-        // Enhanced debugging for item IDs
-        if (material.items && material.items.length > 0) {
-          console.log("Item ID examples:", material.items.slice(0, 3).map((item: any) => ({
-            id: item.id,
-            type: typeof item.id,
-            stringified: JSON.stringify(item.id),
-            item_number: item.item_number
-          })));
-        }
+        // First, let's add logging to see the original items
+        console.log("Original material items:", material.items);
 
-        // Create an array of items and shuffle it
-        const items = [...material.items].map(item => ({
-          ...item,
-          item_id: item.id || item.item_id, // Handle both possible property names
-          item_number: item.item_number || item.itemNumber, // Handle both possible property names
-          term: item.term,
-          definition: item.definition // Make sure definition is included
-        }));
+        // Create an array of items with proper IDs and image handling
+        const items = [...material.items].map((item, index) => {
+          const itemId = index + 1;
+          const hasImage = item.image && item.image.startsWith('data:image');
+          
+          return {
+            ...item,
+            id: itemId,
+            item_id: itemId,
+            item_number: itemId,
+            term: item.term,
+            definition: item.definition,
+            // Only include image URL if the item has an image
+            ...(hasImage ? {
+              image: `${import.meta.env.VITE_BACKEND_URL}/api/study-material/image/${itemId}`
+            } : {
+              image: null
+            })
+          };
+        });
         
         const shuffledItems = items.sort(() => Math.random() - 0.5);
         
@@ -147,7 +152,8 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
           item_id: item.item_id,
           item_number: item.item_number,
           term: item.term,
-          definition: item.definition // Verify definition is present
+          definition: item.definition,
+          image: item.image
         })));
 
         const totalItems = items.length;
@@ -197,7 +203,15 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
               item_id: item.item_id,
               item_number: item.item_number,
               term: item.term,
-              definition: item.definition // Log definition to verify
+              definition: item.definition,
+              image: item.image
+            });
+
+            // Add this logging when processing items
+            console.log("Processing item with image:", {
+              term: item.term,
+              image: item.image,
+              fullItem: item
             });
 
             const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
@@ -209,8 +223,27 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
               itemId: item.item_id,
               itemNumber: item.item_number,
               gameMode: "peaceful",
-              timestamp: new Date().getTime()
+              timestamp: new Date().getTime(),
+              // Add additional context to help AI generate better questions
+              context: {
+                termAndDefinition: `${item.term} - ${item.definition}`,
+                requireBothTermAndDefinition: true,
+                questionGuidelines: {
+                  trueOrFalse: [
+                    "Create statements that test understanding of both term and its definition",
+                    "Include false statements that mix up relationships between terms and definitions",
+                    "Ensure statements reference both the term and its meaning"
+                  ],
+                  multipleChoice: [
+                    "Include options that test both term recognition and definition understanding",
+                    "Create distractors that relate to both term and definition",
+                    "Ensure question text references both the concept and its explanation"
+                  ]
+                }
+              }
             };
+
+            console.log(`Generating ${type} question for "${item.term}" with definition "${item.definition}"`);
 
             try {
               console.log(`Sending request for ${type} question:`, requestPayload);
@@ -225,9 +258,19 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
                     term: item.term,
                     definition: item.definition,
                     itemId: item.item_id,
-                    itemNumber: item.item_number
+                    itemNumber: item.item_number,
+                    // Only include image if it exists
+                    ...(item.image ? { image: item.image } : {})
                   }
                 }));
+                
+                // Add debug logging
+                console.log("Created question with full data:", {
+                  question: questionsWithItemInfo[0],
+                  hasImage: !!questionsWithItemInfo[0].itemInfo?.image,
+                  imageUrl: questionsWithItemInfo[0].itemInfo?.image,
+                  fullItem: item
+                });
                 
                 generatedQuestions.push(...questionsWithItemInfo);
                 console.log(`✓ Successfully generated ${type} question for "${item.term}" with item_id: ${item.item_id}`);
@@ -267,8 +310,24 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
         const shuffledQuestions = generatedQuestions.sort(() => Math.random() - 0.5);
         console.log("Setting AI questions:", shuffledQuestions);
         
-        // Set the state with the complete array of questions
-        setAiQuestions(shuffledQuestions);
+        // When setting the AI questions state
+        const finalQuestions = shuffledQuestions.map(q => ({
+          ...q,
+          // Ensure itemInfo is preserved
+          itemInfo: {
+            ...q.itemInfo,
+            image: q.itemInfo?.image || null
+          }
+        }));
+
+        console.log("Final questions before setting state:", finalQuestions.map(q => ({
+          question: q.question,
+          answer: q.answer,
+          hasImage: !!q.itemInfo?.image,
+          imageUrl: q.itemInfo?.image
+        })));
+
+        setAiQuestions(finalQuestions);
       } catch (error) {
         console.error("Error in question generation process:", error);
         setAiQuestions([]);
@@ -635,7 +694,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
         return (
           <div className="w-full flex flex-col items-center gap-4">
             <div className="w-full flex justify-center gap-4">
-              {["true", "false"].map((option) => (
+              {["True", "False"].map((option) => (
                 <button
                   key={option}
                   onClick={() => !showResult && handleAnswerSubmit(option)}
@@ -685,6 +744,8 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
             onReveal={handleRevealAnswer}
             type={currentQuestion?.type}
             disabled={cardDisabled}
+            image={currentQuestion?.itemInfo?.image || null}
+            currentQuestion={currentQuestion}
           />
           {renderQuestionContent()}
           <Timer

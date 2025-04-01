@@ -73,6 +73,27 @@ export const useGameLogic = ({
     }
   }, []);
 
+  const processQuestion = (rawQuestion: any) => {
+    console.log("Processing raw question:", rawQuestion); // Debug log
+
+    return {
+      questionType: rawQuestion.questionType || rawQuestion.type,
+      type: rawQuestion.type,
+      question: rawQuestion.question,
+      correctAnswer: rawQuestion.answer,
+      options: rawQuestion.options,
+      rawOptions: rawQuestion.rawOptions,
+      // Important: Preserve the itemInfo
+      itemInfo: rawQuestion.itemInfo || {
+        image: rawQuestion.image,
+        term: rawQuestion.term,
+        definition: rawQuestion.definition,
+        itemId: rawQuestion.item_id,
+        itemNumber: rawQuestion.item_number
+      }
+    };
+  };
+
   useEffect(() => {
     if (aiQuestions && aiQuestions.length > 0) {
       console.log(`Processing AI question at index ${questionIndex} of ${aiQuestions.length}`);
@@ -106,17 +127,7 @@ export const useGameLogic = ({
         console.log("Extracted display answer:", displayAnswer);
       }
 
-      const processedQuestion = {
-        questionType: question.type,
-        type: question.type,
-        question: question.question || "Question loading...",
-        correctAnswer: displayAnswer || "Answer loading...",
-        options: question.type === 'multiple-choice' && question.options ? 
-          Object.values(question.options) : 
-          undefined,
-        rawOptions: question.options,
-        answer: question.answer
-      };
+      const processedQuestion = processQuestion(question);
 
       console.log("Processed question for UI:", processedQuestion);
       setCurrentQuestion(processedQuestion);
@@ -277,37 +288,25 @@ export const useGameLogic = ({
 
   const getButtonStyle = (option: string) => {
     if (!showResult) {
-      return `border ${
-        selectedAnswer === option
-          ? "border-[#4D18E8] border-2"
-          : "border-gray-800"
-      }`;
+      return "border-2 border-gray-600";
     }
-    
-    if (currentQuestion.type === 'true-false') {
-      // Case-insensitive comparison for true-false
-      const normalizedOption = option.toLowerCase().trim();
-      const normalizedCorrectAnswer = currentQuestion.answer.toLowerCase().trim();
+
+    // Handle true/false questions differently
+    if (currentQuestion?.type === "true-false") {
+      const normalizedOption = String(option).toLowerCase();
+      const normalizedAnswer = String(currentQuestion.correctAnswer).toLowerCase();
       
-      if (normalizedOption === normalizedCorrectAnswer) {
-        return "border-[#52A647] border-2"; // Green border for correct answer
+      if (normalizedOption === normalizedAnswer) {
+        return "border-2 border-[#52A647] bg-[#16251C]";
       }
-      
-      if (option === selectedAnswer && normalizedOption !== normalizedCorrectAnswer) {
-        return "border-[#FF3B3F] border-2"; // Red border for incorrect selected answer
-      }
-    } else {
-      // Regular comparison for other question types
-      if (option === currentQuestion.correctAnswer) {
-        return "border-[#52A647] border-2";
-      }
-      
-      if (option === selectedAnswer && option !== currentQuestion.correctAnswer) {
-        return "border-[#FF3B3F] border-2";
-      }
+      return "border-2 border-[#FF3B3F] bg-[#39101B]";
     }
-    
-    return "border border-gray-800";
+
+    // Handle other question types
+    if (option?.toLowerCase() === currentQuestion?.correctAnswer?.toLowerCase()) {
+      return "border-2 border-[#52A647] bg-[#16251C]";
+    }
+    return "border-2 border-[#FF3B3F] bg-[#39101B]";
   };
 
   return {
