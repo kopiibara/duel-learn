@@ -13,6 +13,7 @@ import UnBookmarkIcon from "@mui/icons-material/BookmarkBorderRounded";
 import BookmarkIcon from "@mui/icons-material/BookmarkRounded";
 import MoreOptionPopover from "./MoreOptionPopover";
 import { useUser } from "../../../../contexts/UserContext";
+import ChooseModeModal from "../../../../components/modals/ChooseModeModal";
 
 const ViewStudyMaterial = () => {
   const { user } = useUser();
@@ -26,6 +27,7 @@ const ViewStudyMaterial = () => {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const [isBookmarked, setIsBookmarked] = useState(false);
   const open = Boolean(anchorEl);
+  const [showModeModal, setShowModeModal] = useState(false);
 
   const isOwner = studyMaterial?.created_by_id === user?.firebase_uid;
 
@@ -212,6 +214,24 @@ const ViewStudyMaterial = () => {
     checkBookmarkStatus();
   }, [studyMaterialId, user?.firebase_uid]);
 
+  // Update handlePlayClick to show mode selection modal
+  const handlePlayClick = () => {
+    if (!studyMaterial) return;
+    setShowModeModal(true);
+  };
+
+  // Handle mode selection
+  const handleModeSelect = (mode: string) => {
+    navigate("/dashboard/welcome-game-mode", {
+      state: {
+        mode,
+        material: studyMaterial,
+        preSelectedMaterial: studyMaterial,
+        skipMaterialSelection: true
+      }
+    });
+  };
+
   return (
     <PageTransition>
       <Box className="min-h-screen w-full px-4 md:px-8">
@@ -293,6 +313,7 @@ const ViewStudyMaterial = () => {
             >
               <Button
                 variant="contained"
+                onClick={handlePlayClick}
                 sx={{
                   alignItems: "center",
                   backgroundColor: "#4D18E8",
@@ -479,6 +500,14 @@ const ViewStudyMaterial = () => {
           studyMaterialVisibility={studyMaterial?.visibility || 0}
           isOwner={studyMaterial?.created_by_id === user?.firebase_uid}
           status={studyMaterial?.status} // Pass the status to the popover
+        />
+
+        {/* Add ChooseModeModal */}
+        <ChooseModeModal 
+          open={showModeModal}
+          handleClose={() => setShowModeModal(false)}
+          preSelectedMaterial={studyMaterial}
+          onModeSelect={handleModeSelect}
         />
       </Box>
     </PageTransition>

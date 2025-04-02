@@ -68,11 +68,9 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
         answer: string;
         wasCorrect: boolean;
     }>>([]);
-
     // Card effect states
     const [cardEffects, setCardEffects] = useState<CardEffect[]>([]);
     const [timeReductionEffect, setTimeReductionEffect] = useState<CardEffect | null>(null);
-
     // Timer states
     const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
     const [timerProgress, setTimerProgress] = useState(100);
@@ -227,6 +225,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
             return () => clearInterval(timer);
         }
     }, [isOpen, hasAnswered, difficultyMode, timeReductionEffect]);
+
 
     // Update timer progress
     useEffect(() => {
@@ -615,7 +614,9 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
 
             {/* Result Overlay */}
             {showResult && (
+
                 <div className="fixed inset-0 flex items-center justify-center z-[60]">
+
                     <div className={`text-6xl font-bold ${isCorrect ? 'text-green-500' : 'text-red-500'} animate-bounce`}>
                         {isCorrect ? 'CORRECT!!!' : 'WRONG!!!'}
                     </div>

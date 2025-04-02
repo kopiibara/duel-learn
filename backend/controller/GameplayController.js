@@ -844,6 +844,7 @@ export const updateBattleRound = async (req, res) => {
                     [10, session_uuid]
                 );
 
+
                 console.log(`Card effect: ${player_type} used Regeneration to gain +10 HP`);
             } else if (card_id === "rare-1") {
                 // Mind Control: Force opponent to answer without power-ups (no card selection)
@@ -1024,6 +1025,7 @@ export const updateBattleRound = async (req, res) => {
                 }
             }
 
+
             // Commit the transaction
             await connection.commit();
 
@@ -1042,6 +1044,7 @@ export const updateBattleRound = async (req, res) => {
                 `SELECT * FROM battle_scores WHERE session_uuid = ?`,
                 [session_uuid]
             );
+
 
             // Format the response based on card effects
             let responseMessage = `${player_type} card selection and answer recorded, turn switched to the next player`;
@@ -1070,6 +1073,7 @@ export const updateBattleRound = async (req, res) => {
                     session: updatedSession[0] || null,
                     scores: updatedScores[0] || null,
                     card_effect: cardEffect
+
                 }
             });
 
@@ -1339,6 +1343,7 @@ export const updateBattleScores = async (req, res) => {
     } finally {
         if (connection) connection.release();
     }
+
 };
 
 // Add this new function to get active card effects for a player

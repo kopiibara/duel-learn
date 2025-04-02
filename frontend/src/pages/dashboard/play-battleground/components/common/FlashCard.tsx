@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 
 interface FlashCardProps {
@@ -10,6 +10,15 @@ interface FlashCardProps {
     timeRemaining?: number | null;
     type?: 'multiple-choice' | 'identification' | 'true-false';
     disabled?: boolean;
+    image?: string | null;
+    currentQuestion: {
+        itemInfo?: {
+            image?: string | null;
+            term?: string;
+            definition?: string;
+            itemId?: number;
+        };
+    } | null;
 }
 
 const FlashCard: React.FC<FlashCardProps> = memo(({ 
@@ -20,38 +29,40 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
     onReveal,
     timeRemaining,
     type,
-    disabled = false
+    disabled = false,
+    currentQuestion
 }) => {
-    // Only log once during initial render
-    React.useEffect(() => {
-        console.log("FlashCard mounted", { 
-            question, 
-            correctAnswer, 
-            type,
-            hasQuestion: Boolean(question),
-            hasAnswer: Boolean(correctAnswer),
-            questionLength: question?.length || 0,
-            answerLength: correctAnswer?.length || 0,
-        });
-    }, [question, correctAnswer, type]);
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const [imageError, setImageError] = useState(false);
 
-    // Handle the reveal button click separately from the card flip
-    const handleRevealClick = (e: React.MouseEvent) => {
-        e.stopPropagation(); // Prevent the card flip from also happening
-        if (onReveal && !disabled) {
-            onReveal();
-        }
-    };
+    // Get image URL from currentQuestion.itemInfo and validate it's not null/undefined
+    const imageUrl = currentQuestion?.itemInfo?.image || null;
+    const hasValidImage = imageUrl && imageUrl !== 'null' && !imageUrl.includes('undefined');
+
+    // Debug logging
+    useEffect(() => {
+        console.log("FlashCard mounted with props:", {
+            hasValidImage,
+            imageUrl,
+            currentQuestion,
+            itemInfo: currentQuestion?.itemInfo
+        });
+    }, [hasValidImage, imageUrl, currentQuestion]);
+
+    // Add image loading debug
+    console.log("Image render debug:", {
+        imageUrl,
+        imageLoaded,
+        imageError,
+        currentQuestion: currentQuestion?.itemInfo,
+        hasImage: Boolean(imageUrl),
+        fullQuestion: currentQuestion
+    });
 
     return (
         <div
             className={`w-full max-w-[900px] h-[380px] mt-[-60px] bg-white rounded-lg p-8 relative ${disabled ? 'cursor-default' : 'cursor-pointer'}`}
-            onClick={() => {
-                if (!disabled && onFlip) {
-                    console.log("FlashCard clicked, isFlipped:", !isFlipped);
-                    onFlip();
-                }
-            }}
+            onClick={() => !disabled && onFlip && onFlip()}
             style={{
                 perspective: "1000px",
                 transformStyle: "preserve-3d",
@@ -68,15 +79,55 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
                     opacity: isFlipped ? 0 : 1
                 }}
             >
-                <div className="flex-1 flex items-center justify-center">
+                {/* Only render image section if we have a valid image */}
+                {hasValidImage && (
+                    <div className="w-full h-[50%] mb-4 relative flex items-center justify-center">
+                        {!imageLoaded && !imageError && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+                                <span className="text-gray-400">Loading image...</span>
+                            </div>
+                        )}
+                        <img 
+                            src={imageUrl}
+                            alt="Question visual"
+                            className={`w-full h-full object-contain rounded-lg transition-opacity duration-300 ${
+                                imageLoaded ? 'opacity-100' : 'opacity-0'
+                            }`}
+                            onLoad={() => {
+                                console.log("Image loaded successfully:", imageUrl);
+                                setImageLoaded(true);
+                                setImageError(false);
+                            }}
+                            onError={(e) => {
+                                console.error("Image failed to load:", imageUrl, e);
+                                setImageError(true);
+                                setImageLoaded(false);
+                            }}
+                        />
+                        {imageError && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+                                <span className="text-gray-400">Failed to load image</span>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Question Section - adjust height based on whether we have an image */}
+                <div className={`flex-1 flex items-center justify-center ${hasValidImage ? 'h-[45%]' : 'h-full'}`}>
                     <p className="text-center text-black text-2xl max-w-[600px]">
                         {question || <span className="animate-pulse">Loading question...</span>}
                     </p>
                 </div>
 
+                {/* Reveal Button */}
                 <button 
                     className="absolute bottom-6 right-9 flex items-center space-x-2 text-[#4D18E8] hover:text-[#4D18E8] transition-all duration-200 ease-in-out hover:scale-105 hover:font-bold transform"
-                    onClick={handleRevealClick}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        if (onReveal && !disabled) {
+                            onReveal();
+                        }
+                    }}
                     disabled={disabled}
                 >
                     <VisibilityIcon className="w-5 h-5 text-[#4D18E8]" />
@@ -103,13 +154,15 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
         </div>
     );
 }, (prevProps, nextProps) => {
-    // Only re-render if these props change
+    // Update memo comparison to include currentQuestion
     return (
         prevProps.question === nextProps.question &&
         prevProps.correctAnswer === nextProps.correctAnswer &&
         prevProps.isFlipped === nextProps.isFlipped &&
         prevProps.timeRemaining === nextProps.timeRemaining &&
-        prevProps.disabled === nextProps.disabled
+        prevProps.disabled === nextProps.disabled &&
+        prevProps.image === nextProps.image &&
+        prevProps.currentQuestion?.itemInfo?.image === nextProps.currentQuestion?.itemInfo?.image
     );
 });
 

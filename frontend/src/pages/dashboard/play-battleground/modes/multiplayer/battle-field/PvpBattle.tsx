@@ -87,7 +87,6 @@ export default function PvpBattle() {
   // Add a state to track current turn number for poison effects
   const [currentTurnNumber, setCurrentTurnNumber] = useState(0);
   const [poisonEffectActive, setPoisonEffectActive] = useState(false);
-
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
     lobbyCode,
@@ -262,6 +261,7 @@ export default function PvpBattle() {
         // Increment turn number when turn changes
         setCurrentTurnNumber(prev => prev + 1);
 
+
         // Switch turns locally but keep UI visible
         setIsMyTurn(false);
 
@@ -269,7 +269,7 @@ export default function PvpBattle() {
         setEnemyAnimationState("picking");
         setEnemyPickingIntroComplete(false);
       } else {
-        console.error("Failed to update battle round:", response.data.message);
+        console.error("Failed to update battle round:", response?.data?.message || "Unknown error");
       }
     } catch (error) {
       console.error("Error updating battle round:", error);
@@ -295,7 +295,7 @@ export default function PvpBattle() {
           `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-state/${lobbyCode}`
         );
 
-        if (response.data.success && response.data.data) {
+        if (response && response.data && response.data.success && response.data.data) {
           const sessionData = response.data.data;
 
           // Update local battle state with proper type safety
@@ -401,7 +401,7 @@ export default function PvpBattle() {
           `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-with-material/${lobbyCode}`
         );
 
-        if (response.data.success && response.data.data) {
+        if (response && response.data && response.data.success && response.data.data) {
           setDifficultyMode(response.data.data.difficulty_mode);
 
           // Set question types from battle session
@@ -419,8 +419,9 @@ export default function PvpBattle() {
                 `${import.meta.env.VITE_BACKEND_URL}/api/study-material/info/${response.data.data.study_material_id}`
               );
 
-              if (studyMaterialResponse.data.success && studyMaterialResponse.data.data &&
-                studyMaterialResponse.data.data.total_items) {
+              if (studyMaterialResponse && studyMaterialResponse.data && 
+                  studyMaterialResponse.data.success && studyMaterialResponse.data.data &&
+                  studyMaterialResponse.data.data.total_items) {
                 setTotalItems(studyMaterialResponse.data.data.total_items);
               }
             } catch (error) {
@@ -444,6 +445,7 @@ export default function PvpBattle() {
     // Set up polling for battle session data
     const pollInterval = setInterval(fetchBattleSessionData, 2000);
 
+
     return () => {
       clearInterval(pollInterval);
       // Clean up session storage when component unmounts
@@ -451,6 +453,7 @@ export default function PvpBattle() {
       sessionStorage.removeItem('is_host');
     };
   }, [lobbyCode, isHost]);
+
 
   // Effect to fetch battle scores
   useEffect(() => {
@@ -462,7 +465,7 @@ export default function PvpBattle() {
           `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${battleState.session_uuid}`
         );
 
-        if (response.data.success && response.data.data) {
+        if (response && response.data && response.data.success && response.data.data) {
           const scores = response.data.data;
           // Set health based on whether player is host or guest
           if (isHost) {
@@ -703,12 +706,14 @@ export default function PvpBattle() {
           selectedCardId={selectedCardId}
         />
 
+
         {/* Poison effect indicator */}
         {poisonEffectActive && (
           <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
             <div className="absolute inset-0 bg-green-500/20 animate-pulse"></div>
           </div>
         )}
+
       </div>
     </div>
   );

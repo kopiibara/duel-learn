@@ -1,12 +1,13 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import cauldronGif from "../assets/General/Cauldron.gif";
 import PageTransition from "../styles/PageTransition";
 
 interface LoadingScreenProps {
   text?: string;
+  isLoading?: boolean;
 }
 
-export const LoadingScreen: React.FC<LoadingScreenProps> = ({ text }) => {
+export const GeneralLoadingScreen: React.FC<LoadingScreenProps> = ({ text, isLoading = true }) => {
   const loadingLines = [
     "For relaxed practice and review. The best way to retain those lessons in your head, Magician.",
     "A true Magician never stops learning. Prepare your spells of knowledge!",
@@ -21,21 +22,32 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ text }) => {
     "Ancient runes light the path of knowledge. Follow them wisely!",
   ];
 
-  const [currentLine, setCurrentLine] = useState(
-    text || loadingLines[Math.floor(Math.random() * loadingLines.length)]
-  );
+  const [currentLine, setCurrentLine] = useState<string>("");
+  const [statusText, setStatusText] = useState(text || "");
+
+  // Effect to change loading lines periodically
+  useEffect(() => {
+    const getRandomLine = () => loadingLines[Math.floor(Math.random() * loadingLines.length)];
+    
+    setCurrentLine(getRandomLine());
+    const interval = setInterval(() => {
+      setCurrentLine(getRandomLine());
+    }, 3000); // Change line every 3 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   const changeLine = () => {
-    setCurrentLine(
-      text || loadingLines[Math.floor(Math.random() * loadingLines.length)]
-    );
+    setCurrentLine(loadingLines[Math.floor(Math.random() * loadingLines.length)]);
   };
+
+  if (!isLoading) return null;
 
   return (
     <PageTransition>
       <main
-        className="flex overflow-hidden flex-col justify-center items-center min-h-screen px-10 py-28  max-md:px-2 max-md:py-12"
-        onClick={changeLine} // Change text when user clicks anywhere
+        className="flex overflow-hidden flex-col justify-center items-center min-h-screen px-10 py-28 max-md:px-2 max-md:py-12"
+        onClick={changeLine}
       >
         <section className="flex flex-col items-center max-w-full w-[406px]">
           <img
@@ -48,7 +60,7 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ text }) => {
             className="mt-8 text-2xl font-extrabold text-white max-md:mt-5"
             style={{ fontFamily: "Nunito" }}
           >
-            LOADING <span className="dot-1">.</span>
+            {statusText || "LOADING"} <span className="dot-1">.</span>
             <span className="dot-2">.</span>
             <span className="dot-3">.</span>
           </h1>
@@ -64,4 +76,4 @@ export const LoadingScreen: React.FC<LoadingScreenProps> = ({ text }) => {
   );
 };
 
-export default LoadingScreen;
+export default GeneralLoadingScreen;
