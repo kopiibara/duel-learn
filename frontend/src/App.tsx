@@ -15,6 +15,7 @@ import {
 } from "./components";
 import theme from "../../frontend/src/contexts/ThemeContext";
 import "./index.css";
+import { GameStatusProvider } from "./contexts/GameStatusContext";
 
 function App() {
   return (
@@ -33,15 +34,17 @@ function App() {
               ]}
             />
             <SnackbarProvider>
-              <HelmetProvider>
-                <ThemeProvider theme={theme}>
-                  <CssBaseline />
-                  <InvitationLobbySnackbar />
-                  <AppRoutes />
-                  <GlobalSnackbar />
-                  <SnackbarConnector />
-                </ThemeProvider>
-              </HelmetProvider>
+              <GameStatusProvider>
+                <HelmetProvider>
+                  <ThemeProvider theme={theme}>
+                    <CssBaseline />
+                    <InvitationLobbySnackbar />
+                    <AppRoutes />
+                    <GlobalSnackbar />
+                    <SnackbarConnector />
+                  </ThemeProvider>
+                </HelmetProvider>
+              </GameStatusProvider>
             </SnackbarProvider>
           </AudioProvider>
         </UserProvider>

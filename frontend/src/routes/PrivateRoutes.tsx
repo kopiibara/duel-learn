@@ -36,6 +36,32 @@ import Player2ModeSelection from "../pages/dashboard/play-battleground/modes/mul
 import PvpBattle from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/PvpBattle";
 import SearchPage from "../pages/dashboard/search/SearchPage";
 import SocketService from "../services/socketService";
+import { GameStatusProvider, useGameStatus } from "../contexts/GameStatusContext";
+import { GameMode } from "../hooks/useLobbyStatus";
+
+// Create a wrapper component that handles game status changes
+const GameModeStatusWrapper = ({ 
+  children, 
+  gameMode 
+}: { 
+  children: React.ReactNode, 
+  gameMode: GameMode 
+}) => {
+  const { setInGame } = useGameStatus();
+  
+  // Set game status when component mounts
+  useEffect(() => {
+    // Set game status to active with the specified mode
+    setInGame(true, gameMode);
+    
+    // Clean up when unmounting
+    return () => {
+      setInGame(false, null);
+    };
+  }, [gameMode, setInGame]);
+  
+  return <>{children}</>;
+};
 
 const PrivateRoutes = () => {
   const { user, loading: userLoading, refreshUserData, socketConnected } = useUser();
@@ -120,7 +146,7 @@ const PrivateRoutes = () => {
   }
 
   return (
-    <>
+    <GameStatusProvider>
       {/* Optional: Socket connection status indicator (only in development) */}
       {process.env.NODE_ENV === 'development' && (
         <div 
@@ -184,7 +210,11 @@ const PrivateRoutes = () => {
           path="/study/peaceful-mode"
           element={
             <GameModeWrapper>
-              {(props) => <PeacefulMode {...props} />}
+              {(props) => (
+                <GameModeStatusWrapper gameMode="peaceful-mode">
+                  <PeacefulMode {...props} />
+                </GameModeStatusWrapper>
+              )}
             </GameModeWrapper>
           }
         />
@@ -192,7 +222,11 @@ const PrivateRoutes = () => {
           path="/study/time-pressured-mode"
           element={
             <GameModeWrapper>
-              {(props) => <TimePressuredMode {...props} />}
+              {(props) => (
+                <GameModeStatusWrapper gameMode="time-pressured-mode">
+                  <TimePressuredMode {...props} />
+                </GameModeStatusWrapper>
+              )}
             </GameModeWrapper>
           }
         />
@@ -203,9 +237,16 @@ const PrivateRoutes = () => {
           path="/select-difficulty/pvp/player2"
           element={<Player2ModeSelection />}
         />
-        <Route path="/pvp-battle/:lobbyCode?" element={<PvpBattle />} />
+        <Route 
+          path="/pvp-battle/:lobbyCode?" 
+          element={
+            <GameModeStatusWrapper gameMode="pvp-battle">
+              <PvpBattle />
+            </GameModeStatusWrapper>
+          } 
+        />
       </Routes>
-    </>
+    </GameStatusProvider>
   );
 };
 

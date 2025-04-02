@@ -11,6 +11,8 @@ import noFriend from "../../../../assets/images/NoFriend.svg";
 import defaultPicture from "../../../../assets/profile-picture/default-picture.svg";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import ProfileModal from "../../../modals/ProfileModal";
+import { useOnlineStatus } from "../../../../hooks/useOnlineStatus";
+import { useLobbyStatus } from "../../../../hooks/useLobbyStatus";
 
 const YourFriends: React.FC = () => {
   const { user } = useUser();
@@ -125,44 +127,101 @@ const YourFriends: React.FC = () => {
           </p>
         </Stack>
       ) : (
-        friendList.map((friend) => (
-          <Box
-            key={friend.firebase_uid}
-            className="flex items-center justify-between gap-2 mb-4 border-b border-[#3B354C] pb-4 last:border-none"
-          >
-            <div
-              className="flex items-center cursor-pointer"
-              onClick={() => handleViewProfile(friend.firebase_uid)}
+        friendList.map((friend) => {
+          // Get status for this friend
+          const isOnline = useOnlineStatus(friend.firebase_uid);
+          const { isInLobby, isInGame, gameMode } = useLobbyStatus(friend.firebase_uid);
+          
+          // Get status color and text
+          const getStatusInfo = () => {
+            if (isInGame) {
+              // Game status takes priority - use orange
+              let statusText = "In Game";
+              
+              // Show specific game mode in tooltip if available
+              if (gameMode === "pvp-battle") {
+                statusText = "In PVP Battle";
+              } else if (gameMode === "peaceful-mode") {
+                statusText = "In Peaceful Mode";
+              } else if (gameMode === "time-pressured-mode") {
+                statusText = "In Time-Pressured Mode";
+              }
+              
+              return {
+                color: "bg-orange-500",
+                text: statusText
+              };
+            } else if (isInLobby) {
+              return {
+                color: "bg-blue-500",
+                text: "In Lobby"
+              };
+            } else if (isOnline) {
+              return {
+                color: "bg-green-500",
+                text: "Online"
+              };
+            } else {
+              return {
+                color: "bg-gray-500",
+                text: "Offline"
+              };
+            }
+          };
+          
+          const { color, text } = getStatusInfo();
+          
+          return (
+            <Box
+              key={friend.firebase_uid}
+              className="flex items-center justify-between gap-2 mb-4 border-b border-[#3B354C] pb-4 last:border-none"
             >
-              <img
-                src={friend.display_picture || defaultPicture}
-                alt="Avatar"
-                className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
-              />
-              <div>
-                <p className="font-medium">{friend.username}</p>
-                <p className="text-sm text-[#9F9BAE]">Level {friend.level}</p>
-              </div>
-            </div>
-            <Box flex={1} />
-            <Tooltip title="View Profile" enterDelay={100} arrow>
-              <button
-                className="bg-[#3A3A8B] text-xs text-white py-2 px-4 rounded-md hover:scale-105 transition-all duration-300"
+              <div
+                className="flex items-center cursor-pointer"
                 onClick={() => handleViewProfile(friend.firebase_uid)}
               >
-                <VisibilityIcon sx={{ fontSize: 18 }} />
-              </button>
-            </Tooltip>
-            <Tooltip title="Remove Friend" enterDelay={100} arrow>
-              <button
-                className="bg-[#E03649] text-xs text-white py-2 px-4 rounded-md hover:bg-[#E84040] hover:scale-105 transition-all duration-300"
-                onClick={() => onRemoveFriend(friend.firebase_uid)}
-              >
-                <CloseIcon sx={{ fontSize: 20 }} />
-              </button>
-            </Tooltip>
-          </Box>
-        ))
+                <div className="relative">
+                  <img
+                    src={friend.display_picture || defaultPicture}
+                    alt="Avatar"
+                    className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
+                  />
+                  {/* Status indicator positioned to overlap the image corner */}
+                  <Tooltip 
+                    title={text} 
+                    placement="top" 
+                    arrow
+                  >
+                    <div 
+                      className={`absolute bottom-[-2px] right-1 w-4 h-4 rounded-full border-2 border-[#120F1B] ${color}`}
+                    ></div>
+                  </Tooltip>
+                </div>
+                <div>
+                  <p className="font-medium">{friend.username}</p>
+                  <p className="text-sm text-[#9F9BAE]">Level {friend.level}</p>
+                </div>
+              </div>
+              <Box flex={1} />
+              <Tooltip title="View Profile" enterDelay={100} arrow>
+                <button
+                  className="bg-[#3A3A8B] text-xs text-white py-2 px-4 rounded-md hover:scale-105 transition-all duration-300"
+                  onClick={() => handleViewProfile(friend.firebase_uid)}
+                >
+                  <VisibilityIcon sx={{ fontSize: 18 }} />
+                </button>
+              </Tooltip>
+              <Tooltip title="Remove Friend" enterDelay={100} arrow>
+                <button
+                  className="bg-[#E03649] text-xs text-white py-2 px-4 rounded-md hover:bg-[#E84040] hover:scale-105 transition-all duration-300"
+                  onClick={() => onRemoveFriend(friend.firebase_uid)}
+                >
+                  <CloseIcon sx={{ fontSize: 20 }} />
+                </button>
+              </Tooltip>
+            </Box>
+          );
+        })
       )}
     </Box>
   );

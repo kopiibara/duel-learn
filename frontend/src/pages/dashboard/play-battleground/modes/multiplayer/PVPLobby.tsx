@@ -241,12 +241,52 @@ const PVPLobby: React.FC = () => {
     // Register the handler with proper cleanup
     const removeListener = socketService.on("battle_invitation", handleBattleInvitation);
 
+    if (newSocket.connected) {
+      // Let others know this user is in a lobby
+      newSocket.emit("userLobbyStatusChanged", {
+        userId: user.firebase_uid,
+        inLobby: true,
+        lobbyCode: lobbyCode
+      });
+      
+      // Also broadcast player joined lobby event
+      newSocket.emit("player_joined_lobby", {
+        playerId: user.firebase_uid,
+        lobbyCode: lobbyCode
+      });
+    } else {
+      newSocket.once('connect', () => {
+        console.log("Socket connected, emitting lobby status");
+        // Let others know this user is in a lobby
+        newSocket.emit("userLobbyStatusChanged", {
+          userId: user.firebase_uid,
+          inLobby: true,
+          lobbyCode: lobbyCode
+        });
+        
+        // Also broadcast player joined lobby event
+        newSocket.emit("player_joined_lobby", {
+          playerId: user.firebase_uid,
+          lobbyCode: lobbyCode
+        });
+      });
+    }
+
     return () => {
       if (removeListener) removeListener();
       if (newSocket) {
         console.log("Cleaning up socket connection");
         newSocket.disconnect();
       }
+      newSocket.emit("userLobbyStatusChanged", {
+        userId: user.firebase_uid,
+        inLobby: false,
+        lobbyCode: lobbyCode
+      });
+      newSocket.emit("player_left_lobby", {
+        playerId: user.firebase_uid,
+        lobbyCode: lobbyCode
+      });
     };
   }, [user?.firebase_uid, loading]);
 

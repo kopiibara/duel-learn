@@ -1,10 +1,11 @@
 import React from "react";
-import { Button } from "@mui/material";
+import { Button, Tooltip } from "@mui/material";
 import defaultPicture from "../../../assets/profile-picture/default-picture.svg";
 import { Friend } from "../../../contexts/UserContext";
 import ProfileModal from "../../modals/ProfileModal";
 import { useState } from "react";
 import { useOnlineStatus } from "../../../hooks/useOnlineStatus";
+import { useLobbyStatus } from "../../../hooks/useLobbyStatus";
 
 interface FriendListItemProps {
   friend: Friend;
@@ -14,36 +15,80 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   
-  // Use the hook to get online status
+  // Use hooks to get status
   const isOnline = useOnlineStatus(friend.firebase_uid);
+  const { isInLobby, isInGame, gameMode } = useLobbyStatus(friend.firebase_uid);
 
   const handleViewProfile = (friendId: string) => {
     setSelectedFriend(friendId);
     setProfileModalOpen(true);
   };
   
+  // Get status color and text
+  const getStatusInfo = () => {
+    if (isInGame) {
+      // Game status takes priority - use orange
+      let statusText = "In Game";
+      
+      // Show specific game mode in tooltip if available
+      if (gameMode === "pvp-battle") {
+        statusText = "In PVP Battle";
+      } else if (gameMode === "peaceful-mode") {
+        statusText = "In Peaceful Mode";
+      } else if (gameMode === "time-pressured-mode") {
+        statusText = "In Time-Pressured Mode";
+      }
+      
+      return {
+        color: "bg-orange-500",
+        text: statusText
+      };
+    } else if (isInLobby) {
+      return {
+        color: "bg-blue-500",
+        text: "In Lobby"
+      };
+    } else if (isOnline) {
+      return {
+        color: "bg-green-500",
+        text: "Online"
+      };
+    } else {
+      return {
+        color: "bg-gray-500",
+        text: "Offline"
+      };
+    }
+  };
+
+  const { color, text } = getStatusInfo();
+  
   return (
     <>
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
-          <img
-            src={friend.display_picture || defaultPicture}
-            onClick={() => handleViewProfile(friend.firebase_uid)}
-            alt="Avatar"
-            className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
-          />
+          <div className="relative">
+            <img
+              src={friend.display_picture || defaultPicture}
+              onClick={() => handleViewProfile(friend.firebase_uid)}
+              alt="Avatar"
+              className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
+            />
+            {/* Status indicator positioned to overlap the image corner */}
+            <Tooltip 
+              title={text} 
+              placement="top" 
+              arrow
+            >
+              <div 
+                className={`absolute bottom-[-2px] right-1 w-3.5 h-3.5 rounded-full border-2 border-[#120F1B] ${color}`}
+              ></div>
+            </Tooltip>
+          </div>
 
           {/* Text content */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center">
-              {/* Online status indicator */}
-              <div 
-                className={`w-2.5 h-2.5 rounded-full mr-2 ${
-                  isOnline ? "bg-green-500" : "bg-red-500"
-                }`}
-                title={isOnline ? "Online" : "Offline"}
-              ></div>
-              
               <p className="text-sm sm:text-base text-[#E2DDF3] truncate">
                 {friend.username}
               </p>
