@@ -116,37 +116,40 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   }, [searchQuery, filter, studyMaterials]);
 
   const handleMaterialSelect = (material: StudyMaterial) => {
+    // Call the onMaterialSelect callback with the material
     onMaterialSelect(material);
+    
+    // If we're in a lobby context, just close the modal and don't navigate
+    if (isLobby) {
+      handleClose();
+      return;
+    }
+    
+    // Normal flow for non-lobby context
     onModeSelect(mode || "");
     handleClose();
 
-    // Format mode string consistently, ensure it's never null
+    // Format mode string consistently
     const formattedMode = mode === "Peaceful Mode"
       ? "Peaceful"
       : mode === "Time Pressured"
       ? "Time Pressured"
       : mode === "PvP Mode"
       ? "PvP"
-      : mode || "Unknown"; // Default to "Unknown" if null
+      : mode || "Unknown";
 
     // For PVP mode, use the lobby service
     if (formattedMode === "PvP" || mode === "PvP Mode") {
-      // Instead of creating a new object, use the original material
-      // This preserves all required properties including item_number
       const lobbyState = createNewLobby(formattedMode, material);
-      
-      // Add selected types if available
       if (selectedTypes && selectedTypes.length > 0) {
         lobbyState.selectedTypes = selectedTypes;
       }
-      
       navigateToWelcomeScreen(navigate, lobbyState);
     } else {
-      // For other modes, navigate with the full material object
       navigate("/dashboard/welcome-game-mode", { 
         state: {
           mode: formattedMode,
-          material // Use the original material directly
+          material
         }
       });
     }

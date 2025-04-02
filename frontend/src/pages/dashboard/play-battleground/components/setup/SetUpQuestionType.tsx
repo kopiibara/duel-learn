@@ -10,6 +10,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import PageTransition from "../../../../../styles/PageTransition";
 import { generateCode } from "../../utils/codeGenerator";
 import axios from "axios";
+import { usePvPLobby } from "../../../../../hooks/usePvPLobby";
 
 const SetUpQuestionType: React.FC = () => {
   // Move all hooks to the top before any conditional logic
@@ -36,6 +37,7 @@ const SetUpQuestionType: React.FC = () => {
   const [manaPoints, _setManaPoints] = useState(10); // State for dynamic mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana alert
   const [isGenerating, setIsGenerating] = useState(false);
+  const { createLobby, loading: lobbyLoading } = usePvPLobby();
 
   // Signal when component is fully ready
   useEffect(() => {
@@ -85,7 +87,7 @@ const SetUpQuestionType: React.FC = () => {
     navigate("/dashboard/home");
   };
 
-  const handleStartLearning = () => {
+  const handleStartLearning = async () => {
     // If no question type is selected, show the alert
     if (selectedTypes.length === 0) {
       setOpenAlert(true);
@@ -98,6 +100,9 @@ const SetUpQuestionType: React.FC = () => {
       return;
     }
 
+    // Set loading state
+    setIsGenerating(true);
+
     // Pass role information in navigation state
     const navigationState = {
       mode,
@@ -107,13 +112,39 @@ const SetUpQuestionType: React.FC = () => {
       role: role || 'host' // Default to host if not specified
     };
 
-    console.log("Navigation state being passed:", navigationState);
-    console.log("Mode type:", typeof mode, "Mode value:", mode);
-
     // Check if this is for PvP lobby creation
-    if (isPvpLobbyCreation && lobbyCode) {
+    if (isPvpLobbyCreation && !lobbyCode) {
+      try {
+        // Create a lobby with initial settings
+        const result = await createLobby({
+          questionTypes: selectedTypes,
+          studyMaterialId: material?.id,
+          studyMaterialTitle: material?.title
+        });
+        
+        if (result.success) {
+          // Navigate to the PVP lobby with the generated lobby code
+          navigate(`/dashboard/pvp-lobby/${result.lobbyCode}`, {
+            state: { 
+              ...navigationState,
+              lobbyCode: result.lobbyCode,
+              fromWelcome: true
+            }
+          });
+        } else {
+          // Handle error
+          console.error("Failed to create lobby:", result.error);
+          setIsGenerating(false);
+        }
+        return;
+      } catch (error) {
+        console.error("Error creating lobby:", error);
+        setIsGenerating(false);
+        return;
+      }
+    } else if (isPvpLobbyCreation && lobbyCode) {
       // Navigate directly to the PVP lobby with the selected question types
-      navigate(`/dashboard/pvp-lobby/${lobbyCode}`, {
+      navigate(`/dashboard/pvps-lobby/${lobbyCode}`, {
         state: { 
           ...navigationState,
           fromWelcome: true
@@ -132,11 +163,43 @@ const SetUpQuestionType: React.FC = () => {
         state: { ...navigationState, timeLimit: null },
       });
     } else {
-      console.log("Navigating to PVP mode");
-      const generatedLobbyCode = generateCode();
-      navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
-        state: { ...navigationState, lobbyCode: generatedLobbyCode },
-      });
+      // This is for PvP mode without explicit isPvpLobbyCreation flag
+      console.log("Navigating to PVP mode via API");
+      try {
+        // Use the API to create a lobby instead of just generating a code
+        const result = await createLobby({
+          questionTypes: selectedTypes,
+          studyMaterialId: material?.id,
+          studyMaterialTitle: material?.title
+        });
+        
+        if (result.success) {
+          // Navigate with the API-generated lobby code
+          navigate(`/dashboard/pvp-lobby/${result.lobbyCode}`, {
+            state: { 
+              ...navigationState, 
+              lobbyCode: result.lobbyCode,
+              fromWelcome: true
+            }
+          });
+        } else {
+          // Handle error - fall back to local code generation
+          console.error("Failed to create lobby via API, using local fallback:", result.error);
+          const generatedLobbyCode = generateCode();
+          navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
+            state: { ...navigationState, lobbyCode: generatedLobbyCode },
+          });
+        }
+      } catch (error) {
+        // If the API fails, fall back to local code generation
+        console.error("Error creating lobby via API, using local fallback:", error);
+        const generatedLobbyCode = generateCode();
+        navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
+          state: { ...navigationState, lobbyCode: generatedLobbyCode },
+        });
+      } finally {
+        setIsGenerating(false);
+      }
     }
   };
 
@@ -296,11 +359,11 @@ const SetUpQuestionType: React.FC = () => {
                 <div className="flex justify-center">
                   <button
                     onClick={handleStartLearning}
-                    disabled={isGenerating}
+                    disabled={isGenerating || lobbyLoading}
                     className="mt-8 w-[240px] sm:w-[280px] md:w-[320px] py-2 sm:py-3 border-2 border-black text-black rounded-lg text-md sm:text-lg shadow-lg hover:bg-purple-700 hover:text-white hover:border-transparent flex items-center justify-center"
                   >
-                    {isGenerating
-                      ? "Generating Questions..."
+                    {isGenerating || lobbyLoading
+                      ? "Setting up lobby..."
                       : mode === "Time Pressured"
                       ? "Continue"
                       : "START LEARNING!"}
