@@ -15,7 +15,16 @@ const SetUpQuestionType: React.FC = () => {
   // Move all hooks to the top before any conditional logic
   const location = useLocation();
   const navigate = useNavigate();
-  const { mode, material, fromWelcome, lobbyCode, isPvpLobbyCreation, role } = location.state || {};
+  const { 
+    selectedTypes: preSelectedTypes, 
+    material, 
+    mode, 
+    lobbyCode,
+    role,
+    isPvpLobbyCreation,
+    friendToInvite,
+    fromWelcome
+  } = location.state || {};
   const [isComponentReady, setIsComponentReady] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [questionTypes] = useState([
@@ -116,7 +125,8 @@ const SetUpQuestionType: React.FC = () => {
       navigate(`/dashboard/pvp-lobby/${lobbyCode}`, {
         state: { 
           ...navigationState,
-          fromWelcome: true
+          fromWelcome: true,
+          friendToInvite // Pass friendToInvite to the PVP lobby
         }
       });
       return;

@@ -6,6 +6,11 @@ import ProfileModal from "../../modals/ProfileModal";
 import { useState } from "react";
 import { useOnlineStatus } from "../../../hooks/useOnlineStatus";
 import { useLobbyStatus } from "../../../hooks/useLobbyStatus";
+import SelectStudyMaterialModal from "../../modals/SelectStudyMaterialModal";
+import { useNavigate } from "react-router-dom";
+import { createNewLobby } from "../../../services/pvpLobbyService";
+import { generateCode } from "../../../pages/dashboard/play-battleground/utils/codeGenerator";
+import { StudyMaterial } from "../../../types/studyMaterialObject";
 
 interface FriendListItemProps {
   friend: Friend;
@@ -14,6 +19,10 @@ interface FriendListItemProps {
 const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [materialModalOpen, setMaterialModalOpen] = useState(false);
+  const [inviteMode, setInviteMode] = useState<string>("PvP");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const navigate = useNavigate();
   
   // Use hooks to get status
   const isOnline = useOnlineStatus(friend.firebase_uid);
@@ -63,6 +72,44 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
 
   const { color, text } = getStatusInfo();
   
+  // Handler for the INVITE button
+  const handleInviteClick = () => {
+    // Open material selection modal
+    setMaterialModalOpen(true);
+  };
+  
+  // Handler for material selection
+  const handleMaterialSelect = (material: StudyMaterial) => {
+    // Generate a new lobby code
+    const lobbyCode = generateCode();
+    
+    // Create a new lobby state
+    const lobbyState = createNewLobby(inviteMode, material);
+    
+    // Store the friend to invite
+    localStorage.setItem('friendToInvite', JSON.stringify(friend));
+    
+    // Close the modal
+    setMaterialModalOpen(false);
+    
+    // Navigate to welcome screen
+    navigate("/dashboard/welcome-game-mode", {
+      state: {
+        mode: inviteMode,
+        material: material,
+        lobbyCode: lobbyState.lobbyCode,
+        role: 'host',
+        friendToInvite: friend,
+        isPvpLobbyCreation: true,
+      }
+    });
+  };
+  
+  // Handler for mode selection
+  const handleModeSelect = (mode: string) => {
+    setInviteMode(mode);
+  };
+  
   return (
     <>
       <div className="flex items-center justify-between mb-4">
@@ -109,6 +156,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
         {/* Button with more responsive padding */}
         <Button
           variant="contained"
+          onClick={handleInviteClick}
           sx={{
             borderRadius: "0.6rem",
             padding: {
@@ -145,6 +193,17 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
         open={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
         userId={selectedFriend || undefined}
+      />
+      
+      {/* Study Material Selection Modal */}
+      <SelectStudyMaterialModal
+        open={materialModalOpen}
+        handleClose={() => setMaterialModalOpen(false)}
+        mode={inviteMode}
+        onMaterialSelect={handleMaterialSelect}
+        onModeSelect={handleModeSelect}
+        selectedTypes={selectedTypes}
+        isLobby={true}
       />
     </>
   );

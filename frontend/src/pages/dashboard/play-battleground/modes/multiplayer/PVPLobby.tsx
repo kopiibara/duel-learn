@@ -61,7 +61,7 @@ interface StudyMaterial {
 const PVPLobby: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { mode, material, selectedTypes, lobbyCode: stateLobbyCode, isGuest } = location.state || {};
+  const { mode, material, selectedTypes, lobbyCode: stateLobbyCode, isGuest, friendToInvite } = location.state || {};
   const { lobbyCode: urlLobbyCode } = useParams<{ lobbyCode?: string }>();
   // console.log(
   //   "Mode:",
@@ -1038,6 +1038,36 @@ const PVPLobby: React.FC = () => {
     
     // ... existing code for non-socket initializations ...
   }, [isCurrentUserGuest, lobbyCode, socket, user?.firebase_uid, user?.username, user?.level, user?.display_picture]);
+
+  // Add an effect to send invitation to friend when the lobby is ready
+  useEffect(() => {
+    // Only run this if we have a friend to invite and the socket is connected
+    if (friendToInvite && socket && socket.connected && user?.firebase_uid && user?.username) {
+      console.log("Sending invitation to friend:", friendToInvite);
+      
+      // Create the notification data
+      const notificationData = {
+        senderId: user.firebase_uid,
+        senderName: user.username,
+        receiverId: friendToInvite.firebase_uid,
+        lobbyCode: lobbyCode,
+        timestamp: new Date().toISOString(),
+      };
+      
+      // Emit the battle invitation event
+      socket.emit("notify_battle_invitation", notificationData);
+      
+      // Update local state to show the invited player
+      setInvitedPlayer(friendToInvite);
+      setInvitedPlayerStatus({
+        isPending: true,
+        invitedAt: new Date()
+      });
+      
+      // Clear the friendToInvite from localStorage if it was stored there
+      localStorage.removeItem('friendToInvite');
+    }
+  }, [socket, user?.firebase_uid, user?.username, lobbyCode, friendToInvite]);
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-white px-6 py-8 overflow-hidden">
