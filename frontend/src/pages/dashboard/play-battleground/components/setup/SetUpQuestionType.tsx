@@ -128,7 +128,8 @@ const SetUpQuestionType: React.FC = () => {
       navigate("/dashboard/setup/timer", { state: navigationState });
     } else if (mode === "Peaceful" || mode === "Peaceful Mode") {
       console.log("Navigating to peaceful mode");
-      navigate("/dashboard/loading-screen", {
+      // Navigate directly to peaceful mode instead of loading screen
+      navigate("/dashboard/study/peaceful-mode", {
         state: { ...navigationState, timeLimit: null },
       });
     } else {
