@@ -8,6 +8,7 @@ import axios from "axios";
 // Character animations
 import playerCharacter from "../../../../../../assets/characterinLobby/playerCharacter.gif"; // Regular idle animation for player
 import enemyCharacter from "../../../../../../assets/characterinLobby/playerCharacter.gif"; // Regular idle animation for enemy
+import PvpBattleBG from "../../../../../../../public/GameBattle/PvpBattleBG.png"; // Battle background image
 
 // Import components
 import PlayerInfo from "./components/PlayerInfo";
@@ -563,7 +564,12 @@ export default function PvpBattle() {
   }, [isMyTurn, currentTurnNumber, battleState?.session_uuid, isHost]);
 
   return (
-    <div className="w-full h-screen flex flex-col">
+    <div className="w-full h-screen flex flex-col relative" style={{
+      backgroundImage: `url(${PvpBattleBG})`,
+      backgroundSize: 'cover',
+      backgroundPosition: 'center',
+      backgroundRepeat: 'no-repeat'
+    }}>
       {/* Character animation manager */}
       <CharacterAnimationManager
         playerAnimationState={playerAnimationState}
@@ -609,9 +615,7 @@ export default function PvpBattle() {
 
       {/* Main Battle Area */}
       <div className="flex-1 relative">
-        {/* Purple battlefield floor */}
-        <div className="absolute bottom-0 left-0 right-0 h-[43vh] bg-purple-900/20"></div>
-
+       
         {/* Characters */}
         <Character
           imageSrc={getCharacterImage(playerCharacter, playerAnimationState, playerPickingIntroComplete)}
