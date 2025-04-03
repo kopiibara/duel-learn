@@ -4,6 +4,7 @@ import defaultPicture from "../../../assets/profile-picture/default-picture.svg"
 import { Friend } from "../../../contexts/UserContext";
 import ProfileModal from "../../modals/ProfileModal";
 import { useState } from "react";
+import { useOnlineStatus } from "../../../hooks/useOnlineStatus";
 
 interface FriendListItemProps {
   friend: Friend;
@@ -12,11 +13,15 @@ interface FriendListItemProps {
 const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  
+  // Use the hook to get online status
+  const isOnline = useOnlineStatus(friend.firebase_uid);
 
   const handleViewProfile = (friendId: string) => {
     setSelectedFriend(friendId);
     setProfileModalOpen(true);
   };
+  
   return (
     <>
       <div className="flex items-center justify-between mb-4">
@@ -30,9 +35,20 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
 
           {/* Text content */}
           <div className="min-w-0 flex-1">
-            <p className="text-sm sm:text-base text-[#E2DDF3] truncate">
-              {friend.username}
-            </p>
+            <div className="flex items-center">
+              {/* Online status indicator */}
+              <div 
+                className={`w-2.5 h-2.5 rounded-full mr-2 ${
+                  isOnline ? "bg-green-500" : "bg-red-500"
+                }`}
+                title={isOnline ? "Online" : "Offline"}
+              ></div>
+              
+              <p className="text-sm sm:text-base text-[#E2DDF3] truncate">
+                {friend.username}
+              </p>
+            </div>
+            
             <div className="flex items-center gap-2">
               <p className="text-xs sm:text-sm text-[#9F9BAE]">
                 Level {friend.level}

@@ -5,11 +5,10 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { getDoc, doc } from "firebase/firestore";
-import { db } from "../services/firebase";
 import useUserData from "../hooks/api.hooks/useUserData";
 import { useAuth } from "./AuthContext";
 import axios from "axios";
+import SocketService from "../services/socketService";
 
 interface User {
   firebase_uid: string;
@@ -44,6 +43,7 @@ interface UserContextProps {
   clearUserData: () => void;
   loginAndSetUserData: (firebase_uid: string, token: string) => Promise<User | null>;
   refreshUserData: () => Promise<void>;
+  socketConnected: boolean;
 }
 
 const UserContext = createContext<UserContextProps | undefined>(undefined);
@@ -58,11 +58,53 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const [loading, setLoading] = useState(true);
   const [loadAttempts, setLoadAttempts] = useState(0);
+  const [socketConnected, setSocketConnected] = useState(false);
   const { fetchAndUpdateUserData } = useUserData();
   const auth = useAuth(); // Use the AuthContext
+  
+  // Get the socket service instance
+  const socketService = SocketService.getInstance();
+
+  // Connect socket using firebase_uid
+  const connectSocket = useCallback((userId: string) => {
+    console.log("Establishing socket connection for user:", userId);
+    try {
+      const socket = socketService.connect(userId);
+      
+      // Set up connected listener to update status
+      const connectedListener = () => {
+        console.log("Socket connected successfully");
+        setSocketConnected(true);
+      };
+      
+      // Set up disconnect listener
+      const disconnectListener = () => {
+        console.log("Socket disconnected");
+        setSocketConnected(false);
+      };
+      
+      socket.on("connected", connectedListener);
+      socket.on("disconnect", disconnectListener);
+      
+      // Check immediate connection status
+      setSocketConnected(socket.connected);
+      
+      return () => {
+        socket.off("connected", connectedListener);
+        socket.off("disconnect", disconnectListener);
+      };
+    } catch (error) {
+      console.error("Failed to establish socket connection:", error);
+      return undefined;
+    }
+  }, []);
 
   // Clear user data (used when logging out)
   const clearUserData = useCallback(() => {
+    // Disconnect socket when logging out
+    socketService.disconnect();
+    setSocketConnected(false);
+    
     setUser(null);
     localStorage.removeItem("userData");
   }, []);
@@ -78,7 +120,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     });
   }, []);
 
-  // Load user data from the API
+  // Load user data from the API and connect socket
   const loadUserData = async (firebase_uid: string): Promise<User | null> => {
     if (!firebase_uid) {
       console.error("No firebase_uid provided to loadUserData");
@@ -101,6 +143,9 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         setUser(typedUserData);
         localStorage.setItem("userData", JSON.stringify(typedUserData));
         
+        // Connect socket after loading user data
+        connectSocket(firebase_uid);
+        
         console.log("User data loaded and stored in context");
         return typedUserData;
       }
@@ -112,6 +157,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       if (parsedData && parsedData.firebase_uid === firebase_uid) {
         console.log("Using cached user data as fallback");
         setUser(parsedData);
+        
+        // Connect socket with cached data
+        connectSocket(firebase_uid);
+        
         return parsedData;
       }
       
@@ -126,6 +175,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       if (parsedData && parsedData.firebase_uid === firebase_uid) {
         console.log("Using cached user data after load error");
         setUser(parsedData);
+        
+        // Connect socket with cached data
+        connectSocket(firebase_uid);
+        
         return parsedData;
       }
       
@@ -240,6 +293,13 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [auth.currentUser, auth.isLoading, clearUserData]);
 
+  // Effect to clean up socket connection on unmount
+  useEffect(() => {
+    return () => {
+      socketService.disconnect();
+    };
+  }, []);
+
   const loginAndSetUserData = async (firebase_uid: string, token: string): Promise<User | null> => {
     console.log(`Login and set user data for ${firebase_uid}`);
     setLoading(true);
@@ -248,7 +308,7 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       // Set the token for API call
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       
-      // Load user data
+      // Load user data (this also connects the socket)
       const userData = await loadUserData(firebase_uid);
       return userData;
     } catch (error) {
@@ -260,6 +320,10 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         const parsedData = JSON.parse(cachedData);
         if (parsedData.firebase_uid === firebase_uid) {
           setUser(parsedData);
+          
+          // Connect socket with cached data
+          connectSocket(firebase_uid);
+          
           return parsedData;
         }
       }
@@ -280,7 +344,8 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
         updateUser,
         clearUserData,
         loginAndSetUserData,
-        refreshUserData
+        refreshUserData,
+        socketConnected
       }}
     >
       {children}

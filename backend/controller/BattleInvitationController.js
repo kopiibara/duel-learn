@@ -10,7 +10,7 @@ export const createBattleInvitation = async (req, res) => {
             receiver_username,
             receiver_level,
             lobby_code,
-            status = 'pending',
+            status = 'no invitation',
             question_types,
             study_material_title
         } = req.body;

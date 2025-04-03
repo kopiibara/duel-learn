@@ -1,9 +1,32 @@
 import express from 'express';
-import { getFriendsList } from '../controller/LobbyController.js';
+import * as LobbyController from '../controller/LobbyController.js';
 
 const router = express.Router();
 
-// Get friends list for lobby
-router.get('/invite-friends/:firebase_uid', getFriendsList);
+// Create a new lobby
+router.post('/create', LobbyController.createLobby);
+
+// Validate a lobby code
+router.get('/validate/:lobbyCode', LobbyController.validateLobby);
+
+// Join a lobby
+router.post('/join', LobbyController.joinLobby);
+
+// Update lobby settings
+router.put('/settings', LobbyController.updateSettings);
+
+// Update lobby status
+router.put('/status', LobbyController.updateStatus);
+
+// Set player ready status
+router.put('/ready', LobbyController.setReady);
+
+// Get lobby details
+router.get('/:lobbyCode', LobbyController.getLobbyDetails);
+
+router.post('/battle/invitations-lobby/update-or-create', LobbyController.updateOrCreateBattleInvitation);
+
+// Add to lobby.routes.js
+router.post('/leave', LobbyController.leaveLobby);
 
 export default router;
