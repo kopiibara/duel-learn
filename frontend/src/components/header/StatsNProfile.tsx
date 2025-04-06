@@ -23,7 +23,7 @@ const StatsNProfile = () => {
   };
 
   return (
-    <Box className="flex items-center space-x-2 sm:space-x-6">
+    <Box className="flex items-center space-x-2 ">
       {/* Coin */}
       <Tooltip
         title="Coin"
@@ -66,27 +66,25 @@ const StatsNProfile = () => {
         </div>
       </Tooltip>
 
-      {user?.tech_pass && user.tech_pass > 0 && (
-        <Tooltip
-          title="Tech Pass"
-          arrow
-          sx={{
-            "& .MuiTooltip-tooltip": {
-              padding: "8px 12px",
-              fontSize: "16px",
-              fontWeight: "bold",
-              animation: "fadeInOut 0.3s ease-in-out",
-            },
-          }}
-        >
-          <div className="flex items-center space-x-2">
-            <img src={TechPassIcon} alt="Tech Pass" className="w-6 h-auto" />
-            <span className="text-[#9F9BAE] text-[0.9rem] hover:text-[#E2DDF3] ">
-              {user.tech_pass}
-            </span>
-          </div>
-        </Tooltip>
-      )}
+      <Tooltip
+        title="Tech Pass"
+        arrow
+        sx={{
+          "& .MuiTooltip-tooltip": {
+            padding: "8px 12px",
+            fontSize: "16px",
+            fontWeight: "bold",
+            animation: "fadeInOut 0.3s ease-in-out",
+          },
+        }}
+      >
+        <div className="flex items-center space-x-2 pr-2">
+          <img src={TechPassIcon} alt="Tech Pass" className="w-6 h-auto" />
+          <span className="text-[#9F9BAE] text-[0.9rem] hover:text-[#E2DDF3] ">
+            {user?.tech_pass || 0}
+          </span>
+        </div>
+      </Tooltip>
 
       {/* Profile Avatar */}
       <Tooltip

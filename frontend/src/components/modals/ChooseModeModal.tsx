@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Modal,
@@ -11,11 +11,23 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import ModalFriendList from "/General/ModalFriendList.png";
 import SelectStudyMaterialModal from "./SelectStudyMaterialModal"; // Assuming it's in the same folder
+import PvPOptionsModal from "./PvPOptionsModal"; // Add this import
 import { useAudio } from "../../contexts/AudioContext";
+import { useNavigate } from "react-router-dom";
+import { createNewLobby, joinExistingLobby, navigateToWelcomeScreen } from "../../services/pvpLobbyService";
+
+// Add modeToTypesMap
+const modeToTypesMap = {
+  "Peaceful Mode": ["identification", "multiple-choice", "true-false"],
+  "Time Pressured": ["identification", "multiple-choice", "true-false"],
+  "PvP Mode": ["identification", "multiple-choice", "true-false"],
+};
 
 interface CustomModalProps {
   open: boolean;
   handleClose: () => void;
+  preSelectedMaterial?: any;
+  onModeSelect?: (mode: string) => void;
 }
 
 interface ButtonData {
@@ -30,12 +42,25 @@ interface ButtonData {
   textColor: string;
 }
 
-const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
+const ChooseModeModal: React.FC<CustomModalProps> = ({ 
+  open, 
+  handleClose,
+  preSelectedMaterial,
+  onModeSelect 
+}) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
-  const [selectedTypes, _setSelectedTypes] = useState<string[]>([]);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const [chooseModeOpen, setChooseModeOpen] = useState<boolean>(open);
   const { setActiveModeAudio } = useAudio();
+  const [pvpOptionsOpen, setPvpOptionsOpen] = useState<boolean>(false);
+  const navigate = useNavigate();
+
+  // Update when the parent open state changes
+  useEffect(() => {
+    setChooseModeOpen(open);
+  }, [open]);
 
   const buttonData: ButtonData[] = [
     {
@@ -67,27 +92,118 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
     },
   ];
 
-  const handleMaterialSelect = (_material: any) => {
-    // Handle the material selection logic here
-  };
-
-  const handleModeSelect = (_mode: string) => {
-    // Handle the mode selection logic here
-  };
-
   const handleModeClick = (mode: string) => {
     setSelectedMode(mode);
-    setModalOpen(true);
+    setSelectedTypes(modeToTypesMap[mode as keyof typeof modeToTypesMap] || []);
 
-    // Remove audio trigger from here - it should only play on the welcome page
-    // setActiveModeAudio(mode);
+    // If PvP mode, show options modal
+    if (mode === "PvP Mode") {
+      if (preSelectedMaterial) {
+        // If we have pre-selected material, call onModeSelect directly
+        if (onModeSelect) {
+          onModeSelect(mode);
+        }
+        handleClose();
+      } else {
+        // Show PvP options modal
+        setChooseModeOpen(false);
+        setPvpOptionsOpen(true);
+      }
+      return;
+    }
+
+    // For other modes, keep existing logic
+    if (preSelectedMaterial) {
+      if (onModeSelect) {
+        onModeSelect(mode);
+      }
+      handleClose();
+    } else {
+      setChooseModeOpen(false);
+      setModalOpen(true);
+    }
+  };
+
+  // Close all modals
+  const closeAllModals = () => {
+    setChooseModeOpen(false);
+    setPvpOptionsOpen(false);
+    setModalOpen(false);
+    handleClose();
+  };
+
+  const handlePvPOptionsClose = () => {
+    setPvpOptionsOpen(false);
+    closeAllModals();
+  };
+
+  const handleStudyMaterialClose = () => {
+    setModalOpen(false);
+    closeAllModals();
+  };
+
+  // Back navigation from PvP Options modal
+  const handlePvPOptionsBack = () => {
+    setPvpOptionsOpen(false);
+    setChooseModeOpen(true);
+  };
+
+  // Back navigation from Study Material modal
+  const handleStudyMaterialBack = () => {
+    setModalOpen(false);
+    
+    // If we came from PvP options, go back there
+    if (selectedMode === "PvP Mode") {
+      setPvpOptionsOpen(true);
+    } else {
+      // Otherwise go back to main mode selection
+      setChooseModeOpen(true);
+    }
+  };
+
+  const handleMaterialSelect = (material: any) => {
+    setModalOpen(false);
+    
+    if (selectedMode && onModeSelect) {
+      onModeSelect(selectedMode);
+    }
+    
+    // If PVP mode, use the lobby service
+    if (selectedMode === "PvP Mode" || selectedMode === "PvP") {
+      const lobbyState = createNewLobby(selectedMode, material);
+      navigateToWelcomeScreen(navigate, lobbyState);
+    }
+    
+    handleClose();
+  };
+
+  const handleModeSelect = (mode: string) => {
+    // Handle mode selection for non-preselected flow
+    if (onModeSelect) {
+      onModeSelect(mode);
+    }
+  };
+
+  // Handler for creating a new lobby
+  const handleCreateLobby = () => {
+    setPvpOptionsOpen(false);
+    setModalOpen(true);
+  };
+
+  // Handler for joining an existing lobby
+  const handleJoinLobby = (lobbyCode: string) => {
+    setPvpOptionsOpen(false);
+    
+    // Use the lobby service
+    const lobbyState = joinExistingLobby(lobbyCode, selectedMode || "PvP Mode");
+    navigateToWelcomeScreen(navigate, lobbyState);
   };
 
   return (
     <>
       <Modal
-        open={open}
-        onClose={handleClose}
+        open={chooseModeOpen}
+        onClose={closeAllModals}
         closeAfterTransition
         BackdropComponent={Backdrop}
         BackdropProps={{
@@ -97,7 +213,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
           },
         }}
       >
-        <Fade in={open}>
+        <Fade in={chooseModeOpen}>
           <Box
             sx={{
               position: "absolute",
@@ -121,7 +237,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
             {/* Close button */}
             <IconButton
               aria-label="close"
-              onClick={handleClose}
+              onClick={closeAllModals}
               sx={{
                 position: "absolute",
                 top: 16,
@@ -265,14 +381,24 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({ open, handleClose }) => {
         </Fade>
       </Modal>
 
-      {/* Select Study Material Modal */}
+      {/* PvP Options Modal */}
+      <PvPOptionsModal
+        open={pvpOptionsOpen}
+        handleClose={handlePvPOptionsClose}
+        handleBack={handlePvPOptionsBack}
+        onCreateLobby={handleCreateLobby}
+        onJoinLobby={handleJoinLobby}
+      />
+
+      {/* Study Material Modal */}
       <SelectStudyMaterialModal
         open={modalOpen}
-        handleClose={() => setModalOpen(false)} // This closes the study material modal
-        mode={selectedMode} // Pass the selected mode
-        onMaterialSelect={handleMaterialSelect} // Pass the selection handler
-        onModeSelect={handleModeSelect} // Pass the mode selection handler
-        selectedTypes={selectedTypes} // Pass selectedTypes to the modal
+        handleClose={handleStudyMaterialClose}
+        handleBack={handleStudyMaterialBack}
+        mode={selectedMode}
+        onMaterialSelect={handleMaterialSelect}
+        onModeSelect={handleModeSelect}
+        selectedTypes={selectedTypes}
       />
     </>
   );

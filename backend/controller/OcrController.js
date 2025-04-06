@@ -7,11 +7,11 @@ import multer from "multer";
 import { promisify } from "util";
 import { exec } from "child_process";
 import pdfParse from "pdf-parse";
+import pdf2pic from "pdf2pic";
 import sharp from "sharp";
-import dotenv from "dotenv";
+import { createWriteStream } from "fs";
+import https from "https";
 
-// Load environment variables
-dotenv.config();
 // Promisify exec for async/await
 const execAsync = promisify(exec);
 
@@ -23,6 +23,7 @@ const __dirname = path.dirname(__filename);
 const CONFIG = {
   textDetectionTimeout: 30000, // Timeout for each API call in milliseconds
   retryAttempts: 3, // Number of times to retry failed API calls
+  maxImages: 5, // Maximum number of images allowed for processing
 };
 
 // Create a Vision client using environment variables
@@ -93,21 +94,18 @@ const storage = multer.diskStorage({
   },
 });
 
-// File filter to ensure only supported files are accepted
-const fileFilter = (req, file, cb) => {
-  // Accept images and PDFs now
+// File filter to ensure only supported images are accepted
+const imageFileFilter = (req, file, cb) => {
+  // Accept only images (no PDFs)
   if (
     file.mimetype === "image/jpeg" ||
     file.mimetype === "image/png" ||
-    file.mimetype === "image/jpg" ||
-    file.mimetype === "application/pdf"
+    file.mimetype === "image/jpg"
   ) {
     cb(null, true);
   } else {
     cb(
-      new Error(
-        "Unsupported file type. Only JPEG, PNG, and PDF files are allowed."
-      ),
+      new Error("Unsupported file type. Only JPEG and PNG files are allowed."),
       false
     );
   }
@@ -116,13 +114,14 @@ const fileFilter = (req, file, cb) => {
 // Use the enhanced multer configuration
 const upload = multer({
   storage: storage,
-  fileFilter: fileFilter,
+  fileFilter: imageFileFilter,
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB max file size
+    files: CONFIG.maxImages, // Maximum number of files
   },
 });
 
-// Helper function to process an image with OCR
+// Helper function to process any document (image) with OCR
 async function processImageWithOCR(imagePath) {
   try {
     console.log(`Processing image: ${imagePath}`);
@@ -130,203 +129,271 @@ async function processImageWithOCR(imagePath) {
     // Verify file exists and check file size
     if (!fs.existsSync(imagePath)) {
       console.error(`Image file not found: ${imagePath}`);
-      throw new Error(`Image file not found: ${imagePath}`);
+      return ""; // Return empty string instead of throwing
     }
 
     const stats = fs.statSync(imagePath);
-    console.log(`Image file size: ${stats.size} bytes`);
+    console.log(`File size: ${stats.size} bytes`);
 
     if (stats.size === 0) {
-      console.error(`Image file is empty: ${imagePath}`);
-      throw new Error(`Image file is empty: ${imagePath}`);
+      console.error(`File is empty: ${imagePath}`);
+      return ""; // Return empty string instead of throwing
     }
 
-    // Read the image file
-    const imageBuffer = fs.readFileSync(imagePath);
-    console.log(
-      `Successfully read image file, buffer length: ${imageBuffer.length} bytes`
-    );
+    // Read the file
+    let fileBuffer;
+    try {
+      fileBuffer = fs.readFileSync(imagePath);
+      console.log(
+        `Successfully read file, buffer length: ${fileBuffer.length} bytes`
+      );
+
+      // Simple validation for image files - check for image signatures
+      const fileHeader = fileBuffer.slice(0, 4).toString("hex");
+      const isPNG = fileHeader.startsWith("89504e47"); // PNG signature
+      const isJPEG = fileHeader.startsWith("ffd8"); // JPEG signature
+
+      if (!isPNG && !isJPEG) {
+        console.error(`File ${imagePath} does not appear to be a valid image`);
+        return ""; // Return empty for invalid images
+      }
+    } catch (readError) {
+      console.error(`Error reading image file: ${readError.message}`);
+      return ""; // Return empty if file reading fails
+    }
 
     // Convert to base64
-    const encodedImage = imageBuffer.toString("base64");
-    console.log(
-      `Converted image to base64, length: ${encodedImage.length} chars`
-    );
-
-    // Process with Vision API
-    console.log(`Sending image to Vision API for text detection...`);
-    const [result] = await visionClient.textDetection({
-      image: { content: encodedImage },
-      imageContext: {
-        languageHints: ["en-t-i0-handwrit"], // Include handwriting recognition
-      },
-    });
-
-    // Check if textAnnotations exists and has content
-    if (!result.textAnnotations || result.textAnnotations.length === 0) {
+    let encodedFile;
+    try {
+      encodedFile = fileBuffer.toString("base64");
       console.log(
-        `No text annotations found in API response for ${path.basename(
-          imagePath
-        )}`
+        `Converted file to base64, length: ${encodedFile.length} chars`
       );
-      return "";
+    } catch (encodeError) {
+      console.error(`Error encoding file to base64: ${encodeError.message}`);
+      return ""; // Return empty if encoding fails
     }
 
-    // Extract text
-    let extractedText = result.textAnnotations[0].description;
-    console.log(`Extracted ${extractedText.length} characters from image`);
-    console.log(`Text preview: "${extractedText.substring(0, 100)}..."`);
+    // Use regular text detection for images
+    try {
+      console.log(`Using textDetection for ${imagePath}`);
+      const [result] = await visionClient.textDetection({
+        image: { content: encodedFile },
+        imageContext: {
+          languageHints: ["en", "en-t-i0-handwrit"], // Include handwriting recognition
+        },
+      });
 
-    return extractedText;
+      // Extract text from text annotations
+      if (result.textAnnotations && result.textAnnotations.length > 0) {
+        const extractedText = result.textAnnotations[0].description;
+        console.log(`Extracted ${extractedText.length} characters from image`);
+        return extractedText;
+      } else {
+        console.log(`No text annotations found in API response`);
+        return "";
+      }
+    } catch (visionError) {
+      console.error(`Error in Vision API processing: ${visionError.message}`);
+      return ""; // Return empty instead of propagating the error
+    }
   } catch (error) {
     console.error(`Error processing image:`, error);
-    throw error;
+    // Return empty string instead of throwing to prevent crashes
+    return "";
   }
 }
 
-// Fix the initPdfJs function to properly handle worker
-async function initPdfJs() {
+// Create a new helper function for image preprocessing
+async function preprocessImage(imagePath) {
   try {
-    // Properly disable worker - don't try to import it
-    pdfjs.GlobalWorkerOptions.workerSrc = null;
-    console.log("PDF.js initialized with worker disabled");
-  } catch (error) {
-    console.error("Failed to initialize PDF.js:", error);
-  }
-}
+    console.log(`Preprocessing image: ${imagePath}`);
 
-async function convertPdfToImageWithJs(pdfPath, outputDir, pageNumber) {
-  try {
-    await initPdfJs();
+    // Use sharp to enhance the image for better OCR
+    const outputPath = `${imagePath.replace(/\.[^/.]+$/, "")}_preprocessed.png`;
 
-    console.log(`Converting PDF page ${pageNumber} to image using PDF.js`);
+    await sharp(imagePath)
+      .grayscale() // Convert to grayscale
+      .normalize() // Normalize the image (improves contrast)
+      .sharpen() // Sharpen the image for better text detection
+      .toFile(outputPath);
 
-    // Read PDF file
-    const data = new Uint8Array(fs.readFileSync(pdfPath));
-
-    // Load the PDF document
-    console.log(`Loading PDF document...`);
-    const pdfDoc = await pdfjs.getDocument({
-      data,
-      disableFontFace: true,
-      nativeImageDecoderSupport: "none",
-    }).promise;
-
-    console.log(`PDF loaded successfully. Getting page ${pageNumber}...`);
-
-    // Get the page
-    const page = await pdfDoc.getPage(pageNumber);
-
-    // Calculate dimensions with high resolution for better OCR
-    const scale = 2.0; // Higher scale = better quality but larger file
-    const viewport = page.getViewport({ scale });
-    const dimensions = {
-      width: Math.floor(viewport.width),
-      height: Math.floor(viewport.height),
-    };
-
-    console.log(
-      `Creating canvas with dimensions ${dimensions.width}x${dimensions.height}`
-    );
-
-    // Create canvas with the right dimensions
-    const canvas = createCanvas(dimensions.width, dimensions.height);
-    const context = canvas.getContext("2d");
-
-    // Set white background (improves OCR quality)
-    context.fillStyle = "white";
-    context.fillRect(0, 0, dimensions.width, dimensions.height);
-
-    // Render PDF page to canvas
-    console.log("Rendering PDF page to canvas...");
-    const renderContext = {
-      canvasContext: context,
-      viewport: viewport,
-      background: "white",
-    };
-
-    await page.render(renderContext).promise;
-    console.log("PDF page rendered successfully");
-
-    // Output path for the image
-    const outputPath = path.join(outputDir, `page_${pageNumber}.png`);
-
-    // Write canvas to file with high quality
-    const buffer = canvas.toBuffer("image/png", {
-      compressionLevel: 0, // 0 = no compression (best quality)
-      filters: canvas.PNG_FILTER_NONE,
-    });
-
-    fs.writeFileSync(outputPath, buffer);
-    console.log(`Image saved successfully at ${outputPath}`);
-
+    console.log(`Preprocessed image saved at: ${outputPath}`);
     return outputPath;
   } catch (error) {
-    console.error(`Error in convertPdfToImageWithJs:`, error);
-    throw error;
+    console.error(`Error preprocessing image:`, error);
+    // If preprocessing fails, return the original image path
+    return imagePath;
   }
 }
 
-// Add a fallback PDF to image converter that works differently
-async function convertPdfToImageAlternative(pdfPath, outputDir, pageNumber) {
-  try {
-    console.log(
-      `Using alternative PDF to image conversion for page ${pageNumber}`
-    );
+// Helper function to clean up files
+function cleanupFiles(files) {
+  files.forEach((file) => {
+    try {
+      if (fs.existsSync(file)) {
+        const stats = fs.statSync(file);
 
-    // Save with unique name to avoid conflicts
-    const outputPath = path.join(outputDir, `alt_page_${pageNumber}.png`);
+        if (stats.isDirectory()) {
+          // Remove directory content first
+          const dirContents = fs.readdirSync(file);
+          dirContents.forEach((item) => {
+            const itemPath = path.join(file, item);
+            if (fs.statSync(itemPath).isFile()) {
+              fs.unlinkSync(itemPath);
+            }
+          });
 
-    // Use pdf2pic directly without GM dependency
-    const convert = pdf2pic.fromPath(pdfPath, {
-      density: 300, // Higher DPI for better quality
-      savePath: outputDir, // Save location
-      saveFilename: `alt_page_${pageNumber}`,
-      format: "png", // Output format
-      width: 2000, // Width constraint
-      height: 2000, // Height constraint
-    });
+          // Then remove the directory
+          fs.rmdirSync(file);
+          console.log(`Removed directory: ${file}`);
+        } else {
+          // Remove file
+          fs.unlinkSync(file);
+          console.log(`Removed file: ${file}`);
+        }
+      }
+    } catch (error) {
+      console.error(`Failed to clean up ${file}:`, error);
+    }
+  });
 
-    // Convert the specific page
-    const result = await convert(pageNumber);
-    console.log(
-      `Alternative conversion result:`,
-      result.size ? "Success" : "Failed"
-    );
-
-    return result.path || outputPath;
-  } catch (error) {
-    console.error(`Error in alternative PDF conversion:`, error);
-    throw error;
-  }
+  console.log("Cleanup complete");
 }
 
-// PDF processing without external dependencies
-async function processPdfDirectlyWithVision(pdfPath) {
-  console.log(`Processing PDF directly with Vision API: ${pdfPath}`);
+// Preprocessing function for text
+function preprocessExtractedText(text) {
+  // Remove excessive whitespace
+  let processed = text.replace(/\s+/g, " ").trim();
 
+  // Fix bullet point formatting
+  processed = processed.replace(/•\s*/g, "\n• ");
+
+  // Fix dash formatting (often used in definitions)
+  processed = processed.replace(/\s-\s/g, " - ");
+
+  // Fix arrow formatting (often used in handwritten notes)
+  processed = processed.replace(/\s?→\s?/g, " - ");
+  processed = processed.replace(/\s?->\s?/g, " - ");
+
+  // Try to identify potential terms (capitalized phrases at beginning of lines)
+  const lines = processed.split("\n");
+  const structuredLines = lines.map((line) => {
+    // If line starts with a capitalized word(s) followed by lowercase, add a line break after
+    if (/^[A-Z][A-Za-z\s]+[a-z]\s+[a-z]/.test(line)) {
+      const match = line.match(/^([A-Z][A-Za-z\s]+?[a-z])\s+([a-z].*)/);
+      if (match) {
+        return `${match[1]}\n${match[2]}`;
+      }
+    }
+    return line;
+  });
+
+  // Rejoin and ensure proper spacing around bullet points
+  processed = structuredLines.join("\n");
+
+  // Handle terms with colons
+  processed = processed.replace(/([^:]+):\s*/g, "$1\n");
+
+  // Better handle numbered or bulleted lists which are common in notes
+  processed = processed.replace(/(\d+[\.\)]) /g, "\n$1 ");
+
+  // Better detect section headers (often all caps or numbered)
+  processed = processed.replace(/^([0-9]+\.\s+[A-Z\s]+)$/gm, "\n$1\n");
+
+  return processed;
+}
+
+// Add a helper function for PDF processing
+async function processPdfWithOCR(pdfPath) {
   try {
-    // Read the PDF file
-    const pdfBuffer = fs.readFileSync(pdfPath);
-    const base64Pdf = pdfBuffer.toString("base64");
+    console.log(`Processing PDF: ${pdfPath}`);
 
-    // Send to Vision API directly - it can handle PDFs
-    const [result] = await visionClient.documentTextDetection({
-      image: { content: base64Pdf },
-      imageContext: {
-        languageHints: ["en", "en-t-i0-handwrit"],
-      },
-    });
+    // Verify file exists and check file size
+    if (!fs.existsSync(pdfPath)) {
+      console.error(`PDF file not found: ${pdfPath}`);
+      return ""; // Return empty string instead of throwing
+    }
 
-    if (result && result.fullTextAnnotation && result.fullTextAnnotation.text) {
-      const extractedText = result.fullTextAnnotation.text;
+    const stats = fs.statSync(pdfPath);
+    console.log(`File size: ${stats.size} bytes`);
+
+    if (stats.size === 0) {
+      console.error(`File is empty: ${pdfPath}`);
+      return ""; // Return empty string instead of throwing
+    }
+
+    // First, try extracting text directly from the PDF using pdf-parse
+    console.log("Attempting direct text extraction from PDF...");
+
+    let pdfBuffer;
+    try {
+      pdfBuffer = fs.readFileSync(pdfPath);
+
+      // Basic validation check for PDF signature
+      const fileStart = pdfBuffer.slice(0, 5).toString();
+      if (fileStart !== "%PDF-") {
+        console.error(`File does not appear to be a valid PDF: ${pdfPath}`);
+        return ""; // Return empty for invalid PDFs
+      }
+    } catch (readError) {
+      console.error(`Error reading PDF file: ${readError.message}`);
+      return ""; // Return empty if we can't read the file
+    }
+
+    try {
+      const result = await pdfParse(pdfBuffer);
+      const extractedText = result.text;
+
+      // If we got meaningful text, return it
+      if (extractedText && extractedText.trim().length > 50) {
+        console.log(
+          `Successfully extracted ${extractedText.length} characters from PDF directly`
+        );
+        return extractedText;
+      }
+
       console.log(
-        `Successfully extracted ${extractedText.length} characters from PDF`
+        "Direct extraction yielded insufficient text, falling back to OCR..."
       );
-      return extractedText;
-    } else {
-      console.log("No text found in PDF using direct method");
-      return "";
+    } catch (pdfParseError) {
+      console.log(
+        `Direct PDF text extraction failed: ${pdfParseError.message}`
+      );
+    }
+
+    // If direct extraction fails or yields little text, use Google Vision documentTextDetection
+    console.log("Using documentTextDetection for PDF...");
+
+    try {
+      // Convert to base64
+      const encodedFile = pdfBuffer.toString("base64");
+      console.log(
+        `Converted file to base64, length: ${encodedFile.length} chars`
+      );
+
+      // Use document text detection for PDFs (better for structured text)
+      const [result] = await visionClient.documentTextDetection({
+        image: { content: encodedFile },
+        imageContext: {
+          languageHints: ["en"],
+        },
+      });
+
+      // Extract text from text annotations
+      if (result.fullTextAnnotation) {
+        const extractedText = result.fullTextAnnotation.text;
+        console.log(
+          `Extracted ${extractedText.length} characters from PDF with OCR`
+        );
+        return extractedText;
+      } else {
+        console.log(`No text annotations found in API response for PDF`);
+        return "";
+      }
+    } catch (visionError) {
+      console.error(`Error in Vision API processing: ${visionError.message}`);
+      return ""; // Return empty instead of propagating the error
     }
   } catch (error) {
     console.error(`Error processing PDF:`, error);
@@ -459,11 +526,7 @@ const ocrController = {
   // Add the old methods with a redirect for compatibility
   extractTextFromImage: async (req, res) => {
     try {
-      console.log("=== OCR PROCESS START ===");
-      console.log(
-        `Request received, files:`,
-        req.file ? `${req.file.originalname} (${req.file.mimetype})` : "None"
-      );
+      console.log("=== SINGLE IMAGE OCR PROCESS START ===");
 
       if (!req.file) {
         console.log("No file uploaded");
@@ -471,98 +534,55 @@ const ocrController = {
       }
 
       const filePath = req.file.path;
-      const fileType = req.file.mimetype;
       const fileName = req.file.originalname;
 
-      console.log(`Processing file: ${fileName}`);
-      console.log(`File type: ${fileType}`);
-      console.log(`File path: ${filePath}`);
+      console.log(`Processing single image: ${fileName}`);
 
-      if (!fs.existsSync(filePath)) {
-        console.error(`File not found at path: ${filePath}`);
-        return res.status(400).json({
-          error: "File not found",
-          details: "The uploaded file could not be located",
-          path: filePath,
-        });
-      }
-
-      let extractedText = "";
+      let tempFiles = [];
 
       try {
-        // Check if it's a PDF - now we'll process it
-        if (fileType === "application/pdf") {
-          console.log(
-            "Detected PDF file - Converting to images and processing"
-          );
-          extractedText = await processPdfWithOCR(filePath);
-        } else {
-          console.log(`Processing image file (${fileType})...`);
-          extractedText = await processImageWithOCR(filePath);
-        }
+        // Preprocess the image
+        console.log("Preprocessing image for better OCR results...");
+        const preprocessedImagePath = await preprocessImage(filePath);
+        tempFiles.push(preprocessedImagePath);
 
-        // Check if any text was extracted
-        if (!extractedText) {
-          console.log("No text could be extracted from the document");
+        // Extract text from the preprocessed image
+        const extractedText = await processImageWithOCR(preprocessedImagePath);
+
+        if (!extractedText || extractedText.trim() === "") {
+          console.log("No text could be extracted from the image");
           return res.status(422).json({
             error: "No text found",
-            details:
-              "No recognizable text could be extracted from the document",
-            fileType: fileType,
+            details: "No recognizable text could be extracted from the image",
           });
         }
 
-        console.log(`Extracted text length: ${extractedText.length}`);
-        console.log(`First 100 chars: "${extractedText.substring(0, 100)}..."`);
+        console.log(`Extracted ${extractedText.length} characters from image`);
 
-        // Clean up the original uploaded file
-        try {
-          fs.unlinkSync(filePath);
-          console.log("Original file deleted successfully");
-        } catch (cleanupError) {
-          console.error("Error deleting original file:", cleanupError);
-        }
+        // Clean up temporary files
+        cleanupFiles([...tempFiles, filePath]);
 
-        console.log("=== OCR PROCESS COMPLETE ===");
-
-        // Return the extracted text
-        return res.json({
-          text: extractedText,
-          filename: fileName,
-          fileType: fileType,
+        return res.status(200).json({
+          text: extractedText.trim(),
+          fileName: fileName,
         });
-      } catch (processingError) {
-        console.error("Processing error:", processingError);
-
-        // Try to clean up the file even if processing failed
-        try {
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-          }
-        } catch (cleanupError) {
-          console.error(
-            "Error cleaning up after processing failure:",
-            cleanupError
-          );
-        }
-
-        return res.status(422).json({
-          error: `Document Processing Failed`,
-          details: processingError.message,
+      } catch (error) {
+        console.error("Error processing image:", error);
+        return res.status(500).json({
+          error: "An error occurred while processing the image",
+          details: error.message,
         });
       }
     } catch (error) {
-      console.error("=== OCR PROCESS FAILED ===");
-      console.error("Unhandled error in OCR process:", error);
+      console.error("Error handling single image request:", error);
       return res.status(500).json({
-        error: "Text Extraction Failed",
+        error: "An error occurred while processing the request",
         details: error.message,
-        fileType: req.file ? req.file.mimetype : "unknown",
       });
     }
   },
 
-  // Extract term-definition pairs from OCR text
+  // Existing method to extract term-definition pairs
   extractTermDefinitionPairs: async (req, res) => {
     try {
       const { text } = req.body;
@@ -598,13 +618,14 @@ const ocrController = {
 
       // Updated prompt as suggested
       const prompt = `
-Analyze this educational text and create flashcard-style term-definition pairs:
+          Analyze this educational text and create flashcard-style term-definition pairs:
 
-TEXT:
-${preprocessedText}
+          TEXT:
+          ${preprocessedText}
 
-INSTRUCTIONS:
+          INSTRUCTIONS:
 1. ONLY extract terms that have clearly designated definitions in the text. Do not create or infer definitions for terms that don't have them explicitly stated.
+2. You can fix minimal errors in the text to make it more readable.
 2. A term must have an EXPLICIT definition directly following it - usually after a colon, dash, or on the next line with clear indentation.
 3. Headers, titles, section names, or category labels are NOT terms with definitions - ignore these completely.
 4. If a term appears as a list item without a definition, DO NOT include it.
@@ -614,22 +635,22 @@ INSTRUCTIONS:
 8. Only include terms that have substantive definitions. Skip terms with vague or incomplete explanations.
 9. Format your response as a JSON array of term-definition pairs.
 
-FORMAT:
-[
+          FORMAT:
+          [
   {"term": "Term1", "definition": "The exact and complete definition as found in the text..."},
   {"term": "Term2", "definition": "The exact and complete definition as found in the text..."}
-]
+          ]
 
-EXAMPLE INPUT:
+          EXAMPLE INPUT:
 "4 Number Systems
 Binary - (NO DEFINITION)
 Decimal - (NO DEFINITION)
 Octal - (NO DEFINITION)"
 
-EXAMPLE OUTPUT:
+          EXAMPLE OUTPUT:
 {No need to return anything}.
 
-RESPONSE FORMAT: Return ONLY the JSON array with no additional text.
+          RESPONSE FORMAT: Return ONLY the JSON array with no additional text.
 `;
 
       console.log("Sending request to OpenAI...");

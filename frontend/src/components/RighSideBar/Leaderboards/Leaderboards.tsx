@@ -7,16 +7,7 @@ import axios from "axios";
 import { useUser } from "../../../contexts/UserContext";
 import defaultPicture from "/profile-picture/default-picture.svg";
 import { useMediaQuery, useTheme } from "@mui/material";
-
-interface LeaderboardPlayer {
-  firebase_uid: string;
-  username: string;
-  level: number;
-  exp: number;
-  display_picture: string;
-  isCurrentUser: boolean;
-  rank: number;
-}
+import { LeaderboardPlayer } from "../../../types/leaderboardObject";
 
 const Leaderboards = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -212,7 +203,7 @@ const Leaderboards = () => {
         <div className="flex flex-row items-center mb-4 sm:mb-4 gap-2 sm:gap-4">
           <img
             src="/leaderboard.png"
-            className="w-6 sm:w-8 md:w-12 h-auto"
+            className="w-4 sm:w-8 md:w-8 h-auto"
             alt="icon"
           />
           <h2 className="text-sm sm:text-base md:text-lg font-semibold">

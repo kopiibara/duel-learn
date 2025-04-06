@@ -274,7 +274,7 @@ const FriendList: React.FC = () => {
           <div className="flex flex-row items-center mb-3 sm:mb-4 gap-2 sm:gap-3">
             <img
               src="/bunny.png"
-              className="w-6 sm:w-8 md:w-12 h-auto"
+              className="w-4 sm:w-8 md:w-10 h-auto"
               alt="icon"
             />
             <p className="text-sm sm:text-base md:text-xl font-semibold">
@@ -313,7 +313,7 @@ const FriendList: React.FC = () => {
                   src={noFriend}
                   alt="noFriend"
                   style={{
-                    width: "4rem",
+                    width: "8.5rem",
                     height: "auto",
                     opacity: 0.75,
                   }}

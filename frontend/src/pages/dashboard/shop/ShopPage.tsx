@@ -52,42 +52,45 @@ const Shop = () => {
     setSnackbarOpen(true);
   };
 
-  useEffect(() => {
-    const fetchItems = async () => {
-      try {
-        setLoading(true);
-        // Fetch shop items
-        const itemsResponse = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/shop/items`
+  const fetchItems = async (forceRefresh = false) => {
+    try {
+      setLoading(true);
+      // Fetch shop items with optional cache busting
+      const timestamp = forceRefresh ? Date.now() : undefined;
+      const itemsResponse = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/shop/items${
+          forceRefresh ? `?timestamp=${timestamp}` : ""
+        }`
+      );
+      setItems(itemsResponse.data);
+
+      // If user is logged in, fetch their owned items
+      if (user?.firebase_uid) {
+        // Fetch user's items with same cache strategy
+        const userItemsResponse = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/shop/user-item/${
+            user.firebase_uid
+          }${forceRefresh ? `?timestamp=${timestamp}` : ""}`
         );
-        setItems(itemsResponse.data);
 
-        // If user is logged in, fetch their owned items
-        if (user?.firebase_uid) {
-          // Fetch user's items
-          const userItemsResponse = await axios.get(
-            `${import.meta.env.VITE_BACKEND_URL}/api/shop/user-item/${
-              user.firebase_uid
-            }`
-          );
+        // Use the quantity that now comes directly from the database
+        const owned: Record<string, number> = {};
+        userItemsResponse.data.forEach((item: any) => {
+          owned[item.item_code] = item.quantity;
+        });
 
-          // Use the quantity that now comes directly from the database
-          const owned: Record<string, number> = {};
-          userItemsResponse.data.forEach((item: any) => {
-            owned[item.item_code] = item.quantity;
-          });
-
-          setOwnedItems(owned);
-        }
-
-        setLoading(false);
-      } catch (err) {
-        console.error("Failed to fetch shop data:", err);
-        setError("Failed to load shop data. Please try again later.");
-        setLoading(false);
+        setOwnedItems(owned);
       }
-    };
 
+      setLoading(false);
+    } catch (err) {
+      console.error("Failed to fetch shop data:", err);
+      setError("Failed to load shop data. Please try again later.");
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchItems();
   }, [user?.firebase_uid]);
 
@@ -171,8 +174,12 @@ const Shop = () => {
       }));
 
       // Use the itemName parameter here instead of a generic message
-      showSnackbar(`Successfully purchased ${quantity} ${itemName}!`);
-      return true;
+      if (response.data.message === "Item bought successfully") {
+        // Force refresh to get updated inventory
+        fetchItems(true);
+        showSnackbar(`Successfully purchased ${quantity} ${itemName}!`);
+        return true;
+      }
     } catch (err: any) {
       // Error handling remains the same
       console.error("Purchase failed:", err);
@@ -295,13 +302,15 @@ const Shop = () => {
   const handleRefresh = () => {
     if (refreshCallback) {
       refreshCallback();
+    } else {
+      fetchItems(true); // Force refresh from server
     }
   };
 
   return (
     <PageTransition>
       <DocumentHead title="Shop | Duel Learn" />
-      <div className="h-full w-full text-white px-3 sm:px-6 pb-6">
+      <div className="h-full w-full text-white pb-6">
         {/* Premium section with responsive adjustments */}
         {!isPremium && (
           <div

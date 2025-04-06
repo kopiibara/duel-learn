@@ -15,7 +15,7 @@ const serviceAccount = JSON.parse(
 
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://duel-learn-default-rtdb.firebaseio.com/',
+  databaseURL: process.env.FIREBASE_DATABASE_URL,
 });
 
 export default admin; 

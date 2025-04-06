@@ -8,16 +8,7 @@ import axios from "axios";
 import { CircularProgress } from "@mui/material";
 import defaultProfile from "/profile-picture/default-picture.svg";
 import noLeaderboard from "/images/noLeaderboard.svg";
-
-interface LeaderboardPlayer {
-  firebase_uid: string;
-  username: string;
-  level: number;
-  exp: number;
-  display_picture: string;
-  isCurrentUser: boolean;
-  rank: number;
-}
+import { LeaderboardPlayer } from "../../../types/leaderboardObject";
 
 const Leaderboards = () => {
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardPlayer[]>(
@@ -142,7 +133,11 @@ const Leaderboards = () => {
 
                 {/* Profile Picture */}
                 <div className="profile-icon">
-                  <img src={getDefaultAvatar(player)} alt="Profile" />
+                  <img
+                    src={getDefaultAvatar(player)}
+                    alt="Profile"
+                    className="sm:w-3 sm:h-3 md:w-12 md:h-12 rounded-[5px] object-cover"
+                  />
                 </div>
               </div>
 

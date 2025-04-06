@@ -13,10 +13,9 @@ import {
   InvitationLobbySnackbar,
   AudioStopper,
 } from "./components";
-import theme from "./contexts/ThemeContext";
+import theme from "../../frontend/src/contexts/ThemeContext";
 import "./index.css";
-import { Analytics } from "@vercel/analytics/react";
-import { SpeedInsights } from "@vercel/speed-insights/react";
+import { GameStatusProvider } from "./contexts/GameStatusContext";
 
 function App() {
   return (
@@ -35,17 +34,17 @@ function App() {
               ]}
             />
             <SnackbarProvider>
-              <HelmetProvider>
-                <ThemeProvider theme={theme}>
-                  <CssBaseline />
-                  <AppRoutes />
-                  <GlobalSnackbar />
-                  <SnackbarConnector />
-                  <InvitationLobbySnackbar />
-                  <Analytics />
-                  <SpeedInsights />
-                </ThemeProvider>
-              </HelmetProvider>
+              <GameStatusProvider>
+                <HelmetProvider>
+                  <ThemeProvider theme={theme}>
+                    <CssBaseline />
+                    <InvitationLobbySnackbar />
+                    <AppRoutes />
+                    <GlobalSnackbar />
+                    <SnackbarConnector />
+                  </ThemeProvider>
+                </HelmetProvider>
+              </GameStatusProvider>
             </SnackbarProvider>
           </AudioProvider>
         </UserProvider>

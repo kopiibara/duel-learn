@@ -1,9 +1,42 @@
 import { pool } from "../config/db.js";
+import NodeCache from "node-cache";
+
+const shopCache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
+
+const invalidateShopCaches = (firebase_uid) => {
+    shopCache.del('shop_items');
+
+    if (firebase_uid) {
+        shopCache.del(`user_items_${firebase_uid}`);
+    }
+
+    // Clear any cache keys related to the user
+    const allKeys = shopCache.keys();
+    allKeys.forEach(key => {
+        if (key.includes(firebase_uid)) {
+            shopCache.del(key);
+        }
+    });
+};
 
 const shopController = {
+
     getShopItems: async (req, res) => {
         try {
-            const [rows] = await pool.query("SELECT item_code, item_name, item_description,item_effect, item_price, item_picture_url FROM shop_items");
+            // Check cache first
+            const cachedItems = shopCache.get('shop_items');
+            // Skip cache if timestamp parameter exists (for forced refresh)
+            const skipCache = req.query.timestamp !== undefined;
+
+            if (cachedItems && !skipCache) {
+                return res.status(200).json(cachedItems);
+            }
+
+            const [rows] = await pool.query("SELECT item_code, item_name, item_description, item_effect, item_price, item_picture_url FROM shop_items");
+
+            // Cache the result
+            shopCache.set('shop_items', rows, 1800); // Cache for 30 minutes
+
             res.status(200).json(rows);
         } catch (error) {
             console.error("Error executing query: ", error);
@@ -15,14 +48,28 @@ const shopController = {
         const { firebase_uid } = req.params;
 
         try {
+            // Check cache first
+            const cacheKey = `user_items_${firebase_uid}`;
+            const cachedItems = shopCache.get(cacheKey);
+            // Skip cache if timestamp parameter exists
+            const skipCache = req.query.timestamp !== undefined;
+
+            if (cachedItems && !skipCache) {
+                return res.status(200).json(cachedItems);
+            }
+
             // Modified query to include quantity and join with shop_items to get all needed info
             const [rows] = await pool.query(
-                `SELECT ui.firebase_uid, ui.item_code, ui.quantity, si.item_name, si.item_effect ,si.item_description, si.item_price, si.item_picture_url
+                `SELECT ui.firebase_uid, ui.item_code, ui.quantity, si.item_name, si.item_effect, si.item_description, si.item_price, si.item_picture_url
                  FROM user_items ui
                  JOIN shop_items si ON ui.item_code = si.item_code
                  WHERE ui.firebase_uid = ?`,
                 [firebase_uid]
             );
+
+            // Cache the results
+            shopCache.set(cacheKey, rows, 300); // Cache for 5 minutes
+
             res.json(rows);
         } catch (error) {
             console.error("Error executing query: ", error);
@@ -102,7 +149,7 @@ const shopController = {
                     // Insert with the correct parameter order and all required fields
                     await connection.query(
                         "INSERT INTO user_items (firebase_uid, username, item_code, item_name, item_price, quantity, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                        [firebase_uid, username, item_code, item.item_name, item_price, quantity, totalPrice]
+                        [firebase_uid, username, item_code, item.item_name, itemPrice, quantity, totalPrice]
                     );
                 }
 
@@ -122,6 +169,9 @@ const shopController = {
                     await connection.commit();
                     connection.release();
 
+                    // Invalidate cache
+                    invalidateShopCaches(firebase_uid);
+
                     // Return the updated coin balance, purchase details, and tech_pass count
                     return res.status(200).json({
                         message: "Item bought successfully",
@@ -134,6 +184,9 @@ const shopController = {
 
                 await connection.commit();
                 connection.release();
+
+                // Invalidate cache
+                invalidateShopCaches(firebase_uid);
 
                 // Return the updated coin balance and purchase details
                 res.status(200).json({
@@ -181,6 +234,9 @@ const shopController = {
 
                 await connection.commit();
                 connection.release();
+
+                // Invalidate cache
+                invalidateShopCaches(firebase_uid);
 
                 res.json({ message: "Tech Pass used successfully!" });
             } catch (error) {
@@ -362,6 +418,9 @@ const shopController = {
 
                 await connection.commit();
                 connection.release();
+
+                // Invalidate cache
+                invalidateShopCaches(firebase_uid);
 
                 res.json({
                     message: resultMessage,

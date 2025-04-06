@@ -8,6 +8,10 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Add this at the top of the file, after the openai initialization
+let answerDistribution = { A: 0, B: 0, C: 0, D: 0 };
+let trueFalseDistribution = { True: 0, False: 0 };
+
 // Updated helper function to fetch item_id from study_material_content with corrected column names
 const getItemIdFromStudyMaterial = async (
   studyMaterialId,
@@ -21,6 +25,7 @@ const getItemIdFromStudyMaterial = async (
     console.log(`- Study Material ID: ${studyMaterialId}`);
     console.log(`- Term: "${term}"`);
     console.log(`- Item Number: ${itemNumber}`);
+
 
     // Try exact term match
     const [exactTermResults] = await pool.query(
@@ -94,882 +99,217 @@ const getItemIdFromStudyMaterial = async (
 };
 
 // Helper function to store generated questions in the database
-const storeGeneratedQuestions = async (
-  studyMaterialId,
-  items,
-  questions,
-  gameMode = "peaceful"
-) => {
+const storeGeneratedQuestions = async (studyMaterialId, items, questions, gameMode = "peaceful") => {
+  console.log("=== STORING GENERATED QUESTIONS - START ===");
+  console.log(`Questions to store: ${questions.length}`);
+  console.log(`Items available: ${items.length}`);
+
+  const normalizedGameMode = gameMode.toLowerCase().trim();
+
   try {
-    // Normalize the game mode to ensure consistent format
-    // Convert to lowercase and replace spaces with hyphens for consistency
-    let normalizedGameMode = gameMode
-      ? gameMode.toLowerCase().replace(/\s+/g, "-")
-      : "peaceful";
+    // Clear existing questions only once at the start
+    await clearQuestionsForMaterial(studyMaterialId, normalizedGameMode);
 
-    // Special handling for "Time Pressured" mode
-    if (
-      normalizedGameMode === "time-pressured" ||
-      normalizedGameMode === "time-pressure"
-    ) {
-      normalizedGameMode = "time-pressured";
-    } else if (normalizedGameMode === "peaceful") {
-      normalizedGameMode = "peaceful";
-    }
+    // Store all questions in a batch
+    const { pool } = await import('../config/db.js');
 
-    console.log("Game mode normalization in storeGeneratedQuestions:", {
-      original: gameMode,
-      normalized: normalizedGameMode,
-    });
+    // Prepare batch insert values
+    const insertValues = [];
+    const insertQuery = `
+      INSERT INTO generated_material 
+      (study_material_id, item_id, item_number, term, definition, 
+       question_type, question, answer, choices, game_mode) 
+      VALUES ?
+    `;
 
-    console.log("=== STORING GENERATED QUESTIONS - START ===");
-    console.log("Parameters received:", {
-      studyMaterialId,
-      itemsCount: items?.length || 0,
-      questionsCount: questions?.length || 0,
-      gameMode: normalizedGameMode,
-    });
-    console.log("Study Material ID:", studyMaterialId);
-    console.log("Game Mode:", normalizedGameMode);
-    console.log("First item:", items[0]);
-    console.log("First question:", questions[0]);
-
-    // Validate inputs
-    if (!studyMaterialId) {
-      console.error("Missing studyMaterialId");
-      return;
-    }
-
-    if (!Array.isArray(items) || items.length === 0) {
-      console.error("Invalid or empty items array");
-      return;
-    }
-
-    if (!Array.isArray(questions) || questions.length === 0) {
-      console.error("Invalid or empty questions array");
-      return;
-    }
-
-    // First, check if the table exists
-    try {
-      await GeneratedMaterial.checkTableExists();
-    } catch (tableCheckError) {
-      console.error("Error checking table existence:", tableCheckError);
-    }
-
-    // Check if questions already exist for this study material and game mode
-    let existingQuestions = 0;
-    try {
-      const result = await GeneratedMaterial.query()
-        .where("study_material_id", studyMaterialId)
-        .where("game_mode", normalizedGameMode)
-        .count("* as count")
-        .first();
-
-      existingQuestions = result ? parseInt(result.count) : 0;
-      console.log(
-        `Found ${existingQuestions} existing questions for study material ${studyMaterialId} with game mode ${normalizedGameMode}`
-      );
-    } catch (countError) {
-      console.error(
-        "Error counting existing questions with Objection:",
-        countError
-      );
-    }
-
-    // Always delete existing questions for this study material and game mode
-    console.log(
-      `Deleting existing questions for study_material_id: ${studyMaterialId} and game_mode: ${normalizedGameMode}`
-    );
-    let deletionSuccessful = false;
-
-    try {
-      // Try with direct SQL first (more reliable)
-      const { pool } = await import("../config/db.js");
-      console.log("Executing SQL DELETE query...");
-
-      // First, log the existing questions to verify what we're deleting
-      const [existingRows] = await pool.query(
-        "SELECT COUNT(*) as count, GROUP_CONCAT(id) as ids, GROUP_CONCAT(item_number) as item_numbers FROM generated_material WHERE study_material_id = ? AND game_mode = ?",
-        [studyMaterialId, normalizedGameMode]
-      );
-
-      if (existingRows && existingRows[0]) {
-        console.log(
-          `Found ${existingRows[0].count} existing questions with IDs: ${existingRows[0].ids || "none"
-          }`
-        );
-        console.log(
-          `Existing item_numbers: ${existingRows[0].item_numbers || "none"}`
-        );
-      }
-
-      // Now delete them
-      const [deleteResult] = await pool.query(
-        "DELETE FROM generated_material WHERE study_material_id = ? AND game_mode = ?",
-        [studyMaterialId, normalizedGameMode]
-      );
-
-      console.log("SQL Delete result:", deleteResult);
-      console.log(`Deleted ${deleteResult.affectedRows} rows with SQL`);
-
-      // Verify deletion
-      const [verifyRows] = await pool.query(
-        "SELECT COUNT(*) as count FROM generated_material WHERE study_material_id = ? AND game_mode = ?",
-        [studyMaterialId, normalizedGameMode]
-      );
-
-      if (verifyRows && verifyRows[0]) {
-        console.log(`After deletion: ${verifyRows[0].count} questions remain`);
-        if (verifyRows[0].count === 0) {
-          deletionSuccessful = true;
-        } else {
-          console.warn(
-            `⚠️ Deletion may not have been complete. ${verifyRows[0].count} questions remain.`
-          );
-        }
-      }
-    } catch (sqlError) {
-      console.error("Error deleting with direct SQL:", sqlError);
-
-      // Fallback to Objection if SQL fails
-      try {
-        console.log("Falling back to Objection.js for deletion...");
-        const deleteResult = await GeneratedMaterial.query()
-          .delete()
-          .where(
-            "study_material_id",
-            parseInt(studyMaterialId) || studyMaterialId
-          )
-          .where("game_mode", normalizedGameMode);
-        console.log("Objection Delete result:", deleteResult);
-        deletionSuccessful = true;
-      } catch (deleteError) {
-        console.error(
-          "Error deleting existing questions with Objection:",
-          deleteError
-        );
-        // Continue with insertion even if deletion fails
-      }
-    }
-
-    if (!deletionSuccessful) {
-      console.warn(
-        "⚠️ Failed to delete existing questions. New questions may be duplicated."
-      );
-    } else {
-      console.log("✅ Successfully deleted existing questions.");
-    }
-
-    console.log("Preparing to insert new questions");
-    const insertPromises = [];
-
-    // Create a map to track which item_numbers have been used
-    const usedItemNumbers = new Map();
-    const termToItemNumber = new Map(); // Map to track item_number for each term
-
-    // First pass: assign item_numbers to terms
+    // Process each item and its corresponding questions
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
-      if (!termToItemNumber.has(item.term)) {
-        termToItemNumber.set(item.term, i + 1);
-      }
-    }
 
-    console.log(
-      "Term to item_number mapping:",
-      Object.fromEntries(termToItemNumber)
-    );
-
-    // Insert the questions
-    console.log(
-      `Inserting ${questions.length} questions for study material ${studyMaterialId} with game mode ${normalizedGameMode}`
-    );
-
-    // Add counters for each question type
-    const questionTypeCounts = {
-      "multiple-choice": 0,
-      identification: 0,
-      "true-false": 0,
-      other: 0,
-    };
-
-    // Process each question
-    for (let i = 0; i < questions.length; i++) {
-      const question = questions[i];
-
-      // Extract item from itemInfo if available
-      let item;
-      if (question.itemInfo) {
-        console.log(
-          `Question ${i + 1} has itemInfo property:`,
-          question.itemInfo
-        );
-        // Try to match this item with one in the items array
-        const matchingItem = items.find(
-          (it) => it.term === question.itemInfo.term
-        );
-
-        if (matchingItem) {
-          console.log(`Found matching item for ${question.itemInfo.term}`);
-          item = matchingItem;
-        } else {
-          // Use the itemInfo directly if no match found
-          console.log(
-            `Creating item from itemInfo for ${question.itemInfo.term}`
-          );
-          item = {
-            id: question.itemInfo.itemId || i + 1,
-            term: question.itemInfo.term,
-            definition: question.itemInfo.definition,
-          };
-        }
-      } else {
-        // Use the corresponding item from items array
-        item = items[i % items.length];
-        console.log(
-          `Using item at index ${i % items.length} for question ${i + 1}`
-        );
-      }
-
-      // Ensure item is valid
-      if (!item || !item.term) {
-        console.error(`Invalid item for question ${i + 1}:`, item);
-        console.error(`Creating dummy item for question ${i + 1}`);
-
-        // Create a dummy item from the question
-        item = {
-          id: i + 1,
-          term: question.answer || question.correctAnswer || `Item ${i + 1}`,
-          definition: question.question || `Definition ${i + 1}`,
-        };
-      }
-
-      // Get the item_number for this term, or use the index + 1 if not found
-      let itemNumber = termToItemNumber.get(item.term) || i + 1;
-
-      // Fetch the actual item_id from study_material_content table with enhanced debugging
-      console.log(
-        `\nLooking up content for question ${i + 1} with term "${item.term}"`
-      );
-      const contentItem = await getItemIdFromStudyMaterial(
-        studyMaterialId,
-        item.term,
-        itemNumber
-      );
-      let actualItemId, actualItemNumber;
-
-      if (contentItem && contentItem.itemId) {
-        actualItemId = contentItem.itemId; // Keep as string, don't parse
-        actualItemNumber = contentItem.itemNumber;
-        console.log(
-          `✅ SUCCESS: Using actual item_id ${actualItemId} (type: ${typeof actualItemId}) from study_material_content for term "${item.term
-          }"`
-        );
-      } else {
-        // If lookup fails, make one more attempt with a cleaned version of the term
-        const cleanedTerm = item.term.trim().replace(/^[A-Z]\.\s+/, ""); // Remove letter prefixes like "A. "
-        if (cleanedTerm !== item.term) {
-          console.log(`Trying again with cleaned term: "${cleanedTerm}"`);
-          const cleanedContentItem = await getItemIdFromStudyMaterial(
-            studyMaterialId,
-            cleanedTerm,
-            itemNumber
-          );
-
-          if (cleanedContentItem && cleanedContentItem.itemId) {
-            actualItemId = cleanedContentItem.itemId; // Keep as string
-            actualItemNumber = cleanedContentItem.itemNumber;
-            console.log(
-              `✅ SUCCESS with cleaned term: Using item_id ${actualItemId} (type: ${typeof actualItemId}) for "${cleanedTerm}"`
-            );
-          } else {
-            console.warn(
-              `❌ FAILURE: Couldn't find item_id in study_material_content for either "${item.term}" or "${cleanedTerm}"`
-            );
-            actualItemId = item.id || String(i + 1); // Ensure string format even for fallback
-            actualItemNumber = itemNumber;
-          }
-        } else {
-          console.warn(
-            `❌ FAILURE: Couldn't find item_id in study_material_content for term "${item.term}"`
-          );
-          actualItemId = item.id || String(i + 1); // Ensure string format even for fallback
-          actualItemNumber = itemNumber;
-        }
-      }
-
-      // Normalize question type - ensure we have consistent field names
-      let questionType = "";
-
-      // Check for multiple fields that could indicate the question type
-      if (question.type) {
-        questionType = question.type;
-      } else if (question.questionType) {
-        questionType = question.questionType;
-      } else if (question.question_type) {
-        questionType = question.question_type;
-      } else {
-        // Try to infer the type from available properties
-        if (
-          question.options ||
-          (question.choices && !Array.isArray(question.choices))
-        ) {
-          questionType = "multiple-choice";
-        } else if (
-          question.answer === "true" ||
-          question.answer === "false" ||
-          question.answer === "True" ||
-          question.answer === "False"
-        ) {
-          questionType = "true-false";
-        } else {
-          questionType = "identification"; // Default to identification if can't determine
-        }
-      }
-
-      // Normalize to our standard types
-      if (
-        questionType.includes("multiple") ||
-        questionType.includes("choice")
-      ) {
-        questionType = "multiple-choice";
-      } else if (
-        questionType.includes("true") ||
-        questionType.includes("false")
-      ) {
-        questionType = "true-false";
-      } else if (
-        questionType.includes("identification") ||
-        questionType.includes("identify")
-      ) {
-        questionType = "identification";
-      }
-
-      // Ensure question has normalized type properties for consistency
-      question.type = questionType;
-      question.questionType = questionType;
-      question.question_type = questionType;
-
-      console.log(
-        `\n[Question ${i + 1}/${questions.length
-        }] Processing question of type "${questionType}" for term "${item.term
-        }"`
-      );
-
-      // Get the correct answer field based on question type
-      let answer = "";
-      if (question.answer) {
-        answer = question.answer;
-      } else if (question.correctAnswer) {
-        answer = question.correctAnswer;
-      } else {
-        console.warn(
-          `⚠️ Question ${i + 1} has no answer field! Using term as fallback.`
-        );
-        answer = item.term;
-      }
-
-      // For multiple choice, clean up the answer (remove the prefix letter if any)
-      if (questionType === "multiple-choice" && answer.match(/^[A-D]\.\s+/)) {
-        answer = answer.replace(/^[A-D]\.\s+/, "");
-      }
-
-      console.log(`- Term: "${item.term}"`);
-      console.log(`- Question: "${question.question?.substring(0, 50)}..."`);
-      console.log(`- Answer: "${answer}"`);
-
-      // Create a unique key for this question type and term
-      const questionTypeKey = `${item.term}-${questionType}`;
-
-      // Skip if we've already processed this exact question type for this term
-      if (usedItemNumbers.has(questionTypeKey)) {
-        console.log(
-          `Skipping duplicate question for term "${item.term}" of type ${questionType}`
-        );
-        continue;
-      }
-
-      // Mark this question as processed
-      usedItemNumbers.set(questionTypeKey, itemNumber);
-
-      console.log(
-        `Using item_number ${actualItemNumber} and item_id ${actualItemId} for term "${item.term}" of type ${questionType}`
-      );
-
-      try {
-        // Use direct SQL with REPLACE INTO to ensure uniqueness
-        const { pool } = await import("../config/db.js");
-
-        // Process choices for multiple-choice questions
+      // For each question template, create a question for this item
+      for (const question of questions) {
+        let questionText = question.question;
         let choicesJSON = null;
-        if (questionType === "multiple-choice") {
-          if (question.options) {
-            choicesJSON = JSON.stringify(question.options);
-          } else if (question.choices) {
-            choicesJSON =
-              typeof question.choices === "string"
-                ? question.choices
-                : JSON.stringify(question.choices);
-          }
-        }
+        let answer;
 
-        // Prepare the question data
-        const questionData = {
-          study_material_id: studyMaterialId,
-          item_id: actualItemId,
-          item_number: actualItemNumber,
-          term: String(item.term),
-          definition: String(item.definition),
-          question_type: String(questionType),
-          question: String(question.question || ""),
-          answer: String(answer),
-          choices: choicesJSON,
-          game_mode: normalizedGameMode,
-        };
-
-        console.log(`About to store question with: 
-          - study_material_id: ${questionData.study_material_id}
-          - item_id: ${questionData.item_id}
-          - item_number: ${questionData.item_number}
-          - term: ${questionData.term}
-          - question_type: ${questionData.question_type}
-          - game_mode: ${questionData.game_mode}
-          - choices: ${questionData.choices ? "set" : "null"}`);
-
-        // Try INSERT IGNORE first in case REPLACE is causing issues
-        const insertQuery = `
-          INSERT IGNORE INTO generated_material 
-          (study_material_id, item_id, item_number, term, definition, question_type, question, answer, choices, game_mode) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-
-        const insertValues = [
-          questionData.study_material_id,
-          questionData.item_id,
-          questionData.item_number,
-          questionData.term,
-          questionData.definition,
-          questionData.question_type,
-          questionData.question,
-          questionData.answer,
-          questionData.choices,
-          normalizedGameMode,
-        ];
-
-        console.log(
-          `Executing SQL INSERT for ${questionData.question_type} question...`
-        );
-
-        try {
-          const [insertResult] = await pool.execute(insertQuery, insertValues);
-          console.log(
-            `SQL Insert result for ${questionData.question_type}:`,
-            insertResult
-          );
-
-          // If insert did not affect any rows, try direct update
-          if (insertResult.affectedRows === 0) {
-            console.log(`Insert didn't affect rows, trying update...`);
-
-            const updateQuery = `
-              UPDATE generated_material 
-              SET 
-                item_id = ?,
-                item_number = ?,
-                definition = ?,
-                question = ?,
-                answer = ?,
-                choices = ?
-              WHERE 
-                study_material_id = ? AND 
-                term = ? AND 
-                question_type = ? AND 
-                game_mode = ?
-            `;
-
-            const updateValues = [
-              questionData.item_id,
-              itemNumber,
-              questionData.definition,
-              questionData.question,
-              questionData.answer,
-              questionData.choices,
-              questionData.study_material_id,
-              questionData.term,
-              questionData.question_type,
-              normalizedGameMode,
-            ];
-
-            const [updateResult] = await pool.execute(
-              updateQuery,
-              updateValues
-            );
-            console.log(
-              `SQL Update result for ${questionData.question_type}:`,
-              updateResult
-            );
-
-            if (updateResult.affectedRows > 0) {
-              console.log(
-                `✅ Updated ${questionData.question_type} question successfully`
-              );
-            } else {
-              // If neither insert nor update worked, try a direct REPLACE
-              console.log(
-                `Update didn't affect rows, trying direct replace...`
-              );
-
-              const replaceQuery = `
-                REPLACE INTO generated_material 
-                (study_material_id, item_id, item_number, term, definition, question_type, question, answer, choices, game_mode) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-              `;
-
-              const [replaceResult] = await pool.execute(
-                replaceQuery,
-                insertValues
-              );
-              console.log(
-                `SQL Replace result for ${questionData.question_type}:`,
-                replaceResult
-              );
-
-              if (replaceResult.affectedRows > 0) {
-                console.log(
-                  `✅ Replaced ${questionData.question_type} question successfully (ID: ${replaceResult.insertId})`
-                );
-              } else {
-                console.error(
-                  `❌ All SQL operations failed for ${questionData.question_type} question!`
-                );
-              }
-            }
-          } else {
-            console.log(
-              `✅ Inserted ${questionData.question_type} question successfully (ID: ${insertResult.insertId})`
-            );
-          }
-        } catch (sqlOpError) {
-          console.error(`SQL operation error:`, sqlOpError);
-
-          // Check for specific error codes
-          if (sqlOpError.code === "ER_DUP_ENTRY") {
-            console.log(
-              `Duplicate entry detected, trying direct UPDATE instead...`
-            );
-
-            // Try direct update as a fallback
-            const updateQuery = `
-              UPDATE generated_material 
-              SET 
-                item_id = ?,
-                item_number = ?,
-                definition = ?,
-                question = ?,
-                answer = ?,
-                choices = ?
-              WHERE 
-                study_material_id = ? AND 
-                term = ? AND 
-                question_type = ? AND 
-                game_mode = ?
-            `;
-
-            const updateValues = [
-              questionData.item_id,
-              itemNumber,
-              questionData.definition,
-              questionData.question,
-              questionData.answer,
-              questionData.choices,
-              questionData.study_material_id,
-              questionData.term,
-              questionData.question_type,
-              normalizedGameMode,
-            ];
-
-            try {
-              const [updateResult] = await pool.execute(
-                updateQuery,
-                updateValues
-              );
-              console.log(`SQL Update fallback result:`, updateResult);
-
-              if (updateResult.affectedRows > 0) {
-                console.log(
-                  `✅ Updated ${questionData.question_type} question successfully as fallback`
-                );
-              } else {
-                throw new Error(`Update fallback failed too`);
-              }
-            } catch (updateError) {
-              console.error(`Update fallback error:`, updateError);
-              throw updateError;
-            }
-          } else {
-            throw sqlOpError;
-          }
-        }
-
-        // Track successfully stored question types regardless of method
-        if (questionType === "multiple-choice") {
-          questionTypeCounts["multiple-choice"]++;
-        } else if (questionType === "identification") {
-          questionTypeCounts["identification"]++;
-        } else if (questionType === "true-false") {
-          questionTypeCounts["true-false"]++;
+        // Handle different question types
+        if (question.type === 'true-false') {
+          questionText = `Is this statement true or false: ${item.definition}`;
+          answer = question.answer; // Use the True/False answer from the question
+        } else if (question.type === 'multiple-choice' && question.options) {
+          choicesJSON = JSON.stringify(question.options);
+          answer = item.term; // For multiple choice, use the term as answer
         } else {
-          questionTypeCounts["other"]++;
+          // For identification questions
+          answer = item.term;
         }
 
-        // Verify the question was stored
-        try {
-          const [verifyRows] = await pool.query(
-            "SELECT * FROM generated_material WHERE study_material_id = ? AND term = ? AND question_type = ? AND game_mode = ? LIMIT 1",
-            [
-              questionData.study_material_id,
-              questionData.term,
-              questionData.question_type,
-              normalizedGameMode,
-            ]
-          );
-
-          if (verifyRows && verifyRows.length > 0) {
-            console.log(
-              `✅ Successfully verified ${questionData.question_type} question was stored. ID: ${verifyRows[0].id}`
-            );
-            console.log(`Stored row:`, verifyRows[0]);
-          } else {
-            console.warn(
-              `⚠️ Could not verify ${questionData.question_type} question was stored!`
-            );
-
-            // Try a broader search
-            const [broadVerifyRows] = await pool.query(
-              "SELECT * FROM generated_material WHERE study_material_id = ? LIMIT 10",
-              [questionData.study_material_id]
-            );
-
-            console.log(
-              `Broader search found ${broadVerifyRows?.length || 0
-              } rows for this study material`
-            );
-
-            if (broadVerifyRows && broadVerifyRows.length > 0) {
-              console.log(
-                `First few rows from study material:`,
-                broadVerifyRows.slice(0, 3)
-              );
-            }
-
-            // Check table structure
-            const [columnsResult] = await pool.query(
-              "SHOW COLUMNS FROM generated_material"
-            );
-            console.log(
-              `Table structure verification:`,
-              columnsResult.map((col) => col.Field)
-            );
-          }
-        } catch (verifyError) {
-          console.error(`Error verifying question storage:`, verifyError);
-        }
-      } catch (sqlError) {
-        console.error(`Error with SQL operations:`, sqlError);
-        console.error(`SQL Error Code:`, sqlError.code);
-        console.error(`SQL Error Number:`, sqlError.errno);
-        console.error(`SQL State:`, sqlError.sqlState);
-
-        // Try with a direct approach - minimal query with only required fields
-        try {
-          console.log(`Trying minimal SQL approach...`);
-          const { pool } = await import("../config/db.js");
-
-          const minimalQuery = `
-            INSERT INTO generated_material 
-            (study_material_id, term, definition, question_type, question, answer, game_mode) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-          `;
-
-          const minimalValues = [
-            studyMaterialId,
-            item.term,
-            item.definition,
-            questionType,
-            question.question || "",
-            answer,
-            normalizedGameMode,
-          ];
-
-          const [minimalResult] = await pool.execute(
-            minimalQuery,
-            minimalValues
-          );
-          console.log(`Minimal SQL approach result:`, minimalResult);
-
-          if (minimalResult.affectedRows > 0) {
-            console.log(
-              `✅ Minimal approach succeeded for ${questionType} question`
-            );
-
-            // Update counter
-            if (questionType === "multiple-choice") {
-              questionTypeCounts["multiple-choice"]++;
-            } else if (questionType === "identification") {
-              questionTypeCounts["identification"]++;
-            } else if (questionType === "true-false") {
-              questionTypeCounts["true-false"]++;
-            } else {
-              questionTypeCounts["other"]++;
-            }
-          }
-        } catch (minimalError) {
-          console.error(`Even minimal approach failed:`, minimalError);
-
-          // Try with Objection as ultimate fallback
-          try {
-            // Normalize the answer field
-            let normalizedAnswer =
-              question.answer || question.correctAnswer || item.term;
-
-            // Prepare the question data
-            const questionData = {
-              study_material_id: studyMaterialId,
-              item_id: item.id || String(itemNumber), // Keep as string, don't use parseInt
-              item_number: itemNumber,
-              term: String(item.term),
-              definition: String(item.definition),
-              question_type: String(questionType),
-              question: String(question.question || ""),
-              answer: String(normalizedAnswer),
-              choices:
-                questionType === "multiple-choice" && question.options
-                  ? JSON.stringify(question.options)
-                  : null,
-              game_mode: normalizedGameMode,
-            };
-
-            // First try to delete any existing question with the same key attributes
-            await GeneratedMaterial.query()
-              .delete()
-              .where("study_material_id", studyMaterialId)
-              .where("term", questionData.term)
-              .where("question_type", questionData.question_type)
-              .where("game_mode", normalizedGameMode);
-
-            // Then insert the new question
-            const result = await GeneratedMaterial.query().insert(questionData);
-            console.log(
-              `Successfully inserted question ${itemNumber} with ID ${result.id}`
-            );
-
-            // Update counter
-            if (questionType === "multiple-choice") {
-              questionTypeCounts["multiple-choice"]++;
-            } else if (questionType === "identification") {
-              questionTypeCounts["identification"]++;
-            } else if (questionType === "true-false") {
-              questionTypeCounts["true-false"]++;
-            } else {
-              questionTypeCounts["other"]++;
-            }
-          } catch (objectionError) {
-            console.error(`Error with Objection fallback:`, objectionError);
-            // Continue with the next question even if this one fails
-          }
-        }
+        // Add to batch values
+        insertValues.push([
+          studyMaterialId,
+          item.id,
+          item.item_number,
+          item.term,
+          item.definition,
+          question.type,
+          questionText,
+          answer, // Now using the appropriate answer based on question type
+          choicesJSON,
+          normalizedGameMode
+        ]);
       }
     }
 
-    // Enhanced log with question type breakdown
-    console.log(`\n=== QUESTION STORAGE SUMMARY ===`);
-    console.log(`Study Material ID: ${studyMaterialId}`);
-    console.log(`Game Mode: ${normalizedGameMode}`);
-    console.log(`Total questions processed: ${questions.length}`);
-    console.log(`Question types stored:`);
-    console.log(`- Multiple Choice: ${questionTypeCounts["multiple-choice"]}`);
-    console.log(`- Identification: ${questionTypeCounts["identification"]}`);
-    console.log(`- True/False: ${questionTypeCounts["true-false"]}`);
-    if (questionTypeCounts["other"] > 0) {
-      console.log(`- Other/Unknown: ${questionTypeCounts["other"]}`);
+    // Execute batch insert if we have values
+    if (insertValues.length > 0) {
+      const [result] = await pool.query(insertQuery, [insertValues]);
+      console.log(`✅ Stored ${result.affectedRows} questions successfully`);
     }
 
-    console.log(
-      `Successfully stored ${questions.length} questions for study material ${studyMaterialId} with game mode ${normalizedGameMode}`
+    // Verify storage
+    const [storedQuestions] = await pool.query(
+      'SELECT * FROM generated_material WHERE study_material_id = ? AND game_mode = ?',
+      [studyMaterialId, normalizedGameMode]
     );
-    console.log("=== STORING GENERATED QUESTIONS - COMPLETE ===");
 
-    // Add specific check for identification questions
-    try {
-      const { pool } = await import("../config/db.js");
-
-      console.log("=== SPECIFIC IDENTIFICATION QUESTIONS CHECK ===");
-      const [idQuestions] = await pool.query(
-        "SELECT * FROM generated_material WHERE study_material_id = ? AND question_type = 'identification' AND game_mode = ?",
-        [studyMaterialId, normalizedGameMode]
-      );
-
-      if (idQuestions && idQuestions.length > 0) {
-        console.log(
-          `Found ${idQuestions.length} identification questions in database`
-        );
-        console.log("First identification question:", idQuestions[0]);
-      } else {
-        console.error("❌ NO IDENTIFICATION QUESTIONS FOUND IN DATABASE!");
-
-        // Try to explain why
-        const [allQuestions] = await pool.query(
-          "SELECT question_type, COUNT(*) as count FROM generated_material WHERE study_material_id = ? GROUP BY question_type",
-          [studyMaterialId]
-        );
-
-        console.log("Questions by type in database:", allQuestions);
-
-        // Check for question_type value issues
-        const [valueCheck] = await pool.query(
-          "SELECT DISTINCT question_type FROM generated_material"
-        );
-
-        console.log(
-          "All question types in database:",
-          valueCheck.map((row) => row.question_type)
-        );
-
-        // Try a super permissive search
-        const [fuzzySearch] = await pool.query(
-          "SELECT * FROM generated_material WHERE study_material_id = ? AND question_type LIKE '%ident%'",
-          [studyMaterialId]
-        );
-
-        if (fuzzySearch && fuzzySearch.length > 0) {
-          console.log(
-            `Found ${fuzzySearch.length} potential identification questions with fuzzy search`
-          );
-          console.log("First fuzzy match:", fuzzySearch[0]);
-        }
-      }
-    } catch (checkError) {
-      console.error("Error checking for identification questions:", checkError);
-    }
+    console.log(`\n=== QUESTION STORAGE SUMMARY ===`);
+    console.log(`Items processed: ${items.length}`);
+    console.log(`Questions actually stored: ${storedQuestions.length}`);
 
     return true;
   } catch (error) {
-    console.error("=== STORING GENERATED QUESTIONS - ERROR ===");
-    console.error("Error storing generated questions:", error);
-    console.error("Error details:", {
-      message: error.message,
-      stack: error.stack,
-      studyMaterialId,
-      itemsCount: items?.length || 0,
-      questionsCount: questions?.length || 0,
-      gameMode,
-    });
+    console.error("Error in storeGeneratedQuestions:", error);
     throw error;
   }
 };
 
-const OpenAIController = {
+// Update the clearQuestionsForMaterial function
+const clearQuestionsForMaterial = async (studyMaterialId, gameMode) => {
+  try {
+    const { pool } = await import('../config/db.js');
+
+    console.log(`Clearing existing questions for study material ${studyMaterialId} and game mode ${gameMode}`);
+
+    const [existingQuestions] = await pool.query(
+      'SELECT id, item_number FROM generated_material WHERE study_material_id = ? AND game_mode = ?',
+      [studyMaterialId, gameMode]
+    );
+
+    if (existingQuestions.length > 0) {
+      const deleteQuery = `
+        DELETE FROM generated_material 
+        WHERE study_material_id = ? AND game_mode = ?
+      `;
+
+      const [result] = await pool.execute(deleteQuery, [studyMaterialId, gameMode]);
+      console.log(`Cleared ${result.affectedRows} existing questions`);
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error clearing questions:", error);
+    throw error;
+  }
+};
+
+// Add this helper function at the top of the file
+const getBalancedAnswerPosition = (currentDistribution, totalQuestions) => {
+  // Initialize distribution if not provided
+  const distribution = currentDistribution || { A: 0, B: 0, C: 0, D: 0 };
+
+  // Calculate target distribution (roughly equal)
+  const targetPerOption = Math.ceil(totalQuestions / 4);
+
+  // Get available options that haven't exceeded target distribution
+  const availableOptions = Object.entries(distribution)
+    .filter(([_, count]) => count < targetPerOption)
+    .map(([letter]) => letter);
+
+  // If no available options, reset distribution
+  if (availableOptions.length === 0) {
+    return ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)];
+  }
+
+  // Randomly select from available options
+  return availableOptions[Math.floor(Math.random() * availableOptions.length)];
+};
+
+// Add this helper function near getBalancedAnswerPosition
+const getBalancedTrueFalseAnswer = (currentDistribution, totalQuestions) => {
+  // Initialize distribution if not provided
+  const distribution = currentDistribution || { True: 0, False: 0 };
+
+  // Calculate target distribution (roughly equal)
+  const targetPerOption = Math.ceil(totalQuestions / 2);
+
+  // Get available options that haven't exceeded target distribution
+  const availableOptions = Object.entries(distribution)
+    .filter(([_, count]) => count < targetPerOption)
+    .map(([answer]) => answer);
+
+  // If no available options, reset distribution and pick randomly
+  if (availableOptions.length === 0) {
+    return Math.random() < 0.5 ? "True" : "False";
+  }
+
+  // Randomly select from available options
+  return availableOptions[Math.floor(Math.random() * availableOptions.length)];
+};
+
+const generateTrueFalseQuestion = async (term, definition, context) => {
+  const prompt = `
+    Create a true/false question about the following term and its definition:
+    Term: ${term}
+    Definition: ${definition}
+
+    Requirements:
+    1. The question must incorporate both the term AND its definition
+    2. If creating a false statement, modify the relationship between the term and definition
+    3. Make the question challenging but clear
+    4. Ensure the question tests understanding of both the term and its meaning
+    5. Avoid overly simple questions that only test the term without its definition
+
+    Format:
+    Return a JSON object with:
+    {
+      "question": "your question here",
+      "answer": "True" or "False",
+      "explanation": "brief explanation of why the answer is true or false"
+    }
+  `;
+
+  // Your OpenAI API call here
+};
+
+const generateMultipleChoiceQuestion = async (term, definition, context) => {
+  const prompt = `
+    Create a multiple-choice question about the following term and its definition:
+    Term: ${term}
+    Definition: ${definition}
+
+    Requirements:
+    1. The question must test understanding of both the term AND its definition
+    2. Create 4 options where:
+       - One is correct
+       - Three are plausible but incorrect
+       - All options should relate to both the term and definition
+    3. Make distractors that test common misconceptions
+    4. Ensure the question requires understanding both the term and its meaning
+
+    Format:
+    Return a JSON object with:
+    {
+      "question": "your question here",
+      "options": ["option1", "option2", "option3", "option4"],
+      "correctAnswer": "the correct option",
+      "explanation": "brief explanation of why this is the correct answer"
+    }
+  `;
+
+  // Your OpenAI API call here
+};
+
+export const OpenAiController = {
   generateSummary: async (req, res) => {
     try {
       const { tags, items } = req.body;
@@ -1081,150 +421,64 @@ const OpenAIController = {
         normalized: normalizedGameMode,
       });
 
-      // Clean the term by removing any letter prefix (e.g., "D. AI" becomes "AI")
+      // Clean the term
       const cleanedTerm = term.replace(/^[A-D]\.\s+/, "");
-      console.log("Cleaned term for identification:", cleanedTerm);
 
-      // Create the identification question object with EXPLICIT question_type field
-      const result = [
-        {
-          type: "identification",
-          questionType: "identification",
-          question_type: "identification", // Add this explicit field that matches DB column name
-          question: definition,
-          answer: cleanedTerm,
-        },
-      ];
+      try {
+        const { pool } = await import('../config/db.js');
 
-      console.log(
-        "Generated identification question object:",
-        JSON.stringify(result, null, 2)
-      );
-
-      // Store the generated question if studyMaterialId is provided
-      if (studyMaterialId) {
-        console.log(
-          `Direct DB insertion for identification question - material ${studyMaterialId}`
-        );
-
-        try {
-          // Fetch the actual item_id from study_material_content with enhanced debugging
-          console.log(
-            `Looking up content for identification question with term "${cleanedTerm}"`
-          );
-          const contentItem = await getItemIdFromStudyMaterial(
-            studyMaterialId,
-            cleanedTerm,
-            itemNumber
-          );
-          let actualItemId, actualItemNumber;
-
-          if (contentItem && contentItem.itemId) {
-            actualItemId = contentItem.itemId; // Keep as string
-            actualItemNumber = contentItem.itemNumber;
-            console.log(
-              `✅ SUCCESS: Using actual item_id ${actualItemId} (type: ${typeof actualItemId}) from study_material_content for term "${cleanedTerm}"`
-            );
-          } else {
-            console.warn(
-              `❌ FAILURE: Couldn't find item_id in study_material_content for term "${cleanedTerm}"`
-            );
-            actualItemId = itemId || "1"; // Ensure string format
-            actualItemNumber = itemNumber || 1;
-          }
-
-          console.log(
-            `Using item_id ${actualItemId} and item_number ${actualItemNumber} for identification question`
-          );
-
-          // Direct database insertion to bypass any potential issues with storeGeneratedQuestions
-          const { pool } = await import("../config/db.js");
-
-          // Attempt direct SQL insertion
-          const directInsertQuery = `
+        // Direct database insertion with empty string for choices
+        const directInsertQuery = `
             INSERT INTO generated_material 
             (study_material_id, item_id, item_number, term, definition, question_type, question, answer, choices, game_mode) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, ?)
+          VALUES (?, ?, ?, ?, ?, 'identification', ?, ?, '', ?)
             ON DUPLICATE KEY UPDATE 
             question = VALUES(question),
             answer = VALUES(answer),
             updated_at = CURRENT_TIMESTAMP
           `;
 
-          const insertParams = [
-            studyMaterialId,
-            actualItemId,
-            actualItemNumber,
-            cleanedTerm,
-            definition,
-            "identification", // Explicitly set as identification
-            definition,
-            cleanedTerm,
-            normalizedGameMode,
-          ];
+        const insertParams = [
+          studyMaterialId,
+          itemId || '1',
+          itemNumber || 1,
+          cleanedTerm,
+          definition,
+          definition,
+          cleanedTerm,
+          normalizedGameMode,
+        ];
 
-          console.log("Direct SQL insertion parameters:", insertParams);
+        const [directInsertResult] = await pool.execute(directInsertQuery, insertParams);
+        console.log("Direct insertion result:", directInsertResult);
 
-          const [directInsertResult] = await pool.execute(
-            directInsertQuery,
-            insertParams
-          );
-          console.log("Direct insertion result:", directInsertResult);
-
-          // Verify the question was actually stored
-          const [verifyResult] = await pool.query(
-            "SELECT * FROM generated_material WHERE study_material_id = ? AND term = ? AND question_type = ? ORDER BY id DESC LIMIT 1",
-            [studyMaterialId, cleanedTerm, "identification"]
-          );
-
-          if (verifyResult && verifyResult.length > 0) {
-            console.log(
-              "✅ IDENTIFICATION VERIFICATION SUCCESS - ID:",
-              verifyResult[0].id
-            );
-            console.log(verifyResult[0]);
-          } else {
-            console.error(
-              "❌ IDENTIFICATION VERIFICATION FAILED - Question not found in database!"
-            );
-          }
-
-          // Also use the regular storage method as a backup
-          const itemObject = {
-            id: itemId || 1,
+        // Create the response object
+        const result = [{
+          type: "identification",
+          questionType: "identification",
+          question_type: "identification",
+          question: definition,
+          answer: cleanedTerm,
+          itemInfo: {
             term: cleanedTerm,
             definition: definition,
-          };
+            itemId: itemId || '1',
+            itemNumber: itemNumber || 1
+          }
+        }];
 
-          await storeGeneratedQuestions(
-            studyMaterialId,
-            [itemObject],
-            result,
-            normalizedGameMode
-          );
-        } catch (dbError) {
-          console.error(
-            "DATABASE ERROR with identification question:",
-            dbError
-          );
-          console.error("SQL Error Code:", dbError.code);
-          console.error("SQL Error Number:", dbError.errno);
-          console.error("SQL State:", dbError.sqlState);
-        }
-      } else {
-        console.warn(
-          "No studyMaterialId provided, identification question will not be stored"
-        );
+        console.log("=== IDENTIFICATION QUESTION GENERATION - COMPLETE ===");
+        res.json(result);
+      } catch (dbError) {
+        console.error("DATABASE ERROR with identification question:", dbError);
+        throw dbError;
       }
-
-      console.log("=== IDENTIFICATION QUESTION GENERATION - COMPLETE ===");
-      res.json(result);
     } catch (error) {
       console.error("=== IDENTIFICATION QUESTION GENERATION - ERROR ===");
       console.error("Error in generate-identification route:", error);
       res.status(500).json({
         error: "Failed to generate identification question",
-        details: error.message,
+        details: error.message
       });
     }
   },
@@ -1235,7 +489,6 @@ const OpenAIController = {
       const {
         term,
         definition,
-        numberOfItems = 1,
         studyMaterialId,
         itemId,
         itemNumber,
@@ -1246,49 +499,61 @@ const OpenAIController = {
       let normalizedGameMode = gameMode
         ? gameMode.toLowerCase().replace(/\s+/g, "-")
         : "peaceful";
-      if (
-        normalizedGameMode === "time-pressured" ||
-        normalizedGameMode === "time-pressure"
-      ) {
-        normalizedGameMode = "time-pressured";
-      }
 
-      console.log("Game mode for true/false question:", {
-        original: gameMode,
-        normalized: normalizedGameMode,
-      });
-
-      // Clean the term by removing any letter prefix
+      // Clean the term
       const cleanedTerm = term.replace(/^[A-D]\.\s+/, "");
 
-      const prompt = `Generate ${numberOfItems} true/false question(s) based on this term and definition:
+      // Get balanced true/false answer
+      const targetAnswer = getBalancedTrueFalseAnswer(trueFalseDistribution, 10);
+
+      // Update the distribution
+      trueFalseDistribution[targetAnswer]++;
+
+      const prompt = `Generate exactly one true/false question based on this term and definition:
 Term: "${cleanedTerm}"
 Definition: "${definition}"
-Rules:
-1. Use the definition to create statement(s) that can be true or false
-2. The statement(s) should be clear and unambiguous
-3. The answer should be either "True" or "False"
-Format the response exactly as JSON:
-[
-  {
-    "type": "true-false",
-    "question": "(statement based on the definition)",
-    "answer": "(True or False)"
-  }
-]
-If generating multiple questions, include them all in the array.`;
 
-      console.log("Calling OpenAI for true/false questions");
+STRICT RULES:
+1. Generate EXACTLY ONE statement that should be ${targetAnswer}
+2. If generating a TRUE statement:
+   - Create a factually correct statement based on the definition
+   - Do not simply repeat the definition word-for-word
+   - Make it engaging and test understanding
+3. If generating a FALSE statement:
+   - Create a statement that is clearly false but plausible
+   - Change only one or two key aspects of the definition
+   - Keep the false statement relevant to the topic
+   - Make it subtle enough to require thought but clear enough to be definitely false
+4. The statement should be clear and unambiguous
+5. Do not use phrases like "is defined as" or "refers to"
+6. Create an engaging statement that tests understanding
+7. CRITICAL: Keep statements short and concise - maximum 15 words
+8. NO paragraphs or lengthy explanations
+
+Example Statements:
+For term "Photosynthesis":
+✓ GOOD: "Plants use photosynthesis to convert water and carbon dioxide into oxygen."
+✓ GOOD: "Photosynthesis occurs in animal cells to produce energy." (False)
+✗ BAD: "In the complex biological process that occurs within the chloroplasts of plant cells during daylight hours, photosynthesis is responsible for converting light energy into chemical energy through a series of complex biochemical reactions involving chlorophyll molecules."
+
+Format the response exactly as JSON:
+{
+  "type": "true-false",
+  "question": "(your concise statement here)",
+  "answer": "${targetAnswer}"
+}`;
+
+      console.log("Calling OpenAI for true/false question");
       const completion = await openai.chat.completions.create({
         model: "gpt-3.5-turbo",
         messages: [
           {
             role: "system",
-            content:
-              "You are a helpful AI that generates true/false questions. Create clear statements that can be definitively answered as True or False based on the given term and definition.",
+            content: "You are an expert at creating engaging true/false questions that test understanding rather than just memorization. Your statements are clear, unambiguous, and require careful thought to answer correctly.",
           },
           { role: "user", content: prompt },
         ],
+        temperature: 0.7,
       });
 
       const text = completion.choices[0].message.content;
@@ -1296,81 +561,23 @@ If generating multiple questions, include them all in the array.`;
 
       // Parse and validate the response
       const cleanedText = text.replace(/```json|```/g, "").trim();
-      let questions = JSON.parse(cleanedText);
+      let question = JSON.parse(cleanedText);
 
-      // Ensure it's in array format
-      questions = Array.isArray(questions) ? questions : [questions];
-
-      // Store the generated questions if studyMaterialId is provided
-      if (studyMaterialId) {
-        console.log(
-          "Storing true/false questions with studyMaterialId:",
-          studyMaterialId
-        );
-        try {
-          // Check if this specific question type already exists for this material and mode
-          const { pool } = await import("../config/db.js");
-          const [rows] = await pool.query(
-            "SELECT COUNT(*) as count FROM generated_material WHERE study_material_id = ? AND game_mode = ? AND question_type = ? AND term = ?",
-            [studyMaterialId, normalizedGameMode, "true-false", cleanedTerm]
-          );
-
-          const existingCount = parseInt(rows[0].count || "0");
-          console.log(
-            `Found ${existingCount} existing true-false questions for this term`
-          );
-
-          // Fetch the actual item_id from study_material_content with enhanced debugging
-          console.log(
-            `Looking up content for true/false question with term "${cleanedTerm}"`
-          );
-          const contentItem = await getItemIdFromStudyMaterial(
-            studyMaterialId,
-            cleanedTerm,
-            itemNumber
-          );
-          let actualItemId, actualItemNumber;
-
-          if (contentItem && contentItem.itemId) {
-            actualItemId = contentItem.itemId; // Keep as string
-            actualItemNumber = contentItem.itemNumber;
-            console.log(
-              `✅ SUCCESS: Using actual item_id ${actualItemId} (type: ${typeof actualItemId}) from study_material_content for term "${cleanedTerm}"`
-            );
-          } else {
-            console.warn(
-              `❌ FAILURE: Couldn't find item_id in study_material_content for term "${cleanedTerm}"`
-            );
-            actualItemId = itemId || String(1); // Ensure string format
-            actualItemNumber = itemNumber || 1;
-          }
-
-          console.log(
-            `Using item_id ${actualItemId} and item_number ${actualItemNumber} for true/false question`
-          );
-
-          // Always store the question, replacing if it exists
-          await storeGeneratedQuestions(
-            studyMaterialId,
-            [
-              {
-                id: actualItemId,
-                term: cleanedTerm,
-                definition,
-                item_number: actualItemNumber,
-              },
-            ],
-            questions,
-            normalizedGameMode
-          );
-          console.log("Successfully stored true/false questions");
-        } catch (storeError) {
-          console.error("Error storing true/false questions:", storeError);
+      // Format for response
+      const formattedQuestion = {
+        ...question,
+        itemInfo: {
+          term: cleanedTerm,
+          definition: definition,
+          itemId: itemId || '1',
+          itemNumber: itemNumber || 1
         }
-      }
+      };
 
-      console.log("Sending true/false questions:", questions);
-      res.json(questions);
+      console.log("Generated true/false question:", formattedQuestion);
+      console.log("Current true/false distribution:", trueFalseDistribution);
+
+      res.json([formattedQuestion]);
     } catch (error) {
       console.error("Error in generate-true-false route:", error);
       res.status(500).json({
@@ -1382,10 +589,7 @@ If generating multiple questions, include them all in the array.`;
 
   generateMultipleChoice: async (req, res) => {
     try {
-      console.log(
-        "Received multiple choice question request with body:",
-        req.body
-      );
+      console.log("Received multiple choice question request with body:", req.body);
       const {
         term,
         definition,
@@ -1396,189 +600,123 @@ If generating multiple questions, include them all in the array.`;
         gameMode = "peaceful",
       } = req.body;
 
-      // Normalize the game mode
-      let normalizedGameMode = gameMode
-        ? gameMode.toLowerCase().replace(/\s+/g, "-")
-        : "peaceful";
-      if (
-        normalizedGameMode === "time-pressured" ||
-        normalizedGameMode === "time-pressure"
-      ) {
-        normalizedGameMode = "time-pressured";
-      }
-
-      console.log("Game mode for multiple choice question:", {
-        original: gameMode,
-        normalized: normalizedGameMode,
-      });
-
-      // Validate required parameters
-      if (!term || !definition) {
-        console.log("Missing required parameters:", { term, definition });
-        return res.status(400).json({ error: "Missing term or definition" });
-      }
-
-      if (!studyMaterialId) {
-        console.log("Missing studyMaterialId");
-        return res.status(400).json({ error: "Missing studyMaterialId" });
-      }
-
-      // Clean the term by removing any letter prefix
+      // Clean the term
       const cleanedTerm = term.replace(/^[A-D]\.\s+/, "");
-      console.log("Cleaned term:", cleanedTerm);
 
-      // Updated prompt to generate similar options to the term
-      const prompt = `Generate ${numberOfItems} multiple choice questions based on this term and definition:
+      // Get balanced position for the correct answer
+      const correctPosition = getBalancedAnswerPosition(answerDistribution, 10);
+
+      // Update the distribution
+      answerDistribution[correctPosition]++;
+
+      const prompt = `Generate a multiple-choice question based on this term and definition:
 Term: "${cleanedTerm}"
 Definition: "${definition}"
 
-Rules for generating the question:
-1. The question should ask which term matches the definition
-2. Generate 3 plausible but incorrect options that are similar to the original term "${cleanedTerm}"
-3. The original term MUST be one of the options
-4. Options must be complete words or phrases, NEVER single letters
-5. Each option should be similar in nature to the original term "${cleanedTerm}"
-6. CRITICAL: All options MUST be of similar length and style to the original term "${cleanedTerm}"
-7. IMPORTANT: The incorrect options should be terms that someone might confuse with "${cleanedTerm}", NOT terms related to the definition
-8. The options should be in the same category or domain as "${cleanedTerm}"
-9. DO NOT include phrases like "similar to..." in the options
+STRICT RULES FOR QUESTION GENERATION:
+1. Generate 3 plausible but incorrect options that are similar to "${cleanedTerm}"
+2. The term "${cleanedTerm}" MUST be one of the options
+3. Options must be complete words or phrases, NEVER single letters
+4. Each option should be similar in nature to "${cleanedTerm}"
+5. CRITICAL: All options MUST be of similar length and style to "${cleanedTerm}"
+6. IMPORTANT: The incorrect options should be terms that someone might confuse with "${cleanedTerm}", NOT terms related to the definition
+7. The options should be in the same category or domain as "${cleanedTerm}"
+8. DO NOT include phrases like "similar to..." in the options
+9. Create an engaging question that tests understanding of the concept
+10. DO NOT use the format "Which term is defined as..."
+11. CRITICAL: Keep questions short and concise - maximum 15 words
+12. NO paragraphs or lengthy explanations in questions
 
-Format the response exactly as JSON array:
-[
-  {
-    "type": "multiple-choice",
-    "question": "Which term is defined as: ${definition}",
-    "options": {
-      "A": "(first option - similar to ${cleanedTerm})",
-      "B": "(second option - similar to ${cleanedTerm})",
-      "C": "(third option - similar to ${cleanedTerm})",
-      "D": "(fourth option - similar to ${cleanedTerm})"
-    },
-    "answer": "(letter). ${cleanedTerm}"
-  }
-]
-If generating multiple questions, include them all in the array.
+Example Questions:
+For term "Photosynthesis" with definition "Process of converting light energy into chemical energy":
+✓ GOOD: "What biological process do plants use to convert sunlight into food?"
+✓ GOOD: "Which process allows plants to make their own food?"
+✗ BAD: "Which term is defined as: Process of converting light energy into chemical energy?"
+✗ BAD: "In the complex process of energy transformation that occurs within plant cells during daylight hours, which biological mechanism is responsible for converting solar radiation into glucose that can be used by the organism?"
 
-Important:
-- The answer format must be "letter. term" where letter matches where the term appears in options
-- Never use single letters or numbers as options
-- Keep options similar to the original term in style and meaning
-- The original term must appear exactly as provided in one of the options
-- Make sure all options are plausible alternatives that someone might confuse with the correct term
-- The incorrect options should be terms that could be mistaken for "${cleanedTerm}", not terms related to the definition
-- Do not include explanatory text like "similar to..." in the options`;
+Example Options:
+For term "Photosynthesis":
+✓ GOOD options (similar length, style, could be confused with term):
+- Chemosynthesis
+- Photorespiration
+- Phototropism
+- Photosynthesis
 
-      console.log("Calling OpenAI for multiple choice questions");
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content:
-              'You are a helpful AI that generates multiple-choice questions. Create questions where the user must select the correct term that matches a definition. Include the original term as one of the options, and ensure all other options are similar terms that might be confused with the correct answer. The incorrect options should be terms that could be mistaken for the original term, not terms related to the definition. Format the answer as "letter. term" where the letter matches where the term appears in the options. DO NOT include phrases like "similar to..." in the options.',
-          },
-          { role: "user", content: prompt },
-        ],
-      });
+✗ BAD options (different lengths, styles, or related to definition):
+- Light
+- Energy conversion process
+- Solar powered reaction
+- Chemical transformation
 
-      const text = completion.choices[0].message.content;
-      console.log("AI response for multiple choice received:", text);
-
-      // Remove any Markdown formatting from the response
-      const cleanedText = text.replace(/```json|```/g, "").trim();
-      console.log("Cleaned AI response:", cleanedText);
+Format the response exactly as:
+{
+  "question": "(your engaging question here)",
+  "options": {
+    "A": "(first option)",
+    "B": "(second option)",
+    "C": "(third option)",
+    "D": "(fourth option)"
+  },
+  "answer": "${correctPosition}. ${cleanedTerm}"
+}`;
 
       try {
-        console.log("Parsing AI response");
-        let questions = JSON.parse(cleanedText);
-
-        // Ensure questions is always an array
-        if (!Array.isArray(questions)) {
-          questions = [questions];
-        }
-
-        // Process and clean up the questions
-        questions = questions.map((q) => {
-          // Ensure the question has the correct type
-          q.type = "multiple-choice";
-
-          // Clean up options - remove any "similar to..." text
-          if (q.options) {
-            Object.keys(q.options).forEach((key) => {
-              // Remove any text like "similar to..." from options
-              q.options[key] = q.options[key]
-                .replace(/similar to .+/i, "")
-                .replace(/\(.+\)/g, "")
-                .trim();
-            });
-          }
-
-          return q;
+        const completion = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: "You are an expert at creating multiple-choice questions where all options are similar terms that could be easily confused with each other. Focus on generating options that are of similar length, style, and from the same domain as the correct answer.",
+            },
+            { role: "user", content: prompt },
+          ],
+          temperature: 0.7,
         });
 
-        // After generating and validating questions, store them if studyMaterialId is provided
-        if (studyMaterialId) {
-          console.log(
-            "Storing multiple choice questions with studyMaterialId:",
-            studyMaterialId
-          );
-          try {
-            // Check if this specific question type already exists for this material and mode
-            const { pool } = await import("../config/db.js");
-            const [rows] = await pool.query(
-              "SELECT COUNT(*) as count FROM generated_material WHERE study_material_id = ? AND game_mode = ? AND question_type = ? AND term = ?",
-              [
-                studyMaterialId,
-                normalizedGameMode,
-                "multiple-choice",
-                cleanedTerm,
-              ]
-            );
+        // Parse the response
+        const responseText = completion.choices[0].message.content;
+        console.log("Raw OpenAI response:", responseText);
 
-            const existingCount = parseInt(rows[0].count || "0");
-            console.log(
-              `Found ${existingCount} existing multiple-choice questions for this term`
-            );
+        try {
+          const questionData = JSON.parse(responseText);
 
-            // Always store the question, replacing if it exists
-            await storeGeneratedQuestions(
-              studyMaterialId,
-              [{ id: itemId, term: cleanedTerm, definition }],
-              questions,
-              normalizedGameMode
-            );
-            console.log("Successfully stored multiple choice questions");
-          } catch (storeError) {
-            console.error(
-              "Error storing multiple choice questions:",
-              storeError
-            );
-          }
+          // Transform the response into the expected format
+          const formattedQuestion = {
+            type: "multiple-choice",
+            questionType: "multiple-choice",
+            question: questionData.question,
+            options: Object.values(questionData.options),
+            correctAnswer: cleanedTerm,
+            answer: cleanedTerm
+          };
+
+          console.log("Formatted question:", formattedQuestion);
+          console.log("Current answer distribution:", answerDistribution);
+
+          return res.json([formattedQuestion]);
+
+        } catch (parseError) {
+          console.error("Error parsing OpenAI response:", parseError);
+          console.log("Raw response that failed to parse:", responseText);
+          return res.status(500).json({
+            error: "Failed to parse OpenAI response",
+            details: parseError.message
+          });
         }
 
-        console.log("Sending multiple choice questions:", questions);
-        res.json(questions);
-      } catch (parseError) {
-        console.error("Failed to parse AI response as JSON:", cleanedText);
-        console.error("Parse error:", parseError);
-        res.status(500).json({
-          error: "Failed to parse questions",
-          rawResponse: cleanedText,
-          parseError: parseError.message,
+      } catch (openaiError) {
+        console.error("OpenAI API error:", openaiError);
+        return res.status(500).json({
+          error: "OpenAI API error",
+          details: openaiError.message
         });
       }
+
     } catch (error) {
-      console.error("Error in generate-multiple-choice route:", error);
-      console.error("Error details:", {
-        message: error.message,
-        stack: error.stack,
-        name: error.name,
-        body: req.body,
-      });
-      res.status(500).json({
-        error: "Failed to generate multiple choice questions",
-        details: error.message,
-        stack: error.stack,
+      console.error("Error in generateMultipleChoice:", error);
+      return res.status(500).json({
+        error: "Internal server error",
+        details: error.message
       });
     }
   },
@@ -2103,88 +1241,40 @@ Important:
   },
 
   // Function to clear all questions for a study material
-  clearQuestions: async (req, res) => {
+  clearQuestionsForMaterial: async (req, res) => {
     try {
-      console.log("=== CLEAR QUESTIONS - START ===");
-      const { studyMaterialId } = req.params;
+      const studyMaterialId = req.params.studyMaterialId;
+      const gameMode = req.query.gameMode;
 
-      if (!studyMaterialId) {
-        console.error("Missing studyMaterialId in request");
+      if (!gameMode) {
         return res.status(400).json({
           success: false,
-          error: "Missing studyMaterialId",
+          error: 'Game mode is required'
         });
       }
 
-      console.log(
-        `Clearing all questions for study material ${studyMaterialId}`
-      );
+      console.log(`Clearing questions for study material ${studyMaterialId} in ${gameMode} mode`);
 
-      try {
-        const { pool } = await import("../config/db.js");
-
-        const deleteQuery = `DELETE FROM generated_material WHERE study_material_id = ?`;
-        const [deleteResult] = await pool.execute(deleteQuery, [
-          studyMaterialId,
-        ]);
-
-        console.log("SQL Delete result:", deleteResult);
-
-        return res.status(200).json({
-          success: true,
-          message: `Successfully cleared questions for study material ${studyMaterialId}`,
-          count: deleteResult.affectedRows,
+      // Delete questions for specific study material AND game mode
+      const result = await GeneratedMaterial.query()
+        .delete()
+        .where({
+          study_material_id: studyMaterialId,
+          game_mode: gameMode
         });
-      } catch (sqlError) {
-        console.error("Error clearing questions with SQL:", sqlError);
-        throw sqlError;
-      }
+
+      console.log(`Cleared ${result} questions for ${gameMode} mode`);
+
+      return res.json({
+        success: true,
+        message: `Successfully cleared questions for study material ${studyMaterialId}`,
+        count: result
+      });
     } catch (error) {
-      console.error("=== CLEAR QUESTIONS - ERROR ===");
-      console.error("Error clearing questions:", error);
-
+      console.error('Error clearing questions:', error);
       return res.status(500).json({
         success: false,
-        error: "Failed to clear questions",
-        details: error.message,
-      });
-    }
-  },
-
-  // Add this function to handle clearing generated questions
-  clearGeneratedQuestions: async (req, res) => {
-    try {
-      const { studyMaterialId } = req.params;
-
-      console.log("=== CLEAR GENERATED QUESTIONS - START ===");
-      console.log("Study Material ID:", studyMaterialId);
-
-      // Delete using both study_material_id and game_mode to ensure we clear the right questions
-      const deleteQuery = `
-        DELETE FROM generated_material 
-        WHERE study_material_id = ? 
-        AND game_mode = ?
-      `;
-
-      const [result] = await pool.query(deleteQuery, [
-        studyMaterialId,
-        "peaceful",
-      ]);
-
-      console.log("Clear operation result:", result);
-
-      res.json({
-        success: true,
-        message: "Successfully cleared existing questions",
-        affectedRows: result.affectedRows,
-      });
-    } catch (error) {
-      console.error("=== CLEAR GENERATED QUESTIONS - ERROR ===");
-      console.error("Error:", error);
-      res.status(500).json({
-        success: false,
-        error: "Failed to clear existing questions",
-        details: error.message,
+        error: 'Failed to clear questions'
       });
     }
   },
@@ -2239,5 +1329,3 @@ Important:
     }
   },
 };
-
-export default OpenAIController;

@@ -75,6 +75,7 @@ const DrawerRightSideBar: React.FC<DrawerProps> = ({ open, toggleDrawer }) => {
       sx={{
         width: "100%", // Full width
         height: "200px", // Set the height to 200px
+        transition: "all 0.3s ease-in",
         "& .MuiDrawer-paper": {
           height: "430px", // Set the drawer height
           width: "100%", // Full width

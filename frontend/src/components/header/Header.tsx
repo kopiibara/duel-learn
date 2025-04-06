@@ -24,7 +24,7 @@ export default function Header() {
   return (
     <Box
       className={`w-full shadow flex items-center justify-between bg-[#080511] ${
-        isVerySmall ? "h-20 py-2" : "h-28 pt-10 pl-2"
+        isVerySmall ? "h-20 py-2 px-" : "h-28 pt-10 "
       }`}
       sx={{ zIndex: 1, position: "relative" }}
     >
@@ -56,7 +56,7 @@ export default function Header() {
               ? "mx-1"
               : isMobile
               ? "sm:pl-1"
-              : "sm:pl-4 lg:pl-16"
+              : "sm:pl-0 lg:pl-11"
           } ${isSmallMobile ? "" : "flex-1"}`}
         >
           <SearchField />
@@ -64,11 +64,7 @@ export default function Header() {
       </Box>
 
       {/* Icon Section (Right Side) */}
-      <div
-        className={`flex items-center ${
-          isVerySmall ? "space-x-1 pr-1" : "space-x-2 sm:space-x-6 sm:pr-4"
-        }`}
-      >
+      <div className="flex items-center">
         <StatsNProfile />
       </div>
 

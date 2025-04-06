@@ -6,6 +6,7 @@ import axios from "axios";
 // Character animations
 import playerCharacter from "/characterinLobby/playerCharacter.gif"; // Regular idle animation for player
 import enemyCharacter from "/characterinLobby/playerCharacter.gif"; // Regular idle animation for enemy
+import PvpBattleBG from "/GameBattle/PvpBattleBG.png"; // Battle background image
 
 // Import components
 import PlayerInfo from "./components/PlayerInfo";
@@ -19,6 +20,7 @@ import { VictoryModal } from "./modals/BattleModals";
 import CharacterAnimationManager from "./components/CharacterAnimationManager";
 import GameStartAnimation from "./components/GameStartAnimation";
 import GuestWaitingForRandomization from "./components/GuestWaitingForRandomization";
+import QuestionModal from "./components/QuestionModal";
 
 // Import utils directly
 import TurnRandomizer from "./utils/TurnRandomizer";
@@ -46,6 +48,7 @@ export default function PvpBattle() {
   const [studyMaterialId, setStudyMaterialId] = useState<string | null>(null);
   const [playerHealth, setPlayerHealth] = useState(100);
   const [opponentHealth, setOpponentHealth] = useState(100);
+  const [questionTypes, setQuestionTypes] = useState<string[]>([]);
 
   // Turn-based gameplay state
   const [gameStarted, setGameStarted] = useState(false);
@@ -80,6 +83,13 @@ export default function PvpBattle() {
   const [showVictoryModal, setShowVictoryModal] = useState(false);
   const [victoryMessage, setVictoryMessage] = useState("");
 
+  // Question modal states
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+
+  // Add a state to track current turn number for poison effects
+  const [currentTurnNumber, setCurrentTurnNumber] = useState(0);
+  const [poisonEffectActive, setPoisonEffectActive] = useState(false);
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
     lobbyCode,
@@ -129,28 +139,152 @@ export default function PvpBattle() {
 
   // Handle card selection
   const handleCardSelected = async (cardId: string) => {
-    // When player selects a card, it's no longer their turn
+    // Store the selected card ID
+    setSelectedCardId(cardId);
+
+    // Show the question modal
+    setShowQuestionModal(true);
+
     // Reset player animations to idle
     setPlayerAnimationState("idle");
     setPlayerPickingIntroComplete(false);
+  };
+
+  // Handle answer submission
+  const handleAnswerSubmit = async (isCorrect: boolean) => {
+    if (!selectedCardId) return;
 
     try {
       // Determine if the current player is host or guest
-      const playerType = isHost ? 'host' : 'guest';
+      const playerType = isHost ? "host" : "guest";
 
-      // Update the battle round with the selected card and switch turns
+      // Update the battle round with the selected card, answer result, and switch turns
       const response = await axios.put(
         `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
         {
           session_uuid: battleState?.session_uuid,
           player_type: playerType,
-          card_id: cardId,
-          lobby_code: lobbyCode
+          card_id: selectedCardId,
+          is_correct: isCorrect,
+          lobby_code: lobbyCode,
         }
       );
 
       if (response.data.success) {
-        console.log(`Card ${cardId} selection successful, turn switched`);
+        console.log(
+          `Card ${selectedCardId} selection and answer submission successful, turn switched`
+        );
+
+        // Check if a card effect was applied
+        if (response.data.data.card_effect) {
+          if (response.data.data.card_effect.type === "normal-2" && isCorrect) {
+            // Show notification for Quick Draw card effect
+            const messageElement = document.createElement("div");
+            messageElement.className =
+              "fixed inset-0 flex items-center justify-center z-50";
+            messageElement.innerHTML = `
+              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                Quick Draw Card: You get another turn!
+              </div>
+            `;
+            document.body.appendChild(messageElement);
+
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+              document.body.removeChild(messageElement);
+            }, 2000);
+          } else if (
+            response.data.data.card_effect.type === "normal-1" &&
+            isCorrect
+          ) {
+            // Show notification for Time Manipulation card effect
+            const messageElement = document.createElement("div");
+            messageElement.className =
+              "fixed inset-0 flex items-center justify-center z-50";
+            const reductionPercent =
+              response.data.data.card_effect.reduction_percent || 30;
+            messageElement.innerHTML = `
+              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                Time Manipulation Card: Opponent's time will be reduced by ${reductionPercent}%!
+              </div>
+            `;
+            document.body.appendChild(messageElement);
+
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+              document.body.removeChild(messageElement);
+            }, 2000);
+          } else if (
+            response.data.data.card_effect.type === "epic-1" &&
+            isCorrect
+          ) {
+            // Show notification for Answer Shield card effect
+            const messageElement = document.createElement("div");
+            messageElement.className =
+              "fixed inset-0 flex items-center justify-center z-50";
+            messageElement.innerHTML = `
+              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                Answer Shield Card: Opponent's next card selection will be blocked!
+              </div>
+            `;
+            document.body.appendChild(messageElement);
+
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+              document.body.removeChild(messageElement);
+            }, 2000);
+          } else if (
+            response.data.data.card_effect.type === "epic-2" &&
+            isCorrect
+          ) {
+            // Show notification for Regeneration card effect
+            const messageElement = document.createElement("div");
+            messageElement.className =
+              "fixed inset-0 flex items-center justify-center z-50";
+            const healthAmount =
+              response.data.data.card_effect.health_amount || 10;
+            messageElement.innerHTML = `
+              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                Regeneration Card: Your health increased by ${healthAmount} HP!
+              </div>
+            `;
+            document.body.appendChild(messageElement);
+
+            // Update health locally if we can
+            if (isHost) {
+              setPlayerHealth((prev) => Math.min(prev + healthAmount, 100));
+            } else {
+              setPlayerHealth((prev) => Math.min(prev + healthAmount, 100));
+            }
+
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+              document.body.removeChild(messageElement);
+            }, 2000);
+          } else if (
+            response.data.data.card_effect.type === "rare-2" &&
+            isCorrect
+          ) {
+            // Show notification for Poison Type card effect
+            const messageElement = document.createElement("div");
+            messageElement.className =
+              "fixed inset-0 flex items-center justify-center z-50";
+            messageElement.innerHTML = `
+              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                Poison Type Card: Opponent takes 10 initial damage plus 5 damage for 3 turns!
+              </div>
+            `;
+            document.body.appendChild(messageElement);
+
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+              document.body.removeChild(messageElement);
+            }, 2000);
+          }
+        }
+
+        // Increment turn number when turn changes
+        setCurrentTurnNumber((prev) => prev + 1);
 
         // Switch turns locally but keep UI visible
         setIsMyTurn(false);
@@ -159,11 +293,20 @@ export default function PvpBattle() {
         setEnemyAnimationState("picking");
         setEnemyPickingIntroComplete(false);
       } else {
-        console.error("Failed to update battle round:", response.data.message);
+        console.error(
+          "Failed to update battle round:",
+          response?.data?.message || "Unknown error"
+        );
       }
     } catch (error) {
       console.error("Error updating battle round:", error);
     }
+  };
+
+  // Handle question modal close
+  const handleQuestionModalClose = () => {
+    setShowQuestionModal(false);
+    setSelectedCardId(null);
   };
 
   // Add polling for turn updates
@@ -176,14 +319,21 @@ export default function PvpBattle() {
       try {
         // Get the latest session state
         const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-state/${lobbyCode}`
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/battle/session-state/${lobbyCode}`
         );
 
-        if (response.data.success && response.data.data) {
+        if (
+          response &&
+          response.data &&
+          response.data.success &&
+          response.data.data
+        ) {
           const sessionData = response.data.data;
 
           // Update local battle state with proper type safety
-          setBattleState(prevState => {
+          setBattleState((prevState) => {
             // If prevState is null, we can't update it properly
             if (!prevState) return null;
 
@@ -191,13 +341,18 @@ export default function PvpBattle() {
               ...prevState,
               current_turn: sessionData.current_turn,
               // Only set cards if they exist in the session data
-              ...(sessionData.host_card && { host_card: sessionData.host_card }),
-              ...(sessionData.guest_card && { guest_card: sessionData.guest_card })
+              ...(sessionData.host_card && {
+                host_card: sessionData.host_card,
+              }),
+              ...(sessionData.guest_card && {
+                guest_card: sessionData.guest_card,
+              }),
             };
           });
 
           // Check if it's this player's turn
-          const isCurrentPlayerTurn = sessionData.current_turn === currentUserId;
+          const isCurrentPlayerTurn =
+            sessionData.current_turn === currentUserId;
 
           // If turn has changed
           if (isCurrentPlayerTurn !== isMyTurn) {
@@ -207,7 +362,7 @@ export default function PvpBattle() {
             setIsMyTurn(isCurrentPlayerTurn);
 
             if (isCurrentPlayerTurn) {
-              // My turn now - update animations 
+              // My turn now - update animations
               setPlayerAnimationState("picking");
               setPlayerPickingIntroComplete(false);
               setEnemyAnimationState("idle");
@@ -236,7 +391,14 @@ export default function PvpBattle() {
     checkTurn();
 
     return () => clearInterval(turnCheckInterval);
-  }, [gameStarted, waitingForPlayer, battleState?.session_uuid, lobbyCode, currentUserId, isMyTurn]);
+  }, [
+    gameStarted,
+    waitingForPlayer,
+    battleState?.session_uuid,
+    lobbyCode,
+    currentUserId,
+    isMyTurn,
+  ]);
 
   // Timer effect
   useEffect(() => {
@@ -275,7 +437,7 @@ export default function PvpBattle() {
     }
   };
 
-  // Fetch battle session data to get difficulty mode and study material id
+  // Effect to fetch battle session data to get difficulty mode and study material id
   useEffect(() => {
     const fetchBattleSessionData = async () => {
       if (!lobbyCode) return;
@@ -287,8 +449,18 @@ export default function PvpBattle() {
           }/api/gameplay/battle/session-with-material/${lobbyCode}`
         );
 
-        if (response.data.success && response.data.data) {
+        if (
+          response &&
+          response.data &&
+          response.data.success &&
+          response.data.data
+        ) {
           setDifficultyMode(response.data.data.difficulty_mode);
+
+          // Set question types from battle session
+          if (response.data.data.question_types) {
+            setQuestionTypes(response.data.data.question_types);
+          }
 
           // Get the study material id
           if (response.data.data.study_material_id) {
@@ -303,6 +475,8 @@ export default function PvpBattle() {
               );
 
               if (
+                studyMaterialResponse &&
+                studyMaterialResponse.data &&
                 studyMaterialResponse.data.success &&
                 studyMaterialResponse.data.data &&
                 studyMaterialResponse.data.data.total_items
@@ -313,6 +487,15 @@ export default function PvpBattle() {
               console.error("Error fetching study material info:", error);
             }
           }
+
+          // Store session UUID and player role in sessionStorage for card effects
+          if (response.data.data.session_uuid) {
+            sessionStorage.setItem(
+              "battle_session_uuid",
+              response.data.data.session_uuid
+            );
+            sessionStorage.setItem("is_host", isHost.toString());
+          }
         }
       } catch (error) {
         console.error("Error fetching battle session data:", error);
@@ -320,7 +503,17 @@ export default function PvpBattle() {
     };
 
     fetchBattleSessionData();
-  }, [lobbyCode]);
+
+    // Set up polling for battle session data
+    const pollInterval = setInterval(fetchBattleSessionData, 2000);
+
+    return () => {
+      clearInterval(pollInterval);
+      // Clean up session storage when component unmounts
+      sessionStorage.removeItem("battle_session_uuid");
+      sessionStorage.removeItem("is_host");
+    };
+  }, [lobbyCode, isHost]);
 
   // Effect to fetch battle scores
   useEffect(() => {
@@ -329,10 +522,17 @@ export default function PvpBattle() {
 
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${battleState.session_uuid}`
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${
+            battleState.session_uuid
+          }`
         );
 
-        if (response.data.success && response.data.data) {
+        if (
+          response &&
+          response.data &&
+          response.data.success &&
+          response.data.data
+        ) {
           const scores = response.data.data;
           // Set health based on whether player is host or guest
           if (isHost) {
@@ -362,7 +562,7 @@ export default function PvpBattle() {
           }
         }
       } catch (error) {
-        console.error('Error fetching battle scores:', error);
+        console.error("Error fetching battle scores:", error);
       }
     };
 
@@ -373,8 +573,84 @@ export default function PvpBattle() {
     return () => clearInterval(scoresPollInterval);
   }, [battleState?.session_uuid, isHost]);
 
+  // Check for poison effects and apply damage when the turn changes
+  useEffect(() => {
+    const checkAndApplyPoisonEffects = async () => {
+      if (!battleState?.session_uuid) return;
+
+      try {
+        // Apply poison effects to the current player at the start of their turn
+        const playerType = isHost ? "host" : "guest";
+
+        const response = await axios.post(
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/battle/apply-poison-effects`,
+          {
+            session_uuid: battleState.session_uuid,
+            player_type: playerType,
+            current_turn_number: currentTurnNumber,
+          }
+        );
+
+        if (
+          response.data.success &&
+          response.data.data.poison_damage_applied > 0
+        ) {
+          console.log(
+            `Applied ${response.data.data.poison_damage_applied} poison damage`
+          );
+
+          // Update local health state from the response data
+          if (response.data.data.updated_scores) {
+            if (isHost) {
+              setPlayerHealth(response.data.data.updated_scores.host_health);
+            } else {
+              setPlayerHealth(response.data.data.updated_scores.guest_health);
+            }
+          }
+
+          // Show poison damage notification
+          setPoisonEffectActive(true);
+          const damage = response.data.data.poison_damage_applied;
+
+          const messageElement = document.createElement("div");
+          messageElement.className =
+            "fixed inset-0 flex items-center justify-center z-50";
+          messageElement.innerHTML = `
+            <div class="bg-green-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-green-500/50">
+              Poison Effect: You took ${damage} poison damage!
+            </div>
+          `;
+          document.body.appendChild(messageElement);
+
+          // Remove the message after 2 seconds
+          setTimeout(() => {
+            document.body.removeChild(messageElement);
+            setPoisonEffectActive(false);
+          }, 2000);
+        }
+      } catch (error) {
+        console.error("Error applying poison effects:", error);
+      }
+    };
+
+    // Only check when it's this player's turn and the turn has changed
+    if (isMyTurn && currentTurnNumber > 0) {
+      checkAndApplyPoisonEffects();
+    }
+  }, [isMyTurn, currentTurnNumber, battleState?.session_uuid, isHost]);
+
   return (
-    <div className="w-full h-screen flex flex-col">
+    <div
+      className="w-full h-screen flex flex-col relative"
+      style={{
+        backgroundImage: `url(${PvpBattleBG})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
       {/* Character animation manager */}
       <CharacterAnimationManager
         playerAnimationState={playerAnimationState}
@@ -420,9 +696,6 @@ export default function PvpBattle() {
 
       {/* Main Battle Area */}
       <div className="flex-1 relative">
-        {/* Purple battlefield floor */}
-        <div className="absolute bottom-0 left-0 right-0 h-[43vh] bg-purple-900/20"></div>
-
         {/* Characters */}
         <Character
           imageSrc={getCharacterImage(
@@ -480,17 +753,20 @@ export default function PvpBattle() {
         />
 
         {/* Card Selection UI - Show after the waiting screen and delay */}
-        {gameStarted && showCards && !waitingForPlayer && showCardsAfterDelay && (
-          <div className="fixed inset-0 bg-black/40 z-10">
-            <CardSelection
-              isMyTurn={isMyTurn}
-              opponentName={opponentName}
-              playerName={playerName}
-              onCardSelected={handleCardSelected}
-              difficultyMode={difficultyMode}
-            />
-          </div>
-        )}
+        {gameStarted &&
+          showCards &&
+          !waitingForPlayer &&
+          showCardsAfterDelay && (
+            <div className="fixed inset-0 bg-black/20 z-10">
+              <CardSelection
+                isMyTurn={isMyTurn}
+                opponentName={opponentName}
+                playerName={playerName}
+                onCardSelected={handleCardSelected}
+                difficultyMode={difficultyMode}
+              />
+            </div>
+          )}
 
         {/* Waiting overlay - now checks only if either player isn't in battle yet */}
         <WaitingOverlay
@@ -507,6 +783,23 @@ export default function PvpBattle() {
           victoryMessage={victoryMessage}
           onConfirm={handleVictoryConfirm}
         />
+
+        {/* Question Modal */}
+        <QuestionModal
+          isOpen={showQuestionModal}
+          onClose={handleQuestionModalClose}
+          onAnswerSubmit={handleAnswerSubmit}
+          difficultyMode={difficultyMode}
+          questionTypes={questionTypes}
+          selectedCardId={selectedCardId}
+        />
+
+        {/* Poison effect indicator */}
+        {poisonEffectActive && (
+          <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
+            <div className="absolute inset-0 bg-green-500/20 animate-pulse"></div>
+          </div>
+        )}
       </div>
     </div>
   );

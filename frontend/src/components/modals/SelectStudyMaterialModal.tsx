@@ -23,10 +23,12 @@ import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 import { useUser } from "../../contexts/UserContext";
 import { generateCode } from "../../pages/dashboard/play-battleground/utils/codeGenerator";
 import { StudyMaterial } from "../../types/studyMaterialObject";
+import { createNewLobby, navigateToWelcomeScreen } from "../../services/pvpLobbyService";
 
 interface SelectStudyMaterialModalProps {
   open: boolean;
   handleClose: () => void;
+  handleBack?: () => void;
   mode: string | null;
   isLobby?: boolean;
   onMaterialSelect: (material: StudyMaterial) => void;
@@ -37,6 +39,7 @@ interface SelectStudyMaterialModalProps {
 const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   open,
   handleClose,
+  handleBack,
   mode,
   isLobby = false,
   onMaterialSelect,
@@ -113,41 +116,41 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
   }, [searchQuery, filter, studyMaterials]);
 
   const handleMaterialSelect = (material: StudyMaterial) => {
+    // Call the onMaterialSelect callback with the material
+    onMaterialSelect(material);
+    
+    // If we're in a lobby context, just close the modal and don't navigate
     if (isLobby) {
-      const generatedLobbyCode = generateCode(); // Generate a new lobby code
-      console.log("Generated lobby code:", generatedLobbyCode);
-
-      onMaterialSelect(material);
-      onModeSelect(mode || "");
       handleClose();
+      return;
+    }
+    
+    // Normal flow for non-lobby context
+    onModeSelect(mode || "");
+    handleClose();
 
-      navigate(`/dashboard/pvp-lobby/${generatedLobbyCode}`, {
-        state: {
-          mode,
-          material,
-          selectedTypes,
-          lobbyCode: generatedLobbyCode, // Add lobby code to state
-        },
-      });
+    // Format mode string consistently
+    const formattedMode = mode === "Peaceful Mode"
+      ? "Peaceful"
+      : mode === "Time Pressured"
+      ? "Time Pressured"
+      : mode === "PvP Mode"
+      ? "PvP"
+      : mode || "Unknown";
+
+    // For PVP mode, use the lobby service
+    if (formattedMode === "PvP" || mode === "PvP Mode") {
+      const lobbyState = createNewLobby(formattedMode, material);
+      if (selectedTypes && selectedTypes.length > 0) {
+        lobbyState.selectedTypes = selectedTypes;
+      }
+      navigateToWelcomeScreen(navigate, lobbyState);
     } else {
-      const formattedMode =
-        mode === "Peaceful Mode"
-          ? "Peaceful"
-          : mode === "PvP Mode"
-          ? "PvP"
-          : mode;
-      navigate("/dashboard/welcome-game-mode", {
+      navigate("/dashboard/welcome-game-mode", { 
         state: {
           mode: formattedMode,
-          material: {
-            ...material,
-            items: material.items.map((item) => ({
-              term: item.term,
-              definition: item.definition,
-              image: item.image || null,
-            })),
-          },
-        },
+          material
+        }
       });
     }
   };
@@ -191,7 +194,7 @@ const SelectStudyMaterialModal: React.FC<SelectStudyMaterialModalProps> = ({
         >
           <IconButton
             aria-label="back"
-            onClick={handleClose}
+            onClick={handleBack || handleClose}
             sx={{
               position: "absolute",
               top: 16,

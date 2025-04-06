@@ -1,30 +1,26 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
-import {
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-} from "@mui/material";
-import { motion } from "framer-motion"; // Import motion from framer-motion
+import { motion } from "framer-motion";
 import "./../../styles/setupques.css";
-import ManaIcon from "/ManaIcon.png";
-import IconButton from "@mui/material/IconButton";
-import ArrowBackIcon from "@mui/icons-material/ArrowBack";
-import { ContentCopy, CheckCircle, Add } from "@mui/icons-material";
-import CachedIcon from "@mui/icons-material/Cached";
-import VisibilityIcon from "@mui/icons-material/Visibility";
-import SelectStudyMaterialModal from "../../../../../components/modals/SelectStudyMaterialModal"; // Import the modal
+import SelectStudyMaterialModal from "../../../../../components/modals/SelectStudyMaterialModal";
 import QuestionTypeSelectionModal from "../../components/modal/QuestionTypeSelectionModal";
-import InvitePlayerModal from "../../components/modal/InvitePlayerModal"; // Import the new modal
-import { useUser } from "../../../../../contexts/UserContext"; // Import the useUser hook
-import { generateCode } from "../../utils/codeGenerator"; // Import the utility function
-import defaultAvatar from "/profile-picture/bunny-picture.png";
-import { io, Socket } from "socket.io-client";
+import InvitePlayerModal from "../../components/modal/InvitePlayerModal";
+import { useUser } from "../../../../../contexts/UserContext";
+import { generateCode } from "../../utils/codeGenerator";
+import defaultAvatar from "/profile-picture/default-picture.svg";
+import { Socket } from "socket.io-client";
 import axios from "axios";
 import SocketService from "../../../../../services/socketService";
-import CircularProgress from "@mui/material/CircularProgress";
+import { toast } from "react-hot-toast";
+
+// Import new modular components
+import {
+  PvPHeader,
+  PlayerCard,
+  LobbyCodeDisplay,
+  BattleControls,
+  ConfirmationDialog,
+} from "./components";
 
 interface Player {
   firebase_uid: string;
@@ -142,9 +138,6 @@ const PVPLobby: React.FC = () => {
 
   // Add these states
   const [socket, setSocket] = useState<Socket | null>(null);
-
-  // Add this near the top of your component
-  const [debug, setDebug] = useState(false);
 
   // Add this state to track if current user is a guest (invited player)
   const [isCurrentUserGuest, setIsCurrentUserGuest] = useState<boolean>(
@@ -265,12 +258,52 @@ const PVPLobby: React.FC = () => {
       handleBattleInvitation
     );
 
+    if (newSocket.connected) {
+      // Let others know this user is in a lobby
+      newSocket.emit("userLobbyStatusChanged", {
+        userId: user.firebase_uid,
+        inLobby: true,
+        lobbyCode: lobbyCode,
+      });
+
+      // Also broadcast player joined lobby event
+      newSocket.emit("player_joined_lobby", {
+        playerId: user.firebase_uid,
+        lobbyCode: lobbyCode,
+      });
+    } else {
+      newSocket.once("connect", () => {
+        console.log("Socket connected, emitting lobby status");
+        // Let others know this user is in a lobby
+        newSocket.emit("userLobbyStatusChanged", {
+          userId: user.firebase_uid,
+          inLobby: true,
+          lobbyCode: lobbyCode,
+        });
+
+        // Also broadcast player joined lobby event
+        newSocket.emit("player_joined_lobby", {
+          playerId: user.firebase_uid,
+          lobbyCode: lobbyCode,
+        });
+      });
+    }
+
     return () => {
       if (removeListener) removeListener();
       if (newSocket) {
         console.log("Cleaning up socket connection");
         newSocket.disconnect();
       }
+      newSocket.emit("userLobbyStatusChanged", {
+        userId: user.firebase_uid,
+        inLobby: false,
+        lobbyCode: lobbyCode,
+      });
+      newSocket.emit("player_left_lobby", {
+        playerId: user.firebase_uid,
+        lobbyCode: lobbyCode,
+      });
     };
   }, [user?.firebase_uid, loading]);
 
@@ -421,8 +454,8 @@ const PVPLobby: React.FC = () => {
               hostUsername: user?.username,
               guestUsername:
                 invitedPlayer?.username || players[1]?.username || "Guest",
-              hostId: hostId, // Pass the actual ID
-              guestId: guestId, // Pass the actual ID
+              hostId: hostId,
+              guestId: guestId,
             },
           });
         }
@@ -1026,126 +1059,93 @@ const PVPLobby: React.FC = () => {
     return () => clearInterval(interval);
   }, [lobbyCode]);
 
+  // Add this to handle real-time player joining through sockets
+  useEffect(() => {
+    if (!socket) return;
+
+    // Handle a player joining lobby in real-time
+    const handlePlayerJoiningLobby = (data: {
+      lobbyCode: string;
+      playerId: string;
+      playerName?: string;
+      playerLevel?: number;
+      playerPicture?: string | null;
+    }) => {
+      console.log(
+        `Player joining lobby via socket: ${data.playerName || data.playerId}`
+      );
+
+      // Only process if we're in this lobby
+      if (data.lobbyCode !== lobbyCode) return;
+
+      // Create player object from received data
+      const joiningPlayer: Player = {
+        firebase_uid: data.playerId,
+        username: data.playerName || "Guest",
+        level: data.playerLevel || 1,
+        display_picture: data.playerPicture || null,
+      };
+
+      // Add player to guest player state
+      setInvitedPlayer(joiningPlayer);
+      setShowInviteModal(true);
+
+      // Play a sound or add visual notification if desired
+      // playSoundEffect("playerJoined.mp3");
+
+      // Show notification toast
+      toast.success(`${joiningPlayer.username} joined your lobby!`);
+    };
+
+    // Set up the event listener
+    socket.on("playerJoiningLobby", handlePlayerJoiningLobby);
+
+    // Clean up
+    return () => {
+      socket.off("playerJoiningLobby", handlePlayerJoiningLobby);
+    };
+  }, [socket, lobbyCode]);
+
+  // Modify the useEffect that runs when the component mounts to emit a createLobby event for hosts
+  useEffect(() => {
+    // Initialize lobby
+    if (isCurrentUserGuest && lobbyCode) {
+      // Join lobbby and notify server
+      socket?.emit("createLobby", {
+        lobbyCode,
+        hostId: user?.firebase_uid,
+        hostName: user?.username,
+        hostLevel: user?.level,
+        hostPicture: user?.display_picture || null,
+      });
+
+      console.log(`Host created lobby: ${lobbyCode}`);
+    }
+
+    // ... existing code for non-socket initializations ...
+  }, [
+    isCurrentUserGuest,
+    lobbyCode,
+    socket,
+    user?.firebase_uid,
+    user?.username,
+    user?.level,
+    user?.display_picture,
+  ]);
+
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-white px-6 py-8 overflow-hidden">
       {/* Full-Width Fixed Header */}
-      <motion.div
-        className="absolute top-0 left-0 w-full sm:px-8 md:px-16 lg:px-32 px-12 mt-5 py-12 flex justify-between items-center"
-        initial={{ opacity: 0, y: -50 }} // Initial position off-screen
-        animate={{ opacity: 1, y: 0 }} // Animate to visible and on-screen
-        transition={{ duration: 0.5 }}
-      >
-        <div className="flex items-center gap-2 sm:gap-4 md:gap-6">
-          <IconButton
-            className="text-gray-300"
-            style={{
-              border: "2px solid #6F658D",
-              borderRadius: "50%",
-              padding: "4px",
-              color: "#6F658D",
-            }}
-            onClick={handleBackClick}
-          >
-            <ArrowBackIcon />
-          </IconButton>
-
-          <div>
-            <h2 className="text-[16px] sm:text-[18px] md:text-[20px] lg:text-[22px] font-semibold mb-1">
-              {isCurrentUserGuest ? "LOBBY" : "PVP LOBBY"}
-            </h2>
-            <h6 className="text-[14px] text-gray-300 mb-1">
-              {isCurrentUserGuest ? "Host selected: " : ""}
-              {selectedTypesFinal.map((type, index) => {
-                // Map question type values to display names
-                const displayType =
-                  questionTypes.find((qt) => qt.value === type)?.display ||
-                  type;
-                return (
-                  <span key={type}>
-                    {index > 0 ? ", " : ""}
-                    {displayType}
-                  </span>
-                );
-              })}
-            </h6>
-            <p className="text-[12px] sm:text-[14px] text-gray-400 flex items-center">
-              {isCurrentUserGuest
-                ? "Host's Study Material: "
-                : "Chosen Study Material: "}
-              &nbsp;
-              <span className="font-bold text-white">
-                {selectedMaterial
-                  ? typeof selectedMaterial === "string" &&
-                    selectedMaterial === "None"
-                    ? "Waiting for host's material..."
-                    : selectedMaterial.title || "Loading material..."
-                  : isCurrentUserGuest
-                  ? "Waiting for host's material..."
-                  : "Choose Study Material"}
-              </span>
-              {!isCurrentUserGuest && (
-                <span className="transition-colors duration-200">
-                  <CachedIcon
-                    sx={{
-                      color: "#6F658D",
-                      marginLeft: "8px",
-                      fontSize: "22px",
-                      cursor: "pointer",
-                      "&:hover": { color: "#4B17CD" },
-                    }}
-                    onClick={handleChangeMaterial}
-                  />
-                </span>
-              )}
-              {isCurrentUserGuest && (
-                <span className="ml-2 text-[12px] text-purple-300">
-                  (Guest mode)
-                </span>
-              )}
-              <span className="transition-colors duration-200">
-                <VisibilityIcon
-                  sx={{
-                    color: "#6F658D",
-                    marginLeft: "6px",
-                    fontSize: "20px",
-                    cursor: "pointer",
-                    "&:hover": { color: "#4B17CD" },
-                  }}
-                />
-              </span>
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 sm:gap-2">
-          <Button
-            variant="contained"
-            className="bg-[#3d374d] text-white"
-            onClick={handleChangeQuestionType} // Only enabled for the host
-            sx={{
-              cursor: isCurrentUserGuest ? "not-allowed" : "pointer", // Change cursor based on host status
-              backgroundColor: "#3d374d",
-              "&:hover": {
-                backgroundColor: "#4B17CD",
-              },
-            }}
-          >
-            CHANGE QUESTION TYPE
-          </Button>
-
-          <img
-            src={ManaIcon}
-            alt="Mana"
-            className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mr-1 ml-6"
-          />
-          <span className="text-[14px] sm:text-[16px] text-gray-300 mr-2 sm:mr-3">
-            {manaPoints}
-          </span>
-          <span className="animate-spin text-[14px] sm:text-[16px] text-purple-400">
-            ⚙️
-          </span>
-        </div>
-      </motion.div>
+      <PvPHeader
+        onBackClick={handleBackClick}
+        onChangeMaterial={handleChangeMaterial}
+        onChangeQuestionType={handleChangeQuestionType}
+        selectedMaterial={selectedMaterial}
+        selectedTypesFinal={selectedTypesFinal}
+        questionTypes={questionTypes}
+        manaPoints={manaPoints}
+        isCurrentUserGuest={isCurrentUserGuest}
+      />
 
       {/* Centered Content Wrapper */}
       <div className="flex-grow flex items-center justify-center w-full">
@@ -1164,37 +1164,19 @@ const PVPLobby: React.FC = () => {
               animate={{ x: 0 }}
               transition={{ type: "spring", stiffness: 100, damping: 20 }}
             >
-              {isCurrentUserGuest ? (
-                // Show the host info when current user is a guest
-                <>
-                  <img
-                    src={players[0]?.display_picture || defaultAvatar}
-                    alt="Host Avatar"
-                    className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 rounded-md"
-                  />
-                  <p className="text-sm sm:text-base font-semibold mt-5">
-                    {players[0]?.username || "Host"}
-                  </p>
-                  <p className="text-xs sm:text-sm text-gray-400">
-                    LVL {players[0]?.level || "??"}
-                  </p>
-                </>
-              ) : (
-                // Show the current user as Player 1 when they are the host
-                <>
-                  <img
-                    src={user?.display_picture || defaultAvatar}
-                    alt="Player Avatar"
-                    className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 rounded-md"
-                  />
-                  <p className="text-sm sm:text-base font-semibold mt-5">
-                    {user?.username || "Player 1"}
-                  </p>
-                  <p className="text-xs sm:text-sm text-gray-400">
-                    LVL {user?.level || 1}
-                  </p>
-                </>
-              )}
+              <PlayerCard
+                player={
+                  isCurrentUserGuest
+                    ? players[0]
+                    : {
+                        firebase_uid: user?.firebase_uid || "",
+                        username: user?.username || "Player 1",
+                        level: user?.level || 1,
+                        display_picture: user?.display_picture || defaultAvatar,
+                      }
+                }
+                isHost={true}
+              />
             </motion.div>
 
             {/* VS Text with Double Impact Animation */}
@@ -1204,10 +1186,10 @@ const PVPLobby: React.FC = () => {
               initial={{ opacity: 0, scale: 1 }}
               animate={{
                 opacity: 1,
-                scale: [1.5, 2, 1], // Scale up in two phases before returning to normal
+                scale: [1.5, 2, 1],
               }}
               transition={{
-                duration: 1, // The animation lasts for 1.2 seconds
+                duration: 1,
                 ease: "easeInOut",
               }}
             >
@@ -1215,262 +1197,58 @@ const PVPLobby: React.FC = () => {
             </motion.span>
 
             {/* Player 2 */}
-            <motion.div
-              className="flex flex-col mr-[-250px] ml-[210px] items-center"
-              onClick={() => {
-                if (!isCurrentUserGuest && !players[1] && !invitedPlayer) {
-                  setSelectedPlayer("");
-                  setShowInviteModal(true);
-                }
-              }}
-            >
+            <motion.div className="flex flex-col mr-[-250px] ml-[210px] items-center">
               {isCurrentUserGuest ? (
-                // Guest view remains the same
-                <>
-                  <img
-                    src={user?.display_picture || defaultAvatar}
-                    alt="Player Avatar"
-                    className="w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 rounded-md"
-                  />
-                  <p className="text-sm sm:text-base font-semibold mt-5">
-                    {user?.username || "Player 2"}
-                  </p>
-                  <p className="text-xs sm:text-sm text-gray-400">
-                    LVL {user?.level || 1}
-                  </p>
-                </>
+                <PlayerCard
+                  player={{
+                    firebase_uid: user?.firebase_uid || "",
+                    username: user?.username || "Player 2",
+                    level: user?.level || 1,
+                    display_picture: user?.display_picture || defaultAvatar,
+                  }}
+                  isHost={false}
+                />
               ) : (
-                // Host view with pending animation and greyed out state
-                <div className="relative">
-                  <div
-                    className={`w-16 h-16 sm:w-[185px] sm:h-[185px] mt-5 bg-white rounded-md flex items-center justify-center 
-                      ${
-                        invitedPlayer && invitedPlayerStatus.isPending
-                          ? "opacity-50"
-                          : ""
-                      }`}
-                  >
-                    {invitedPlayer ? (
-                      <>
-                        {/* Player image with conditional animation */}
-                        <motion.img
-                          src={invitedPlayer.display_picture || defaultAvatar}
-                          alt="Invited Player"
-                          className="w-full h-full rounded-md"
-                          initial={{ scale: 0.95, opacity: 0.5 }}
-                          animate={
-                            invitedPlayerStatus.isPending
-                              ? {
-                                  scale: [0.95, 1.05, 0.95],
-                                  opacity: [0.5, 0.7, 0.5],
-                                }
-                              : {
-                                  scale: 1,
-                                  opacity: 1,
-                                }
-                          }
-                          transition={
-                            invitedPlayerStatus.isPending
-                              ? {
-                                  duration: 2,
-                                  repeat: Infinity,
-                                  ease: "easeInOut",
-                                }
-                              : {
-                                  duration: 0.5,
-                                }
-                          }
-                        />
-                        {/* Pending overlay */}
-                        {invitedPlayerStatus.isPending && (
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <motion.div
-                              className="text-purple-500 text-sm font-semibold bg-black bg-opacity-50 px-3 py-1 rounded-full"
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              transition={{ duration: 0.3 }}
-                            >
-                              Waiting for player...
-                            </motion.div>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <Add className="text-gray-500" />
-                    )}
-                  </div>
-                  <div
-                    className={`text-center mt-5 ${
-                      invitedPlayerStatus.isPending ? "opacity-50" : ""
-                    }`}
-                  >
-                    <p className="text-sm sm:text-base font-semibold">
-                      {invitedPlayer
-                        ? invitedPlayer.username
-                        : players[1]
-                        ? players[1].username
-                        : "PLAYER 2"}
-                    </p>
-                    <p className="text-xs sm:text-sm text-gray-400">
-                      {invitedPlayer
-                        ? `LVL ${invitedPlayer.level}`
-                        : players[1] && players[1].level
-                        ? `LVL ${players[1].level}`
-                        : "LVL ???"}
-                    </p>
-                    {invitedPlayerStatus.isPending && (
-                      <p className="text-xs text-purple-400 mt-1">
-                        Invitation sent
-                      </p>
-                    )}
-                  </div>
-                </div>
+                <PlayerCard
+                  player={invitedPlayer}
+                  isHost={false}
+                  isPending={invitedPlayerStatus.isPending}
+                  onClick={() => {
+                    if (!isCurrentUserGuest && !players[1] && !invitedPlayer) {
+                      setSelectedPlayer("");
+                      setShowInviteModal(true);
+                    }
+                  }}
+                />
               )}
             </motion.div>
           </div>
 
           {/* Lobby Code Section - only visible to host */}
-          {isCurrentUserGuest && (
-            <motion.div
-              className="flex flex-row mt-24 items-center"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5 }}
-            >
-              <p className="text-sm sm:text-base mr-6 text-white mb-1">
-                LOBBY CODE
-              </p>
-              <div className="bg-white text-black text-sm sm:text-base font-bold px-2 ps-4 py-1 rounded-md flex items-center">
-                {lobbyCode}
-                <IconButton
-                  onClick={handleCopy}
-                  className="text-gray-500"
-                  style={{ fontSize: "16px" }}
-                >
-                  {copySuccess ? (
-                    <CheckCircle fontSize="small" style={{ color: "gray" }} />
-                  ) : (
-                    <ContentCopy fontSize="small" />
-                  )}
-                </IconButton>
-              </div>
-            </motion.div>
-          )}
+          {!isCurrentUserGuest && <LobbyCodeDisplay lobbyCode={lobbyCode} />}
 
           {/* Battle Start Button - modified */}
-          <motion.button
-            onClick={handleBattleStart}
-            disabled={readyStateLoading || battleStartLoading}
-            className={`mt-6 sm:mt-11 w-full max-w-[250px] sm:max-w-[300px] md:max-w-[350px] py-2 sm:py-3 
-              ${
-                !isCurrentUserGuest && !playerReadyState.guestReady
-                  ? "bg-[#3a3a3a] hover:bg-[#4a4a4a] cursor-not-allowed"
-                  : isCurrentUserGuest && playerReadyState.guestReady
-                  ? "bg-[#E44D4D] hover:bg-[#C03A3A]"
-                  : "bg-[#4D1EE3] hover:bg-purple-800"
-              } text-white rounded-lg text-md sm:text-lg shadow-lg transition flex items-center justify-center`}
-          >
-            {readyStateLoading || battleStartLoading ? (
-              <CircularProgress size={24} color="inherit" />
-            ) : !isCurrentUserGuest ? (
-              <>
-                {playerReadyState.guestReady ? (
-                  <>
-                    BATTLE START! -10
-                    <img
-                      src={ManaIcon}
-                      alt="Mana"
-                      className="w-4 h-4 sm:w-3 sm:h-3 md:w-5 md:h-5 ml-2 filter invert brightness-0"
-                    />
-                  </>
-                ) : (
-                  <>
-                    START 1/2
-                    {players.length > 1
-                      ? " (Waiting for guest)"
-                      : " (Waiting for player)"}
-                  </>
-                )}
-              </>
-            ) : (
-              // Guest view
-              <>{playerReadyState.guestReady ? "CANCEL 2/2" : "START 1/2"}</>
-            )}
-          </motion.button>
+          <BattleControls
+            onBattleStart={handleBattleStart}
+            isHost={!isCurrentUserGuest}
+            hostReady={playerReadyState.hostReady}
+            guestReady={playerReadyState.guestReady}
+            loading={readyStateLoading || battleStartLoading}
+            disabledReason={manaPoints < 10 ? "Not enough mana" : undefined}
+          />
         </motion.div>
       </div>
 
       {/* Confirmation Modal */}
-      <Dialog
+      <ConfirmationDialog
         open={openDialog}
-        aria-labelledby="confirmation-dialog-title"
-        aria-describedby="confirmation-dialog-description"
-        sx={{
-          "& .MuiDialog-paper": {
-            backgroundColor: "#080511", // Set dark background color for the modal itself
-            paddingY: "30px", // Adds padding inside the modal
-            paddingX: "20px", // Adds padding inside the modal
-            paddingRight: "40px", // Adds padding inside the modal
-            borderRadius: "10px", // Optional: Rounded corners
-          },
-          "& .MuiDialog-root": {
-            backgroundColor: "transparent", // Ensures the root background is transparent (if needed)
-          },
-        }}
-      >
-        <DialogTitle
-          id="confirmation-dialog-title"
-          className="text-white py-4 px-6"
-          sx={{
-            backgroundColor: "#080511", // Ensures the title background is dark
-          }}
-        >
-          Are you sure you want to leave?
-        </DialogTitle>
-
-        <DialogContent
-          className="text-white py-6 px-6"
-          sx={{ backgroundColor: "#080511" }}
-        >
-          <p>
-            If you leave, your current progress will be lost. Please confirm if
-            you wish to proceed.
-          </p>
-        </DialogContent>
-
-        <DialogActions className="bg-[#080511]" sx={{ padding: "16px 0" }}>
-          <Button
-            onClick={handleCancelLeave}
-            sx={{
-              color: "#B0B0B0",
-              py: 1,
-              px: 4,
-              "&:hover": {
-                backgroundColor: "#080511",
-                color: "#FFFFFF",
-              },
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            onClick={handleConfirmLeave}
-            autoFocus
-            sx={{
-              backgroundColor: "#4D1EE3",
-              color: "#FFFFFF",
-              py: 1,
-              px: 4,
-              "&:hover": {
-                backgroundColor: "#6A3EEA",
-                color: "#fff",
-              },
-            }}
-          >
-            Yes, Leave
-          </Button>
-        </DialogActions>
-      </Dialog>
+        title="Are you sure you want to leave?"
+        content="If you leave, your current progress will be lost. Please confirm if you wish to proceed."
+        onConfirm={handleConfirmLeave}
+        onCancel={handleCancelLeave}
+        confirmText="Yes, Leave"
+        cancelText="Cancel"
+      />
 
       {/* Select Study Material Modal */}
       <SelectStudyMaterialModal
@@ -1514,70 +1292,6 @@ const PVPLobby: React.FC = () => {
           }
         />
       )}
-
-      {/* Debug panel */}
-      {/* {debug && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 20,
-            right: 20,
-            background: "#000",
-            padding: 10,
-            borderRadius: 5,
-            zIndex: 9999,
-          }}
-        >
-          <pre>
-            {JSON.stringify(
-              {
-                invitation: invitedPlayer,
-                socketConnected: !!socket,
-                userId: user?.firebase_uid,
-              },
-              null,
-              2
-            )}
-          </pre>
-          <button
-            onClick={() => {
-              if (!user?.firebase_uid) {
-                console.error("Cannot test invitation - user not loaded yet");
-                return;
-              }
-
-              // Set test data first
-              setInvitedPlayer({
-                firebase_uid: "test-sender-fixed-id",
-                username: "Test User",
-                level: 1,
-                display_picture: null,
-              });
-
-              // Then open the invitation
-              setTimeout(() => {
-                setShowInviteModal(true);
-                console.log("Test invitation opened with data:", {
-                  senderId: "test-sender-fixed-id",
-                  senderName: "Test User",
-                  lobbyCode: lobbyCode
-                });
-              }, 10);
-            }}
-            style={{
-              marginTop: "8px",
-              padding: "4px 8px",
-              background: "#4D1EE3",
-              border: "none",
-              borderRadius: "4px",
-              color: "white",
-              cursor: "pointer",
-            }}
-          >
-            Test Invitation
-          </button>
-        </div>
-      )} */}
     </div>
   );
 };

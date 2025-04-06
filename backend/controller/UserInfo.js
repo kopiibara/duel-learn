@@ -72,10 +72,6 @@ const UserInfo = {
         }
     },
 
-    /**
-     * Get user profile information by user ID
-     * Specifically designed for the battle UI to fetch display pictures
-     */
     getUserProfileById: async (req, res) => {
         let connection;
         try {
@@ -128,6 +124,8 @@ const UserInfo = {
             if (connection) connection.release(); // Always release the connection
         }
     },
+
+
 };
 
 export default UserInfo;
