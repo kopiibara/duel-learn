@@ -4,6 +4,7 @@ export interface VictoryModalProps {
     showVictoryModal: boolean;
     victoryMessage: string;
     onConfirm: () => void;
+    onViewSessionReport?: () => void;
 }
 
 /**
@@ -12,7 +13,8 @@ export interface VictoryModalProps {
 export function VictoryModal({
     showVictoryModal,
     victoryMessage,
-    onConfirm
+    onConfirm,
+    onViewSessionReport
 }: VictoryModalProps) {
     if (!showVictoryModal) return null;
 
@@ -36,12 +38,23 @@ export function VictoryModal({
                     {victoryMessage}
                 </p>
 
-                <button
-                    onClick={onConfirm}
-                    className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-lg transition-colors"
-                >
-                    Return to Dashboard
-                </button>
+                <div className="flex flex-col gap-3">
+                    {onViewSessionReport && (
+                        <button
+                            onClick={onViewSessionReport}
+                            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-lg transition-colors"
+                        >
+                            View Session Report
+                        </button>
+                    )}
+
+                    <button
+                        onClick={onConfirm}
+                        className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-lg transition-colors"
+                    >
+                        Return to Dashboard
+                    </button>
+                </div>
             </div>
         </div>
     );

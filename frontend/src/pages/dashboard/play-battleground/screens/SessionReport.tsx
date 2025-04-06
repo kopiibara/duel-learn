@@ -32,7 +32,7 @@ const StatisticBox = ({
   value,
   icon,
 }: StatisticProps & { icon: string }) => (
-  <div className="backdrop-blur-sm px-10 py-7 rounded-md border w-[660px] border-[#3B354D] flex justify-between items-center">
+  <div className="backdrop-blur-sm px-10 py-10 rounded-md border w-[660px] border-[#3B354D] flex justify-between items-center">
     <div className="flex items-center gap-2">
       <img src={icon} alt="" className="w-5 h-5 mb-1 mr-3" />
       <div className="text-base mb-1 text-white uppercase tracking-wider">
