@@ -18,7 +18,9 @@ interface FlashCardProps {
             definition?: string;
             itemId?: number;
         };
+        correctAnswer?: string;
     } | null;
+    isTransitioning?: boolean;
 }
 
 const FlashCard: React.FC<FlashCardProps> = memo(({ 
@@ -30,7 +32,8 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
     timeRemaining,
     type,
     disabled = false,
-    currentQuestion
+    currentQuestion,
+    isTransitioning = false
 }) => {
     const [imageLoaded, setImageLoaded] = useState(false);
     const [imageError, setImageError] = useState(false);
@@ -45,9 +48,11 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
             hasValidImage,
             imageUrl,
             currentQuestion,
-            itemInfo: currentQuestion?.itemInfo
+            itemInfo: currentQuestion?.itemInfo,
+            correctAnswer,
+            isFlipped
         });
-    }, [hasValidImage, imageUrl, currentQuestion]);
+    }, [hasValidImage, imageUrl, currentQuestion, correctAnswer, isFlipped]);
 
     // Add image loading debug
     console.log("Image render debug:", {
@@ -56,7 +61,9 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
         imageError,
         currentQuestion: currentQuestion?.itemInfo,
         hasImage: Boolean(imageUrl),
-        fullQuestion: currentQuestion
+        fullQuestion: currentQuestion,
+        correctAnswer,
+        isFlipped
     });
 
     return (
@@ -144,7 +151,8 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
                     backfaceVisibility: "hidden",
                     transform: "rotateY(180deg)",
                     transition: "opacity 0.3s",
-                    opacity: isFlipped ? 1 : 0
+                    opacity: isFlipped && !isTransitioning ? 1 : 0,
+                    display: isTransitioning ? 'none' : 'flex'
                 }}
             >
                 <p className="text-center text-black text-3xl font-bold">
@@ -154,7 +162,7 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
         </div>
     );
 }, (prevProps, nextProps) => {
-    // Update memo comparison to include currentQuestion
+    // Update memo comparison to include currentQuestion, correctAnswer, and isTransitioning
     return (
         prevProps.question === nextProps.question &&
         prevProps.correctAnswer === nextProps.correctAnswer &&
@@ -162,7 +170,9 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
         prevProps.timeRemaining === nextProps.timeRemaining &&
         prevProps.disabled === nextProps.disabled &&
         prevProps.image === nextProps.image &&
-        prevProps.currentQuestion?.itemInfo?.image === nextProps.currentQuestion?.itemInfo?.image
+        prevProps.currentQuestion?.itemInfo?.image === nextProps.currentQuestion?.itemInfo?.image &&
+        prevProps.currentQuestion?.correctAnswer === nextProps.currentQuestion?.correctAnswer &&
+        prevProps.isTransitioning === nextProps.isTransitioning
     );
 });
 
