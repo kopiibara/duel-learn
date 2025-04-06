@@ -10,8 +10,15 @@ import {
 import { styled } from "@mui/system";
 import { useState } from "react";
 import SelectStudyMaterialModal from "./modals/SelectStudyMaterialModal";
+import PvPOptionsModal from "./modals/PvPOptionsModal";
 import { StudyMaterial } from "../types/studyMaterialObject";
 import { useAudio } from "../contexts/AudioContext";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  createNewLobby,
+  joinExistingLobby,
+  navigateToWelcomeScreen,
+} from "../services/pvpLobbyService";
 
 // Using a function to make the styled component responsive with theme access
 const ModeCard = styled(Card)(({ theme }) => {
@@ -20,7 +27,7 @@ const ModeCard = styled(Card)(({ theme }) => {
   return {
     padding: isXsScreen ? "1rem 0.75rem" : "1.5rem 0.75rem", // Responsive padding with rem
     borderRadius: "0.8rem",
-    height: isXsScreen ? "180px" : "240px", // Fixed height values instead of vh
+    height: isXsScreen ? "120px" : "240px", // Fixed height values instead of vh
     minHeight: isXsScreen ? "120px" : "140px", // Min height with px
     maxHeight: isXsScreen ? "180px" : "240px", // Max height with px
     width: "100%",
@@ -48,25 +55,36 @@ interface ChooseYourChallengeProps {
   onSelectMaterial?: (material: StudyMaterial) => void;
 }
 
-// First, let's map game types to each mode
+// Update the mode names and types to match ChooseModeModal
 const modeToTypesMap = {
-  "Peaceful Mode": ["matching", "flashcards", "quiz"],
-  "Time Pressured Mode": ["matching", "flashcards", "quiz"],
-  "PvP Mode": ["matching", "quiz"],
+  "Peaceful Mode": ["identification", "multiple-choice", "true-false"],
+  "Time Pressured": ["identification", "multiple-choice", "true-false"],
+  "PvP Mode": ["identification", "multiple-choice", "true-false"],
 };
 
 const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
   onSelectMode,
   onSelectMaterial,
 }) => {
-  // State to control the material selection modal
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { preSelectedMaterial, skipMaterialSelection } = location.state || {};
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
-  const [isLobby, setIsLobby] = useState(false); // Add this state
+  const [isLobby, setIsLobby] = useState(false);
+  const [pvpOptionsOpen, setPvpOptionsOpen] = useState(false);
   const theme = useTheme();
   const isXsScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const { setActiveModeAudio } = useAudio();
+  const [modalHistoryStack, setModalHistoryStack] = useState<string[]>([]);
+
+  // Close all modals
+  const closeAllModals = () => {
+    setModalOpen(false);
+    setPvpOptionsOpen(false);
+    setModalHistoryStack([]);
+  };
 
   // Handler for material selection
   const handleMaterialSelect = (material: StudyMaterial) => {
@@ -74,6 +92,21 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
       onSelectMaterial(material);
     }
     setModalOpen(false);
+
+    // If this is for PVP mode, use the lobby service
+    if (selectedMode === "PvP Mode" || selectedMode === "PvP") {
+      const lobbyState = createNewLobby(selectedMode, material);
+      navigateToWelcomeScreen(navigate, lobbyState);
+    } else {
+      // Regular flow for other modes
+      navigate("/dashboard/welcome-game-mode", {
+        state: {
+          mode: selectedMode,
+          material,
+          skipMaterialSelection: skipMaterialSelection,
+        },
+      });
+    }
   };
 
   // Handler for mode selection
@@ -83,19 +116,89 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
     }
   };
 
-  // New handler similar to ChooseModeModal
+  // Handler for back button from study material modal
+  const handleStudyMaterialBack = () => {
+    setModalOpen(false);
+
+    // Check if we have a previous modal to go back to
+    if (modalHistoryStack.length > 0) {
+      const prevModal = modalHistoryStack[modalHistoryStack.length - 1];
+      setModalHistoryStack((stack) => stack.slice(0, -1)); // Remove current modal from history
+
+      if (prevModal === "pvpOptions") {
+        setPvpOptionsOpen(true);
+      }
+    }
+  };
+
+  // Handler for material selection modal close button
+  const handleStudyMaterialClose = () => {
+    closeAllModals();
+  };
+
+  // Handler for PvP options modal back button
+  const handlePvPOptionsBack = () => {
+    setPvpOptionsOpen(false);
+    setModalHistoryStack([]);
+  };
+
+  // Handler for PvP options modal close button
+  const handlePvPOptionsClose = () => {
+    closeAllModals();
+  };
+
+  // Update handleModeClick to update modal history
   const handleModeClick = (mode: string) => {
     setSelectedMode(mode);
-    // Set types based on the mode selected
     setSelectedTypes(modeToTypesMap[mode as keyof typeof modeToTypesMap] || []);
 
-    // Set isLobby flag based on the mode
-    setIsLobby(mode === "PvP Mode");
+    // If it's PvP mode, show the options modal and update history
+    if (mode === "PvP Mode") {
+      setIsLobby(true);
+      setPvpOptionsOpen(true);
+      setModalHistoryStack([]);
+      return;
+    }
 
-    // Remove audio trigger from here - it should only play on the welcome page
-    // setActiveModeAudio(mode);
+    // For other modes, show material selection
+    if (skipMaterialSelection && preSelectedMaterial) {
+      if (onSelectMode) {
+        onSelectMode(mode);
+      }
+      if (onSelectMaterial) {
+        onSelectMaterial(preSelectedMaterial);
+      }
 
+      navigate("/dashboard/welcome-game-mode", {
+        state: {
+          mode,
+          material: preSelectedMaterial,
+          preSelectedMaterial,
+          skipMaterialSelection: true,
+        },
+      });
+    } else {
+      // Show material selection modal
+      setModalOpen(true);
+      setModalHistoryStack([]);
+    }
+  };
+
+  // Handler for creating a new lobby
+  const handleCreateLobby = () => {
+    setPvpOptionsOpen(false);
     setModalOpen(true);
+    // Update history stack to remember we came from pvpOptions
+    setModalHistoryStack(["pvpOptions"]);
+  };
+
+  // Handler for joining an existing lobby
+  const handleJoinLobby = (lobbyCode: string) => {
+    setPvpOptionsOpen(false);
+
+    // Use the lobby service for joining
+    const lobbyState = joinExistingLobby(lobbyCode, selectedMode || "PvP Mode");
+    navigateToWelcomeScreen(navigate, lobbyState);
   };
 
   return (
@@ -145,8 +248,8 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="700"
                 className="text-[#266349]"
                 sx={{
-                  fontSize: isXsScreen ? "1.1rem" : "1.3rem", // Responsive font size with rem
-                  marginBottom: "0.4rem", // Use rem for margin
+                  fontSize: isXsScreen ? "1rem" : "1.3rem", // Responsive font size with rem
+                  marginBottom: "0.1rem", // Use rem for margin
                 }}
               >
                 Peaceful Mode
@@ -155,7 +258,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="650"
                 className="text-[#266349]"
                 sx={{
-                  fontSize: isXsScreen ? "0.75rem" : "0.85rem", // Responsive font size with rem
+                  fontSize: isXsScreen ? "0.65rem" : "0.85rem", // Responsive font size with rem
                 }}
               >
                 Study your way, no rush, just flow!
@@ -165,7 +268,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         </ModeCard>
 
         {/* Time Pressured Mode */}
-        <ModeCard onClick={() => handleModeClick("Time Pressured Mode")}>
+        <ModeCard onClick={() => handleModeClick("Time Pressured")}>
           <CardMedia
             component="svg"
             className="cardMedia"
@@ -196,8 +299,8 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="700"
                 className="text-[#504c36]"
                 sx={{
-                  fontSize: isXsScreen ? "1.1rem" : "1.3rem", // Responsive font size with rem
-                  marginBottom: "0.4rem", // Use rem for margin
+                  fontSize: isXsScreen ? "1rem" : "1.3rem", // Responsive font size with rem
+                  marginBottom: "0.1rem", // Use rem for margin
                 }}
               >
                 Time Pressured
@@ -206,7 +309,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="650"
                 className="text-[#504c36]"
                 sx={{
-                  fontSize: isXsScreen ? "0.75rem" : "0.85rem", // Responsive font size with rem
+                  fontSize: isXsScreen ? "0.7rem" : "0.85rem", // Responsive font size with rem
                 }}
               >
                 Beat the clock, challenge your speed!
@@ -246,8 +349,8 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="700"
                 className="text-[#303869]"
                 sx={{
-                  fontSize: isXsScreen ? "1.1rem" : "1.3rem", // Responsive font size with rem
-                  marginBottom: "0.4rem", // Use rem for margin
+                  fontSize: isXsScreen ? "1rem" : "1.3rem", // Responsive font size with rem
+                  marginBottom: "0.1rem", // Use rem for margin
                 }}
               >
                 PvP Mode
@@ -257,7 +360,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
                 fontWeight="650"
                 className="text-[#303869]"
                 sx={{
-                  fontSize: isXsScreen ? "0.75rem" : "0.85rem", // Responsive font size with rem
+                  fontSize: isXsScreen ? "0.65rem" : "0.85rem", // Responsive font size with rem
                 }}
               >
                 Outsmart your opponent and win!
@@ -267,15 +370,25 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         </ModeCard>
       </Box>
 
+      {/* PvP Options Modal */}
+      <PvPOptionsModal
+        open={pvpOptionsOpen}
+        handleClose={handlePvPOptionsClose} // X button closes everything
+        handleBack={handlePvPOptionsBack} // Back button returns to choose mode
+        onCreateLobby={handleCreateLobby}
+        onJoinLobby={handleJoinLobby}
+      />
+
       {/* Material Selection Modal */}
       <SelectStudyMaterialModal
         open={modalOpen}
-        handleClose={() => setModalOpen(false)} // This closes the study material modal
-        mode={selectedMode} // Pass the selected mode
-        isLobby={isLobby} // Pass the isLobby flag
-        onMaterialSelect={handleMaterialSelect} // Pass the selection handler
-        onModeSelect={handleModeSelect} // Pass the mode selection handler
-        selectedTypes={selectedTypes} // Pass selectedTypes to the modal
+        handleClose={handleStudyMaterialClose} // X button closes everything
+        handleBack={handleStudyMaterialBack} // Back button navigates based on history
+        mode={selectedMode}
+        isLobby={isLobby}
+        onMaterialSelect={handleMaterialSelect}
+        onModeSelect={handleModeSelect}
+        selectedTypes={selectedTypes}
       />
     </>
   );

@@ -1,22 +1,112 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@mui/material";
 import DefaultPicture from "/profile-picture/default-picture.svg";
 import { Friend } from "../../../contexts/UserContext";
 import ProfileModal from "../../modals/ProfileModal";
 import { useState } from "react";
+import { useOnlineStatus } from "../../../hooks/useOnlineStatus";
+import { useLobbyStatus } from "../../../hooks/useLobbyStatus";
+import SelectStudyMaterialModal from "../../modals/SelectStudyMaterialModal";
+import { createNewLobby } from "../../../services/pvpLobbyService";
+import { generateCode } from "../../../pages/dashboard/play-battleground/utils/codeGenerator";
+import { StudyMaterial } from "../../../types/studyMaterialObject";
 
 interface FriendListItemProps {
   friend: Friend;
 }
 
 const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
+  const navigate = useNavigate();
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [materialModalOpen, setMaterialModalOpen] = useState(false);
+  const [inviteMode, setInviteMode] = useState<string>("PvP");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const isOnline = useOnlineStatus(friend.firebase_uid);
+  const { isInLobby, isInGame, gameMode } = useLobbyStatus(friend.firebase_uid);
 
   const handleViewProfile = (friendId: string) => {
     setSelectedFriend(friendId);
     setProfileModalOpen(true);
   };
+
+  const getStatusInfo = () => {
+    if (isInGame) {
+      // Game status takes priority - use orange
+      let statusText = "In Game";
+
+      // Show specific game mode in tooltip if available
+      if (gameMode === "pvp-battle") {
+        statusText = "In PVP Battle";
+      } else if (gameMode === "peaceful-mode") {
+        statusText = "In Peaceful Mode";
+      } else if (gameMode === "time-pressured-mode") {
+        statusText = "In Time-Pressured Mode";
+      }
+
+      return {
+        color: "bg-orange-500",
+        text: statusText,
+      };
+    } else if (isInLobby) {
+      return {
+        color: "bg-blue-500",
+        text: "In Lobby",
+      };
+    } else if (isOnline) {
+      return {
+        color: "bg-green-500",
+        text: "Online",
+      };
+    } else {
+      return {
+        color: "bg-gray-500",
+        text: "Offline",
+      };
+    }
+  };
+
+  const { color, text } = getStatusInfo();
+
+  // Handler for the INVITE button
+  const handleInviteClick = () => {
+    // Open material selection modal
+    setMaterialModalOpen(true);
+  };
+
+  // Handler for material selection
+  const handleMaterialSelect = (material: StudyMaterial) => {
+    // Generate a new lobby code
+    const lobbyCode = generateCode();
+
+    // Create a new lobby state
+    const lobbyState = createNewLobby(inviteMode, material);
+
+    // Store the friend to invite
+    localStorage.setItem("friendToInvite", JSON.stringify(friend));
+
+    // Close the modal
+    setMaterialModalOpen(false);
+
+    // Navigate to welcome screen
+    navigate("/dashboard/welcome-game-mode", {
+      state: {
+        mode: inviteMode,
+        material: material,
+        lobbyCode: lobbyState.lobbyCode,
+        role: "host",
+        friendToInvite: friend,
+        isPvpLobbyCreation: true,
+      },
+    });
+  };
+
+  // Handler for mode selection
+  const handleModeSelect = (mode: string) => {
+    setInviteMode(mode);
+  };
+
   return (
     <>
       <div className="flex items-center justify-between mb-3 sm:mb-4">
@@ -29,12 +119,23 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
           />
 
           {/* Text content */}
-          <div className="min-w-0 flex-1 overflow-hidden">
-            <p className="text-sm sm:text-base text-[#E2DDF3] truncate">
-              {friend.username}
-            </p>
-            <div className="flex items-center gap-1 sm:gap-2">
-              <p className="text-xs sm:text-sm text-[#9F9BAE] whitespace-nowrap">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center">
+              {/* Online status indicator */}
+              <div
+                className={`w-2.5 h-2.5 rounded-full mr-2 ${
+                  isOnline ? "bg-green-500" : "bg-red-500"
+                }`}
+                title={isOnline ? "Online" : "Offline"}
+              ></div>
+
+              <p className="text-sm sm:text-base text-[#E2DDF3] truncate">
+                {friend.username}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <p className="text-xs sm:text-sm text-[#9F9BAE]">
                 Level {friend.level}
               </p>
               <p className="text-[#9F9BAE] text-xs hidden xs:inline">•</p>
@@ -47,6 +148,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
 
         {/* Button with more responsive padding */}
         <Button
+          onClick={handleInviteClick}
           variant="contained"
           sx={{
             borderRadius: "0.6rem",
@@ -83,6 +185,16 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
         open={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
         userId={selectedFriend || undefined}
+      />
+
+      <SelectStudyMaterialModal
+        open={materialModalOpen}
+        handleClose={() => setMaterialModalOpen(false)}
+        mode={inviteMode}
+        onMaterialSelect={handleMaterialSelect}
+        onModeSelect={handleModeSelect}
+        selectedTypes={selectedTypes}
+        isLobby={true}
       />
     </>
   );

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import axios from "axios"; // Import axios for API calls
 
 // Import the actual card images
 import cardBackImage from "/General/CardDesignBack.png";
@@ -35,6 +36,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   const [showCardOptions, setShowCardOptions] = useState(false);
   const [backCardExitComplete, setBackCardExitComplete] = useState(false);
   const [animationComplete, setAnimationComplete] = useState(false);
+  const [selectionTimer, setSelectionTimer] = useState(8); // 8 second timer
+  const [timerActive, setTimerActive] = useState(false);
 
   // Card state management
   const [selectedCards, setSelectedCards] = useState<Card[]>([]);
@@ -43,6 +46,15 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     null
   );
   const [isFirstTurn, setIsFirstTurn] = useState(true);
+
+  // New state for card blocking effect
+  const [hasCardBlocking, setHasCardBlocking] = useState(false);
+  const [blockedCardCount, setBlockedCardCount] = useState(0);
+  const [visibleCardIndices, setVisibleCardIndices] = useState<number[]>([]);
+
+  // New state for mind control effect
+  const [hasMindControl, setHasMindControl] = useState(false);
+  const [mindControlActive, setMindControlActive] = useState(false);
 
   // Cards grouped by type for easier selection
   const cardsByType = {
@@ -224,6 +236,45 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     }
   };
 
+  // Handle timer timeout - automatically select "no-card"
+  const handleTimeExpired = () => {
+    console.log("Time expired, no card selected");
+
+    // Show a brief on-screen message
+    const messageElement = document.createElement("div");
+    messageElement.className =
+      "fixed inset-0 flex items-center justify-center z-50";
+    messageElement.innerHTML = `
+            <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                No card selected! Proceeding to question...
+            </div>
+        `;
+    document.body.appendChild(messageElement);
+
+    // Remove the message after 1.2 seconds
+    setTimeout(() => {
+      document.body.removeChild(messageElement);
+
+      // No card selected, use a special "no-card" ID
+      onCardSelected("no-card-selected");
+      setShowCardOptions(false);
+      setTimerActive(false);
+    }, 1200);
+  };
+
+  // Timer effect
+  useEffect(() => {
+    if (timerActive && selectionTimer > 0) {
+      const timer = setTimeout(() => {
+        setSelectionTimer(selectionTimer - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (timerActive && selectionTimer === 0) {
+      // Time's up
+      handleTimeExpired();
+    }
+  }, [timerActive, selectionTimer]);
+
   useEffect(() => {
     if (isMyTurn) {
       // Reset animation states
@@ -231,6 +282,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       setShowCardOptions(false);
       setBackCardExitComplete(false);
       setAnimationComplete(false);
+      setSelectionTimer(8); // Reset timer to 8 seconds
+      setTimerActive(false); // Don't start timer yet
 
       // Generate cards for this turn
       const cardsForThisTurn = generateCardsForTurn(
@@ -253,6 +306,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       setShowCardOptions(false);
       setBackCardExitComplete(false);
       setAnimationComplete(false);
+      setTimerActive(false);
     }
   }, [isMyTurn, difficultyMode]);
 
@@ -260,10 +314,14 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   const handleBackCardExitComplete = () => {
     setBackCardExitComplete(true);
     setShowCardOptions(true);
+    setTimerActive(true); // Start the selection timer
   };
 
   // Handle card selection
   const handleCardSelect = (cardId: string, index: number) => {
+    // Stop the timer
+    setTimerActive(false);
+
     // Store the selected index for the next turn
     setLastSelectedIndex(index);
 
@@ -293,6 +351,192 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         return "bg-gray-700";
     }
   };
+
+  // Check for card blocking effects
+  useEffect(() => {
+    if (isMyTurn) {
+      const checkForCardBlocking = async () => {
+        try {
+          // Get session UUID and player type from sessionStorage (set in PvpBattle.tsx)
+          const sessionUuid = sessionStorage.getItem("battle_session_uuid");
+          const isHost = sessionStorage.getItem("is_host") === "true";
+          const playerType = isHost ? "host" : "guest";
+
+          if (!sessionUuid) return;
+
+          // Check if this player has any card blocking effects active
+          const response = await axios.get(
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/gameplay/battle/card-blocking-effects/${sessionUuid}/${playerType}`
+          );
+
+          if (response.data.success && response.data.data) {
+            setHasCardBlocking(response.data.data.has_blocking_effect);
+            setBlockedCardCount(response.data.data.cards_blocked);
+
+            // If there's a blocking effect, randomly select which cards to hide
+            if (response.data.data.has_blocking_effect) {
+              const numCardsToShow = 3 - response.data.data.cards_blocked;
+
+              // Create an array of available indices (0, 1, 2)
+              const availableIndices = [0, 1, 2];
+
+              // Shuffle the indices
+              for (let i = availableIndices.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [availableIndices[i], availableIndices[j]] = [
+                  availableIndices[j],
+                  availableIndices[i],
+                ];
+              }
+
+              // Take only the number of cards we want to show
+              const indicesToShow = availableIndices.slice(0, numCardsToShow);
+              setVisibleCardIndices(indicesToShow);
+
+              // Show notification about blocked cards
+              const messageElement = document.createElement("div");
+              messageElement.className =
+                "fixed inset-0 flex items-center justify-center z-50";
+              messageElement.innerHTML = `
+                                <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                                    Answer Shield: ${response.data.data.cards_blocked} of your cards have been blocked!
+                                </div>
+                            `;
+              document.body.appendChild(messageElement);
+
+              // Remove the message after 2 seconds
+              setTimeout(() => {
+                document.body.removeChild(messageElement);
+              }, 2000);
+
+              // Mark the blocking effect as used
+              if (
+                response.data.data.effects &&
+                response.data.data.effects.length > 0
+              ) {
+                const effectToConsume = response.data.data.effects[0];
+
+                // Consume the effect
+                await axios.post(
+                  `${
+                    import.meta.env.VITE_BACKEND_URL
+                  }/api/gameplay/battle/consume-card-effect`,
+                  {
+                    session_uuid: sessionUuid,
+                    player_type: playerType,
+                    effect_type: effectToConsume.type,
+                  }
+                );
+
+                console.log(`Card blocking effect consumed`);
+              }
+            } else {
+              // No blocking, show all cards
+              setVisibleCardIndices([0, 1, 2]);
+            }
+          }
+        } catch (error) {
+          console.error("Error checking for card blocking effects:", error);
+          // Default to showing all cards on error
+          setVisibleCardIndices([0, 1, 2]);
+        }
+      };
+
+      checkForCardBlocking();
+    } else {
+      // Reset when not player's turn
+      setHasCardBlocking(false);
+      setBlockedCardCount(0);
+      setVisibleCardIndices([0, 1, 2]);
+    }
+  }, [isMyTurn]);
+
+  // Check for mind control effects
+  useEffect(() => {
+    if (isMyTurn) {
+      const checkForMindControl = async () => {
+        try {
+          // Get session UUID and player type from sessionStorage (set in PvpBattle.tsx)
+          const sessionUuid = sessionStorage.getItem("battle_session_uuid");
+          const isHost = sessionStorage.getItem("is_host") === "true";
+          const playerType = isHost ? "host" : "guest";
+
+          if (!sessionUuid) return;
+
+          // Check if this player has any mind control effects active
+          const response = await axios.get(
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/gameplay/battle/mind-control-effects/${sessionUuid}/${playerType}`
+          );
+
+          if (response.data.success && response.data.data) {
+            setHasMindControl(response.data.data.has_mind_control_effect);
+
+            // If there's a mind control effect active, the player can't select cards
+            if (response.data.data.has_mind_control_effect) {
+              setMindControlActive(true);
+
+              // Show notification about mind control
+              const messageElement = document.createElement("div");
+              messageElement.className =
+                "fixed inset-0 flex items-center justify-center z-50";
+              messageElement.innerHTML = `
+                                <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                                    Mind Control: You cannot select a card this turn!
+                                </div>
+                            `;
+              document.body.appendChild(messageElement);
+
+              // Remove the message after 2 seconds
+              setTimeout(() => {
+                document.body.removeChild(messageElement);
+              }, 2000);
+
+              // Mark the mind control effect as used
+              if (
+                response.data.data.effects &&
+                response.data.data.effects.length > 0
+              ) {
+                const effectToConsume = response.data.data.effects[0];
+
+                // Consume the effect
+                await axios.post(
+                  `${
+                    import.meta.env.VITE_BACKEND_URL
+                  }/api/gameplay/battle/consume-card-effect`,
+                  {
+                    session_uuid: sessionUuid,
+                    player_type: playerType,
+                    effect_type: effectToConsume.type,
+                  }
+                );
+
+                console.log(`Mind control effect consumed`);
+
+                // Auto-select "no-card" after a delay to simulate no card selection
+                setTimeout(() => {
+                  onCardSelected("no-card-selected");
+                  setShowCardOptions(false);
+                  setTimerActive(false);
+                }, 3000);
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Error checking for mind control effects:", error);
+        }
+      };
+
+      checkForMindControl();
+    } else {
+      // Reset when not player's turn
+      setHasMindControl(false);
+      setMindControlActive(false);
+    }
+  }, [isMyTurn, onCardSelected]);
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120">
@@ -328,44 +572,65 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             )}
           </AnimatePresence>
 
+          {/* Timer display when it's the player's turn and options are shown */}
+          {showCardOptions && backCardExitComplete && (
+            <div className="absolute top-[150px] text-white text-2xl font-bold">
+              Time remaining:{" "}
+              <span
+                className={selectionTimer <= 3 ? "text-red-500" : "text-white"}
+              >
+                {selectionTimer}s
+              </span>
+            </div>
+          )}
+
           <AnimatePresence>
-            {showCardOptions && backCardExitComplete && (
+            {showCardOptions && backCardExitComplete && !mindControlActive && (
               <div className="flex gap-4">
-                {selectedCards.map((card, index) => (
-                  <motion.div
-                    key={card.id + "-" + index} // Add index to key to ensure uniqueness when the same card appears twice
-                    className={`w-[200px] h-[300px] rounded-xl overflow-hidden cursor-pointer shadow-lg relative ${getCardBackground(
-                      card.type
-                    )} border-2 border-white/20`}
-                    initial={{ opacity: 0, y: 20, rotateY: -90 }}
-                    animate={{ opacity: 1, y: 0, rotateY: 0 }}
-                    transition={{
-                      duration: 0.4,
-                      delay: index * 0.15,
-                      ease: "easeOut",
-                    }}
-                    onClick={() => handleCardSelect(card.id, index)}
-                    whileHover={{
-                      y: -10,
-                      scale: 1.05,
-                      transition: { duration: 0.2 },
-                    }}
-                  >
-                    {/* For all cards, display the card name and info */}
-                    <div className="flex flex-col h-full p-4 text-white">
-                      <div className="text-lg font-bold mb-2">{card.name}</div>
-                      <div className="text-xs italic mb-4">{card.type}</div>
-                      <div className="border-t border-white/20 my-2 pt-2">
-                        <p className="text-sm">{card.description}</p>
-                      </div>
-                      <div className="mt-auto flex justify-end">
-                        <div className="text-xs italic opacity-60">
-                          Card ID: {card.id}
+                {selectedCards.map((card, index) => {
+                  // Only render this card if it's in the visibleCardIndices array
+                  if (!visibleCardIndices.includes(index) && hasCardBlocking) {
+                    return null; // Skip this card if it's blocked
+                  }
+
+                  return (
+                    <motion.div
+                      key={card.id + "-" + index} // Add index to key to ensure uniqueness when the same card appears twice
+                      className={`w-[200px] h-[300px] rounded-xl overflow-hidden cursor-pointer shadow-lg relative ${getCardBackground(
+                        card.type
+                      )} border-2 border-white/20`}
+                      initial={{ opacity: 0, y: 20, rotateY: -90 }}
+                      animate={{ opacity: 1, y: 0, rotateY: 0 }}
+                      transition={{
+                        duration: 0.4,
+                        delay: index * 0.15,
+                        ease: "easeOut",
+                      }}
+                      onClick={() => handleCardSelect(card.id, index)}
+                      whileHover={{
+                        y: -10,
+                        scale: 1.05,
+                        transition: { duration: 0.2 },
+                      }}
+                    >
+                      {/* For all cards, display the card name and info */}
+                      <div className="flex flex-col h-full p-4 text-white">
+                        <div className="text-lg font-bold mb-2">
+                          {card.name}
+                        </div>
+                        <div className="text-xs italic mb-4">{card.type}</div>
+                        <div className="border-t border-white/20 my-2 pt-2">
+                          <p className="text-sm">{card.description}</p>
+                        </div>
+                        <div className="mt-auto flex justify-end">
+                          <div className="text-xs italic opacity-60">
+                            Card ID: {card.id}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </motion.div>
-                ))}
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </AnimatePresence>
@@ -375,7 +640,36 @@ const CardSelection: React.FC<CardSelectionProps> = ({
               Choose a card to use in this round
             </div>
           )}
+
+          {/* Show information about mind control if active */}
+          {mindControlActive && showCardOptions && (
+            <div className="flex flex-col items-center gap-4">
+              <div className="bg-yellow-600 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-yellow-500/50">
+                Mind Control Active: Cannot select a card!
+              </div>
+              <div className="text-white text-lg">
+                Opponent used Mind Control - proceeding without a card...
+              </div>
+            </div>
+          )}
         </>
+      )}
+
+      {/* Show notification if cards are blocked */}
+      {hasCardBlocking && blockedCardCount > 0 && isMyTurn && (
+        <div className="absolute top-[100px] text-red-400 text-xl font-semibold">
+          {blockedCardCount === 1
+            ? "Your opponent used Answer Shield: 1 card has been blocked!"
+            : `Your opponent used Answer Shield: ${blockedCardCount} cards have been blocked!`}
+        </div>
+      )}
+
+      {/* Show notification if mind control is active */}
+      {hasMindControl && mindControlActive && isMyTurn && (
+        <div className="absolute top-[100px] text-red-400 text-xl font-semibold">
+          Mind Control: Your opponent has prevented you from using cards this
+          turn!
+        </div>
       )}
     </div>
   );

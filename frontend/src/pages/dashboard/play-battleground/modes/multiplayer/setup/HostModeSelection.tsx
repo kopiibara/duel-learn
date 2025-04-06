@@ -18,7 +18,8 @@ export default function DifficultySelection() {
     guestUsername,
     hostId,
     guestId,
-    material, // Extract material from location state
+    material,
+    questionTypes, // Extract questionTypes from location state
   } = location.state || {};
 
   console.log("DifficultySelection state:", {
@@ -27,7 +28,8 @@ export default function DifficultySelection() {
     guestUsername,
     hostId,
     guestId,
-    material, // Log material to verify
+    material,
+    questionTypes, // Log questionTypes to verify
     locationState: location.state,
   });
 
@@ -72,6 +74,7 @@ export default function DifficultySelection() {
         difficulty: selectedDifficulty,
         studyMaterialId,
         material,
+        questionTypes,
       });
 
       // First update difficulty in battle_invitations
@@ -85,7 +88,7 @@ export default function DifficultySelection() {
         }
       );
 
-      // Then initialize entry in battle_sessions with difficulty_mode and study_material_id
+      // Then initialize entry in battle_sessions with all required fields
       await axios.post(
         `${
           import.meta.env.VITE_BACKEND_URL
@@ -98,10 +101,11 @@ export default function DifficultySelection() {
           guest_username: guestUsername,
           total_rounds: 30,
           is_active: true,
-          host_in_battle: true, // Mark host as entered
+          host_in_battle: true,
           guest_in_battle: false,
           difficulty_mode: selectedDifficulty,
-          study_material_id: studyMaterialId, // Pass the study material ID
+          study_material_id: studyMaterialId,
+          question_types: questionTypes, // Add question types to the initialization
         }
       );
 
@@ -114,7 +118,8 @@ export default function DifficultySelection() {
           guestUsername,
           hostId,
           guestId,
-          material, // Pass the material to the battle screen for reference
+          material,
+          questionTypes, // Pass question types to the battle screen
         },
       });
     } catch (error) {

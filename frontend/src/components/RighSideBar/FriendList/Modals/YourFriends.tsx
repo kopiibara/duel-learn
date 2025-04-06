@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/Close";
 import { useFriendList } from "../../../../hooks/friends.hooks/useFriendList";
 import { useFriendSocket } from "../../../../hooks/friends.hooks/useFriendSocket";
@@ -9,11 +10,22 @@ import cauldronGif from "/General/Cauldron.gif";
 import { Friend } from "../../../../types/friendObject";
 import noFriend from "/images/NoFriend.svg";
 import DefaultPicture from "/profile-picture/default-picture.svg";
-import VisibilityIcon from "@mui/icons-material/Visibility";
+import AddIcon from "@mui/icons-material/AddRounded";
 import ProfileModal from "../../../modals/ProfileModal";
+import { useOnlineStatus } from "../../../../hooks/useOnlineStatus";
+import { useLobbyStatus } from "../../../../hooks/useLobbyStatus";
+import SelectStudyMaterialModal from "../../../modals/SelectStudyMaterialModal";
+import { createNewLobby } from "../../../../services/pvpLobbyService";
+import { generateCode } from "../../../../pages/dashboard/play-battleground/utils/codeGenerator";
+import { StudyMaterial } from "../../../../types/studyMaterialObject";
 
-const YourFriends: React.FC = () => {
+interface FriendListItemProps {
+  friend: Friend;
+}
+
+const YourFriends: React.FC<FriendListItemProps> = ({ friend }) => {
   const { user } = useUser();
+  const navigate = useNavigate();
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: "",
@@ -21,7 +33,9 @@ const YourFriends: React.FC = () => {
   });
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
-
+  const [materialModalOpen, setMaterialModalOpen] = useState(false);
+  const [inviteMode, setInviteMode] = useState<string>("PvP");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const { friendList, handleRemoveFriend, loading, fetchFriends } =
     useFriendList(user?.firebase_uid);
 
@@ -44,6 +58,44 @@ const YourFriends: React.FC = () => {
       isError: false,
     });
     fetchFriends();
+  };
+
+  const handleInviteClick = () => {
+    // Open material selection modal
+    setMaterialModalOpen(true);
+  };
+
+  // Handler for material selection
+  const handleMaterialSelect = (material: StudyMaterial) => {
+    // Generate a new lobby code
+    const lobbyCode = generateCode();
+
+    // Create a new lobby state
+    const lobbyState = createNewLobby(inviteMode, material);
+
+    // Store the friend to invite
+    localStorage.setItem("friendToInvite", JSON.stringify(friend));
+
+    // Close the modal
+    setMaterialModalOpen(false);
+
+    // Navigate to welcome screen
+
+    navigate("/dashboard/welcome-game-mode", {
+      state: {
+        mode: inviteMode,
+        material: material,
+        lobbyCode: lobbyState.lobbyCode,
+        role: "host",
+        friendToInvite: friend,
+        isPvpLobbyCreation: true,
+      },
+    });
+  };
+
+  // Handler for mode selection
+  const handleModeSelect = (mode: string) => {
+    setInviteMode(mode);
   };
 
   // Use the socket hook to listen for real-time updates
@@ -105,6 +157,16 @@ const YourFriends: React.FC = () => {
         userId={selectedFriend || undefined}
       />
 
+      <SelectStudyMaterialModal
+        open={materialModalOpen}
+        handleClose={() => setMaterialModalOpen(false)}
+        mode={inviteMode}
+        onMaterialSelect={handleMaterialSelect}
+        onModeSelect={handleModeSelect}
+        selectedTypes={selectedTypes}
+        isLobby={true}
+      />
+
       {friendList.length === 0 ? (
         <Stack
           spacing={2}
@@ -145,12 +207,12 @@ const YourFriends: React.FC = () => {
               </div>
             </div>
             <Box flex={1} />
-            <Tooltip title="View Profile" enterDelay={100} arrow>
+            <Tooltip title="Invite" enterDelay={100} arrow>
               <button
-                className="bg-[#3A3A8B] text-xs text-white py-2 px-4 rounded-md hover:scale-105 transition-all duration-300"
-                onClick={() => handleViewProfile(friend.firebase_uid)}
+                className="bg-[#52A647] text-xs text-white py-2 px-4 rounded-md hover:scale-105 transition-all duration-300"
+                onClick={handleInviteClick}
               >
-                <VisibilityIcon sx={{ fontSize: 18 }} />
+                <AddIcon sx={{ fontSize: 18 }} />
               </button>
             </Tooltip>
             <Tooltip title="Remove Friend" enterDelay={100} arrow>

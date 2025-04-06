@@ -101,6 +101,102 @@ const FriendRequestController = {
                 error: error.message
             });
         }
+    },
+
+    checkWisdomCollectorAchievement: async (req, res) => {
+
+        try {
+            const { firebase_uid } = req.params;
+
+            const [userStudyMaterial] = await pool.query(
+                `SELECT COUNT(*) as count FROM study_material_info WHERE created_by_id = ?`,
+                [firebase_uid]
+            );
+
+            const userStudyMaterialCount = userStudyMaterial[0].count;
+
+            // Fetch only the Wisdom Collector achievement
+            const [wisdomCollectorResult] = await pool.query(
+                `SELECT achievement_id, achievement_name, achievement_description, 
+                achievement_requirement, achievement_level, achievement_picture_url 
+                FROM achievements WHERE achievement_name = 'Wisdom Collector'`
+            );
+
+            if (wisdomCollectorResult.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Wisdom Collector achievement not found",
+                });
+            }
+
+            const wisdomCollectorAchievement = wisdomCollectorResult[0];
+            const achieved = userStudyMaterialCount >= wisdomCollectorAchievement.achievement_requirement;
+
+            res.status(200).json({
+                success: true,
+                userStudyMaterialCount,
+                wisdomCollectorAchievement: {
+                    ...wisdomCollectorAchievement,
+                    achieved
+                }
+            });
+
+        } catch (error) {
+            console.error("Error checking Wisdom Collector achievement:", error);
+            res.status(500).json({
+                success: false,
+                message: "Failed to check Wisdom Collector achievement",
+                error: error.message
+            });
+        }
+    },
+
+    checkArcaneScholarAchievement: async (req, res) => {
+
+        try {
+            const { firebase_uid } = req.params;
+
+            const [userStudyMaterial] = await pool.query(
+                `SELECT COUNT(*) as count FROM session_report WHERE session_by_user_id = ? AND status = 'completed'`,
+                [firebase_uid]
+            );
+
+            const userStudyMaterialCount = userStudyMaterial[0].count;
+
+            // Fetch only the Arcane Scholar achievement
+            const [arcaneScholarResult] = await pool.query(
+                `SELECT achievement_id, achievement_name, achievement_description, 
+                achievement_requirement, achievement_level, achievement_picture_url 
+                FROM achievements WHERE achievement_name = 'Arcane Scholar'`
+            );
+
+            if (arcaneScholarResult.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Arcane Scholar achievement not found",
+                });
+            }
+
+            const arcaneScholarAchievement = arcaneScholarResult[0];
+            const achieved = userStudyMaterialCount >= arcaneScholarAchievement.achievement_requirement;
+
+            res.status(200).json({
+                success: true,
+                userStudyMaterialCount,
+                arcaneScholarAchievement: {
+                    ...arcaneScholarAchievement,
+                    achieved
+                }
+            });
+
+        } catch (error) {
+            console.error("Error checking Arcane Scholar achievement:", error);
+            res.status(500).json({
+                success: false,
+                message: "Failed to check Arcane Scholar achievement",
+                error: error.message
+            });
+        }
     }
 
 

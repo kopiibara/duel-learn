@@ -11,4 +11,5 @@ router.post("/update-level", userInfo.updateLevel);
 // Add a new endpoint for fetching user profile data
 router.get("/profile/:userId", userInfo.getUserProfileById);
 
+
 export default router;

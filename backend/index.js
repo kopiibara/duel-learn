@@ -17,8 +17,7 @@ import achivementRoutes from "./routes/AchievementRoutes.js"; // Import achievem
 import { corsMiddleware } from "./middleware/CorsMiddleware.js"; // Import CORS middleware
 import { coopMiddleware } from "./middleware/CoopMiddleware.js"; // Import COOP middleware
 import sessionReportRoutes from './routes/sessionReport.js';
-import { initSessionReportTable } from './models/SessionReport.js';
-// Load environment variables
+import { initSessionReportTable } from './models/SessionReport.js';// Load environment variables
 dotenv.config();
 
 // Connect to Database
@@ -67,6 +66,24 @@ app.use("/api/shop", shopRoutes);
 app.use("/api/achievement", achivementRoutes);
 app.use('/api/session-report', sessionReportRoutes);
 
+// Add global error handler for uncaught exceptions
+app.use((err, req, res, next) => {
+  console.error("Uncaught error:", err);
 
+  // Check if it's a file not found error
+  if (err.code === "ENOENT") {
+    return res.status(500).json({
+      error: "File not found",
+      details:
+        "A required file could not be found. Please check your file paths.",
+    });
+  }
+
+  // Handle other errors
+  return res.status(500).json({
+    error: "Server error",
+    details: err.message || "An unexpected error occurred",
+  });
+});
 
 export default app;

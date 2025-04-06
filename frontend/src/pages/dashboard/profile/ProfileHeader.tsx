@@ -205,7 +205,7 @@ const ProfileHeader = () => {
         <img
           src={userInfo?.display_picture || Profile}
           alt="Profile Avatar"
-          className="w-[158px] h-[158px] rounded-sm"
+          className="w-[158px] h-[158px] rounded-[0.8rem] sm:w-[120px] sm:h-[120px] md:w-[158px] md:h-[158px] object-cover"
         />
       </div>
 

@@ -125,6 +125,7 @@ export default function SearchField() {
           backgroundColor: "rgba(59, 53, 77, 0.5)",
           borderRadius: "50%",
           padding: "8px",
+          transition: "all 0.3s ease-in",
           "&:hover": {
             backgroundColor: "rgba(59, 53, 77, 0.8)",
           },
@@ -137,9 +138,9 @@ export default function SearchField() {
 
   return (
     <Box
-      className={`w-full max-w-[567px] min-w-[170px] ${
+      className={`w-full max-w-[567px] min-w-[170px] transition-all duration-200 ease-in ${
         isMobile && isExpanded
-          ? "absolute top-0 left-0 right-0 z-50 p-2 bg-[#080511] h-full flex items-center"
+          ? "absolute top-0 left-0 right-0 z-50 p-2 bg-[#080511] transition-all duration-200 ease-in  h-full flex items-center"
           : ""
       }`}
     >

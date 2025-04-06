@@ -310,7 +310,7 @@ const Shop = () => {
   return (
     <PageTransition>
       <DocumentHead title="Shop | Duel Learn" />
-      <div className="h-full w-full text-white px-3 sm:px-6 pb-6">
+      <div className="h-full w-full text-white pb-6">
         {/* Premium section with responsive adjustments */}
         {!isPremium && (
           <div

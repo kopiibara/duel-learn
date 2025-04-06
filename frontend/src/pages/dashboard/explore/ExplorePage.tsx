@@ -434,7 +434,7 @@ const ExplorePage = () => {
     <PageTransition>
       <Box className="h-full w-full">
         <DocumentHead title="Explore | Duel Learn" />
-        <Stack spacing={2} className=" sm:px-0 md:px-8">
+        <Stack spacing={2}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={{ xs: 1, sm: 1 }}

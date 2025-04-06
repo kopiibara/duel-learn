@@ -435,7 +435,7 @@ const MyLibraryPage = () => {
     <PageTransition>
       <Box className="h-full w-full">
         <DocumentHead title="My Library | Duel Learn" />
-        <Stack spacing={2} className="px-3 sm:px-5 md:px-8">
+        <Stack spacing={2}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={{ xs: 1, sm: 1 }}

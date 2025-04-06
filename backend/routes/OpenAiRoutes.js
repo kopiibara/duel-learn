@@ -29,6 +29,10 @@ router.get("/status", (req, res) => {
   });
 });
 
+router.post(
+  "/cross-reference-definition",
+  OpenAiController.crossReferenceDefinition
+);
 router.post('/generate-summary', OpenAiController.generateSummary);
 router.post('/generate-identification', OpenAiController.generateIdentification);
 router.post('/generate-true-false', OpenAiController.generateTrueFalse);

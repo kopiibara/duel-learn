@@ -7,16 +7,7 @@ import axios from "axios";
 import { useUser } from "../../../contexts/UserContext";
 import defaultPicture from "/profile-picture/default-picture.svg";
 import { useMediaQuery, useTheme } from "@mui/material";
-
-interface LeaderboardPlayer {
-  firebase_uid: string;
-  username: string;
-  level: number;
-  exp: number;
-  display_picture: string;
-  isCurrentUser: boolean;
-  rank: number;
-}
+import { LeaderboardPlayer } from "../../../types/leaderboardObject";
 
 const Leaderboards = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);

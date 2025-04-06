@@ -14,7 +14,7 @@ const HomeBannerComponent = () => {
       sx={{
         background: "linear-gradient(90deg, #9F87E5 0%, #6F58D9 100%)",
         height: "auto",
-        minHeight: isMobileScreen ? "130px" : isXsScreen ? "170px" : "240px",
+        minHeight: isMobileScreen ? "140px" : isXsScreen ? "170px" : "240px",
         maxHeight: isMobileScreen ? "180px" : isXsScreen ? "220px" : "300px",
         width: "100%",
         marginBottom: isMobileScreen

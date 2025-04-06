@@ -5,6 +5,7 @@ class GeneratedMaterial extends Model {
     return 'generated_material';
   }
 
+  
   static get jsonSchema() {
     return {
       type: 'object',
