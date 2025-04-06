@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Box, Typography, Button, IconButton, Tooltip, Alert, AlertTitle } from "@mui/material";
+import { Box, Typography, Button, IconButton, Tooltip } from "@mui/material";
 import CloseIcon from "@mui/icons-material/CancelOutlined";
 import InviteFriendList from "../../../../../assets/General/ModalFriendList.png";
 import ProfileIcon from "../../../../../assets/profile-picture/kopibara-picture.png";
 import axios from "axios";
 import { useUser } from "../../../../../contexts/UserContext";
-import SocketService from "../../../../../services/socketService";
-import { io } from 'socket.io-client';
+import { useBattleInvitations } from "../../../../../hooks/battle.hooks/useBattleInvitations";
+import { useSnackbar } from "../../../../../contexts/SnackbarContext";
 
 interface Player {
   firebase_uid: string;
@@ -32,9 +32,6 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
   handleClose,
   onInviteSuccess,
   lobbyCode,
-  inviterName,
-  senderId,
-  onInvitationAccepted,
   selectedTypesFinal,
   selectedMaterial,
 }) => {
@@ -43,24 +40,17 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [inviting, setInviting] = useState(false);
   const { user } = useUser();
-  const [receivedInvitation, setReceivedInvitation] = useState({
-    open: false,
-    inviterName: "",
-    senderId: "",
-    lobbyCode: "",
-  });
-  const [directSocket, setDirectSocket] = useState<any>(null);
+  const { showSnackbar } = useSnackbar();
+  const { sendBattleInvitation } = useBattleInvitations();
 
   useEffect(() => {
-    console.log(lobbyCode, inviterName, senderId)
     const fetchFriends = async () => {
       if (!user?.firebase_uid || !open) return;
 
       setLoading(true);
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/lobby/invite-friends/${user.firebase_uid
-          }`
+          `${import.meta.env.VITE_BACKEND_URL}/api/lobby/invite-friends/${user.firebase_uid}`
         );
 
         // Map the response data to match the Player interface
@@ -86,80 +76,7 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
     fetchFriends();
   }, [user?.firebase_uid, open]);
 
-  useEffect(() => {
-    if (!user?.firebase_uid || !open) return;
-
-    console.log("🔌 Setting up direct socket connection for invitations");
-
-    // Create direct socket connection similar to DirectSocketDebug
-    const newSocket = io(`${import.meta.env.VITE_BACKEND_URL}`, {
-      transports: ["websocket"],
-      reconnection: true
-    });
-
-    newSocket.on('connect', () => {
-      console.log(`Direct invitation socket connected: ${newSocket.id}`);
-      newSocket.emit('setup', user.firebase_uid);
-    });
-
-    // Listen directly for battle invitations
-    newSocket.on('battle_invitation', (data) => {
-      console.group("🔔 Direct Invitation Received");
-      console.log("Raw invitation data:", data);
-
-      // Skip if it's our own invitation
-      if (data.senderId === user.firebase_uid) {
-        console.log("Ignoring our own invitation");
-        console.groupEnd();
-        return;
-      }
-
-      // Log the complete data structure
-      console.log("Complete invitation data structure:", JSON.stringify(data));
-
-      // Set the invitation data with all fields explicitly
-      setReceivedInvitation({
-        open: true,
-        inviterName: data.senderName || "Unknown Player",
-        senderId: data.senderId,
-        lobbyCode: data.lobbyCode,
-      });
-
-      console.log("Invitation state set with complete data");
-      console.groupEnd();
-    });
-
-    setDirectSocket(newSocket);
-
-    return () => {
-      console.log("Cleaning up direct invitation socket");
-      newSocket.disconnect();
-    };
-  }, [user?.firebase_uid, open]);
-
-  useEffect(() => {
-    if (!user?.firebase_uid) return;
-
-    const socketService = SocketService.getInstance();
-
-    // Handle receiving invitations
-    const handleBattleInvitation = (data: any) => {
-      console.group("🔔 Service Invitation Received");
-      console.log("Data via SocketService:", data);
-      console.groupEnd();
-
-      // We'll let the direct socket handle the actual state update
-    };
-
-    // Register the handler
-    const removeListener = socketService.on("battle_invitation", handleBattleInvitation);
-
-    return () => {
-      if (removeListener) removeListener();
-    };
-  }, [user?.firebase_uid]);
-
-  const handleInvite = async (friend: any) => {
+  const handleInvite = async (friend: Player) => {
     if (!user) {
       console.error("Cannot send invitation: User is not logged in");
       return;
@@ -176,49 +93,37 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
 
       // Create invitation data
       const invitationData = {
+        lobby_code: lobbyCode,
         sender_id: user.firebase_uid,
         sender_username: user.username,
         sender_level: user.level || 1,
         receiver_id: friend.firebase_uid,
         receiver_username: friend.username,
         receiver_level: friend.level || 1,
-        lobby_code: lobbyCode,
-        status: 'pending',
+        receiver_picture: friend.display_picture,
+        status: 'pending' as const,
         question_types: selectedTypesFinal,
-        study_material_title: selectedMaterial?.title
+        study_material_title: selectedMaterial?.title || null,
+        host_ready: true,
+        guest_ready: false,
+        battle_started: false
       };
 
-      // Make POST request to create battle invitation
-      const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby`,
-        invitationData
-      );
+      // Send the invitation using our hook
+      const response = await sendBattleInvitation(invitationData);
 
-      if (!response.data.success) {
-        throw new Error("Failed to create battle invitation");
-      }
-
-      // Create socket notification data
-      const socketData = {
-        senderId: user.firebase_uid,
-        senderName: user.username || inviterName || "Unknown Player",
-        receiverId: friend.firebase_uid,
-        lobbyCode: lobbyCode
-      };
-
-      // Log the final invitation data
-      console.log("Sending invitation data:", socketData);
-
-      // Close the modal and trigger success callback with complete invitation data
+      // Close the modal immediately after sending
       handleClose();
+      
+      // Trigger success callback 
       onInviteSuccess(friend, {
         ...invitationData,
-        dbRecord: response.data.data // Include the database record
+        dbRecord: response.data
       });
 
     } catch (error) {
       console.error("Error inviting player:", error);
-      // You might want to show an error message to the user here
+      showSnackbar("Failed to send battle invitation", "error");
     } finally {
       setInviting(false);
     }
@@ -227,7 +132,6 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
   if (!open) return null;
 
   return (
-    <>
       <Box className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
         {/* Backdrop */}
         <Box className="absolute inset-0" onClick={handleClose}></Box>
@@ -315,67 +219,6 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
           </div>
         </div>
       </Box>
-
-      {/* Replace InvitationSnackbar with custom implementation */}
-      {receivedInvitation.open && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100%',
-          zIndex: 10000,
-          pointerEvents: 'none',
-          display: 'flex',
-          justifyContent: 'center',
-          padding: '16px'
-        }}>
-          <div style={{
-            width: 'fit-content',
-            pointerEvents: 'auto'
-          }}>
-            <Alert
-              severity="info"
-              onClose={() => setReceivedInvitation(prev => ({ ...prev, open: false }))}
-              sx={{
-                width: "100%",
-                minWidth: '300px',
-                boxShadow: "0 8px 32px rgba(0,0,0,0.8)",
-                border: '2px solid #4D1EE3'
-              }}
-            >
-              <AlertTitle>Battle Invitation</AlertTitle>
-              <strong>{receivedInvitation.inviterName}</strong> has invited you to battle!
-              <Box sx={{ mt: 2, display: "flex", gap: 1 }}>
-                <Button
-                  size="small"
-                  variant="contained"
-                  color="success"
-                  onClick={() => {
-                    console.log("Accepting invitation with data:", receivedInvitation);
-                    if (onInvitationAccepted) {
-                      onInvitationAccepted(receivedInvitation.lobbyCode);
-                    }
-                    setReceivedInvitation(prev => ({ ...prev, open: false }));
-                  }}
-                  sx={{ fontWeight: 'bold' }}
-                >
-                  Accept
-                </Button>
-                <Button
-                  size="small"
-                  variant="contained"
-                  color="error"
-                  onClick={() => setReceivedInvitation(prev => ({ ...prev, open: false }))}
-                  sx={{ fontWeight: 'bold' }}
-                >
-                  Decline
-                </Button>
-              </Box>
-            </Alert>
-          </div>
-        </div>
-      )}
-    </>
   );
 };
 

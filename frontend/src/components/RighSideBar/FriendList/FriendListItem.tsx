@@ -115,12 +115,12 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <div className="relative">
-            <img
-              src={friend.display_picture || defaultPicture}
-              onClick={() => handleViewProfile(friend.firebase_uid)}
-              alt="Avatar"
-              className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
-            />
+          <img
+            src={friend.display_picture || defaultPicture}
+            onClick={() => handleViewProfile(friend.firebase_uid)}
+            alt="Avatar"
+            className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
+          />
             {/* Status indicator positioned to overlap the image corner */}
             <Tooltip 
               title={text} 

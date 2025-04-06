@@ -241,137 +241,142 @@ const setupSocket = (server) => {
     });
 
     // Battle invitation system
-    createEventHandler(
-      socket,
-      "notify_battle_invitation",
-      ["senderId", "senderName", "receiverId", "lobbyCode"],
-      "🎮",
-      (data) => {
-        const { senderId, senderName, receiverId, lobbyCode } = data;
+    const createBattleInvitationEventHandler = (socket) => {
+      // Handle battle invitation sending
+      createEventHandler(
+        socket,
+        "battle_invitation",
+        ["senderId", "receiverId", "lobbyCode"],
+        "🎮",
+        (data) => {
+          const { 
+            senderId, 
+            senderName, 
+            senderLevel,
+            senderPicture,
+            receiverId, 
+            receiverName,
+            receiverLevel,
+            receiverPicture, 
+            lobbyCode 
+          } = data;
 
-        io.to(receiverId).emit("battle_invitation", {
-          senderId,
-          senderName,
-          receiverId,
-          lobbyCode,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    );
+          io.to(receiverId).emit("battle_invitation", {
+            senderId, 
+            senderName, 
+            senderLevel,
+            senderPicture,
+            receiverId, 
+            receiverName,
+            receiverLevel,
+            receiverPicture, 
+            lobbyCode
+          });
 
-    createEventHandler(
-      socket,
-      "accept_battle_invitation",
-      ["senderId", "receiverId", "lobbyCode"],
-      "🎮",
-      (data) => {
-        const { senderId, receiverId, lobbyCode } = data;
-        const notificationData = {
-          senderId, receiverId, lobbyCode,
-          timestamp: new Date().toISOString()
-        };
+          socket.emit("battle_invitation_sent", {
+            success: true, 
+            receiverId,
+            receiverName,
+            receiverLevel,
+            receiverPicture,
+            lobbyCode
+          });
+        }
+      );
 
-        // Notify both players
-        [senderId, receiverId].forEach(userId => {
-          io.to(userId).emit("battle_invitation_accepted", notificationData);
-        });
-      }
-    );
+      // Handle battle invitation acceptance
+      createEventHandler(
+        socket,
+        "accept_battle_invitation",
+        ["senderId", "receiverId", "lobbyCode"],
+        "✅",
+        (data) => {
+          const { senderId, receiverId, receiverName, lobbyCode } = data;
 
-    createEventHandler(
-      socket,
-      "decline_battle_invitation",
-      ["senderId", "receiverId"],
-      "❌",
-      (data) => {
-        const { senderId, receiverId, lobbyCode } = data;
-        io.to(senderId).emit("battle_invitation_declined", {
-          senderId, receiverId, lobbyCode
-        });
-      }
-    );
+          // Notify sender if active
+          if (activeUsers.has(senderId)) {
+            io.to(senderId).emit("battle_invitation_accepted", {
+              receiverId,
+              receiverName,
+              lobbyCode
+            });
+          }
+        }
+      );
+
+      // Handle battle invitation rejection
+      createEventHandler(
+        socket,
+        "decline_battle_invitation",
+        ["senderId", "receiverId", "lobbyCode"],
+        "❌",
+        (data) => {
+          const { senderId, receiverId, receiverName, lobbyCode } = data;
+
+          // Notify sender
+          io.to(senderId).emit("battle_invitation_declined", {
+            receiverId,
+            receiverName,
+            lobbyCode
+          });
+        }
+      );
+    };
+
+    // Register all battle invitation event handlers at once
+    createBattleInvitationEventHandler(socket);
 
     // Lobby management
-    createEventHandler(
-      socket,
-      "join_lobby",
-      ["lobbyCode", "playerId"],
-      "🎮",
-      (data) => {
-        const { lobbyCode, playerId, playerName, playerLevel, playerPicture, hostId } = data;
-        socket.join(lobbyCode);
+    socket.on("join_lobby", (data) => {
+      const { lobbyCode, playerId, playerName, playerLevel, playerPicture, hostId } = data;
+      socket.join(lobbyCode);
 
-        const joinData = {
-          lobbyCode, playerId, playerName, playerLevel, playerPicture
-        };
+      const joinData = {
+        lobbyCode, playerId, playerName, playerLevel, playerPicture
+      };
 
-        // Notify host if specified
-        if (hostId) {
-          io.to(hostId).emit("player_joined_lobby", joinData);
-        }
-
-        // Notify everyone in lobby
-        socket.to(lobbyCode).emit("player_joined_lobby", joinData);
-
-        // Confirm to joining player
-        socket.emit("lobby_joined", {
-          success: true, lobbyCode, message: "Successfully joined lobby"
-        });
+      // Notify host if specified
+      if (hostId) {
+        io.to(hostId).emit("player_joined_lobby", joinData);
       }
-    );
+
+      // Notify everyone in lobby
+      socket.to(lobbyCode).emit("player_joined_lobby", joinData);
+
+      // Confirm to joining player
+      socket.emit("lobby_joined", {
+        success: true, lobbyCode, message: "Successfully joined lobby"
+      });
+    });
 
     // Lobby information handlers
-    createEventHandler(
-      socket,
-      "request_lobby_info",
-      ["lobbyCode", "requesterId"],
-      "🔍",
-      (data) => {
-        const { lobbyCode, requesterId } = data;
-        socket.to(lobbyCode).emit("request_lobby_info", { lobbyCode, requesterId });
-      }
-    );
+    socket.on("request_lobby_info", (data) => {
+      const { lobbyCode, requesterId } = data;
+      socket.to(lobbyCode).emit("request_lobby_info", { lobbyCode, requesterId });
+    });
 
-    createEventHandler(
-      socket,
-      "lobby_info_response",
-      ["lobbyCode", "requesterId"],
-      "📡",
-      (data) => {
-        const { lobbyCode, requesterId, hostId, hostName, material, questionTypes, mode, hostLevel, hostPicture } = data;
+    socket.on("lobby_info_response", (data) => {
+      const { lobbyCode, requesterId, hostId, hostName, material, questionTypes, mode, hostLevel, hostPicture } = data;
 
-        io.to(requesterId).emit("lobby_info_response", {
-          lobbyCode, requesterId, hostId, hostName,
-          hostLevel, hostPicture, material, questionTypes, mode
-        });
-      }
-    );
+      io.to(requesterId).emit("lobby_info_response", {
+        lobbyCode, requesterId, hostId, hostName,
+        hostLevel, hostPicture, material, questionTypes, mode
+      });
+    });
 
-    createEventHandler(
-      socket,
-      "lobby_material_update",
-      ["lobbyCode"],
-      "📚",
-      (data) => {
-        const { lobbyCode, material, questionTypes, mode } = data;
-        socket.to(lobbyCode).emit("lobby_material_update", {
-          lobbyCode, material, questionTypes, mode
-        });
-      }
-    );
+    socket.on("lobby_material_update", (data) => {
+      const { lobbyCode, material, questionTypes, mode } = data;
+      socket.to(lobbyCode).emit("lobby_material_update", {
+        lobbyCode, material, questionTypes, mode
+      });
+    });
 
-    createEventHandler(
-      socket,
-      "player_ready_state_changed",
-      ["lobbyCode", "playerId"],
-      "🎮",
-      (data) => {
-        const { lobbyCode, playerId, isReady } = data;
-        socket.to(lobbyCode).emit("player_ready_state_changed", {
-          lobbyCode, playerId, isReady
-        });
-      }
-    );
+    socket.on("player_ready_state_changed", (data) => {
+      const { lobbyCode, playerId, isReady } = data;
+      socket.to(lobbyCode).emit("player_ready_state_changed", {
+        lobbyCode, playerId, isReady
+      });
+    });
 
     // Health check for socket connections
     socket.on("ping", () => {
@@ -424,24 +429,18 @@ const setupSocket = (server) => {
     });
 
     // Handle online status request
-    createEventHandler(
-      socket,
-      "requestOnlineStatus",
-      ["userIds"],
-      "👥",
-      (data) => {
-        const { userIds } = data;
-        const onlineStatuses = {};
-        
-        if (Array.isArray(userIds)) {
-          userIds.forEach(userId => {
-            onlineStatuses[userId] = isUserOnline(userId);
-          });
-        }
-        
-        socket.emit("onlineStatusResponse", onlineStatuses);
+    socket.on("requestOnlineStatus", (data) => {
+      const { userIds } = data;
+      const onlineStatuses = {};
+      
+      if (Array.isArray(userIds)) {
+        userIds.forEach(userId => {
+          onlineStatuses[userId] = isUserOnline(userId);
+        });
       }
-    );
+      
+      socket.emit("onlineStatusResponse", onlineStatuses);
+    });
 
     // Add this helper function near isUserOnline
     const isUserInLobby = (userId) => {
@@ -449,86 +448,62 @@ const setupSocket = (server) => {
     };
 
     // Handle lobby status requests
-    createEventHandler(
-      socket,
-      "requestLobbyStatus",
-      ["userIds"],
-      "🎮",
-      (data) => {
-        const { userIds } = data;
-        const lobbyStatuses = {};
-        
-        if (Array.isArray(userIds)) {
-          userIds.forEach(userId => {
-            lobbyStatuses[userId] = isUserInLobby(userId);
-          });
-        }
-        
-        socket.emit("lobbyStatusResponse", lobbyStatuses);
+    socket.on("requestLobbyStatus", (data) => {
+      const { userIds } = data;
+      const lobbyStatuses = {};
+      
+      if (Array.isArray(userIds)) {
+        userIds.forEach(userId => {
+          lobbyStatuses[userId] = isUserInLobby(userId);
+        });
       }
-    );
+      
+      socket.emit("lobbyStatusResponse", lobbyStatuses);
+    });
 
     // Handle user lobby status changes
-    createEventHandler(
-      socket,
-      "userLobbyStatusChanged",
-      ["userId", "inLobby"],
-      "🎮",
-      (data) => {
-        const { userId, inLobby, lobbyCode } = data;
-        
-        if (inLobby && lobbyCode) {
-          usersInLobby.set(userId, lobbyCode);
-        } else {
-          usersInLobby.delete(userId);
-        }
-        
-        // Broadcast to all clients
-        socket.broadcast.emit("userLobbyStatusChanged", {
-          userId,
-          inLobby
-        });
+    socket.on("userLobbyStatusChanged", (data) => {
+      const { userId, inLobby, lobbyCode } = data;
+      
+      if (inLobby && lobbyCode) {
+        usersInLobby.set(userId, lobbyCode);
+      } else {
+        usersInLobby.delete(userId);
       }
-    );
+      
+      // Broadcast to all clients
+      socket.broadcast.emit("userLobbyStatusChanged", {
+        userId,
+        inLobby
+      });
+    });
 
     // Handle player joining lobby events
-    createEventHandler(
-      socket,
-      "player_joined_lobby",
-      ["playerId", "lobbyCode"],
-      "🎮",
-      (data) => {
-        const { playerId, lobbyCode } = data;
-        
-        // Store in the map
-        usersInLobby.set(playerId, lobbyCode);
-        
-        // Broadcast to all clients
-        socket.broadcast.emit("player_joined_lobby", {
-          playerId,
-          lobbyCode
-        });
-      }
-    );
+    socket.on("player_joined_lobby", (data) => {
+      const { playerId, lobbyCode } = data;
+      
+      // Store in the map
+      usersInLobby.set(playerId, lobbyCode);
+      
+      // Broadcast to all clients
+      socket.broadcast.emit("player_joined_lobby", {
+        playerId,
+        lobbyCode
+      });
+    });
 
     // Handle player leaving lobby events
-    createEventHandler(
-      socket,
-      "player_left_lobby",
-      ["playerId"],
-      "🎮",
-      (data) => {
-        const { playerId } = data;
-        
-        // Remove from the map
-        usersInLobby.delete(playerId);
-        
-        // Broadcast to all clients
-        socket.broadcast.emit("player_left_lobby", {
-          playerId
-        });
-      }
-    );
+    socket.on("player_left_lobby", (data) => {
+      const { playerId } = data;
+      
+      // Remove from the map
+      usersInLobby.delete(playerId);
+      
+      // Broadcast to all clients
+      socket.broadcast.emit("player_left_lobby", {
+        playerId
+      });
+    });
 
     // Add this helper function near isUserInLobby
     const isUserInGame = (userId) => {
@@ -541,95 +516,71 @@ const setupSocket = (server) => {
     };
     
     // Handle game status requests
-    createEventHandler(
-      socket,
-      "requestGameStatus",
-      ["userIds"],
-      "🎮",
-      (data) => {
-        const { userIds } = data;
-        const gameStatuses = {};
-        
-        if (Array.isArray(userIds)) {
-          userIds.forEach(userId => {
-            gameStatuses[userId] = {
-              inGame: isUserInGame(userId),
-              mode: getUserGameMode(userId)
-            };
-          });
-        }
-        
-        socket.emit("gameStatusResponse", gameStatuses);
+    socket.on("requestGameStatus", (data) => {
+      const { userIds } = data;
+      const gameStatuses = {};
+      
+      if (Array.isArray(userIds)) {
+        userIds.forEach(userId => {
+          gameStatuses[userId] = {
+            inGame: isUserInGame(userId),
+            mode: getUserGameMode(userId)
+          };
+        });
       }
-    );
+      
+      socket.emit("gameStatusResponse", gameStatuses);
+    });
 
     // Handle user game status changes
-    createEventHandler(
-      socket,
-      "userGameStatusChanged",
-      ["userId", "inGame"],
-      "🎮",
-      (data) => {
-        const { userId, inGame, mode } = data;
-        
-        if (inGame && mode) {
-          // Store the game mode with the user ID
-          usersInGame.set(userId, { mode });
-          // Remove from lobby if in game
-          usersInLobby.delete(userId);
-        } else {
-          usersInGame.delete(userId);
-        }
-        
-        // Broadcast to all clients
-        socket.broadcast.emit("userGameStatusChanged", {
-          userId,
-          inGame,
-          mode
-        });
+    socket.on("userGameStatusChanged", (data) => {
+      const { userId, inGame, mode } = data;
+      
+      if (inGame && mode) {
+        // Store the game mode with the user ID
+        usersInGame.set(userId, { mode });
+        // Remove from lobby if in game
+        usersInLobby.delete(userId);
+      } else {
+        usersInGame.delete(userId);
       }
-    );
+      
+      // Broadcast to all clients
+      socket.broadcast.emit("userGameStatusChanged", {
+        userId,
+        inGame,
+        mode
+      });
+    });
 
     // Handle player entering game
-    createEventHandler(
-      socket,
-      "player_entered_game",
-      ["playerId", "mode"],
-      "🎮",
-      (data) => {
-        const { playerId, mode } = data;
-        
-        // Store in the map
-        usersInGame.set(playerId, { mode });
-        // Remove from lobby if in game
-        usersInLobby.delete(playerId);
-        
-        // Broadcast to all clients
-        socket.broadcast.emit("player_entered_game", {
-          playerId,
-          mode
-        });
-      }
-    );
+    socket.on("player_entered_game", (data) => {
+      const { playerId, mode } = data;
+      
+      // Store in the map
+      usersInGame.set(playerId, { mode });
+      // Remove from lobby if in game
+      usersInLobby.delete(playerId);
+      
+      // Broadcast to all clients
+      socket.broadcast.emit("player_entered_game", {
+        playerId,
+        mode
+      });
+    });
 
     // Handle player exiting game
-    createEventHandler(
-      socket,
-      "player_exited_game",
-      ["playerId"],
-      "🎮",
-      (data) => {
-        const { playerId } = data;
-        
-        // Remove from the map
-        usersInGame.delete(playerId);
-        
-        // Broadcast to all clients
-        socket.broadcast.emit("player_exited_game", {
-          playerId
-        });
-      }
-    );
+    socket.on("player_exited_game", (data) => {
+      const { playerId } = data;
+      
+      // Remove from the map
+      usersInGame.delete(playerId);
+      
+      // Broadcast to all clients
+      socket.broadcast.emit("player_exited_game", {
+        playerId
+      });
+    });
   });
 
   // After creating the activeUsers Map, add these helper functions 
