@@ -150,8 +150,8 @@ export default function Header({
               <div className="flex items-center gap-4 text-[12px] sm:text-[14px] text-[#6F658D]">
                 {mode === "Time Pressured" && (
                   <>
-                    <div>Correct {correct}</div>
-                    <div>Incorrect {incorrect}</div>
+                    <div>Mastered {correct}</div>
+                    <div>Unmastered {incorrect}</div>
                   </>
                 )}
                 {mode === "Peaceful" && (
@@ -178,7 +178,7 @@ export default function Header({
         <DialogTitle className="text-center pb-6">
           <div className="text-2xl font-bold text-white mb-3">Pause Menu</div>
           <div className="text-sm text-gray-400 mb-2">
-            Current Progress: {correct} Correct • {incorrect} Incorrect
+            Current Progress: {correct} Mastered • {incorrect} Unmastered
           </div>
           <div className="w-3/3 mx-auto border-b border-gray-800/50" />
         </DialogTitle>

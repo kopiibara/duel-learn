@@ -21,6 +21,7 @@ interface UseGameLogicProps {
   selectedTypes: string[];
   timeLimit?: number | null;
   aiQuestions?: Question[];
+  isGameReady?: boolean;
 }
 
 export const useGameLogic = ({
@@ -29,6 +30,7 @@ export const useGameLogic = ({
   selectedTypes,
   timeLimit,
   aiQuestions,
+  isGameReady = false,
 }: UseGameLogicProps) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -53,6 +55,7 @@ export const useGameLogic = ({
   const [retakePhase, setRetakePhase] = useState(0); // Track retake phases
   const [masteredQuestions, setMasteredQuestions] = useState<string[]>([]); // Track mastered questions
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isQuestionInitiallyLoaded, setIsQuestionInitiallyLoaded] = useState(false); // Flag to track initial question load
 
   const navigate = useNavigate();
 
@@ -84,13 +87,26 @@ export const useGameLogic = ({
     // Ensure we preserve the answer field correctly
     const correctAnswer = rawQuestion.correctAnswer || rawQuestion.answer;
     
+    // Determine the type of options (object or array)
+    let processedOptions = rawQuestion.options;
+    
+    // If options is a string (JSON), try to parse it
+    if (typeof rawQuestion.options === 'string') {
+      try {
+        processedOptions = JSON.parse(rawQuestion.options);
+        console.log("Parsed options from JSON string:", processedOptions);
+      } catch (e) {
+        console.error("Failed to parse options JSON:", e);
+      }
+    }
+    
     return {
       questionType: rawQuestion.questionType || rawQuestion.type,
       type: rawQuestion.type,
       question: rawQuestion.question,
       correctAnswer: correctAnswer, // Use the preserved answer
       answer: correctAnswer, // Keep both for compatibility
-      options: rawQuestion.options,
+      options: processedOptions,
       rawOptions: rawQuestion.rawOptions,
       itemInfo: rawQuestion.itemInfo || {
         image: rawQuestion.image,
@@ -112,6 +128,13 @@ export const useGameLogic = ({
         return;
       }
       
+      // Don't update the question if it's already been loaded for this index
+      // unless we're explicitly transitioning to a new question
+      if (isQuestionInitiallyLoaded && !isTransitioning) {
+        console.log("Question already loaded for this index, skipping update");
+        return;
+      }
+      
       // If in retake mode, use retake questions array
       if (isInRetakeMode && retakeQuestions.length > 0) {
         const question = retakeQuestions[questionIndex];
@@ -120,6 +143,7 @@ export const useGameLogic = ({
           const processedQuestion = processQuestion(question);
           console.log("Processed retake question:", processedQuestion);
           setCurrentQuestion(processedQuestion);
+          setIsQuestionInitiallyLoaded(true);
         }
       } else {
         // Normal mode - use regular questions
@@ -129,10 +153,11 @@ export const useGameLogic = ({
           const processedQuestion = processQuestion(question);
           console.log("Processed regular question:", processedQuestion);
           setCurrentQuestion(processedQuestion);
+          setIsQuestionInitiallyLoaded(true);
         }
       }
     }
-  }, [aiQuestions, questionIndex, isInRetakeMode, retakeQuestions, showResult]);
+  }, [aiQuestions, questionIndex, isInRetakeMode, retakeQuestions, showResult, isTransitioning, isQuestionInitiallyLoaded]);
 
   // Update isLastQuestion to account for retake mode
   const isLastQuestion = isInRetakeMode 
@@ -145,7 +170,7 @@ export const useGameLogic = ({
   useEffect(() => {
     let timer: NodeJS.Timeout;
 
-    if (mode === "Time Pressured" && timeLimit && !showResult) {
+    if (mode === "Time Pressured" && timeLimit && !showResult && isGameReady) {
       setQuestionTimer(timeLimit);
       setTimerProgress(100);
 
@@ -166,19 +191,42 @@ export const useGameLogic = ({
     }
 
     return () => clearInterval(timer);
-  }, [currentQuestionIndex, timeLimit, showResult, mode]);
+  }, [currentQuestionIndex, timeLimit, showResult, mode, isGameReady]);
 
   const handleAnswerSubmit = (answer: string) => {
     if (showResult || !currentQuestion) return;
 
-    // Ensure we have a valid answer to compare against
-    const correctAnswer = currentQuestion.correctAnswer || currentQuestion.answer;
+    // Get correct answer - with fallbacks
+    let correctAnswer = currentQuestion.correctAnswer || currentQuestion.answer;
+    
+    // Handle special case for multiple-choice: correctAnswer might be in format "A. term"
+    if (currentQuestion.questionType === "multiple-choice" && typeof correctAnswer === 'string' && correctAnswer.includes('. ')) {
+      // Extract just the term part after the letter
+      const answerParts = correctAnswer.split('. ');
+      if (answerParts.length > 1) {
+        correctAnswer = answerParts.slice(1).join('. ').trim();
+        console.log(`Using extracted multiple-choice answer: "${correctAnswer}"`);
+      }
+    }
+
+    // Multi-stage fallback for correct answer
+    if (!correctAnswer && currentQuestion.itemInfo?.term) {
+      correctAnswer = currentQuestion.itemInfo.term;
+      console.log(`Using term as fallback answer: "${correctAnswer}"`);
+    }
+    
     if (!correctAnswer) {
       console.error("No correct answer found for question:", currentQuestion);
       return;
     }
 
-    const isAnswerCorrect = answer.toLowerCase() === correctAnswer.toLowerCase();
+    // Safe string conversion and comparison
+    const answerString = String(answer || "").toLowerCase().trim();
+    const correctAnswerString = String(correctAnswer).toLowerCase().trim();
+    
+    console.log(`Comparing answer "${answerString}" with correct answer "${correctAnswerString}"`);
+    const isAnswerCorrect = answerString === correctAnswerString;
+    
     setIsCorrect(isAnswerCorrect);
     setShowResult(true);
 
@@ -305,6 +353,7 @@ export const useGameLogic = ({
     setShowResult(false);
     setShowNextButton(false);
     setIsCorrect(null);
+    setIsQuestionInitiallyLoaded(false); // Reset the flag when intentionally changing questions
     
     // Remove transition state after animation completes
     setTimeout(() => {
