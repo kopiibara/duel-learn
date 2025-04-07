@@ -151,6 +151,20 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
         console.log("Starting AI question generation in TimePressuredMode");
         console.log("Selected question types:", selectedTypes);
         console.log("Mode received:", mode);
+        console.log("Study material ID:", material.study_material_id);
+        
+        // Add debugging to inspect the material structure
+        console.log("Material structure:", {
+          id: material.id,
+          study_material_id: material.study_material_id,
+          title: material.title,
+          itemsCount: material.items?.length || 0
+        });
+        
+        // Log the first few items to check for item_id
+        if (material.items && material.items.length > 0) {
+          console.log("First 3 items raw data:", material.items.slice(0, 3));
+        }
 
         // Clear existing questions with explicit game mode
         const clearEndpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/clear-questions/${material.study_material_id}`;
@@ -181,19 +195,20 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 
         // Create an array of items with proper IDs and image handling
         const items = [...material.items].map((item, index) => {
-          const itemId = index + 1;
+          // Use the original item_id if available, otherwise fallback to the sequential ID
+          const itemNumber = index + 1;
           const hasImage = item.image && item.image.startsWith('data:image');
           
           return {
             ...item,
-            id: itemId,
-            item_id: itemId,
-            item_number: itemId,
+            id: item.item_id || item.id || itemNumber,
+            item_id: item.item_id || item.id || itemNumber,
+            item_number: itemNumber, // Keep item_number as sequential for display purposes
             term: item.term,
             definition: item.definition,
             // Only include image URL if the item has an image
             ...(hasImage ? {
-              image: `${import.meta.env.VITE_BACKEND_URL}/api/study-material/image/${itemId}`
+              image: `${import.meta.env.VITE_BACKEND_URL}/api/study-material/image/${itemNumber}`
             } : {
               image: null
             })
@@ -258,7 +273,9 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
               item_number: item.item_number,
               term: item.term,
               definition: item.definition,
-              image: item.image
+              image: item.image,
+              originalItemId: material.items[currentItemIndex].item_id, // Log the original item ID from material
+              materialItemsStructure: typeof material.items[currentItemIndex]
             });
 
             // Add this logging when processing items
@@ -406,13 +423,41 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   const handleAnswerSubmit = (answer: string) => {
     let isAnswerCorrect = false;
 
-    if (currentQuestion?.questionType === "identification") {
-      isAnswerCorrect =
-        answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
-    } else {
-      isAnswerCorrect =
-        answer.toLowerCase() === currentQuestion?.correctAnswer.toLowerCase();
+    if (!currentQuestion) {
+      console.error("Missing question:", currentQuestion);
+      return;
     }
+
+    // Get correct answer - with fallbacks
+    let correctAnswer = currentQuestion.correctAnswer || currentQuestion.answer;
+    
+    // Handle special case for multiple-choice: correctAnswer might be in format "A. term"
+    if (currentQuestion.questionType === "multiple-choice" && typeof correctAnswer === 'string' && correctAnswer.includes('. ')) {
+      // Extract just the term part after the letter
+      const answerParts = correctAnswer.split('. ');
+      if (answerParts.length > 1) {
+        correctAnswer = answerParts.slice(1).join('. ').trim();
+        console.log(`Using extracted multiple-choice answer: "${correctAnswer}"`);
+      }
+    }
+
+    // Multi-stage fallback for correct answer
+    if (!correctAnswer && currentQuestion.itemInfo?.term) {
+      correctAnswer = currentQuestion.itemInfo.term;
+      console.log(`Using term as fallback answer: "${correctAnswer}"`);
+    }
+
+    if (!correctAnswer) {
+      console.error("No correct answer found for question:", currentQuestion);
+      return;
+    }
+
+    // Safe string conversion and comparison
+    const answerString = String(answer || "").toLowerCase().trim();
+    const correctAnswerString = String(correctAnswer || "").toLowerCase().trim();
+    
+    console.log(`Comparing answer "${answerString}" with correct answer "${correctAnswerString}"`);
+    isAnswerCorrect = answerString === correctAnswerString;
 
     // Play appropriate sound using AudioContext
     if (isAnswerCorrect) {
@@ -448,19 +493,37 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
       case "multiple-choice":
         return (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-[1000px] mx-auto">
-            {currentQuestion.options?.map((option: string, index: number) => (
-              <button
-                key={index}
-                onClick={() => handleAnswerSubmit(option)}
-                disabled={showResult}
-                className={`h-[100px] w-full bg-transparent 
-                          ${getButtonStyle(option)}
-                          rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                          disabled:cursor-not-allowed px-4 text-center`}
-              >
-                {option}
-              </button>
-            ))}
+            {currentQuestion.options && typeof currentQuestion.options === 'object' ? (
+              // Handle options as an object (like {A: "option1", B: "option2"})
+              Object.entries(currentQuestion.options).map(([key, value], index) => (
+                <button
+                  key={index}
+                  onClick={() => handleAnswerSubmit(value as string)}
+                  disabled={showResult}
+                  className={`h-[100px] w-full bg-transparent 
+                    ${getButtonStyle(value as string)}
+                    rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                    disabled:cursor-not-allowed px-4 text-center`}
+                >
+                  <span className="font-bold mr-2">{key}:</span> {value as string}
+                </button>
+              ))
+            ) : (
+              // Handle options as an array (for backward compatibility)
+              Array.isArray(currentQuestion.options) && currentQuestion.options.map((option: string, index: number) => (
+                <button
+                  key={index}
+                  onClick={() => handleAnswerSubmit(option)}
+                  disabled={showResult}
+                  className={`h-[100px] w-full bg-transparent 
+                    ${getButtonStyle(option)}
+                    rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                    disabled:cursor-not-allowed px-4 text-center`}
+                >
+                  {option}
+                </button>
+              ))
+            )}
           </div>
         );
 

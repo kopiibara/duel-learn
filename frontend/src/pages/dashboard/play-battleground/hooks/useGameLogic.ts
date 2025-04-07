@@ -87,13 +87,26 @@ export const useGameLogic = ({
     // Ensure we preserve the answer field correctly
     const correctAnswer = rawQuestion.correctAnswer || rawQuestion.answer;
     
+    // Determine the type of options (object or array)
+    let processedOptions = rawQuestion.options;
+    
+    // If options is a string (JSON), try to parse it
+    if (typeof rawQuestion.options === 'string') {
+      try {
+        processedOptions = JSON.parse(rawQuestion.options);
+        console.log("Parsed options from JSON string:", processedOptions);
+      } catch (e) {
+        console.error("Failed to parse options JSON:", e);
+      }
+    }
+    
     return {
       questionType: rawQuestion.questionType || rawQuestion.type,
       type: rawQuestion.type,
       question: rawQuestion.question,
       correctAnswer: correctAnswer, // Use the preserved answer
       answer: correctAnswer, // Keep both for compatibility
-      options: rawQuestion.options,
+      options: processedOptions,
       rawOptions: rawQuestion.rawOptions,
       itemInfo: rawQuestion.itemInfo || {
         image: rawQuestion.image,
@@ -183,14 +196,37 @@ export const useGameLogic = ({
   const handleAnswerSubmit = (answer: string) => {
     if (showResult || !currentQuestion) return;
 
-    // Ensure we have a valid answer to compare against
-    const correctAnswer = currentQuestion.correctAnswer || currentQuestion.answer;
+    // Get correct answer - with fallbacks
+    let correctAnswer = currentQuestion.correctAnswer || currentQuestion.answer;
+    
+    // Handle special case for multiple-choice: correctAnswer might be in format "A. term"
+    if (currentQuestion.questionType === "multiple-choice" && typeof correctAnswer === 'string' && correctAnswer.includes('. ')) {
+      // Extract just the term part after the letter
+      const answerParts = correctAnswer.split('. ');
+      if (answerParts.length > 1) {
+        correctAnswer = answerParts.slice(1).join('. ').trim();
+        console.log(`Using extracted multiple-choice answer: "${correctAnswer}"`);
+      }
+    }
+
+    // Multi-stage fallback for correct answer
+    if (!correctAnswer && currentQuestion.itemInfo?.term) {
+      correctAnswer = currentQuestion.itemInfo.term;
+      console.log(`Using term as fallback answer: "${correctAnswer}"`);
+    }
+    
     if (!correctAnswer) {
       console.error("No correct answer found for question:", currentQuestion);
       return;
     }
 
-    const isAnswerCorrect = answer.toLowerCase() === correctAnswer.toLowerCase();
+    // Safe string conversion and comparison
+    const answerString = String(answer || "").toLowerCase().trim();
+    const correctAnswerString = String(correctAnswer).toLowerCase().trim();
+    
+    console.log(`Comparing answer "${answerString}" with correct answer "${correctAnswerString}"`);
+    const isAnswerCorrect = answerString === correctAnswerString;
+    
     setIsCorrect(isAnswerCorrect);
     setShowResult(true);
 
