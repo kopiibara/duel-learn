@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import "./../../styles/setupques.css";
@@ -152,6 +152,9 @@ const PVPLobby: React.FC = () => {
   // Add battle started state
   const [battleStarted, setBattleStarted] = useState(false);
   const [battleStartLoading, setBattleStartLoading] = useState(false);
+
+  // Add invitationSent state
+  const [invitationSent, setInvitationSent] = useState<boolean>(false);
 
   // Set the state variables
   useEffect(() => {
@@ -512,6 +515,9 @@ const PVPLobby: React.FC = () => {
       
       // For manual invites (from the invite modal), close the modal
       setShowInviteModal(false);
+      
+      // Set invitation sent state to start polling
+      setInvitationSent(true);
       
       // Create invitation data
       const invitationData = {
@@ -901,48 +907,23 @@ const PVPLobby: React.FC = () => {
     }
   };
 
-  // Add this effect to periodically check ready state
+  // Modify the useEffect that periodically checks ready state
   useEffect(() => {
-    if (!lobbyCode) return;
+    // Only start polling if an invitation has been sent or we're a guest
+    if (!lobbyCode || (!invitationSent && !isCurrentUserGuest)) {
+      return;
+    }
 
+    console.log(`Starting ready state polling. Invitation sent: ${invitationSent}, Is guest: ${isCurrentUserGuest}`);
+    
     // Check immediately
     checkReadyState();
 
-    // Then check every 3 seconds
+    // Then check every 1.2 seconds
     const interval = setInterval(checkReadyState, 1200);
 
     return () => clearInterval(interval);
-  }, [lobbyCode]);
-
-  // Add this effect to listen for socket ready state changes
-  useEffect(() => {
-    if (!socket || !lobbyCode) return;
-
-    const handlePlayerReadyChange = (data: PlayerReadyData) => {
-      if (data.lobbyCode === lobbyCode) {
-        // Update local state based on which player changed status
-        if (isCurrentUserGuest && data.playerId !== user?.firebase_uid) {
-          // Host changed status (less common case)
-          setPlayerReadyState(prev => ({
-            ...prev,
-            hostReady: data.isReady
-          }));
-        } else if (!isCurrentUserGuest && data.playerId !== user?.firebase_uid) {
-          // Guest changed status
-          setPlayerReadyState(prev => ({
-            ...prev,
-            guestReady: data.isReady
-          }));
-        }
-      }
-    };
-
-    socket.on("player_ready_state_changed", handlePlayerReadyChange);
-
-    return () => {
-      socket.off("player_ready_state_changed", handlePlayerReadyChange);
-    };
-  }, [socket, lobbyCode, isCurrentUserGuest, user?.firebase_uid]);
+  }, [lobbyCode, invitationSent, isCurrentUserGuest]);
 
   // Modify the checkLobbySettings function to only trigger UI updates when something actually changes
   const checkLobbySettings = async () => {
@@ -993,10 +974,15 @@ const PVPLobby: React.FC = () => {
   // Add a state for settings update indicator
   const [settingsUpdated, setSettingsUpdated] = useState(false);
 
-  // Add this effect to periodically check lobby settings
+  // Modify the useEffect that periodically checks lobby settings
   useEffect(() => {
-    if (!lobbyCode) return;
+    // Only start polling if an invitation has been sent or we're a guest
+    if (!lobbyCode || (!invitationSent && !isCurrentUserGuest)) {
+      return;
+    }
 
+    console.log(`Starting lobby settings polling. Invitation sent: ${invitationSent}, Is guest: ${isCurrentUserGuest}`);
+    
     // Check immediately
     checkLobbySettings();
 
@@ -1004,7 +990,7 @@ const PVPLobby: React.FC = () => {
     const interval = setInterval(checkLobbySettings, 1200);
 
     return () => clearInterval(interval);
-  }, [lobbyCode]);
+  }, [lobbyCode, invitationSent, isCurrentUserGuest]);
 
   // Add this to handle real-time player joining through sockets
   useEffect(() => {
@@ -1073,7 +1059,7 @@ const PVPLobby: React.FC = () => {
   // Add a new useEffect that handles auto-invitation when coming from FriendListItem
   useEffect(() => {
     // Only process if we have a friendToInvite from location state and socket is connected
-    if (friendToInvite && socket && socket.connected && user?.firebase_uid && !isCurrentUserGuest) {
+    if (friendToInvite && user?.firebase_uid && !isCurrentUserGuest) {
       console.log("Auto-sending invite to friend:", friendToInvite);
       
       // Check if we have material and question types ready
@@ -1082,18 +1068,102 @@ const PVPLobby: React.FC = () => {
         return;
       }
       
-      // Set a small delay to ensure everything is initialized properly
-      const timer = setTimeout(() => {
-        // Invoke handleInvite with the friendToInvite
-        handleInvite(friendToInvite);
-        
-        // Show a toast notification
-        toast.success(`Invitation sent to ${friendToInvite.username}!`);
-      }, 1000);
+      // Track if we've already sent an invitation to avoid duplicates
+      const invitationSentRef = useRef(false);
       
-      return () => clearTimeout(timer);
+      // Only send if we haven't already sent one and socket is connected
+      if (!invitationSentRef.current && socket?.connected) {
+        // Set a small delay to ensure everything is initialized properly
+        const timer = setTimeout(async () => {
+          try {
+            console.log("Sending auto-invitation to:", friendToInvite.username);
+            
+            // Set invited player status to pending
+            setInvitedPlayerStatus({
+              isPending: true,
+              invitedAt: new Date()
+            });
+            
+            // Set the invited player in state
+            setInvitedPlayer(friendToInvite);
+            
+            // Create invitation data
+            const invitationData = {
+              lobby_code: lobbyCode,
+              sender_id: user.firebase_uid,
+              sender_username: user.username,
+              sender_level: user.level || 1,
+              receiver_id: friendToInvite.firebase_uid,
+              receiver_username: friendToInvite.username,
+              receiver_level: friendToInvite.level || 1,
+              receiver_picture: friendToInvite.display_picture,
+              status: 'pending',
+              question_types: selectedTypesFinal,
+              study_material_title: selectedMaterial?.title || null,
+              host_ready: true,
+              guest_ready: false,
+              battle_started: false
+            };
+            
+            // Make POST request to create battle invitation
+            const response = await axios.post(
+              `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby`,
+              invitationData
+            );
+            
+            if (!response.data.success) {
+              throw new Error("Failed to create battle invitation");
+            }
+            
+            // Create the notification data for socket
+            const notificationData = {
+              senderId: user.firebase_uid,
+              senderName: user.username,
+              senderLevel: user.level || 1,
+              senderPicture: user.display_picture || null,
+              receiverId: friendToInvite.firebase_uid,
+              receiverName: friendToInvite.username,
+              receiverLevel: friendToInvite.level || 1,
+              receiverPicture: friendToInvite.display_picture,
+              lobbyCode: lobbyCode,
+              timestamp: new Date().toISOString(),
+            };
+            
+            // Emit socket event to notify the friend
+            console.log("Emitting battle invitation socket event:", notificationData);
+            socket.emit("notify_battle_invitation", notificationData);
+            
+            // Also emit battle_invitation event for better compatibility
+            socket.emit("battle_invitation", notificationData);
+            
+            // Mark as sent
+            invitationSentRef.current = true;
+            
+            // Set invitation sent state to start polling
+            setInvitationSent(true);
+            
+            // Show success notification
+            toast.success(`Invitation sent to ${friendToInvite.username}!`);
+            
+          } catch (error) {
+            console.error("Error sending auto-invitation:", error);
+            // Reset pending status on error
+            setInvitedPlayerStatus({
+              isPending: false,
+              invitedAt: new Date()
+            });
+            
+            setInvitedPlayer(null);
+            
+            // Show error toast
+            toast.error("Failed to send invitation. Please try again.");
+          }
+        }, 1500);
+        
+        return () => clearTimeout(timer);
+      }
     }
-  }, [friendToInvite, socket?.connected, user?.firebase_uid, selectedMaterial, selectedTypesFinal, isCurrentUserGuest]);
+  }, [friendToInvite, socket?.connected, user?.firebase_uid, user?.username, user?.level, user?.display_picture, selectedMaterial, selectedTypesFinal, isCurrentUserGuest, lobbyCode]);
 
   // Add a useEffect to listen for invitation closed events
   useEffect(() => {
@@ -1123,6 +1193,36 @@ const PVPLobby: React.FC = () => {
       window.removeEventListener('battle_invitation_closed', handleInvitationClosed as EventListener);
     };
   }, [lobbyCode]); // Only re-attach if lobbyCode changes
+
+  // Add this effect to listen for socket ready state changes
+  useEffect(() => {
+    if (!socket || !lobbyCode) return;
+
+    const handlePlayerReadyChange = (data: PlayerReadyData) => {
+      if (data.lobbyCode === lobbyCode) {
+        // Update local state based on which player changed status
+        if (isCurrentUserGuest && data.playerId !== user?.firebase_uid) {
+          // Host changed status (less common case)
+          setPlayerReadyState(prev => ({
+            ...prev,
+            hostReady: data.isReady
+          }));
+        } else if (!isCurrentUserGuest && data.playerId !== user?.firebase_uid) {
+          // Guest changed status
+          setPlayerReadyState(prev => ({
+            ...prev,
+            guestReady: data.isReady
+          }));
+        }
+      }
+    };
+
+    socket.on("player_ready_state_changed", handlePlayerReadyChange);
+
+    return () => {
+      socket.off("player_ready_state_changed", handlePlayerReadyChange);
+    };
+  }, [socket, lobbyCode, isCurrentUserGuest, user?.firebase_uid]);
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-white px-6 py-8 overflow-hidden">
