@@ -136,7 +136,7 @@ const Leaderboards = () => {
                   <img
                     src={getDefaultAvatar(player)}
                     alt="Profile"
-                    className="sm:w-3 sm:h-3 md:w-12 md:h-12 rounded-[5px] object-cover"
+                    className="w-12 h-auto sm:w-4 rounded-[0.8rem] object-cover"
                   />
                 </div>
               </div>
