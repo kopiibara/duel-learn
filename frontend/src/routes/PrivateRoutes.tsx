@@ -34,32 +34,33 @@ import AccountSettings from "../pages/dashboard/settings/AccountSettings";
 import HostModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/HostModeSelection";
 import Player2ModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/Player2ModeSelection";
 import PvpBattle from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/PvpBattle";
+import PvpSessionReport from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/screens/PvpSessionReport";
 import SearchPage from "../pages/dashboard/search/SearchPage";
 import SocketService from "../services/socketService";
 import { GameStatusProvider, useGameStatus } from "../contexts/GameStatusContext";
 import { GameMode } from "../hooks/useLobbyStatus";
 
 // Create a wrapper component that handles game status changes
-const GameModeStatusWrapper = ({ 
-  children, 
-  gameMode 
-}: { 
-  children: React.ReactNode, 
-  gameMode: GameMode 
+const GameModeStatusWrapper = ({
+  children,
+  gameMode
+}: {
+  children: React.ReactNode,
+  gameMode: GameMode
 }) => {
   const { setInGame } = useGameStatus();
-  
+
   // Set game status when component mounts
   useEffect(() => {
     // Set game status to active with the specified mode
     setInGame(true, gameMode);
-    
+
     // Clean up when unmounting
     return () => {
       setInGame(false, null);
     };
   }, [gameMode, setInGame]);
-  
+
   return <>{children}</>;
 };
 
@@ -68,7 +69,7 @@ const PrivateRoutes = () => {
   const { isAuthenticated, isLoading: authLoading, currentUser } = useAuth();
   const [_selectedIndex, setSelectedIndex] = useState<number | null>(1);
   const [loadingTimeout, setLoadingTimeout] = useState(false);
-  
+
   // Reference to socket service
   const socketService = SocketService.getInstance();
 
@@ -87,27 +88,27 @@ const PrivateRoutes = () => {
     // Only attempt to connect if we have a valid user and authentication
     if (user && currentUser && !socketConnected) {
       console.log("PrivateRoutes: Socket connection not detected, reconnecting...");
-      
+
       // Connect using the user's firebase_uid
       socketService.connect(user.firebase_uid);
-      
+
       // Log connection status after a short delay
       setTimeout(() => {
         const socket = socketService.getSocket();
         console.log(`Socket connection status check: ${socket?.connected ? 'Connected' : 'Disconnected'}`);
       }, 1000);
     }
-    
+
     // Set up periodic connection check 
     const connectionMonitor = setInterval(() => {
       if (user && currentUser) {
         const socket = socketService.getSocket();
-        
+
         // If socket exists but is disconnected, attempt reconnection
         if (socket && !socket.connected) {
           console.log("Socket disconnected, attempting to reconnect...");
           socketService.connect(user.firebase_uid);
-        } 
+        }
         // If no socket at all, create new connection
         else if (!socket) {
           console.log("No socket instance found, creating new connection");
@@ -115,7 +116,7 @@ const PrivateRoutes = () => {
         }
       }
     }, 30000); // Check every 30 seconds
-    
+
     return () => {
       clearInterval(connectionMonitor);
     };
@@ -149,7 +150,7 @@ const PrivateRoutes = () => {
     <GameStatusProvider>
       {/* Optional: Socket connection status indicator (only in development) */}
       {process.env.NODE_ENV === 'development' && (
-        <div 
+        <div
           style={{
             position: 'fixed',
             bottom: '10px',
@@ -164,7 +165,7 @@ const PrivateRoutes = () => {
           title={socketConnected ? "Socket Connected" : "Socket Disconnected"}
         />
       )}
-    
+
       <Routes>
         {/* Onboarding and Tutorial Routes */}
         <Route path="welcome" element={<WelcomePage />} />
@@ -237,13 +238,17 @@ const PrivateRoutes = () => {
           path="/select-difficulty/pvp/player2"
           element={<Player2ModeSelection />}
         />
-        <Route 
-          path="/pvp-battle/:lobbyCode?" 
+        <Route
+          path="/pvp-battle/:lobbyCode?"
           element={
             <GameModeStatusWrapper gameMode="pvp-battle">
               <PvpBattle />
             </GameModeStatusWrapper>
-          } 
+          }
+        />
+        <Route
+          path="/pvp-battle/session-report"
+          element={<PvpSessionReport />}
         />
       </Routes>
     </GameStatusProvider>
