@@ -482,14 +482,14 @@ export const useGameLogic = ({
       const normalizedAnswer = String(currentQuestion.correctAnswer).toLowerCase();
       
       if (normalizedOption === normalizedAnswer) {
-        return "border-2 border-[#52A647] bg-[#16251C]";
+        return "border-2 border-[#6DBE45] bg-[#16251C]";
       }
       return "border-2 border-[#FF3B3F] bg-[#39101B]";
     }
 
     // Handle other question types
     if (option?.toLowerCase() === currentQuestion?.correctAnswer?.toLowerCase()) {
-      return "border-2 border-[#52A647] bg-[#16251C]";
+      return "border-2 border-[#6DBE45] bg-[#16251C]";
     }
     return "border-2 border-[#FF3B3F] bg-[#39101B]";
   };
