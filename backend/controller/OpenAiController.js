@@ -472,7 +472,7 @@ export const OpenAiController = {
       const question = {
         type: "identification",
         questionType: "identification",
-        question: `What is the term for: ${definition}?`,
+        question: definition,
         correctAnswer: cleanedTerm,
         answer: cleanedTerm,
         itemInfo: {
@@ -589,6 +589,9 @@ export const OpenAiController = {
         3. Make the question challenging but clear
         4. Ensure the question tests understanding of both the term and its meaning
         5. Avoid overly simple questions that only test the term without its definition
+        6. CRITICAL: Do not make the question so obvious that someone could answer it correctly without knowing the term
+        7. If possible, avoid phrasing where the term is directly followed by "is defined as" or similar obvious constructions
+        8. Create a statement that requires understanding of the concept, not just memorization
 
         Format:
         Return a JSON object with:
@@ -743,9 +746,11 @@ STRICT RULES FOR QUESTION GENERATION:
 7. The options should be in the same category or domain as "${cleanedTerm}"
 8. DO NOT include phrases like "similar to..." in the options
 9. Create an engaging question that tests understanding of the concept
-10. DO NOT use the format "Which term is defined as..."
+10. DO NOT use the format "Which term is defined as..." or directly mention the term in the question
 11. CRITICAL: Keep questions short and concise - maximum 15 words
-12. NO paragraphs or lengthy explanations in questions
+12. CRITICAL: NEVER include the term "${cleanedTerm}" in the question itself
+13. The question should test the concept but NEVER give away the answer
+14. NO paragraphs or lengthy explanations in questions
 
 Format the response exactly as:
 {

@@ -241,6 +241,18 @@ export const useGameLogic = ({
       });
       setShowNextButton(false);
       
+      // Check if this question was in the retake list
+      const wasInRetakeList = retakeQuestions.some(q => 
+        q.question === currentQuestion.question && 
+        q.correctAnswer === correctAnswer
+      );
+      
+      // If it was in retake list, decrease unmastered count
+      if (wasInRetakeList) {
+        console.log("Question was in retake list and answered correctly, decreasing unmastered count");
+        setUnmasteredCount(prev => Math.max(0, prev - 1));
+      }
+      
       // If in retake mode and answer is correct, remove from retake list
       if (isInRetakeMode) {
         setRetakeQuestions(prev => prev.filter(q => 
@@ -250,15 +262,22 @@ export const useGameLogic = ({
       }
     } else {
       setIncorrectCount((prev) => prev + 1);
-      setUnmasteredCount((prev) => prev + 1);
+      
+      // Only increment unmastered count if the question is not already in retake list
+      const alreadyInRetakeList = retakeQuestions.some(q => 
+        q.question === currentQuestion.question && 
+        q.correctAnswer === correctAnswer
+      );
+      
+      if (!alreadyInRetakeList) {
+        setUnmasteredCount((prev) => prev + 1);
+      }
+      
       setCurrentStreak(0);
       setShowNextButton(true);
       
       // Add incorrect question to retake list if not already there
-      if (!retakeQuestions.some(q => 
-        q.question === currentQuestion.question && 
-        q.correctAnswer === correctAnswer
-      )) {
+      if (!alreadyInRetakeList) {
         setRetakeQuestions(prev => [...prev, currentQuestion]);
       }
     }
@@ -398,6 +417,12 @@ export const useGameLogic = ({
     const questionId = `${currentQuestion.question}-${currentQuestion.correctAnswer}`;
     const totalQuestions = aiQuestions?.length || 0;
     
+    // Check if this question was in the retake list before we modify it
+    const wasInRetakeList = retakeQuestions.some(q => 
+      q.question === currentQuestion.question && 
+      q.correctAnswer === currentQuestion.correctAnswer
+    );
+    
     // Only increment mastered count if not already mastered
     if (!masteredQuestions.includes(questionId)) {
       // Calculate new mastered count
@@ -408,11 +433,18 @@ export const useGameLogic = ({
         newMasteredCount,
         totalQuestions,
         questionId,
-        retakeQuestionsLength: retakeQuestions.length
+        retakeQuestionsLength: retakeQuestions.length,
+        wasInRetakeList
       });
 
       // Update mastered questions list first
       setMasteredQuestions(prev => [...prev, questionId]);
+      
+      // If this question was in the retake list, reduce the unmastered count
+      if (wasInRetakeList) {
+        console.log("Question was in retake list and marked as mastered, decreasing unmastered count");
+        setUnmasteredCount(prev => Math.max(0, prev - 1));
+      }
       
       // Remove from retake list if in retake mode
       if (isInRetakeMode) {
@@ -445,27 +477,24 @@ export const useGameLogic = ({
   };
 
   const handleUnmastered = () => {
-    // Create a unique identifier for this question
-    const questionId = `${currentQuestion.question}-${currentQuestion.correctAnswer}`;
+    // Check if the current question is already in the retake list
+    const isAlreadyInRetakeList = retakeQuestions.some(q => 
+      q.question === currentQuestion.question && 
+      q.correctAnswer === currentQuestion.correctAnswer
+    );
     
     // Only increment unmastered count if not already in retake list
-    if (!retakeQuestions.some(q => 
-      q.question === currentQuestion.question && 
-      q.correctAnswer === currentQuestion.correctAnswer
-    )) {
+    if (!isAlreadyInRetakeList) {
       setUnmasteredCount((prev) => prev + 1);
-    }
-    
-    // Add the current question to retake list if not already there
-    if (!retakeQuestions.some(q => 
-      q.question === currentQuestion.question && 
-      q.correctAnswer === currentQuestion.correctAnswer
-    )) {
+      
+      // Add the current question to retake list
       setRetakeQuestions(prev => {
         const newRetakeQuestions = [...prev, currentQuestion];
         console.log(`Added question to retake list. New count: ${newRetakeQuestions.length}`);
         return newRetakeQuestions;
       });
+    } else {
+      console.log("Question already in retake list, not incrementing unmastered count");
     }
     
     handleNextQuestion();
