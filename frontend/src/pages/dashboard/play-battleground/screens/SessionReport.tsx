@@ -1,5 +1,6 @@
 import { Button } from "@mui/material";
 import SessionComplete from "../../../../assets/General/SessionComplete.png";
+import CharacterImage from "../../../../assets/General/session-complete.png"; // Import character image
 import ClockIcon from "../../../../assets/clock.png";
 import ManaIcon from "../../../../assets/ManaIcon.png";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
@@ -135,13 +136,24 @@ const SessionReport = () => {
       {/* Added pb-16 for padding-bottom */}
       {!earlyEnd && <AutoConfettiAnimation />}
       <div className="w-full max-w-[800px ] space-y-8 text-center mb-[600px]  max-h-screen">
-        {/* Session Complete Banner */}
-        <div className="relative inline-block mx-auto mt-[490px]">
-          <img
-            src={SessionComplete}
-            alt="SESSION COMPLETE"
-            className="relative z-10 w-[554px] h-[96px]"
-          />
+        {/* Session Complete Banner and Character */}
+        <div className="flex flex-col items-center">
+          <div className="relative inline-block mx-auto mt-[490px]">
+            <img
+              src={SessionComplete}
+              alt="SESSION COMPLETE"
+              className="relative z-10 w-[554px] h-[96px]"
+            />
+          </div>
+          
+          {/* Character Image */}
+          <div className="flex justify-center mt-12">
+            <img
+              src={CharacterImage}
+              alt="Session complete character"
+              className="w-[673px] h-[348px] object-contain"
+            />
+          </div>
         </div>
 
         <div>

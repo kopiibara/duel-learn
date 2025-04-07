@@ -75,6 +75,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   const [startTime] = useState(new Date());
   const [inputAnswer, setInputAnswer] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGameReady, setIsGameReady] = useState(false); // New state to track when game is ready to start
 
   // 3. Then useRef declarations
   const previousTimerRef = React.useRef<number | null>(null);
@@ -108,6 +109,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     selectedTypes,
     timeLimit,
     aiQuestions,
+    isGameReady,
   });
 
   // 6. Helper functions (move these outside useEffect)
@@ -152,18 +154,29 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 
         // Clear existing questions with explicit game mode
         const clearEndpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/clear-questions/${material.study_material_id}`;
+        let clearSuccess = false;
+        
         try {
+          console.log("Attempting to clear time-pressured questions...");
           const clearResponse = await axios.delete<{success: boolean, error?: string}>(clearEndpoint, {
             params: { gameMode: "time-pressured" }
           });
           
           if (!clearResponse.data.success) {
             console.warn("Failed to clear existing questions:", clearResponse.data.error);
+            // We'll continue without clearing
           } else {
             console.log("Successfully cleared time-pressured questions");
+            clearSuccess = true;
           }
         } catch (clearError) {
           console.warn("Error clearing existing questions:", clearError);
+          // Continue with question generation despite the error
+        }
+        
+        // If we couldn't clear questions, we'll use REPLACE INTO in the API endpoints
+        if (!clearSuccess) {
+          console.log("Will rely on REPLACE INTO statements in API endpoints to handle duplicates");
         }
 
         // Create an array of items with proper IDs and image handling
@@ -339,6 +352,8 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
         })));
 
         setAiQuestions(finalQuestions);
+        // Set game ready to true after questions are generated
+        setIsGameReady(true);
       } catch (error) {
         console.error("Error in question generation process:", error);
         setAiQuestions([]);

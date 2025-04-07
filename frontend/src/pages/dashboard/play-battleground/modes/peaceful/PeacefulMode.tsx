@@ -94,20 +94,29 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
       try {
         // Clear existing questions first
         const clearEndpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/clear-questions/${material.study_material_id}`;
+        let clearSuccess = false;
+        
         try {
-          const clearResponse = await axios.delete<{success: boolean, error?: string}>(clearEndpoint);
+          console.log("Attempting to clear peaceful mode questions...");
+          const clearResponse = await axios.delete<{success: boolean, error?: string}>(clearEndpoint, {
+            params: { gameMode: "peaceful" }
+          });
           
           if (!clearResponse.data.success) {
             console.warn("Failed to clear existing questions:", clearResponse.data.error);
-            // Continue with generation despite clearing error
-            console.log("Continuing with question generation despite clearing error");
+            // We'll continue without clearing
           } else {
-            console.log("Successfully cleared existing questions:", clearResponse.data);
+            console.log("Successfully cleared peaceful mode questions");
+            clearSuccess = true;
           }
         } catch (clearError) {
-          // Log the error but continue with generation
           console.warn("Error clearing existing questions:", clearError);
-          console.log("Continuing with question generation despite clearing error");
+          // Continue with question generation despite the error
+        }
+        
+        // If we couldn't clear questions, we'll use REPLACE INTO in the API endpoints
+        if (!clearSuccess) {
+          console.log("Will rely on REPLACE INTO statements in API endpoints to handle duplicates");
         }
 
         // Continue with question generation

@@ -21,6 +21,7 @@ interface UseGameLogicProps {
   selectedTypes: string[];
   timeLimit?: number | null;
   aiQuestions?: Question[];
+  isGameReady?: boolean;
 }
 
 export const useGameLogic = ({
@@ -29,6 +30,7 @@ export const useGameLogic = ({
   selectedTypes,
   timeLimit,
   aiQuestions,
+  isGameReady = false,
 }: UseGameLogicProps) => {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
@@ -53,6 +55,7 @@ export const useGameLogic = ({
   const [retakePhase, setRetakePhase] = useState(0); // Track retake phases
   const [masteredQuestions, setMasteredQuestions] = useState<string[]>([]); // Track mastered questions
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [isQuestionInitiallyLoaded, setIsQuestionInitiallyLoaded] = useState(false); // Flag to track initial question load
 
   const navigate = useNavigate();
 
@@ -112,6 +115,13 @@ export const useGameLogic = ({
         return;
       }
       
+      // Don't update the question if it's already been loaded for this index
+      // unless we're explicitly transitioning to a new question
+      if (isQuestionInitiallyLoaded && !isTransitioning) {
+        console.log("Question already loaded for this index, skipping update");
+        return;
+      }
+      
       // If in retake mode, use retake questions array
       if (isInRetakeMode && retakeQuestions.length > 0) {
         const question = retakeQuestions[questionIndex];
@@ -120,6 +130,7 @@ export const useGameLogic = ({
           const processedQuestion = processQuestion(question);
           console.log("Processed retake question:", processedQuestion);
           setCurrentQuestion(processedQuestion);
+          setIsQuestionInitiallyLoaded(true);
         }
       } else {
         // Normal mode - use regular questions
@@ -129,10 +140,11 @@ export const useGameLogic = ({
           const processedQuestion = processQuestion(question);
           console.log("Processed regular question:", processedQuestion);
           setCurrentQuestion(processedQuestion);
+          setIsQuestionInitiallyLoaded(true);
         }
       }
     }
-  }, [aiQuestions, questionIndex, isInRetakeMode, retakeQuestions, showResult]);
+  }, [aiQuestions, questionIndex, isInRetakeMode, retakeQuestions, showResult, isTransitioning, isQuestionInitiallyLoaded]);
 
   // Update isLastQuestion to account for retake mode
   const isLastQuestion = isInRetakeMode 
@@ -145,7 +157,7 @@ export const useGameLogic = ({
   useEffect(() => {
     let timer: NodeJS.Timeout;
 
-    if (mode === "Time Pressured" && timeLimit && !showResult) {
+    if (mode === "Time Pressured" && timeLimit && !showResult && isGameReady) {
       setQuestionTimer(timeLimit);
       setTimerProgress(100);
 
@@ -166,7 +178,7 @@ export const useGameLogic = ({
     }
 
     return () => clearInterval(timer);
-  }, [currentQuestionIndex, timeLimit, showResult, mode]);
+  }, [currentQuestionIndex, timeLimit, showResult, mode, isGameReady]);
 
   const handleAnswerSubmit = (answer: string) => {
     if (showResult || !currentQuestion) return;
@@ -305,6 +317,7 @@ export const useGameLogic = ({
     setShowResult(false);
     setShowNextButton(false);
     setIsCorrect(null);
+    setIsQuestionInitiallyLoaded(false); // Reset the flag when intentionally changing questions
     
     // Remove transition state after animation completes
     setTimeout(() => {
