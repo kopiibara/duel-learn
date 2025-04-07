@@ -556,8 +556,12 @@ const CardSelection: React.FC<CardSelectionProps> = ({
               <motion.div
                 className="w-[220px] h-[320px] overflow-hidden shadow-lg shadow-purple-500/30"
                 initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1, rotateY: 0 }}
-                exit={{ rotateY: 90, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                style={{
+                  transformStyle: "preserve-3d",
+                  transform: showBackCard ? "rotateY(0deg)" : "rotateY(90deg)",
+                }}
                 transition={{
                   duration: 0.7,
                   exit: { duration: 0.5 },

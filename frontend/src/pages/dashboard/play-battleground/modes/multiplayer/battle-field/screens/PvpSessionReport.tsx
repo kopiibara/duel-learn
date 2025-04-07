@@ -3,23 +3,26 @@ import SessionComplete from "/General/SessionComplete.png";
 import ClockIcon from "/clock.png";
 import ManaIcon from "/ManaIcon.png";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
-import AutoConfettiAnimation from "../../../../pages/dashboard/play-battleground/components/common/AutoConfettiAnimation";
-import { useAudio } from "../../../../contexts/AudioContext"; // Import the useAudio hook
-import { useEffect, useState } from "react"; // Add useState
-import axios from "axios"; // Import axios for API calls
+import AutoConfettiAnimation from "../../../../../../../pages/dashboard/play-battleground/components/common/AutoConfettiAnimation";
+import { useAudio } from "../../../../../../../contexts/AudioContext";
+import { useEffect, useState } from "react";
+import axios from "axios";
 
-interface SessionReportProps {
+interface PvpSessionReportProps {
   timeSpent: string;
   correctCount: number;
   incorrectCount: number;
-  mode: "Peaceful" | "time-pressured" | "pvp";
-  material: any; // Changed to any to access study_material_id
+  mode: "pvp";
+  material: any;
   earlyEnd?: boolean;
   startTime?: Date;
   highestStreak: number;
-  masteredCount: number;
-  unmasteredCount: number;
-  aiQuestions?: any[]; // Add aiQuestions to the interface
+  playerHealth: number;
+  opponentHealth: number;
+  playerName: string;
+  opponentName: string;
+  isWinner: boolean;
+  sessionUuid: string;
 }
 
 interface StatisticProps {
@@ -32,7 +35,7 @@ const StatisticBox = ({
   value,
   icon,
 }: StatisticProps & { icon: string }) => (
-  <div className="backdrop-blur-sm px-10 py-10 rounded-md border w-[660px] border-[#3B354D] flex justify-between items-center">
+  <div className="backdrop-blur-sm px-10 py-7 rounded-md border w-[660px] border-[#3B354D] flex justify-between items-center">
     <div className="flex items-center gap-2">
       <img src={icon} alt="" className="w-5 h-5 mb-1 mr-3" />
       <div className="text-base mb-1 text-white uppercase tracking-wider">
@@ -43,7 +46,7 @@ const StatisticBox = ({
   </div>
 );
 
-const SessionReport = () => {
+const PvpSessionReport = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [hasSaved, setHasSaved] = useState(false);
@@ -61,9 +64,13 @@ const SessionReport = () => {
     material,
     earlyEnd,
     highestStreak,
-    masteredCount,
-    unmasteredCount,
-  } = location.state as SessionReportProps;
+    playerHealth,
+    opponentHealth,
+    playerName,
+    opponentName,
+    isWinner,
+    sessionUuid,
+  } = location.state as PvpSessionReportProps;
 
   const { pauseAudio, playSessionCompleteSound } = useAudio();
 
@@ -78,45 +85,40 @@ const SessionReport = () => {
   }, [earlyEnd, playSessionCompleteSound]);
 
   useEffect(() => {
-    const delay = mode !== "Peaceful" ? 1000 : 0;
+    const delay = 1000;
     const timer = setTimeout(() => {
       pauseAudio();
     }, delay);
 
     return () => clearTimeout(timer);
-  }, [pauseAudio, mode]);
+  }, [pauseAudio]);
 
-  // Calculate XP based on mode and number of questions answered
+  // Calculate XP based on PVP battle results
   const calculateXP = () => {
     // If the game was ended early, return 0 XP
     if (earlyEnd) {
       return 0;
     }
 
-    // For Peaceful mode
-    if (mode === "Peaceful") {
-      return 5;
-    }
+    // Base XP for PVP
+    const baseXP = 20;
 
-    // For Time Pressured mode
-    if (mode === "time-pressured") {
-      const totalQuestions = correctCount + incorrectCount;
+    // Bonus XP for winning
+    const winBonus = isWinner ? 30 : 0;
 
-      if (totalQuestions >= 50) return 30;
-      if (totalQuestions >= 40) return 25;
-      if (totalQuestions >= 30) return 20;
-      if (totalQuestions >= 20) return 10;
-      if (totalQuestions < 10) return 5; // For below 10 questions
-    }
+    // Bonus XP for correct answers
+    const correctAnswerBonus = correctCount * 2;
 
-    // For other modes (like PVP if implemented later)
-    return correctCount * 5;
+    // Bonus XP for high streak
+    const streakBonus = highestStreak >= 5 ? 10 : 0;
+
+    return baseXP + winBonus + correctAnswerBonus + streakBonus;
   };
 
   const earnedXP = calculateXP();
 
   // Add console logs to check passed data
-  console.log("Session Report Data:", {
+  console.log("PVP Session Report Data:", {
     timeSpent,
     correctCount,
     incorrectCount,
@@ -124,6 +126,9 @@ const SessionReport = () => {
     material,
     earnedXP,
     highestStreak,
+    playerHealth,
+    opponentHealth,
+    isWinner,
   });
 
   return (
@@ -131,15 +136,13 @@ const SessionReport = () => {
       style={{ overflow: "auto", height: "80vh" }}
       className="min-h-screen flex items-center justify-center p-4 pb-16"
     >
-      {" "}
-      {/* Added pb-16 for padding-bottom */}
-      {!earlyEnd && <AutoConfettiAnimation />}
-      <div className="w-full max-w-[800px ] space-y-8 text-center mb-[600px]  max-h-screen">
+      {!earlyEnd && isWinner && <AutoConfettiAnimation />}
+      <div className="w-full max-w-[800px] space-y-8 text-center mb-[600px] max-h-screen">
         {/* Session Complete Banner */}
         <div className="relative inline-block mx-auto mt-[490px]">
           <img
             src={SessionComplete}
-            alt="SESSION COMPLETE"
+            alt="BATTLE COMPLETE"
             className="relative z-10 w-[554px] h-[96px]"
           />
         </div>
@@ -158,38 +161,36 @@ const SessionReport = () => {
                 value={timeSpent}
                 icon={ClockIcon}
               />
-              {mode === "Peaceful" ? (
-                <>
-                  <StatisticBox
-                    label="MASTERED"
-                    value={masteredCount}
-                    icon={ManaIcon}
-                  />
-                  <StatisticBox
-                    label="UNMASTERED"
-                    value={unmasteredCount}
-                    icon={ManaIcon}
-                  />
-                </>
-              ) : (
-                <>
-                  <StatisticBox
-                    label="HIGHEST STREAK"
-                    value={`${highestStreak}x`}
-                    icon={ManaIcon}
-                  />
-                  <StatisticBox
-                    label="CORRECT ANSWERS"
-                    value={correctCount}
-                    icon={ManaIcon}
-                  />
-                  <StatisticBox
-                    label="INCORRECT ANSWERS"
-                    value={incorrectCount}
-                    icon={ManaIcon}
-                  />
-                </>
-              )}
+              <StatisticBox
+                label="BATTLE RESULT"
+                value={isWinner ? "VICTORY" : "DEFEAT"}
+                icon={ManaIcon}
+              />
+              <StatisticBox
+                label={`${playerName}'S HEALTH`}
+                value={playerHealth}
+                icon={ManaIcon}
+              />
+              <StatisticBox
+                label={`${opponentName}'S HEALTH`}
+                value={opponentHealth}
+                icon={ManaIcon}
+              />
+              <StatisticBox
+                label="HIGHEST STREAK"
+                value={`${highestStreak}x`}
+                icon={ManaIcon}
+              />
+              <StatisticBox
+                label="CORRECT ANSWERS"
+                value={correctCount}
+                icon={ManaIcon}
+              />
+              <StatisticBox
+                label="INCORRECT ANSWERS"
+                value={incorrectCount}
+                icon={ManaIcon}
+              />
             </div>
           </div>
         </div>
@@ -213,7 +214,7 @@ const SessionReport = () => {
               })
             }
           >
-            STUDY AGAIN
+            PLAY AGAIN
           </Button>
           <Button
             sx={{
@@ -239,4 +240,4 @@ const SessionReport = () => {
   );
 };
 
-export default SessionReport;
+export default PvpSessionReport;

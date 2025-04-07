@@ -10,8 +10,8 @@ import {
   GlobalSnackbar,
   SnackbarConnector,
   AuthTokenSynchronizer,
-  InvitationLobbySnackbar,
   AudioStopper,
+  BattleInvitationCenter,
 } from "./components";
 import theme from "../../frontend/src/contexts/ThemeContext";
 import "./index.css";
@@ -38,7 +38,7 @@ function App() {
                 <HelmetProvider>
                   <ThemeProvider theme={theme}>
                     <CssBaseline />
-                    <InvitationLobbySnackbar />
+                    <BattleInvitationCenter />
                     <AppRoutes />
                     <GlobalSnackbar />
                     <SnackbarConnector />

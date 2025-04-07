@@ -359,6 +359,9 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     correctCount,
     incorrectCount,
     highestStreak,
+    isInRetakeMode,
+    retakeQuestionsCount,
+    isTransitioning,
   } = useGameLogic({
     mode,
     material,
@@ -491,8 +494,17 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
       console.log("Preparing session report with values:", {
         timeSpent: sessionData.timeSpent,
         correctCount: sessionData.correctCount,
-        incorrectCount: sessionData.incorrectCount
+        incorrectCount: sessionData.incorrectCount,
+        isComplete,
+        retakeMode: isInRetakeMode,
+        retakeQuestionsCount
       });
+
+      // In retake mode, only save when all questions are mastered
+      if (isInRetakeMode && retakeQuestionsCount > 0) {
+        console.log("Still in retake mode with questions remaining, skipping save");
+        return;
+      }
 
       const payload: SessionPayload = {
         session_id: sessionId,
@@ -506,9 +518,9 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
         exp_gained: expGained,
         coins_gained: null,
         game_mode: mode.toLowerCase(),
-        total_time: sessionData.timeSpent,        // Using timeSpent directly
-        mastered: sessionData.correctCount,       // Using correctCount directly
-        unmastered: sessionData.incorrectCount    // Using incorrectCount directly
+        total_time: sessionData.timeSpent,
+        mastered: isComplete ? totalItems : sessionData.correctCount, // If complete, all items are mastered
+        unmastered: isComplete ? 0 : sessionData.incorrectCount // If complete, no items are unmastered
       };
 
       console.log("Sending payload to server:", payload);
@@ -537,14 +549,18 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     }
   };
 
-  // Remove the cleanup effect since we're handling early endings explicitly through handleEndGame
+  // Update the useEffect for session saving
   useEffect(() => {
     const saveSession = async () => {
-      // Only save when the session is complete (all questions answered)
-      if (correctCount + incorrectCount === aiQuestions.length && aiQuestions.length > 0 && !hasSessionSaved) {
+      // Only save when all questions are answered AND we're not in retake mode
+      // OR we're in retake mode and all questions are mastered
+      const shouldSave = (correctCount + incorrectCount === aiQuestions.length && !isInRetakeMode) ||
+                        (isInRetakeMode && retakeQuestionsCount === 0);
+
+      if (shouldSave && aiQuestions.length > 0 && !hasSessionSaved) {
         const sessionData: SessionData = {
-          correctCount,
-          incorrectCount,
+          correctCount: isInRetakeMode ? aiQuestions.length : correctCount, // If in retake mode and complete, all questions are correct
+          incorrectCount: isInRetakeMode ? 0 : incorrectCount, // If in retake mode and complete, no questions are incorrect
           highestStreak,
           earnedXP: 5,
           timeSpent: calculateTimeSpent(startTime, new Date())
@@ -559,7 +575,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     };
 
     saveSession();
-  }, [correctCount, incorrectCount, aiQuestions.length, highestStreak, hasSessionSaved]);
+  }, [correctCount, incorrectCount, aiQuestions.length, highestStreak, hasSessionSaved, isInRetakeMode, retakeQuestionsCount]);
 
   // Helper function to calculate time spent
   const calculateTimeSpent = (start: Date, end: Date) => {
@@ -616,6 +632,11 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
               </div>
             </button>
           </div>
+          {isInRetakeMode && (
+            <div className="mt-4 text-sm text-gray-400">
+              {retakeQuestionsCount} questions remaining to master
+            </div>
+          )}
         </div>
       );
     }
@@ -661,8 +682,9 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
                 type="text"
                 value={inputAnswer}
                 onChange={(e) => setInputAnswer(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === "Enter" && !showResult) {
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !showResult && inputAnswer.trim()) {
+                    e.preventDefault(); // Prevent form submission
                     handleAnswerSubmit(inputAnswer);
                   }
                 }}
@@ -677,6 +699,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
                   }
                   text-white focus:outline-none placeholder:text-[#6F658D]`}
                 placeholder="Type your answer here..."
+                autoFocus // Add autofocus to improve UX
               />
             </div>
             {showResult && !isCorrect && (
@@ -736,6 +759,11 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
       />
       <main className="pt-24 px-4">
         <div className="mx-auto max-w-[1200px] flex flex-col items-center gap-8 h-[calc(100vh-96px)] justify-center">
+          {isInRetakeMode && (
+            <div className="absolute top-20 left-1/2 transform -translate-x-1/2 bg-[#39101B] text-white px-6 py-2 rounded-lg border border-[#FF3B3F]">
+              Retake Mode: {retakeQuestionsCount} questions remaining
+            </div>
+          )}
           <FlashCard
             question={currentQuestion?.question || ""}
             correctAnswer={currentQuestion?.correctAnswer || ""}
@@ -746,6 +774,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
             disabled={cardDisabled}
             image={currentQuestion?.itemInfo?.image || null}
             currentQuestion={currentQuestion}
+            isTransitioning={isTransitioning}
           />
           {renderQuestionContent()}
           <Timer

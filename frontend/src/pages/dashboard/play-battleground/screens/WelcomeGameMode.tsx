@@ -19,7 +19,8 @@ const WelcomeGameMode: React.FC = () => {
     lobbyCode,
     isJoining,
     role,
-    selectedTypes 
+    selectedTypes,
+    friendToInvite
   } = location.state || {};
   const [fadeOut, setFadeOut] = useState(false);
   const [setupIsReady, setSetupIsReady] = useState(false);
@@ -35,7 +36,8 @@ const WelcomeGameMode: React.FC = () => {
     lobbyCode,
     isJoining,
     role,
-    selectedTypes
+    selectedTypes,
+    friendToInvite
   });
 
   // Use preSelectedMaterial if available, ensure it's never undefined
@@ -127,17 +129,33 @@ const WelcomeGameMode: React.FC = () => {
                 },
               });
             } else {
-              // Host user - Go to question type selection
-              navigate("/dashboard/setup/questions", {
-                state: {
-                  mode,
-                  material: selectedMaterial,
-                  lobbyCode,
-                  role: 'host',
-                  fromWelcome: true,
-                  isPvpLobbyCreation: true
-                },
-              });
+              // Check if we have a friend to invite
+              if (friendToInvite) {
+                // Host user with friend to invite - Go to question type selection with friendToInvite
+                navigate("/dashboard/setup/questions", {
+                  state: {
+                    mode,
+                    material: selectedMaterial,
+                    lobbyCode,
+                    role: 'host',
+                    fromWelcome: true,
+                    isPvpLobbyCreation: true,
+                    friendToInvite
+                  },
+                });
+              } else {
+                // Regular host user - Go to question type selection
+                navigate("/dashboard/setup/questions", {
+                  state: {
+                    mode,
+                    material: selectedMaterial,
+                    lobbyCode,
+                    role: 'host',
+                    fromWelcome: true,
+                    isPvpLobbyCreation: true
+                  },
+                });
+              }
             }
           } else {
             // Normal flow for other modes
@@ -153,7 +171,7 @@ const WelcomeGameMode: React.FC = () => {
         }, 1000);
       }, 1500); // 1.5 second delay
     }
-  }, [setupIsReady, navigate, mode, selectedMaterial, skipMaterialSelection, isJoining, lobbyCode, selectedTypes, role]);
+  }, [setupIsReady, navigate, mode, selectedMaterial, skipMaterialSelection, isJoining, lobbyCode, selectedTypes, role, friendToInvite]);
 
   // Update the welcome message based on the role
   const getWelcomeMessage = () => {

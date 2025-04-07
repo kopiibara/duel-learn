@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Settings } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 
 // Character animations
@@ -21,6 +21,7 @@ import CharacterAnimationManager from "./components/CharacterAnimationManager";
 import GameStartAnimation from "./components/GameStartAnimation";
 import GuestWaitingForRandomization from "./components/GuestWaitingForRandomization";
 import QuestionModal from "./components/QuestionModal";
+import PvpSessionReport from "./screens/PvpSessionReport";
 
 // Import utils directly
 import TurnRandomizer from "./utils/TurnRandomizer";
@@ -35,6 +36,7 @@ import { BattleState } from "./BattleState";
  */
 export default function PvpBattle() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { hostUsername, guestUsername, isHost, lobbyCode, hostId, guestId } =
     location.state || {};
 
@@ -90,6 +92,20 @@ export default function PvpBattle() {
   // Add a state to track current turn number for poison effects
   const [currentTurnNumber, setCurrentTurnNumber] = useState(0);
   const [poisonEffectActive, setPoisonEffectActive] = useState(false);
+
+  // Battle statistics tracking
+  const [battleStats, setBattleStats] = useState({
+    correctAnswers: 0,
+    incorrectAnswers: 0,
+    currentStreak: 0,
+    highestStreak: 0,
+    totalQuestions: 0,
+  });
+
+  // Battle statistics for session report
+  const [battleStartTime, setBattleStartTime] = useState<Date | null>(null);
+  const [showSessionReport, setShowSessionReport] = useState(false);
+
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
     lobbyCode,
@@ -155,10 +171,26 @@ export default function PvpBattle() {
     if (!selectedCardId) return;
 
     try {
-      // Determine if the current player is host or guest
       const playerType = isHost ? "host" : "guest";
 
-      // Update the battle round with the selected card, answer result, and switch turns
+      // Update battle stats first
+      setBattleStats((prev) => {
+        const newStreak = isCorrect ? prev.currentStreak + 1 : 0;
+        return {
+          ...prev,
+          correctAnswers: isCorrect
+            ? prev.correctAnswers + 1
+            : prev.correctAnswers,
+          incorrectAnswers: !isCorrect
+            ? prev.incorrectAnswers + 1
+            : prev.incorrectAnswers,
+          currentStreak: newStreak,
+          highestStreak: Math.max(prev.highestStreak, newStreak),
+          totalQuestions: prev.totalQuestions + 1,
+        };
+      });
+
+      // Update the battle round
       const response = await axios.put(
         `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
         {
@@ -167,6 +199,7 @@ export default function PvpBattle() {
           card_id: selectedCardId,
           is_correct: isCorrect,
           lobby_code: lobbyCode,
+          battle_stats: battleStats, // Send current stats to backend
         }
       );
 
@@ -416,6 +449,41 @@ export default function PvpBattle() {
     window.location.replace("/dashboard/home");
   };
 
+  // Handle viewing session report
+  const handleViewSessionReport = () => {
+    // Calculate time spent
+    const endTime = new Date();
+    const startTime = battleStartTime || new Date();
+    const timeDiffMs = endTime.getTime() - startTime.getTime();
+    const minutes = Math.floor(timeDiffMs / 60000);
+    const seconds = Math.floor((timeDiffMs % 60000) / 1000);
+    const timeSpent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+
+    // Determine if player is winner
+    const isWinner = playerHealth > 0 && opponentHealth <= 0;
+
+    // Navigate to session report with battle data
+    navigate("/dashboard/pvp-battle/session-report", {
+      state: {
+        timeSpent,
+        correctCount: battleStats.correctAnswers,
+        incorrectCount: battleStats.incorrectAnswers,
+        mode: "pvp",
+        material: { study_material_id: studyMaterialId },
+        earlyEnd: false,
+        startTime: battleStartTime,
+        highestStreak: battleStats.highestStreak,
+        playerHealth,
+        opponentHealth,
+        playerName,
+        opponentName,
+        isWinner,
+        sessionUuid: battleState?.session_uuid,
+        totalQuestions: battleStats.totalQuestions,
+      },
+    });
+  };
+
   // Handle settings button click
   const handleSettingsClick = async () => {
     // Prevent multiple calls
@@ -641,6 +709,13 @@ export default function PvpBattle() {
     }
   }, [isMyTurn, currentTurnNumber, battleState?.session_uuid, isHost]);
 
+  // Set battle start time when game starts
+  useEffect(() => {
+    if (gameStarted && !battleStartTime) {
+      setBattleStartTime(new Date());
+    }
+  }, [gameStarted, battleStartTime]);
+
   return (
     <div
       className="w-full h-screen flex flex-col relative"
@@ -782,6 +857,7 @@ export default function PvpBattle() {
           showVictoryModal={showVictoryModal}
           victoryMessage={victoryMessage}
           onConfirm={handleVictoryConfirm}
+          onViewSessionReport={handleViewSessionReport}
         />
 
         {/* Question Modal */}
@@ -793,6 +869,9 @@ export default function PvpBattle() {
           questionTypes={questionTypes}
           selectedCardId={selectedCardId}
         />
+
+        {/* Session Report */}
+        {showSessionReport && <PvpSessionReport />}
 
         {/* Poison effect indicator */}
         {poisonEffectActive && (

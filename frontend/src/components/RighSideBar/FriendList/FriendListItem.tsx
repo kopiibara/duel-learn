@@ -1,6 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@mui/material";
+import { Button, Tooltip } from "@mui/material";
 import DefaultPicture from "/profile-picture/default-picture.svg";
 import { Friend } from "../../../contexts/UserContext";
 import ProfileModal from "../../modals/ProfileModal";
@@ -8,6 +7,7 @@ import { useState } from "react";
 import { useOnlineStatus } from "../../../hooks/useOnlineStatus";
 import { useLobbyStatus } from "../../../hooks/useLobbyStatus";
 import SelectStudyMaterialModal from "../../modals/SelectStudyMaterialModal";
+import { useNavigate } from "react-router-dom";
 import { createNewLobby } from "../../../services/pvpLobbyService";
 import { generateCode } from "../../../pages/dashboard/play-battleground/utils/codeGenerator";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
@@ -23,6 +23,8 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   const [materialModalOpen, setMaterialModalOpen] = useState(false);
   const [inviteMode, setInviteMode] = useState<string>("PvP");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+
+  // Use hooks to get status
   const isOnline = useOnlineStatus(friend.firebase_uid);
   const { isInLobby, isInGame, gameMode } = useLobbyStatus(friend.firebase_uid);
 
@@ -31,6 +33,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
     setProfileModalOpen(true);
   };
 
+  // Get status color and text
   const getStatusInfo = () => {
     if (isInGame) {
       // Game status takes priority - use orange
@@ -109,26 +112,26 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <div className="flex items-center flex-1 min-w-0 mr-2">
-          <img
-            src={friend.display_picture || DefaultPicture}
-            onClick={() => handleViewProfile(friend.firebase_uid)}
-            alt="Avatar"
-            className="w-9 sm:w-11 md:w-14 cursor-pointer h-auto mr-2 sm:mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
-          />
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center">
+          <div className="relative">
+            <img
+              src={friend.display_picture || DefaultPicture}
+              onClick={() => handleViewProfile(friend.firebase_uid)}
+              alt="Avatar"
+              className="w-9 sm:w-11 md:w-14 cursor-pointer h-auto mr-2 sm:mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
+            />
+            {/* Status indicator positioned to overlap the image corner */}
+            <Tooltip title={text} placement="top" arrow>
+              <div
+                className={`absolute bottom-[-2px] right-1 w-3.5 h-3.5 rounded-full border-2 border-[#120F1B] ${color}`}
+              ></div>
+            </Tooltip>
+          </div>
 
           {/* Text content */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center">
-              {/* Online status indicator */}
-              <div
-                className={`w-2.5 h-2.5 rounded-full mr-2 ${
-                  isOnline ? "bg-green-500" : "bg-red-500"
-                }`}
-                title={isOnline ? "Online" : "Offline"}
-              ></div>
-
               <p className="text-sm sm:text-base text-[#E2DDF3] truncate">
                 {friend.username}
               </p>
@@ -187,6 +190,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
         userId={selectedFriend || undefined}
       />
 
+      {/* Study Material Selection Modal */}
       <SelectStudyMaterialModal
         open={materialModalOpen}
         handleClose={() => setMaterialModalOpen(false)}

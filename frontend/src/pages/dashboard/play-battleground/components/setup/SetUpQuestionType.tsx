@@ -16,8 +16,16 @@ const SetUpQuestionType: React.FC = () => {
   // Move all hooks to the top before any conditional logic
   const location = useLocation();
   const navigate = useNavigate();
-  const { mode, material, fromWelcome, lobbyCode, isPvpLobbyCreation, role } =
-    location.state || {};
+  const {
+    selectedTypes: preSelectedTypes,
+    material,
+    mode,
+    lobbyCode,
+    role,
+    isPvpLobbyCreation,
+    friendToInvite,
+    fromWelcome,
+  } = location.state || {};
   const [isComponentReady, setIsComponentReady] = useState(false);
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const [questionTypes] = useState([
@@ -113,6 +121,9 @@ const SetUpQuestionType: React.FC = () => {
       role: role || "host", // Default to host if not specified
     };
 
+    console.log("Navigation state being passed:", navigationState);
+    console.log("Mode type:", typeof mode, "Mode value:", mode);
+
     // Check if this is for PvP lobby creation
     if (isPvpLobbyCreation && !lobbyCode) {
       try {
@@ -149,6 +160,7 @@ const SetUpQuestionType: React.FC = () => {
         state: {
           ...navigationState,
           fromWelcome: true,
+          friendToInvite, // Pass friendToInvite to the PVP lobby
         },
       });
       return;

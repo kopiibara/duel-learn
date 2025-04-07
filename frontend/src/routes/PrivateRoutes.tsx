@@ -34,6 +34,7 @@ import AccountSettings from "../pages/dashboard/settings/AccountSettings";
 import HostModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/HostModeSelection";
 import Player2ModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/Player2ModeSelection";
 import PvpBattle from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/PvpBattle";
+import PvpSessionReport from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/screens/PvpSessionReport";
 import SearchPage from "../pages/dashboard/search/SearchPage";
 import SocketService from "../services/socketService";
 import {
@@ -261,6 +262,10 @@ const PrivateRoutes = () => {
               <PvpBattle />
             </GameModeStatusWrapper>
           }
+        />
+        <Route
+          path="/pvp-battle/session-report"
+          element={<PvpSessionReport />}
         />
       </Routes>
     </GameStatusProvider>

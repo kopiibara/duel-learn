@@ -48,6 +48,11 @@ export const useGameLogic = ({
   const [isCorrect, setIsCorrect] = useState<boolean | null>(null);
   const [currentQuestion, setCurrentQuestion] = useState<any>(null);
   const [questionIndex, setQuestionIndex] = useState(0);
+  const [retakeQuestions, setRetakeQuestions] = useState<any[]>([]);
+  const [isInRetakeMode, setIsInRetakeMode] = useState(false);
+  const [retakePhase, setRetakePhase] = useState(0); // Track retake phases
+  const [masteredQuestions, setMasteredQuestions] = useState<string[]>([]); // Track mastered questions
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   const navigate = useNavigate();
 
@@ -74,16 +79,19 @@ export const useGameLogic = ({
   }, []);
 
   const processQuestion = (rawQuestion: any) => {
-    console.log("Processing raw question:", rawQuestion); // Debug log
+    console.log("Processing raw question:", rawQuestion);
 
+    // Ensure we preserve the answer field correctly
+    const correctAnswer = rawQuestion.correctAnswer || rawQuestion.answer;
+    
     return {
       questionType: rawQuestion.questionType || rawQuestion.type,
       type: rawQuestion.type,
       question: rawQuestion.question,
-      correctAnswer: rawQuestion.answer,
+      correctAnswer: correctAnswer, // Use the preserved answer
+      answer: correctAnswer, // Keep both for compatibility
       options: rawQuestion.options,
       rawOptions: rawQuestion.rawOptions,
-      // Important: Preserve the itemInfo
       itemInfo: rawQuestion.itemInfo || {
         image: rawQuestion.image,
         term: rawQuestion.term,
@@ -97,49 +105,41 @@ export const useGameLogic = ({
   useEffect(() => {
     if (aiQuestions && aiQuestions.length > 0) {
       console.log(`Processing AI question at index ${questionIndex} of ${aiQuestions.length}`);
-      const question = aiQuestions[questionIndex];
       
-      // Check if question exists at this index
-      if (!question) {
-        console.error(`No question found at index ${questionIndex}`);
+      // Don't update the current question if we're showing results
+      if (showResult) {
+        console.log("Not updating current question because results are being shown");
         return;
       }
-
-      console.log("Raw question data from API:", question);
-      console.log("Question type:", question.type);
-      console.log("Question text:", question.question);
-      console.log("Question answer:", question.answer);
       
-      if (question.type === 'multiple-choice') {
-        console.log("Multiple choice options:", question.options);
-        
-        // Log the options as an array to confirm format
-        if (question.options) {
-          console.log("Options as array:", Object.values(question.options));
+      // If in retake mode, use retake questions array
+      if (isInRetakeMode && retakeQuestions.length > 0) {
+        const question = retakeQuestions[questionIndex];
+        if (question) {
+          console.log("Processing retake question:", question);
+          const processedQuestion = processQuestion(question);
+          console.log("Processed retake question:", processedQuestion);
+          setCurrentQuestion(processedQuestion);
+        }
+      } else {
+        // Normal mode - use regular questions
+        const question = aiQuestions[questionIndex];
+        if (question) {
+          console.log("Processing regular question:", question);
+          const processedQuestion = processQuestion(question);
+          console.log("Processed regular question:", processedQuestion);
+          setCurrentQuestion(processedQuestion);
         }
       }
-
-      // For multiple choice, extract answer from format like "D. AI"
-      let displayAnswer = question.answer;
-      if (question.type === 'multiple-choice' && question.answer && question.answer.includes('. ')) {
-        const parts = question.answer.split('. ');
-        displayAnswer = parts[1] || parts[0]; // Fallback to full answer if no split
-        console.log("Extracted display answer:", displayAnswer);
-      }
-
-      const processedQuestion = processQuestion(question);
-
-      console.log("Processed question for UI:", processedQuestion);
-      setCurrentQuestion(processedQuestion);
-    } else {
-      console.log("No AI questions available or empty array");
     }
-  }, [aiQuestions, questionIndex]);
+  }, [aiQuestions, questionIndex, isInRetakeMode, retakeQuestions, showResult]);
 
-  // Update the isLastQuestion logic to check for AI questions
-  const isLastQuestion = aiQuestions 
-    ? questionIndex === aiQuestions.length - 1
-    : currentQuestionIndex === filteredQuestions.length - 1;
+  // Update isLastQuestion to account for retake mode
+  const isLastQuestion = isInRetakeMode 
+    ? questionIndex === retakeQuestions.length - 1
+    : aiQuestions 
+      ? questionIndex === aiQuestions.length - 1
+      : currentQuestionIndex === filteredQuestions.length - 1;
 
   // Timer logic for Time Pressured mode
   useEffect(() => {
@@ -171,7 +171,14 @@ export const useGameLogic = ({
   const handleAnswerSubmit = (answer: string) => {
     if (showResult || !currentQuestion) return;
 
-    const isAnswerCorrect = answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+    // Ensure we have a valid answer to compare against
+    const correctAnswer = currentQuestion.correctAnswer || currentQuestion.answer;
+    if (!correctAnswer) {
+      console.error("No correct answer found for question:", currentQuestion);
+      return;
+    }
+
+    const isAnswerCorrect = answer.toLowerCase() === correctAnswer.toLowerCase();
     setIsCorrect(isAnswerCorrect);
     setShowResult(true);
 
@@ -185,11 +192,27 @@ export const useGameLogic = ({
         return newStreak;
       });
       setShowNextButton(false);
+      
+      // If in retake mode and answer is correct, remove from retake list
+      if (isInRetakeMode) {
+        setRetakeQuestions(prev => prev.filter(q => 
+          q.question !== currentQuestion.question || 
+          q.correctAnswer !== correctAnswer
+        ));
+      }
     } else {
       setIncorrectCount((prev) => prev + 1);
       setUnmasteredCount((prev) => prev + 1);
       setCurrentStreak(0);
       setShowNextButton(true);
+      
+      // Add incorrect question to retake list if not already there
+      if (!retakeQuestions.some(q => 
+        q.question === currentQuestion.question && 
+        q.correctAnswer === correctAnswer
+      )) {
+        setRetakeQuestions(prev => [...prev, currentQuestion]);
+      }
     }
 
     setSelectedAnswer(answer);
@@ -197,92 +220,205 @@ export const useGameLogic = ({
     setShowNextButton(true);
   };
 
-  // Handle revealing the answer (user gives up)
   const handleRevealAnswer = () => {
-    if (showResult) return; // Don't process if already showing result
+    if (showResult) return;
     
     console.log("User revealed answer without attempting a solution");
     
-    // Mark as incorrect and reveal the answer
+    // First, reveal the current question's answer
     setIsCorrect(false);
     setIncorrectCount(prev => prev + 1);
     setCurrentStreak(0);
     setShowResult(true);
     setShowNextButton(true);
     setIsFlipped(true);
+    
+    // Add revealed question to retake list if not already in it
+    if (!retakeQuestions.some(q => 
+      q.question === currentQuestion.question && 
+      q.correctAnswer === currentQuestion.correctAnswer
+    )) {
+      setRetakeQuestions(prev => [...prev, currentQuestion]);
+    }
+    
+    // Do NOT automatically move to the next question
+    // The user must click "Next Question", "Mastered", or "Retake" button
   };
 
   const handleNextQuestion = () => {
-    if (aiQuestions && questionIndex < aiQuestions.length - 1) {
-      // If we have more AI questions, increment the index
-      setQuestionIndex(prev => prev + 1);
-      
-      // Reset UI state for next question
-      setIsFlipped(false);
-      setSelectedAnswer(null);
-      setInputAnswer("");
-      setShowResult(false);
-      setShowNextButton(false);
-    } else if (!aiQuestions && !isLastQuestion) {
-      // Handle regular (non-AI) questions
-      setIsFlipped(false);
-      setTimeout(() => {
-        setCurrentQuestionIndex((prev) => prev + 1);
-        setSelectedAnswer(null);
-        setInputAnswer("");
-        setShowResult(false);
-        setShowNextButton(false);
-      }, 300);
-    } else {
-      // This is the last question, complete the game
-      console.log("All questions answered, completing game");
+    // Check if all questions are mastered
+    const totalQuestions = aiQuestions?.length || 0;
+    console.log("Checking next question:", {
+      masteredCount,
+      totalQuestions,
+      retakeQuestionsCount: retakeQuestions.length
+    });
+
+    if (masteredCount === totalQuestions && retakeQuestions.length === 0) {
+      console.log("All questions mastered, ending game");
       handleGameComplete();
+      return;
+    }
+
+    if (isInRetakeMode) {
+      console.log(`Current retake phase: ${retakePhase}, question index: ${questionIndex}, retake questions: ${retakeQuestions.length}`);
+      
+      if (questionIndex < retakeQuestions.length - 1) {
+        // Move to next retake question
+        setQuestionIndex(prev => prev + 1);
+        resetQuestionState();
+      } else if (retakeQuestions.length > 0) {
+        // If there are still unmastered questions, move to next retake phase
+        setRetakePhase(prev => prev + 1);
+        console.log(`Moving to retake phase ${retakePhase + 1} with ${retakeQuestions.length} questions`);
+        setQuestionIndex(0);
+        resetQuestionState();
+      } else {
+        // All questions mastered, complete the game
+        handleGameComplete();
+      }
+    } else if (aiQuestions && questionIndex < aiQuestions.length - 1) {
+      // Move to next regular question
+      setQuestionIndex(prev => prev + 1);
+      resetQuestionState();
+    } else {
+      // Finished regular questions, check if we have retakes
+      if (retakeQuestions.length > 0) {
+        // Start retake mode
+        setIsInRetakeMode(true);
+        setRetakePhase(1);
+        console.log(`Starting retake phase 1 with ${retakeQuestions.length} questions`);
+        setQuestionIndex(0);
+        resetQuestionState();
+      } else {
+        // No retakes needed, complete the game
+        handleGameComplete();
+      }
     }
   };
 
+  const resetQuestionState = () => {
+    setIsTransitioning(true); // Start transition
+    setIsFlipped(false);
+    setSelectedAnswer(null);
+    setInputAnswer("");
+    setShowResult(false);
+    setShowNextButton(false);
+    setIsCorrect(null);
+    
+    // Remove transition state after animation completes
+    setTimeout(() => {
+      setIsTransitioning(false);
+    }, 600); // Match the transition duration
+  };
+
   const handleGameComplete = () => {
+    const totalQuestions = aiQuestions?.length || 0;
+    
+    console.log("Game completion check:", {
+      masteredCount,
+      totalQuestions,
+      retakeQuestionsCount: retakeQuestions.length,
+      masteredQuestionsCount: masteredQuestions.length
+    });
+
     const endTime = new Date();
     const timeDiff = endTime.getTime() - startTime.getTime();
     const minutes = Math.floor(timeDiff / 60000);
     const seconds = Math.floor((timeDiff % 60000) / 1000);
-    const timeSpent = `${minutes.toString().padStart(2, "0")}:${seconds
-      .toString()
-      .padStart(2, "0")}`;
-
-    console.log("Game Complete:", {
-      timeSpent,
-      correctCount,
-      incorrectCount,
-      mode,
-      material,
-      questionsAnswered: aiQuestions ? questionIndex + 1 : currentQuestionIndex + 1,
-      totalQuestions: aiQuestions ? aiQuestions.length : filteredQuestions.length
-    });
-
-    console.log("Highest Streak before navigating:", highestStreak);
+    const timeSpent = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 
     navigate("/dashboard/study/session-summary", {
       state: {
         timeSpent,
-        correctCount,
-        incorrectCount,
+        correctCount: totalQuestions,
+        incorrectCount: 0,
         mode,
         material,
         highestStreak,
-        masteredCount,
-        unmasteredCount,
-        aiQuestions: aiQuestions || [], // Pass the questions to the summary
+        masteredCount: totalQuestions,
+        unmasteredCount: 0,
+        totalQuestions,
+        aiQuestions: aiQuestions || [],
       },
     });
   };
 
   const handleMastered = () => {
-    setMasteredCount((prev) => prev + 1);
+    // Create a unique identifier for this question
+    const questionId = `${currentQuestion.question}-${currentQuestion.correctAnswer}`;
+    const totalQuestions = aiQuestions?.length || 0;
+    
+    // Only increment mastered count if not already mastered
+    if (!masteredQuestions.includes(questionId)) {
+      // Calculate new mastered count
+      const newMasteredCount = masteredCount + 1;
+      
+      console.log("Mastering question:", {
+        currentMasteredCount: masteredCount,
+        newMasteredCount,
+        totalQuestions,
+        questionId,
+        retakeQuestionsLength: retakeQuestions.length
+      });
+
+      // Update mastered questions list first
+      setMasteredQuestions(prev => [...prev, questionId]);
+      
+      // Remove from retake list if in retake mode
+      if (isInRetakeMode) {
+        setRetakeQuestions(prev => {
+          const newRetakeQuestions = prev.filter(q => 
+            q.question !== currentQuestion.question || 
+            q.correctAnswer !== currentQuestion.correctAnswer
+          );
+          console.log("Updated retake questions:", {
+            previousLength: prev.length,
+            newLength: newRetakeQuestions.length
+          });
+          return newRetakeQuestions;
+        });
+      }
+
+      // Check if this will be the last question
+      if (newMasteredCount === totalQuestions) {
+        console.log("Final question mastered, completing game");
+        setMasteredCount(newMasteredCount);
+        handleGameComplete();
+        return;
+      }
+
+      // If not the last question, update count and continue
+      setMasteredCount(newMasteredCount);
+    }
+    
     handleNextQuestion();
   };
 
   const handleUnmastered = () => {
-    setUnmasteredCount((prev) => prev + 1);
+    // Create a unique identifier for this question
+    const questionId = `${currentQuestion.question}-${currentQuestion.correctAnswer}`;
+    
+    // Only increment unmastered count if not already in retake list
+    if (!retakeQuestions.some(q => 
+      q.question === currentQuestion.question && 
+      q.correctAnswer === currentQuestion.correctAnswer
+    )) {
+      setUnmasteredCount((prev) => prev + 1);
+    }
+    
+    // Add the current question to retake list if not already there
+    if (!retakeQuestions.some(q => 
+      q.question === currentQuestion.question && 
+      q.correctAnswer === currentQuestion.correctAnswer
+    )) {
+      setRetakeQuestions(prev => {
+        const newRetakeQuestions = [...prev, currentQuestion];
+        console.log(`Added question to retake list. New count: ${newRetakeQuestions.length}`);
+        return newRetakeQuestions;
+      });
+    }
+    
     handleNextQuestion();
   };
 
@@ -309,6 +445,9 @@ export const useGameLogic = ({
     return "border-2 border-[#FF3B3F] bg-[#39101B]";
   };
 
+  // Add a computed value for retake questions count that includes both initial and new retakes
+  const retakeQuestionsCount = retakeQuestions.length;
+
   return {
     currentQuestion,
     isFlipped,
@@ -326,6 +465,10 @@ export const useGameLogic = ({
     masteredCount,
     unmasteredCount,
     isCorrect,
+    isInRetakeMode,
+    retakeQuestionsCount,
+    retakePhase,
+    isTransitioning,
     handleFlip: () => setIsFlipped(!isFlipped),
     handleAnswerSubmit,
     handleNextQuestion,
@@ -333,8 +476,8 @@ export const useGameLogic = ({
     setInputAnswer,
     handleMastered,
     handleUnmastered,
-    handleRevealAnswer, // New function to reveal answer and mark as wrong
-    cardDisabled: showResult, // Pass whether the card should be disabled
+    handleRevealAnswer,
+    cardDisabled: showResult,
   };
 };
 
