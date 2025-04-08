@@ -41,7 +41,8 @@
     "pdf2pic": "^2.1.0",
     "pdfjs-dist": "^5.0.375",
     "sharp": "^0.33.5",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "xendit-node": "^6.3.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
