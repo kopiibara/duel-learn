@@ -14,7 +14,6 @@ import adminRoutes from "./routes/admin/AdminRoutes.js"; // Import admin routes
 import ocrRoutes from "./routes/OcrRoutes.js"; // Import OCR routes
 import shopRoutes from "./routes/ShopRoutes.js";
 import achivementRoutes from "./routes/AchievementRoutes.js";
-import paymentRoutes from "./routes/PaymentRoutes.js"; // Import payment routes
 import { corsMiddleware } from "./middleware/CorsMiddleware.js"; // Import CORS middleware
 import { coopMiddleware } from "./middleware/CoopMiddleware.js"; // Import COOP middleware
 import sessionReportRoutes from './routes/sessionReport.js';
@@ -66,7 +65,6 @@ app.use("/api/ocr", ocrRoutes); // Mount OCR routes under /api/ocr
 app.use("/api/shop", shopRoutes);
 app.use("/api/achievement", achivementRoutes);
 app.use("/api/session-report", sessionReportRoutes);
-app.use("/api/payment", paymentRoutes); // Mount payment routes under /api/payment
 
 // Add global error handler for uncaught exceptions
 app.use((err, req, res, next) => {
