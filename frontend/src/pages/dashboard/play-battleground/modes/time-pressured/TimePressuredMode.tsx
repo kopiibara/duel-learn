@@ -544,7 +544,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
                                 ${
                                   showResult
                                     ? currentQuestion?.isCorrect
-                                      ? "border-[#52A647]" // Green border for correct answers
+                                      ? "border-[#6DBE45]" // Green border for correct answers
                                       : "border-[#FF3B3F]" // Red border for incorrect answers
                                     : "border-gray-600" // Default gray border
                                 }

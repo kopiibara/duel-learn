@@ -767,7 +767,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
                   ${
                     showResult
                       ? isCorrect
-                        ? "border-[#52A647]"
+                        ? "border-[#6DBE45]"
                         : "border-[#FF3B3F]"
                       : "border-gray-600"
                   }

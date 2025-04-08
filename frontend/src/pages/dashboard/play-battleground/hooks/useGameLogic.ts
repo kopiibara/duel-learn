@@ -241,6 +241,18 @@ export const useGameLogic = ({
       });
       setShowNextButton(false);
       
+      // Check if this question was in the retake list
+      const wasInRetakeList = retakeQuestions.some(q => 
+        q.question === currentQuestion.question && 
+        q.correctAnswer === correctAnswer
+      );
+      
+      // If it was in retake list, decrease unmastered count
+      if (wasInRetakeList) {
+        console.log("Question was in retake list and answered correctly, decreasing unmastered count");
+        setUnmasteredCount(prev => Math.max(0, prev - 1));
+      }
+      
       // If in retake mode and answer is correct, remove from retake list
       if (isInRetakeMode) {
         setRetakeQuestions(prev => prev.filter(q => 
@@ -250,15 +262,22 @@ export const useGameLogic = ({
       }
     } else {
       setIncorrectCount((prev) => prev + 1);
-      setUnmasteredCount((prev) => prev + 1);
+      
+      // Only increment unmastered count if the question is not already in retake list
+      const alreadyInRetakeList = retakeQuestions.some(q => 
+        q.question === currentQuestion.question && 
+        q.correctAnswer === correctAnswer
+      );
+      
+      if (!alreadyInRetakeList) {
+        setUnmasteredCount((prev) => prev + 1);
+      }
+      
       setCurrentStreak(0);
       setShowNextButton(true);
       
       // Add incorrect question to retake list if not already there
-      if (!retakeQuestions.some(q => 
-        q.question === currentQuestion.question && 
-        q.correctAnswer === correctAnswer
-      )) {
+      if (!alreadyInRetakeList) {
         setRetakeQuestions(prev => [...prev, currentQuestion]);
       }
     }
@@ -364,6 +383,20 @@ export const useGameLogic = ({
   const handleGameComplete = () => {
     const totalQuestions = aiQuestions?.length || 0;
     
+    // Double-check that there are really no questions in the retake list
+    if (retakeQuestions.length > 0) {
+      console.log("Game completion prevented - still have questions in retake list", {
+        retakeQuestionsCount: retakeQuestions.length
+      });
+      
+      // If we have retake questions, go to retake mode instead of ending
+      setIsInRetakeMode(true);
+      setRetakePhase(prev => prev + 1);
+      setQuestionIndex(0);
+      resetQuestionState();
+      return;
+    }
+    
     console.log("Game completion check:", {
       masteredCount,
       totalQuestions,
@@ -398,6 +431,12 @@ export const useGameLogic = ({
     const questionId = `${currentQuestion.question}-${currentQuestion.correctAnswer}`;
     const totalQuestions = aiQuestions?.length || 0;
     
+    // Check if this question was in the retake list before we modify it
+    const wasInRetakeList = retakeQuestions.some(q => 
+      q.question === currentQuestion.question && 
+      q.correctAnswer === currentQuestion.correctAnswer
+    );
+    
     // Only increment mastered count if not already mastered
     if (!masteredQuestions.includes(questionId)) {
       // Calculate new mastered count
@@ -408,14 +447,21 @@ export const useGameLogic = ({
         newMasteredCount,
         totalQuestions,
         questionId,
-        retakeQuestionsLength: retakeQuestions.length
+        retakeQuestionsLength: retakeQuestions.length,
+        wasInRetakeList
       });
 
       // Update mastered questions list first
       setMasteredQuestions(prev => [...prev, questionId]);
       
+      // If this question was in the retake list, reduce the unmastered count
+      if (wasInRetakeList) {
+        console.log("Question was in retake list and marked as mastered, decreasing unmastered count");
+        setUnmasteredCount(prev => Math.max(0, prev - 1));
+      }
+      
       // Remove from retake list if in retake mode
-      if (isInRetakeMode) {
+      if (isInRetakeMode || wasInRetakeList) {
         setRetakeQuestions(prev => {
           const newRetakeQuestions = prev.filter(q => 
             q.question !== currentQuestion.question || 
@@ -431,9 +477,21 @@ export const useGameLogic = ({
 
       // Check if this will be the last question
       if (newMasteredCount === totalQuestions) {
-        console.log("Final question mastered, completing game");
+        // Instead of immediately completing, first check if there are any retake questions left
+        // after removing the current one from the retake list if applicable
         setMasteredCount(newMasteredCount);
-        handleGameComplete();
+        
+        // Wait a moment for retakeQuestions state to update before checking
+        setTimeout(() => {
+          if (retakeQuestions.length === 0) {
+            console.log("Final question mastered and no retakes remain, completing game");
+            handleGameComplete();
+            return;
+          } else {
+            console.log("Final question mastered but retake questions exist, continuing to retake mode");
+            handleNextQuestion();
+          }
+        }, 10);
         return;
       }
 
@@ -445,29 +503,42 @@ export const useGameLogic = ({
   };
 
   const handleUnmastered = () => {
-    // Create a unique identifier for this question
-    const questionId = `${currentQuestion.question}-${currentQuestion.correctAnswer}`;
-    
-    // Only increment unmastered count if not already in retake list
-    if (!retakeQuestions.some(q => 
+    // Check if the current question is already in the retake list
+    const isAlreadyInRetakeList = retakeQuestions.some(q => 
       q.question === currentQuestion.question && 
       q.correctAnswer === currentQuestion.correctAnswer
-    )) {
+    );
+    
+    // Add to retake list first (before any navigation logic) if not already there
+    if (!isAlreadyInRetakeList) {
+      // Increment unmastered count
       setUnmasteredCount((prev) => prev + 1);
-    }
-    
-    // Add the current question to retake list if not already there
-    if (!retakeQuestions.some(q => 
-      q.question === currentQuestion.question && 
-      q.correctAnswer === currentQuestion.correctAnswer
-    )) {
+      
+      // Add the current question to retake list
       setRetakeQuestions(prev => {
         const newRetakeQuestions = [...prev, currentQuestion];
         console.log(`Added question to retake list. New count: ${newRetakeQuestions.length}`);
         return newRetakeQuestions;
       });
+    } else {
+      console.log("Question already in retake list, not incrementing unmastered count");
     }
     
+    // For the last question case, we need to force retake mode if this is the last question
+    if (questionIndex === (aiQuestions?.length || 0) - 1) {
+      console.log("Last question marked for retake - ensuring we stay in retake mode");
+      
+      // Force retake mode if not already in it
+      if (!isInRetakeMode) {
+        setIsInRetakeMode(true);
+        setRetakePhase(1);
+        setQuestionIndex(0);
+        resetQuestionState();
+        return; // Skip handleNextQuestion since we're explicitly navigating
+      }
+    }
+    
+    // Now proceed with navigation
     handleNextQuestion();
   };
 
@@ -482,14 +553,14 @@ export const useGameLogic = ({
       const normalizedAnswer = String(currentQuestion.correctAnswer).toLowerCase();
       
       if (normalizedOption === normalizedAnswer) {
-        return "border-2 border-[#52A647] bg-[#16251C]";
+        return "border-2 border-[#6DBE45] bg-[#16251C]";
       }
       return "border-2 border-[#FF3B3F] bg-[#39101B]";
     }
 
     // Handle other question types
     if (option?.toLowerCase() === currentQuestion?.correctAnswer?.toLowerCase()) {
-      return "border-2 border-[#52A647] bg-[#16251C]";
+      return "border-2 border-[#6DBE45] bg-[#16251C]";
     }
     return "border-2 border-[#FF3B3F] bg-[#39101B]";
   };
