@@ -148,23 +148,7 @@ const PrivateRoutes = () => {
 
   return (
     <GameStatusProvider>
-      {/* Optional: Socket connection status indicator (only in development) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: '10px',
-            right: '10px',
-            zIndex: 9999,
-            width: '15px',
-            height: '15px',
-            borderRadius: '50%',
-            background: socketConnected ? '#4CAF50' : '#F44336',
-            boxShadow: '0 0 5px rgba(0,0,0,0.5)'
-          }}
-          title={socketConnected ? "Socket Connected" : "Socket Disconnected"}
-        />
-      )}
+      
 
       <Routes>
         {/* Onboarding and Tutorial Routes */}
