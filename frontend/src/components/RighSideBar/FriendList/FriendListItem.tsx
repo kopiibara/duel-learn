@@ -8,8 +8,7 @@ import { useOnlineStatus } from "../../../hooks/useOnlineStatus";
 import { useLobbyStatus } from "../../../hooks/useLobbyStatus";
 import SelectStudyMaterialModal from "../../modals/SelectStudyMaterialModal";
 import { useNavigate } from "react-router-dom";
-import { createNewLobby } from "../../../services/pvpLobbyService";
-import { generateCode } from "../../../pages/dashboard/play-battleground/utils/codeGenerator";
+import { createNewLobby, generateLobbyCode } from "../../../services/pvpLobbyService";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
 
 interface FriendListItemProps {
@@ -81,7 +80,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   // Handler for material selection
   const handleMaterialSelect = (material: StudyMaterial) => {
     // Generate a new lobby code
-    const lobbyCode = generateCode();
+    const lobbyCode = generateLobbyCode();
     
     // Create a new lobby state
     const lobbyState = createNewLobby(inviteMode, material);

@@ -6,7 +6,7 @@ import SelectStudyMaterialModal from "../../../../../components/modals/SelectStu
 import QuestionTypeSelectionModal from "../../components/modal/QuestionTypeSelectionModal";
 import InvitePlayerModal from "../../components/modal/InvitePlayerModal";
 import { useUser } from "../../../../../contexts/UserContext";
-import { generateCode } from "../../utils/codeGenerator";
+import { generateLobbyCode } from "../../../../../services/pvpLobbyService";
 import defaultAvatar from "../../../../../assets/profile-picture/bunny-picture.png";
 import { Socket } from "socket.io-client";
 import axios from "axios";
@@ -109,7 +109,7 @@ const PVPLobby: React.FC = () => {
 
   // Use URL param first, then state lobby code, then generate new one (only once)
   const [lobbyCode, setLobbyCode] = useState<string>(() => {
-    const code = urlLobbyCode || stateLobbyCode || generateCode();
+    const code = urlLobbyCode || stateLobbyCode || generateLobbyCode();
     console.log("Using lobby code:", code, { urlLobbyCode, stateLobbyCode });
     return code;
   });
