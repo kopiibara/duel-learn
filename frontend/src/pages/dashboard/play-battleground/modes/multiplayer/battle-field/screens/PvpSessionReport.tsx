@@ -6,7 +6,8 @@ import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import AutoConfettiAnimation from "../../../../../../../pages/dashboard/play-battleground/components/common/AutoConfettiAnimation";
 import { useAudio } from "../../../../../../../contexts/AudioContext";
 import { useEffect, useState } from "react";
-import axios from "axios";
+import CompleteOrVictory from "../../../../../../../../public/session-reports/CompleteOrVictory.png";
+import IncompleteOrDefeat from "../../../../../../../../public/session-reports/IncompleteOrDefeat.png";
 
 interface PvpSessionReportProps {
     timeSpent: string;
@@ -23,6 +24,11 @@ interface PvpSessionReportProps {
     opponentName: string;
     isWinner: boolean;
     sessionUuid: string;
+    hostId?: string;
+    guestId?: string;
+    isHost?: boolean;
+    earnedXP?: number;
+    earnedCoins?: number;
 }
 
 interface StatisticProps {
@@ -49,7 +55,7 @@ const StatisticBox = ({
 const PvpSessionReport = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const [hasSaved, setHasSaved] = useState(false);
+    const [showAllStats, setShowAllStats] = useState(false);
 
     // If there's no state, redirect to home
     if (!location.state) {
@@ -69,7 +75,12 @@ const PvpSessionReport = () => {
         playerName,
         opponentName,
         isWinner,
-        sessionUuid
+        sessionUuid,
+        hostId,
+        guestId,
+        isHost,
+        earnedXP,
+        earnedCoins
     } = location.state as PvpSessionReportProps;
 
     const { pauseAudio, playSessionCompleteSound } = useAudio();
@@ -93,30 +104,6 @@ const PvpSessionReport = () => {
         return () => clearTimeout(timer);
     }, [pauseAudio]);
 
-    // Calculate XP based on PVP battle results
-    const calculateXP = () => {
-        // If the game was ended early, return 0 XP
-        if (earlyEnd) {
-            return 0;
-        }
-
-        // Base XP for PVP
-        const baseXP = 20;
-
-        // Bonus XP for winning
-        const winBonus = isWinner ? 30 : 0;
-
-        // Bonus XP for correct answers
-        const correctAnswerBonus = correctCount * 2;
-
-        // Bonus XP for high streak
-        const streakBonus = highestStreak >= 5 ? 10 : 0;
-
-        return baseXP + winBonus + correctAnswerBonus + streakBonus;
-    };
-
-    const earnedXP = calculateXP();
-
     // Add console logs to check passed data
     console.log("PVP Session Report Data:", {
         timeSpent,
@@ -125,6 +112,7 @@ const PvpSessionReport = () => {
         mode,
         material,
         earnedXP,
+        earnedCoins,
         highestStreak,
         playerHealth,
         opponentHealth,
@@ -137,7 +125,7 @@ const PvpSessionReport = () => {
             className="min-h-screen flex items-center justify-center p-4 pb-16"
         >
             {!earlyEnd && isWinner && <AutoConfettiAnimation />}
-            <div className="w-full max-w-[800px] space-y-8 text-center mb-[600px] max-h-screen">
+            <div className="w-full max-w-[1000px] space-y-8 text-center mt-[330px] mb-[1000px] max-h-screen">
                 {/* Session Complete Banner */}
                 <div className="relative inline-block mx-auto mt-[490px]">
                     <img
@@ -146,14 +134,26 @@ const PvpSessionReport = () => {
                         className="relative z-10 w-[554px] h-[96px]"
                     />
                 </div>
+                <div className="relative inline-block mx-auto mt-[490px]">
+                    <img
+                        src={isWinner ? CompleteOrVictory : IncompleteOrDefeat}
+                        alt={isWinner ? "VICTORY" : "DEFEAT"}
+                        className="relative z-10 w-[574px] h-[278px] mt-5"
+                    />
+                </div>
 
                 <div>
                     {/* Stats Box */}
-                    <div className="backdrop-blur-sm p-8 mt-[8px] mb-[-20px] rounded-xl">
-                        <div className="flex flex-col mt-3 gap-4 items-center">
+                    <div className="backdrop-blur-sm p-8 mt-[5px] mb-[-20px] rounded-xl">
+                        <div className="flex flex-col mt-[-10px] gap-4 items-center">
                             <StatisticBox
                                 label="EARNED XP"
                                 value={`${earnedXP} XP`}
+                                icon={ManaIcon}
+                            />
+                            <StatisticBox
+                                label="EARNED COINS"
+                                value={`${earnedCoins} Coins`}
                                 icon={ManaIcon}
                             />
                             <StatisticBox
@@ -166,31 +166,53 @@ const PvpSessionReport = () => {
                                 value={isWinner ? "VICTORY" : "DEFEAT"}
                                 icon={ManaIcon}
                             />
-                            <StatisticBox
-                                label={`${playerName}'S HEALTH`}
-                                value={playerHealth}
-                                icon={ManaIcon}
-                            />
-                            <StatisticBox
-                                label={`${opponentName}'S HEALTH`}
-                                value={opponentHealth}
-                                icon={ManaIcon}
-                            />
-                            <StatisticBox
-                                label="HIGHEST STREAK"
-                                value={`${highestStreak}x`}
-                                icon={ManaIcon}
-                            />
-                            <StatisticBox
-                                label="CORRECT ANSWERS"
-                                value={correctCount}
-                                icon={ManaIcon}
-                            />
-                            <StatisticBox
-                                label="INCORRECT ANSWERS"
-                                value={incorrectCount}
-                                icon={ManaIcon}
-                            />
+
+                            {showAllStats && (
+                                <>
+                                    <StatisticBox
+                                        label={`${playerName}'S HEALTH`}
+                                        value={playerHealth}
+                                        icon={ManaIcon}
+                                    />
+                                    <StatisticBox
+                                        label={`${opponentName}'S HEALTH`}
+                                        value={opponentHealth}
+                                        icon={ManaIcon}
+                                    />
+                                    <StatisticBox
+                                        label="HIGHEST STREAK"
+                                        value={`${highestStreak}x`}
+                                        icon={ManaIcon}
+                                    />
+                                    <StatisticBox
+                                        label="CORRECT ANSWERS"
+                                        value={correctCount}
+                                        icon={ManaIcon}
+                                    />
+                                    <StatisticBox
+                                        label="INCORRECT ANSWERS"
+                                        value={incorrectCount}
+                                        icon={ManaIcon}
+                                    />
+                                </>
+                            )}
+
+                            <Button
+                                sx={{
+                                    px: 4,
+                                    py: 1.5,
+                                    color: "white",
+                                    borderRadius: 2,
+                                    marginTop: 2,
+                                    backgroundColor: "#2C2C38",
+                                    "&:hover": {
+                                        backgroundColor: "#1E1E26",
+                                    },
+                                }}
+                                onClick={() => setShowAllStats(!showAllStats)}
+                            >
+                                {showAllStats ? "Show Less" : "See More"}
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -228,7 +250,7 @@ const PvpSessionReport = () => {
                             },
                         }}
                         onClick={() => {
-                            pauseAudio(); // Stop audio when navigating back to home
+                            pauseAudio();
                             navigate("/dashboard/home");
                         }}
                     >
@@ -240,4 +262,4 @@ const PvpSessionReport = () => {
     );
 };
 
-export default PvpSessionReport; 
+export default PvpSessionReport;

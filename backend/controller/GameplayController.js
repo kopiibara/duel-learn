@@ -1813,4 +1813,156 @@ export const applyPoisonEffects = async (req, res) => {
     } finally {
         if (connection) connection.release();
     }
+};
+
+/**
+ * Save PvP battle session report
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const savePvpSessionReport = async (req, res) => {
+    let connection;
+    try {
+        const {
+            session_uuid,
+            start_time,
+            end_time,
+            material_id,
+            host_id,
+            host_health,
+            host_correct_count,
+            host_incorrect_count,
+            host_highest_streak,
+            host_xp_earned,
+            host_coins_earned,
+            guest_id,
+            guest_health,
+            guest_correct_count,
+            guest_incorrect_count,
+            guest_highest_streak,
+            guest_xp_earned,
+            guest_coins_earned,
+            winner_id,
+            defeated_id,
+            battle_duration,
+            early_end
+        } = req.body;
+
+        console.log(host_xp_earned, host_coins_earned, guest_xp_earned, guest_coins_earned);
+
+        // Validate required fields
+        if (!session_uuid || !material_id || !host_id || !guest_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields'
+            });
+        }
+
+        // Get a connection from the pool
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // First check if this session report already exists
+        const checkQuery = `
+            SELECT session_uuid FROM pvp_battle_sessions 
+            WHERE session_uuid = ?
+        `;
+        const [existing] = await connection.execute(checkQuery, [session_uuid]);
+
+        if (existing.length > 0) {
+            await connection.rollback();
+            return res.status(200).json({
+                success: true,
+                message: 'PvP session report already exists',
+                data: {
+                    session_uuid
+                }
+            });
+        }
+
+        // Simple insert query for session report
+        const insertQuery = `
+            INSERT INTO pvp_battle_sessions (
+                session_uuid, start_time, end_time, material_id,
+                host_id, host_health, host_correct_count, host_incorrect_count,
+                host_highest_streak, host_xp_earned, host_coins_earned,
+                guest_id, guest_health, guest_correct_count, guest_incorrect_count,
+                guest_highest_streak, guest_xp_earned, guest_coins_earned,
+                winner_id, defeated_id, battle_duration, early_end
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        const values = [
+            session_uuid,
+            start_time,
+            end_time,
+            material_id,
+            host_id,
+            host_health,
+            host_correct_count,
+            host_incorrect_count,
+            host_highest_streak,
+            host_xp_earned,
+            host_coins_earned || 0,
+            guest_id,
+            guest_health,
+            guest_correct_count,
+            guest_incorrect_count,
+            guest_highest_streak,
+            guest_xp_earned,
+            guest_coins_earned || 0,
+            winner_id,
+            defeated_id,
+            battle_duration,
+            early_end
+        ];
+
+        const [result] = await connection.execute(insertQuery, values);
+
+        // Commit the transaction
+        await connection.commit();
+
+        return res.status(200).json({
+            success: true,
+            message: 'PvP session report saved successfully',
+            data: {
+                id: result.insertId
+            }
+        });
+
+    } catch (error) {
+        // Rollback the transaction if there's an error
+        if (connection) {
+            await connection.rollback();
+        }
+
+        console.error('Error saving PvP session report:', error);
+
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                success: false,
+                message: 'Session report already exists',
+                error: error.message
+            });
+        }
+
+        if (error.code === 'ER_BAD_FIELD_ERROR') {
+            return res.status(400).json({
+                success: false,
+                message: 'Database column error',
+                error: error.message
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to save PvP session report',
+            error: error.message
+        });
+    } finally {
+        // Release the connection back to the pool
+        if (connection) {
+            connection.release();
+        }
+    }
 }; 

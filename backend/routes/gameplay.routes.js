@@ -19,7 +19,8 @@ import {
     consumeCardEffect,
     checkCardBlockingEffects,
     checkMindControlEffects,
-    applyPoisonEffects
+    applyPoisonEffects,
+    savePvpSessionReport
 
 } from '../controller/GameplayController.js';
 
@@ -56,5 +57,8 @@ router.post('/battle/end', endBattle);
 router.get('/battle/end-status/:session_uuid', getBattleEndStatus);
 router.get('/battle/end-status-by-id/:session_id', getBattleEndStatusById);
 router.get('/battle/end-status-by-lobby/:lobby_code', getBattleEndStatusByLobby);
+
+// Save PvP session report
+router.post('/battle/save-session-report', savePvpSessionReport);
 
 export default router; 

@@ -54,14 +54,14 @@ export const GameStatusProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       if (user?.firebase_uid && isInGame) {
         const socketService = SocketService.getInstance();
         const socket = socketService.getSocket();
-        
+
         if (socket?.connected) {
           socket.emit('userGameStatusChanged', {
             userId: user.firebase_uid,
             inGame: false,
             mode: null
           });
-          
+
           socket.emit('player_exited_game', {
             playerId: user.firebase_uid
           });
