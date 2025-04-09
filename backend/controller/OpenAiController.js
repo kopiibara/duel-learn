@@ -585,13 +585,14 @@ export const OpenAiController = {
 
         Requirements:
         1. The question must incorporate both the term AND its definition
-        2. If creating a false statement, modify the relationship between the term and definition
-        3. Make the question challenging but clear
-        4. Ensure the question tests understanding of both the term and its meaning
-        5. Avoid overly simple questions that only test the term without its definition
-        6. CRITICAL: Do not make the question so obvious that someone could answer it correctly without knowing the term
+        2. CRITICAL: The statement must be genuinely "${correctAnswer}" based on the relationship between the term and its definition
+        3. If creating a false statement, modify the relationship between the term and definition in a meaningful way
+        4. Make the question challenging but clear
+        5. Ensure the question tests understanding of both the term and its meaning
+        6. Avoid overly simple questions that only test the term without its definition
         7. If possible, avoid phrasing where the term is directly followed by "is defined as" or similar obvious constructions
         8. Create a statement that requires understanding of the concept, not just memorization
+        9. IMPORTANT: Double-check that your statement is actually "${correctAnswer}" as requested - this is non-negotiable
 
         Format:
         Return a JSON object with:
@@ -607,7 +608,7 @@ export const OpenAiController = {
         messages: [
           {
             role: "system",
-            content: "You are an expert at creating engaging true/false questions that test understanding rather than just memorization. Your statements are clear, unambiguous, and require careful thought to answer correctly.",
+            content: "You are an expert at creating engaging true/false questions that test understanding rather than just memorization. Your statements are clear, unambiguous, and require careful thought to answer correctly. CRITICAL RULE: You MUST ensure the statement you create is genuinely TRUE or FALSE as requested in the prompt - this is non-negotiable and the most important rule.",
           },
           { role: "user", content: prompt },
         ],
@@ -620,6 +621,12 @@ export const OpenAiController = {
       // Parse and validate the response
       const cleanedText = text.replace(/```json|```/g, "").trim();
       let question = JSON.parse(cleanedText);
+
+      // Validate the response has the correct answer format
+      if (question.answer !== correctAnswer) {
+        console.error(`CRITICAL: AI generated wrong answer format "${question.answer}" instead of "${correctAnswer}". Forcing correct answer.`);
+        question.answer = correctAnswer;
+      }
 
       // Format for response
       const formattedQuestion = {
@@ -738,7 +745,7 @@ Definition: "${definition}"
 
 STRICT RULES FOR QUESTION GENERATION:
 1. Generate 3 plausible but incorrect options that are similar to "${cleanedTerm}"
-2. The term "${cleanedTerm}" MUST be one of the options
+2. CRITICAL: The term "${cleanedTerm}" MUST be one of the options (non-negotiable)
 3. Options must be complete words or phrases, NEVER single letters
 4. Each option should be similar in nature to "${cleanedTerm}"
 5. CRITICAL: All options MUST be of similar length and style to "${cleanedTerm}"
@@ -751,6 +758,7 @@ STRICT RULES FOR QUESTION GENERATION:
 12. CRITICAL: NEVER include the term "${cleanedTerm}" in the question itself
 13. The question should test the concept but NEVER give away the answer
 14. NO paragraphs or lengthy explanations in questions
+15. FAILSAFE REQUIREMENT: Double-check that the term "${cleanedTerm}" appears exactly once in your options
 
 Format the response exactly as:
 {
@@ -770,7 +778,7 @@ Format the response exactly as:
           messages: [
             {
               role: "system",
-              content: "You are an expert at creating multiple-choice questions where all options are similar terms that could be easily confused with each other. Focus on generating options that are of similar length, style, and from the same domain as the correct answer.",
+              content: "You are an expert at creating multiple-choice questions where all options are similar terms that could be easily confused with each other. Focus on generating options that are of similar length, style, and from the same domain as the correct answer. CRITICAL RULE: You MUST include the exact correct term as one of the options - this is non-negotiable and the most important rule. Double-check your output to ensure this requirement is met.",
             },
             { role: "user", content: prompt },
           ],
@@ -796,6 +804,22 @@ Format the response exactly as:
             console.log(`Extracted correct answer: "${correctAnswer}" from "${parsedResponse.answer}"`);
           } else {
             console.warn("No answer found in parsed response, using the cleaned term as fallback");
+          }
+
+          // CRITICAL: Verify that the correct answer is actually present in one of the options
+          const optionsValues = Object.values(parsedResponse.options).map(opt =>
+            typeof opt === 'string' ? opt.toLowerCase().trim() : ''
+          );
+          const normalizedCorrectAnswer = correctAnswer.toLowerCase().trim();
+
+          if (!optionsValues.some(opt => opt === normalizedCorrectAnswer)) {
+            console.error("CRITICAL: Correct answer not found in options. Enforcing correct answer placement.");
+
+            // Force the correct answer to be placed in one of the options (option A as fallback)
+            const position = correctPosition || 'A';
+            parsedResponse.options[position] = correctAnswer;
+
+            console.log("Modified options to ensure correct answer is present:", parsedResponse.options);
           }
 
           // Format the final response
