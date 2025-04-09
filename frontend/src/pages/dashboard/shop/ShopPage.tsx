@@ -316,7 +316,7 @@ const Shop = () => {
         {/* Premium section with responsive adjustments */}
         {!isPremium && (
           <div
-            className="h-auto min-h-[200px] sm:h-[232px] rounded-lg p-4 sm:p-6 text-center mb-4 sm:mb-6 flex flex-col justify-center items-center"
+            className="h-auto min-h-[200px] sm:h-[232px] rounded-[0.8rem] p-4 sm:p-6 text-center mb-4 sm:mb-6 flex flex-col justify-center items-center"
             style={{
               backgroundImage: `url(${PremiumAdsBG})`,
               backgroundSize: "cover",
@@ -342,7 +342,7 @@ const Shop = () => {
         {/* Premium activated section with responsive adjustments */}
         {isPremium && (
           <div
-            className="h-auto min-h-[200px] sm:h-[232px] rounded-lg p-4 sm:p-6 text-center mb-4 sm:mb-6 flex flex-col justify-center items-center"
+            className="h-auto min-h-[200px] sm:h-[232px] rounded-[0.8rem] p-4 sm:p-6 text-center mb-4 sm:mb-6 flex flex-col justify-center items-center"
             style={{
               backgroundImage: `url(${PremiumActivatedBG})`,
               backgroundSize: "cover",

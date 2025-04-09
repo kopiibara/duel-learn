@@ -158,12 +158,14 @@ const Leaderboards = () => {
             </div>
           ))}
 
-          <button
-            className="w-full cursor-pointersm:py-2.5 md:py-3 lg:py-4 rounded-b-[0.8rem] bg-[#120F1D] text-[#5b5277] text-md border-t-2 border-[#3B354C] hover:text-white"
-            onClick={openModal}
-          >
-            VIEW MORE
-          </button>
+          {leaderboardData.length > 3 && (
+            <button
+              className="w-full cursor-pointer sm:py-2.5 md:py-3 lg:py-4 rounded-b-[0.8rem] bg-[#120F1D] text-[#5b5277] text-md border-t-2 border-[#3B354C] hover:text-white"
+              onClick={openModal}
+            >
+              VIEW MORE
+            </button>
+          )}
         </div>
       ) : (
         // Show "No Friends More Than 5" section

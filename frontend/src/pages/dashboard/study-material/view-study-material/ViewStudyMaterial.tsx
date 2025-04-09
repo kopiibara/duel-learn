@@ -227,8 +227,8 @@ const ViewStudyMaterial = () => {
         mode,
         material: studyMaterial,
         preSelectedMaterial: studyMaterial,
-        skipMaterialSelection: true
-      }
+        skipMaterialSelection: true,
+      },
     });
   };
 
@@ -279,6 +279,21 @@ const ViewStudyMaterial = () => {
                     {loading ? "Loading..." : studyMaterial?.total_views} People
                   </strong>
                 </Typography>
+
+                {!loading && studyMaterial?.visibility?.toString() === "1" && (
+                  <>
+                    <Typography
+                      variant="subtitle2"
+                      className="text-[#9F9BAE]"
+                      sx={{ display: { xs: "none", sm: "block" } }}
+                    >
+                      •
+                    </Typography>
+                    <Typography variant="subtitle2" className="text-[#9F9BAE]">
+                      <strong>Public</strong>
+                    </Typography>
+                  </>
+                )}
 
                 {!loading &&
                   studyMaterial?.status?.toLowerCase() === "archived" && (
@@ -503,7 +518,7 @@ const ViewStudyMaterial = () => {
         />
 
         {/* Add ChooseModeModal */}
-        <ChooseModeModal 
+        <ChooseModeModal
           open={showModeModal}
           handleClose={() => setShowModeModal(false)}
           preSelectedMaterial={studyMaterial}
