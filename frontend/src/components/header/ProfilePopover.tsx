@@ -18,7 +18,15 @@ export default function ProfilePopover({
   handleClose,
 }: ProfilePopoverProps) {
   const { setUser } = useUser();
+  const { user } = useUser(); // Assuming user is defined in context
   const navigate = useNavigate();
+
+  const isVerified = user.email_verified || 1; // Assuming user is defined in context
+  const isPremium = user.account_type === "premium"; // Assuming user is defined in context
+
+  const handleGoPremium = () => {
+    navigate("/dashboard/buy-premium-account");
+  };
 
   const handleLogout = async () => {
     try {
@@ -81,24 +89,7 @@ export default function ProfilePopover({
           >
             Settings
           </Button>
-          <Button
-            variant="text"
-            sx={{
-              justifyContent: "flex-start",
-              textTransform: "none",
-              color: "inherit",
-              fontWeight: 400,
-              borderRadius: "0.8rem",
-              padding: "0.6rem 1rem",
-              transition: "all 0.3s ease-in-out",
-              "&:hover": {
-                transform: "scale(1.05)",
-                backgroundColor: "#3B354C",
-              },
-            }}
-          >
-            Go Premium
-          </Button>
+
           <Button
             variant="text"
             sx={{
@@ -138,25 +129,68 @@ export default function ProfilePopover({
           </Button>
           {/* Divider with more space above */}
           <Divider sx={{ mt: 3, mb: 2, backgroundColor: "#444" }} />
-          <Button
-            variant="text"
-            sx={{
-              justifyContent: "flex-start",
-              textTransform: "none",
-              color: "inherit",
-              fontWeight: 400,
-              borderRadius: "0.8rem",
-              padding: "0.6rem 1rem",
-              transition: "all 0.3s ease-in-out",
-              "&:hover": {
-                transform: "scale(1.05)",
-                backgroundColor: "#3B354C",
-              },
-            }}
-            onClick={() => navigate("/dashboard/verify-email")}
-          >
-            Verify Email
-          </Button>
+          {!isPremium ? (
+            <Button
+              variant="text"
+              onClick={handleGoPremium}
+              sx={{
+                justifyContent: "flex-start",
+                textTransform: "none",
+                color: "inherit",
+                fontWeight: 400,
+                borderRadius: "0.8rem",
+                padding: "0.6rem 1rem",
+                transition: "all 0.3s ease-in-out",
+                "&:hover": {
+                  transform: "scale(1.05)",
+                  backgroundColor: "#3B354C",
+                },
+              }}
+            >
+              Go Premium
+            </Button>
+          ) : (
+            <Button
+              variant="text"
+              sx={{
+                justifyContent: "flex-start",
+                textTransform: "none",
+                color: "inherit",
+                fontWeight: 400,
+                borderRadius: "0.8rem",
+                padding: "0.6rem 1rem",
+                transition: "all 0.3s ease-in-out",
+                "&:hover": {
+                  transform: "scale(1.05)",
+                  backgroundColor: "#3B354C",
+                },
+              }}
+            >
+              Cancel Subscription
+            </Button>
+          )}
+          {!isVerified ? (
+            <Button
+              variant="text"
+              sx={{
+                justifyContent: "flex-start",
+                textTransform: "none",
+                color: "inherit",
+                fontWeight: 400,
+                borderRadius: "0.8rem",
+                padding: "0.6rem 1rem",
+                transition: "all 0.3s ease-in-out",
+                "&:hover": {
+                  transform: "scale(1.05)",
+                  backgroundColor: "#3B354C",
+                },
+              }}
+              onClick={() => navigate("/dashboard/verify-email")}
+            >
+              Verify Email
+            </Button>
+          ) : null}
+
           <Button
             variant="text"
             sx={{

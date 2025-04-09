@@ -14,12 +14,14 @@ import AutoHideSnackbar from "../../../components/ErrorsSnackbar";
 const Shop = () => {
   const navigate = useNavigate();
   const { user, updateUser } = useUser();
+
+  const isPremium = user?.account_type === "premium"; // Check if the user is premium
+
   const userCoins = user?.coins || 0;
 
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
-  const [isPremium, _setIsPremium] = useState(false);
   const [items, setItems] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -329,7 +331,7 @@ const Shop = () => {
               learning!
             </p>
             <button
-              className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[16px] sm:text-[19px] bg-white text-[#9F87E5] rounded-full font-bold"
+              className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px]  bg-white text-[#9F87E5] rounded-full font-bold"
               onClick={() => navigate("/dashboard/buy-premium-account")}
             >
               TRY IT NOW
@@ -354,12 +356,20 @@ const Shop = () => {
               You're all set to access the best tools and rewards. Stay ahead
               with ad-free, uninterrupted learning.
             </p>
-            <button
-              className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px] sm:text-[15px] bg-white text-[#3e2880] rounded-full font-bold"
-              onClick={() => navigate("/dashboard/shop/buy-premium-account")}
-            >
-              ENDS IN 24D 1H
-            </button>
+            <div className="flex gap-2">
+              <button
+                className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px] sm:text-[15px]  text-white rounded-full font-bold"
+                onClick={() => navigate("/dashboard/buy-premium-account")}
+              >
+                More Info
+              </button>
+              <button
+                className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px] sm:text-[15px] bg-white text-[#3e2880] rounded-full font-bold"
+                onClick={() => navigate("/dashboard/buy-premium-account")}
+              >
+                Cancel Subscription
+              </button>
+            </div>
           </div>
         )}
 

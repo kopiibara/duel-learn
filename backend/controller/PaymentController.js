@@ -1,6 +1,7 @@
 import Paymongo from 'paymongo';
 import dotenv from 'dotenv';
 import { pool } from '../config/db.js'; // Import your database connection
+import axios from 'axios';
 
 dotenv.config();
 
@@ -58,6 +59,38 @@ const PaymentController = {
                 });
             }
 
+            if (amount === 109 || amount === 1099) {
+                // Insert record into user_payment table for free plan
+                await pool.query(
+                    'INSERT INTO user_payment (firebase_uid, username, amount, plan, payment_method, status, created_at, paid_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW(), NULL)',
+                    [firebase_uid, username, amount, planName, 'premium', 'active']
+                );
+
+                try {
+                    const [userResult] = await pool.query(
+                        'UPDATE users SET account_type = ? WHERE firebase_uid = ?',
+                        ['premium', firebase_uid]
+                    );
+                    console.log(`Updated users table: ${userResult.affectedRows} row(s)`);
+
+                    const [userInfoResult] = await pool.query(
+                        'UPDATE user_info SET account_type = ? WHERE firebase_uid = ?',
+                        ['premium', firebase_uid]
+                    );
+                    console.log(`Updated user_info table: ${userInfoResult.affectedRows} row(s)`);
+                } catch (error) {
+                    console.error('Error updating account type:', error);
+                }
+
+                console.log(`Premium plan activated for user ${firebase_uid}`);
+
+                return res.status(200).json({
+                    success: true,
+                    message: 'Premium plan selected, no payment required',
+                    plan: planName
+                });
+            }
+
             // For paid plans, create a payment record with 'pending' status
             const [paymentResult] = await pool.query(
                 'INSERT INTO user_payment (firebase_uid, username, amount, plan, payment_method, status, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)',
@@ -100,18 +133,117 @@ const PaymentController = {
         }
     },
 
+    createCheckoutSession: async (req, res) => {
+        try {
+            const { firebase_uid, username, email, plan } = req.body;
+
+            // Determine amount based on subscription plan
+            let amount = 0;
+            let planName = '';
+            let expiryDate = null;
+            const now = new Date();
+
+            switch (plan) {
+                case 'monthly':
+                    amount = 109;
+                    planName = 'MONTHLY PLAN';
+                    expiryDate = new Date(now);
+                    expiryDate.setMonth(expiryDate.getMonth() + 1);
+                    break;
+                case 'annual':
+                    amount = 1099;
+                    planName = 'ANNUAL PLAN';
+                    expiryDate = new Date(now);
+                    expiryDate.setFullYear(expiryDate.getFullYear() + 1);
+                    break;
+                default:
+                    return res.status(400).json({ error: 'Invalid subscription plan' });
+            }
+
+            // For paid plans, create a payment record with 'pending' status
+            const [paymentResult] = await pool.query(
+                'INSERT INTO user_payment (firebase_uid, username, amount, plan, payment_method, status, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)',
+                [firebase_uid, username, amount, planName, 'paymongo', 'pending', expiryDate ? expiryDate : null]
+            );
+
+            const paymentId = paymentResult.insertId;
+
+            // Create a checkout session using PayMongo API
+            const checkoutSession = await axios.post(
+                'https://api.paymongo.com/v1/checkout_sessions',
+                {
+                    data: {
+                        attributes: {
+                            line_items: [{
+                                name: `Duel Learn ${planName}`,
+                                amount: amount * 100, // Amount in cents
+                                currency: 'PHP',
+                                quantity: 1
+                            }],
+                            payment_method_types: ['card', 'gcash', 'grab_pay', 'paymaya'],
+                            success_url: `${process.env.FRONTEND_URL}/dashboard/payment-success?payment_id=${paymentId}`,
+                            cancel_url: `${process.env.FRONTEND_URL}/dashboard/buy-premium-account`,
+                            description: `Duel Learn ${planName}`,
+                            billing: {
+                                email: email,
+                                name: username
+                            },
+                            metadata: {
+                                payment_id: paymentId.toString(),
+                                firebase_uid,
+                                username,
+                                plan: planName
+                            }
+                        }
+                    }
+                },
+                {
+                    headers: {
+                        'Authorization': `Basic ${Buffer.from(process.env.PAYMONGO_SECRET_KEY + ':').toString('base64')}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+            );
+
+            return res.status(200).json({
+                success: true,
+                checkout_url: checkoutSession.data.data.attributes.checkout_url,
+                amount: amount,
+                plan: planName
+            });
+
+        } catch (error) {
+            console.error('Checkout session error:', error.response?.data || error.message);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to create checkout session',
+                message: error.message
+            });
+        }
+    },
+
     verifyPayment: async (req, res) => {
         try {
-            const { linkId } = req.params;
+            const { paymentIntentId } = req.params;
 
-            // Retrieve payment link using the correct method
-            const paymentLink = await paymongoClient.links.retrieve(linkId);
+            // Retrieve payment using the paymentIntentId
+            const payment = await paymongoClient.payments.retrieve(paymentIntentId);
 
-            if (paymentLink.data.attributes.status === 'paid') {
+            if (payment.data.attributes.status === 'paid') {
+                // Get the payment link id to fetch additional details
+                const linkId = payment.data.attributes.source.id;
+                const paymentLink = await paymongoClient.links.retrieve(linkId);
+
                 // Extract metadata from remarks
                 const remarks = JSON.parse(paymentLink.data.attributes.remarks || '{}');
                 const planName = remarks.plan;
-                const amount = paymentLink.data.attributes.amount / 100;
+                const amount = payment.data.attributes.amount / 100;
+                const { firebase_uid } = remarks;
+
+                // Update user subscription if firebase_uid is available
+                if (firebase_uid && planName) {
+                    await updateUserSubscription(firebase_uid, planName);
+                }
 
                 return res.status(200).json({
                     success: true,
@@ -137,109 +269,144 @@ const PaymentController = {
         }
     },
 
-    // Update the webhook handler to update payment records
+    // Enhanced paymongoWebhook to update user status
     paymongoWebhook: async (req, res) => {
         try {
-            const payload = req.body;
+            console.log('======== PAYMONGO WEBHOOK RECEIVED ========');
+            console.log('Event:', JSON.stringify(req.body, null, 2));
 
-            const eventType = payload.data.attributes.type;
-            const resourceData = payload.data.attributes.data;
+            const event = req.body;
+            if (!event || !event.data || !event.data.attributes) {
+                return res.status(200).json({ received: true, error: 'Invalid event structure' });
+            }
 
-            console.log(`Received webhook event: ${eventType}`);
+            const eventType = event.data.attributes.type;
+            const resourceData = event.data.attributes.data;
 
-            switch (eventType) {
-                case 'payment.paid':
-                    // Handle successful payment
-                    await handleSuccessfulPayment(resourceData);
-                    break;
+            if (eventType === 'checkout.session.completed') {
+                // Extract metadata from the checkout session
+                const metadata = resourceData.attributes.metadata || {};
+                const { payment_id, firebase_uid } = metadata;
 
-                case 'payment.failed':
-                    // Handle failed payment
-                    await handleFailedPayment(resourceData);
-                    break;
+                if (payment_id && firebase_uid) {
+                    // Update the payment status to 'active'
+                    await pool.query(
+                        'UPDATE user_payment SET status = ?, paid_at = NOW() WHERE id = ?',
+                        ['active', payment_id]
+                    );
 
-                default:
-                    console.log(`Unhandled webhook event type: ${eventType}`);
+                    // Get the plan details
+                    const [paymentRows] = await pool.query(
+                        'SELECT * FROM user_payment WHERE id = ?',
+                        [payment_id]
+                    );
+
+                    if (paymentRows.length > 0) {
+                        const paymentDetails = paymentRows[0];
+
+                        // Update user subscription status
+                        await updateUserSubscription(firebase_uid, paymentDetails.plan);
+
+                        console.log(`Subscription activated for user ${firebase_uid}, plan: ${paymentDetails.plan}`);
+                    }
+                }
             }
 
             return res.status(200).json({ received: true });
         } catch (error) {
-            console.error('Webhook processing error:', error);
+            console.error('Webhook error:', error);
+            return res.status(200).json({ received: true, error: error.message });
+        }
+    },
+
+    verifyPaymentById: async (req, res) => {
+        try {
+            const { paymentId } = req.params;
+
+            // Get payment details from your database
+            const [rows] = await pool.query(
+                'SELECT * FROM user_payment WHERE id = ?',
+                [paymentId]
+            );
+
+            if (rows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Payment not found'
+                });
+            }
+
+            const payment = rows[0];
+
+            // If payment is pending, update it to active and update user account type
+            if (payment.status === 'pending') {
+                await pool.query(
+                    'UPDATE user_payment SET status = ?, paid_at = NOW() WHERE id = ?',
+                    ['active', paymentId]
+                );
+                await pool.query(
+                    'UPDATE users SET account_type = ? WHERE firebase_uid = ?',
+                    ['premium', payment.firebase_uid]
+                );
+                await pool.query(
+                    'UPDATE user_info SET account_type = ? WHERE firebase_uid = ?',
+                    ['premium', payment.firebase_uid]
+                );
+            }
+
             return res.status(200).json({
-                received: true,
-                error: error.message
+                success: true,
+                planDetails: {
+                    planName: payment.plan,
+                    amount: payment.amount
+                }
+            });
+        } catch (error) {
+            console.error('Payment verification error:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to verify payment',
+                message: error.message
+            });
+        }
+    },
+
+    getUserSubscription: async (req, res) => {
+        try {
+            const { firebase_uid } = req.params;
+
+            // Get the user's latest active payment
+            const [rows] = await pool.query(
+                'SELECT * FROM user_payment WHERE firebase_uid = ? AND status = ? ORDER BY created_at DESC LIMIT 1',
+                [firebase_uid, 'active']
+            );
+
+            if (rows.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'No active subscription found'
+                });
+            }
+
+            const payment = rows[0];
+
+            return res.status(200).json({
+                success: true,
+                planDetails: {
+                    planName: payment.plan,
+                    amount: payment.amount,
+                    expiresAt: payment.expires_at
+                }
+            });
+        } catch (error) {
+            console.error('Get user subscription error:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to get subscription details',
+                message: error.message
             });
         }
     }
 };
-
-// Helper functions for webhook processing
-async function handleSuccessfulPayment(paymentData) {
-    try {
-        // Extract payment information
-        const paymentId = paymentData.id;
-        const linkId = paymentData.attributes.payment_intent_id;
-
-        // Fetch the payment link to get the user details from remarks
-        const paymentLink = await paymongoClient.links.retrieve(linkId);
-        const remarks = JSON.parse(paymentLink.data.attributes.remarks || '{}');
-
-        const { payment_id, firebase_uid, plan } = remarks;
-
-        if (!firebase_uid) {
-            console.error('Missing firebase_uid in payment remarks');
-            return;
-        }
-
-        // Update the payment record in database
-        await pool.query(
-            'UPDATE user_payment SET status = ?, paid_at = NOW() WHERE id = ?',
-            ['active', payment_id]
-        );
-
-        console.log(`Successfully processed payment ${paymentId} for user ${firebase_uid}`);
-    } catch (error) {
-        console.error('Error handling successful payment:', error);
-    }
-}
-
-async function handleFailedPayment(paymentData) {
-    try {
-        // Extract payment information
-        const paymentId = paymentData.id;
-        const linkId = paymentData.attributes.payment_intent_id;
-
-        // Fetch the payment link to get the user details
-        const paymentLink = await paymongoClient.links.retrieve(linkId);
-        const remarks = JSON.parse(paymentLink.data.attributes.remarks || '{}');
-
-        const { payment_id } = remarks;
-
-        if (payment_id) {
-            // Update the payment record status to failed
-            await pool.query(
-                'UPDATE user_payment SET status = ? WHERE id = ?',
-                ['failed', payment_id]
-            );
-        }
-
-        console.log('Payment failed:', paymentId);
-    } catch (error) {
-        console.error('Error handling failed payment:', error);
-    }
-}
-
-async function updateUserSubscription(firebase_uid, plan) {
-    // Here you would update your user's subscription status in your database
-    // For example:
-    // await db.collection('users').doc(firebase_uid).update({
-    //     subscription: plan,
-    //     subscriptionStatus: 'active',
-    //     subscriptionDate: new Date(),
-    //     subscriptionExpiry: calculateExpiryDate(plan)
-    // });
-
-    console.log(`Updated subscription for user ${firebase_uid} to ${plan}`);
-}
 
 export default PaymentController;

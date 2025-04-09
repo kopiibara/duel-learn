@@ -7,7 +7,7 @@ import Explore from "../pages/dashboard/explore/ExplorePage";
 import YourLibrary from "../pages/dashboard/my-library/MyLibrary";
 import Profile from "../pages/dashboard/profile/ProfilePage";
 import Shop from "../pages/dashboard/shop/ShopPage";
-import BuyPremium from "../components/BuyPremium";
+import BuyPremium from "../components/premium/BuyPremium";
 import CreateStudyMaterial from "../pages/dashboard/study-material/material-create/CreateStudyMaterial";
 import ViewStudyMaterial from "../pages/dashboard/study-material/view-study-material/ViewStudyMaterial";
 import SetUpQuestionType from "../pages/dashboard/play-battleground/components/setup/SetUpQuestionType";
@@ -35,6 +35,8 @@ import HostModeSelection from "../pages/dashboard/play-battleground/modes/multip
 import Player2ModeSelection from "../pages/dashboard/play-battleground/modes/multiplayer/setup/Player2ModeSelection";
 import PvpBattle from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/PvpBattle";
 import PvpSessionReport from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/screens/PvpSessionReport";
+import Checkout from "../components/premium/Checkout";
+import PaymentSuccess from "../components/premium/PaymentSuccess";
 import SearchPage from "../pages/dashboard/search/SearchPage";
 import SocketService from "../services/socketService";
 import {
@@ -162,24 +164,6 @@ const PrivateRoutes = () => {
 
   return (
     <GameStatusProvider>
-      {/* Optional: Socket connection status indicator (only in development) */}
-      {process.env.NODE_ENV === "development" && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "10px",
-            right: "10px",
-            zIndex: 9999,
-            width: "15px",
-            height: "15px",
-            borderRadius: "50%",
-            background: socketConnected ? "#4CAF50" : "#F44336",
-            boxShadow: "0 0 5px rgba(0,0,0,0.5)",
-          }}
-          title={socketConnected ? "Socket Connected" : "Socket Disconnected"}
-        />
-      )}
-
       <Routes>
         {/* Onboarding and Tutorial Routes */}
         <Route path="welcome" element={<WelcomePage />} />
@@ -215,13 +199,15 @@ const PrivateRoutes = () => {
         </Route>
 
         {/* Premium Routes */}
-        <Route path="/buy-premium-account" element={<BuyPremium />} />
+        <Route path="buy-premium-account" element={<BuyPremium />} />
+        <Route path="checkout" element={<Checkout />} />
+        <Route path="payment-success" element={<PaymentSuccess />} />
 
         {/* Game Setup Routes */}
-        <Route path="/welcome-game-mode" element={<WelcomeGameMode />} />
-        <Route path="/setup/questions" element={<SetUpQuestionType />} />
-        <Route path="/setup/timer" element={<SetUpTimeQuestion />} />
-        <Route path="/loading-screen" element={<LoadingScreen />} />
+        <Route path="welcome-game-mode" element={<WelcomeGameMode />} />
+        <Route path="setup/questions" element={<SetUpQuestionType />} />
+        <Route path="setup/timer" element={<SetUpTimeQuestion />} />
+        <Route path="loading-screen" element={<LoadingScreen />} />
 
         {/* Game Mode Routes */}
         <Route

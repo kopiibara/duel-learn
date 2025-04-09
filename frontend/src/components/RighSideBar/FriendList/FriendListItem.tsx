@@ -1,6 +1,6 @@
 import React from "react";
 import { Button, Tooltip } from "@mui/material";
-import DefaultPicture from "/profile-picture/default-picture.svg";
+import defaultPicture from "/profile-picture/default-picture.svg";
 import { Friend } from "../../../contexts/UserContext";
 import ProfileModal from "../../modals/ProfileModal";
 import { useState } from "react";
@@ -17,12 +17,12 @@ interface FriendListItemProps {
 }
 
 const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
-  const navigate = useNavigate();
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [materialModalOpen, setMaterialModalOpen] = useState(false);
   const [inviteMode, setInviteMode] = useState<string>("PvP");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
+  const navigate = useNavigate();
 
   // Use hooks to get status
   const isOnline = useOnlineStatus(friend.firebase_uid);
@@ -116,10 +116,10 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
         <div className="flex items-center">
           <div className="relative">
             <img
-              src={friend.display_picture || DefaultPicture}
+              src={friend.display_picture || defaultPicture}
               onClick={() => handleViewProfile(friend.firebase_uid)}
               alt="Avatar"
-              className="w-9 sm:w-11 md:w-14 cursor-pointer h-auto mr-2 sm:mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
+              className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
             />
             {/* Status indicator positioned to overlap the image corner */}
             <Tooltip title={text} placement="top" arrow>
@@ -141,8 +141,8 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
               <p className="text-xs sm:text-sm text-[#9F9BAE]">
                 Level {friend.level}
               </p>
-              <p className="text-[#9F9BAE] text-xs hidden xs:inline">•</p>
-              <p className="text-xs sm:text-sm text-[#9F9BAE] whitespace-nowrap">
+              <p className="text-[#9F9BAE] text-xs">•</p>
+              <p className="text-xs sm:text-sm text-[#9F9BAE]">
                 EXP {friend.exp}
               </p>
             </div>
@@ -151,21 +151,22 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
 
         {/* Button with more responsive padding */}
         <Button
-          onClick={handleInviteClick}
           variant="contained"
+          onClick={handleInviteClick}
           sx={{
             borderRadius: "0.6rem",
             padding: {
-              xs: "0.2rem 0.4rem", // Smaller padding on very small screens
+              xs: "0.25rem 0.5rem", // Smaller padding on very small screens
               sm: "0.3rem 0.75rem", // Medium padding
               md: "0.4rem 1rem", // Larger padding
             },
+            marginLeft: "8px",
             display: "flex",
             width: "fit-content",
-            minWidth: { xs: "50px", sm: "60px" },
+            minWidth: "60px",
             height: "fit-content",
             fontSize: {
-              xs: "0.65rem",
+              xs: "0.7rem",
               sm: "0.75rem",
               md: "0.8rem",
             },
