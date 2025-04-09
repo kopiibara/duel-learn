@@ -148,18 +148,8 @@ export default function Header({
                 {mode} Mode - {material?.title || "No Material Selected"}
               </span>
               <div className="flex items-center gap-4 text-[12px] sm:text-[14px] text-[#6F658D]">
-                {mode === "Time Pressured" && (
-                  <>
-                    <div>Mastered {correct}</div>
-                    <div>Unmastered {incorrect}</div>
-                  </>
-                )}
-                {mode === "Peaceful" && (
-                  <>
-                    <div>Mastered {masteredCount}</div>
-                    <div>Unmastered {unmasteredCount}</div>
-                  </>
-                )}
+                <div>Mastered {masteredCount}</div>
+                <div>Unmastered {unmasteredCount}</div>
               </div>
             </div>
           </div>
