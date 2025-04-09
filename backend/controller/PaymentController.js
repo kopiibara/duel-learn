@@ -406,6 +406,39 @@ const PaymentController = {
                 message: error.message
             });
         }
+    },
+
+    cancelSubscription: async (req, res) => {
+        try {
+            const { firebase_uid } = req.params;
+
+            // Cancel the user's subscription by updating the status to 'cancelled'
+            await pool.query(
+                'UPDATE user_payment SET status = ? WHERE firebase_uid = ? AND status = ?',
+                ['cancelled', firebase_uid, 'active']
+            );
+
+            await pool.query(
+                'UPDATE users SET account_type = ? WHERE firebase_uid = ?',
+                ['free', firebase_uid]
+            );
+            await pool.query(
+                'UPDATE user_info SET account_type = ? WHERE firebase_uid = ?',
+                ['free', firebase_uid]
+            );
+
+            return res.status(200).json({
+                success: true,
+                message: 'Subscription cancelled successfully'
+            });
+        } catch (error) {
+            console.error('Cancel subscription error:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to cancel subscription',
+                message: error.message
+            });
+        }
     }
 };
 
