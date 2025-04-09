@@ -37,7 +37,6 @@ const UserInfo = {
 
             // Send the combined data
             res.status(200).json({
-                message: 'User info fetched successfully',
                 user: userData[0],
             });
         } catch (error) {
