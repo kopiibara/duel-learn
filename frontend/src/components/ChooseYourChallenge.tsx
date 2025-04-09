@@ -27,7 +27,7 @@ const ModeCard = styled(Card)(({ theme }) => {
   return {
     padding: isXsScreen ? "1rem 0.75rem" : "1.5rem 0.75rem", // Responsive padding with rem
     borderRadius: "0.8rem",
-    height: isXsScreen ? "120px" : "240px", // Fixed height values instead of vh
+    height: isXsScreen ? "120px" : "220px", // Fixed height values instead of vh
     minHeight: isXsScreen ? "120px" : "140px", // Min height with px
     maxHeight: isXsScreen ? "180px" : "240px", // Max height with px
     width: "100%",

@@ -48,7 +48,7 @@ const SetUpTimeQuestion: React.FC = () => {
       setOpenManaAlert(true);
     } else {
       console.log("Starting learning with time limit:", timeLimit, "seconds.");
-      navigate("/dashboard/loading-screen", {
+      navigate("/dashboard/study/time-pressured-mode", {
         state: {
           mode: "Time Pressured",
           material,

@@ -119,9 +119,22 @@ export const UserProvider: React.FC<{ children: React.ReactNode }> = ({
       if (!prevUser) return null;
 
       const updatedUser = { ...prevUser, ...updates };
+
+      // Log the update
+      console.log("Updating user data:", {
+        before: prevUser.account_type,
+        after: updates.account_type || prevUser.account_type,
+      });
+
+      // Update localStorage
       localStorage.setItem("userData", JSON.stringify(updatedUser));
+
       return updatedUser;
     });
+
+    // Force an immediate storage sync
+    const updatedData = localStorage.getItem("userData");
+    console.log("Updated localStorage data:", JSON.parse(updatedData || "{}"));
   }, []);
 
   // Load user data from the API and connect socket

@@ -1,5 +1,6 @@
 import { Button } from "@mui/material";
 import SessionComplete from "/General/SessionComplete.png";
+import CharacterImage from "/General/session-complete.png"; // Import character image
 import ClockIcon from "/clock.png";
 import ManaIcon from "/ManaIcon.png";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
@@ -32,7 +33,7 @@ const StatisticBox = ({
   value,
   icon,
 }: StatisticProps & { icon: string }) => (
-  <div className="backdrop-blur-sm px-10 py-7 rounded-md border w-[660px] border-[#3B354D] flex justify-between items-center">
+  <div className="backdrop-blur-sm px-10 py-10 rounded-md border w-[660px] border-[#3B354D] flex justify-between items-center">
     <div className="flex items-center gap-2">
       <img src={icon} alt="" className="w-5 h-5 mb-1 mr-3" />
       <div className="text-base mb-1 text-white uppercase tracking-wider">
@@ -135,13 +136,24 @@ const SessionReport = () => {
       {/* Added pb-16 for padding-bottom */}
       {!earlyEnd && <AutoConfettiAnimation />}
       <div className="w-full max-w-[800px ] space-y-8 text-center mb-[600px]  max-h-screen">
-        {/* Session Complete Banner */}
-        <div className="relative inline-block mx-auto mt-[490px]">
-          <img
-            src={SessionComplete}
-            alt="SESSION COMPLETE"
-            className="relative z-10 w-[554px] h-[96px]"
-          />
+        {/* Session Complete Banner and Character */}
+        <div className="flex flex-col items-center">
+          <div className="relative inline-block mx-auto mt-[490px]">
+            <img
+              src={SessionComplete}
+              alt="SESSION COMPLETE"
+              className="relative z-10 w-[554px] h-[96px]"
+            />
+          </div>
+
+          {/* Character Image */}
+          <div className="flex justify-center mt-12">
+            <img
+              src={CharacterImage}
+              alt="Session complete character"
+              className="w-[673px] h-[348px] object-contain"
+            />
+          </div>
         </div>
 
         <div>

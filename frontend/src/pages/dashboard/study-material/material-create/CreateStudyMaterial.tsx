@@ -123,7 +123,12 @@ const CreateStudyMaterial = () => {
       item_number: number;
     }[]
   >(location.state?.items || []);
-  const [visibility, setVisibility] = useState<string>("0"); // Add this state for visibility
+  const [visibility, setVisibility] = useState<string>(
+    location.state?.visibility !== undefined
+      ? location.state.visibility.toString()
+      : "0"
+  );
+  // ...existing code...
 
   // Configure sensors for drag and drop
   const sensors = useSensors(

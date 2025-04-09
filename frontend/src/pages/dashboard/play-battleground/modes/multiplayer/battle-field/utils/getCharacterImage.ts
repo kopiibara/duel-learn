@@ -1,5 +1,4 @@
 // Character animations
-
 import characterPicking from "/characterinLobby/CharacterPicking.gif"; // Initial picking animation
 import characterPickingLoop from "/characterinLobby/CharacterPickingLoop.gif"; // Loop animation
 

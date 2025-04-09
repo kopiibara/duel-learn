@@ -5,7 +5,7 @@ dotenv.config();
 
 const allowedOrigins = [
   process.env.FRONTEND_URL, 'https://duel-learn.vercel.app', 'https://duel-learn-production.up.railway.app',
-  'http://localhost:3000',
+  'http://localhost:5000',
   'http://localhost:5173',
 ];
 
