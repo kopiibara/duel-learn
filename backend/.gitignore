@@ -30,6 +30,7 @@ Thumbs.db
 package-lock.json
 
 
+
 .vscode/*
 
 # Firebase admin SDK JSON file

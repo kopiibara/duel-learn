@@ -10,6 +10,7 @@ import { ShopItem } from "../../../types/shopObject"; // Import the ShopItem int
 import axios from "axios";
 import { useUser } from "../../../contexts/UserContext";
 import AutoHideSnackbar from "../../../components/ErrorsSnackbar";
+import CancelSubscription from "../../../components/premium/CancelSubscription";
 
 const Shop = () => {
   const navigate = useNavigate();
@@ -25,14 +26,11 @@ const Shop = () => {
   const [items, setItems] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Track owned items
   const [ownedItems, setOwnedItems] = useState<Record<string, number>>({});
-
-  // Snackbar state
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>("");
   const [isSnackbarAction, setIsSnackbarAction] = useState<boolean>(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [refreshCallback, setRefreshCallback] = useState<
     (() => void) | undefined
   >(undefined);
@@ -40,6 +38,10 @@ const Shop = () => {
   // Handle closing the snackbar
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
+  };
+
+  const handleOpenCancelSubsModal = () => {
+    setShowCancelModal(true);
   };
 
   // Show a message in the snackbar
@@ -365,7 +367,7 @@ const Shop = () => {
               </button>
               <button
                 className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px] sm:text-[15px] bg-white text-[#3e2880] rounded-full font-bold"
-                onClick={() => navigate("/dashboard/buy-premium-account")}
+                onClick={handleOpenCancelSubsModal}
               >
                 Cancel Subscription
               </button>
@@ -481,6 +483,10 @@ const Shop = () => {
         onClose={handleSnackbarClose}
         onClick={handleRefresh}
         action={isSnackbarAction}
+      />
+      <CancelSubscription
+        open={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
       />
     </PageTransition>
   );

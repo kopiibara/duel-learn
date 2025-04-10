@@ -410,7 +410,7 @@ const PaymentController = {
 
     cancelSubscription: async (req, res) => {
         try {
-            const { firebase_uid } = req.params;
+            const { firebase_uid } = req.body;
 
             // Cancel the user's subscription by updating the status to 'cancelled'
             await pool.query(
