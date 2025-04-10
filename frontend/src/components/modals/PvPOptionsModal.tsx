@@ -16,6 +16,8 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import ModalFriendList from "../../assets/General/ModalFriendList.png";
 import SocketService from "../../services/socketService";
 import { useUser } from "../../contexts/UserContext";
+import { usePvPLobby } from "../../hooks/usePvPLobby";
+import axios from "axios";
 
 interface PvPOptionsModalProps {
   open: boolean;
@@ -38,6 +40,7 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
   const [isJoining, setIsJoining] = useState(false);
   const [validatingLobby, setValidatingLobby] = useState(false);
   const { user } = useUser();
+  const { joinLobby } = usePvPLobby();
   
   // Get socket instance
   const socketService = SocketService.getInstance();
@@ -83,7 +86,7 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
     setShowJoinForm(true);
   };
 
-  const handleJoinSubmit = () => {
+  const handleJoinSubmit = async () => {
     if (!lobbyCode.trim()) {
       setError("Please enter a lobby code");
       return;
@@ -103,22 +106,89 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
       return;
     }
     
-    // First validate if the lobby exists via socket
+    // Set loading state
     setValidatingLobby(true);
     setError("");
     
-    // Request lobby validation through socket
-    if (socket) {
-      socket.emit("validateLobby", {
+    try {
+      // Use the lobby API to validate and join the lobby
+      console.log("Validating and joining lobby:", formattedLobbyCode);
+      
+      // First validate the lobby through the API
+      const validateResponse = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/lobby/validate/${formattedLobbyCode}`
+      );
+      
+      if (!validateResponse.data.success) {
+        throw new Error(validateResponse.data.message || "Invalid lobby code");
+      }
+      
+      console.log("Lobby validation successful:", validateResponse.data);
+      
+      // Now that lobby is validated, join it
+      setIsJoining(true);
+      
+      const joinResponse = await joinLobby(formattedLobbyCode);
+      
+      if (!joinResponse.success) {
+        throw new Error(joinResponse.error || "Failed to join lobby");
+      }
+      
+      console.log("Successfully joined lobby:", joinResponse);
+      
+      // Get lobby details with all settings
+      const detailsResponse = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/lobby/${formattedLobbyCode}`
+      );
+      
+      const lobbyData = detailsResponse.data.data;
+      
+      // Parse settings
+      const settings = lobbyData.settings || {};
+      
+      // Prepare data for navigation
+      const lobbyState = {
         lobbyCode: formattedLobbyCode,
-        playerId: user.firebase_uid,
-        playerName: user.username,
-        playerLevel: user.level,
-        playerPicture: user.display_picture
-      });
-    } else {
+        isGuest: true,
+        isJoining: true,
+        role: 'guest',
+        mode: 'PvP',
+        selectedTypes: settings.question_types || [],
+        selectedMaterial: settings.study_material_title ? { 
+          title: settings.study_material_title,
+          id: settings.study_material_id 
+        } : null,
+        hostInfo: {
+          firebase_uid: lobbyData.host_id,
+          username: lobbyData.host_username,
+          level: lobbyData.host_level,
+          display_picture: lobbyData.host_picture
+        }
+      };
+      
+      // Close the modal
+      handleClose();
+      
+      // Notify parent component and pass to navigation
+      onJoinLobby(formattedLobbyCode);
+      
+      // Use the socket to inform the host that someone is joining
+      if (socket) {
+        socket.emit("guest_joined_lobby", {
+          lobbyCode: formattedLobbyCode,
+          guestId: user.firebase_uid,
+          guestName: user.username,
+          guestLevel: user.level,
+          guestPicture: user.display_picture
+        });
+      }
+      
+    } catch (err: any) {
+      console.error("Error joining lobby:", err);
+      setError(err.message || "Failed to join lobby");
+      setIsJoining(false);
+    } finally {
       setValidatingLobby(false);
-      setError("Connection error. Please try again.");
     }
   };
 
