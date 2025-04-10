@@ -22,6 +22,7 @@ export default function Player2ModeSelection() {
   const [openLeaveModal, setOpenLeaveModal] = useState(false);
   const [hostLeft, setHostLeft] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   // Add debug info
   const addDebugInfo = (info: string) => {
@@ -153,6 +154,8 @@ export default function Player2ModeSelection() {
 
   // Poll for host's difficulty selection
   useEffect(() => {
+    if (isNavigating) return; // Skip checks if already navigating
+
     const checkDifficulty = async () => {
       try {
         // First check if the host has selected a difficulty
@@ -173,24 +176,35 @@ export default function Player2ModeSelection() {
           if (sessionResponse.data.success && sessionResponse.data.data.host_in_battle === 1) {
             console.log("Host has entered the battle, joining now...");
 
-            // When host has selected and entered, update battle_sessions to mark guest as ready
-            await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-session`, {
-              lobby_code: lobbyCode,
-              guest_in_battle: true // Mark guest as entered
-            });
+            // Set navigating state to prevent multiple attempts
+            setIsNavigating(true);
 
-            // Navigate to battle
-            navigate(`/dashboard/pvp-battle/${lobbyCode}`, {
-              state: {
-                lobbyCode,
-                difficulty: difficultyResponse.data.data.difficulty,
-                isHost: false,
-                hostUsername,
-                guestUsername,
-                hostId,
-                guestId
-              }
-            });
+            try {
+              // When host has selected and entered, update battle_sessions to mark guest as ready
+              await axios.put(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-session`, {
+                lobby_code: lobbyCode,
+                guest_in_battle: true // Mark guest as entered
+              });
+
+              // Add slight delay before navigation to ensure state updates properly
+              setTimeout(() => {
+                // Navigate to battle
+                navigate(`/dashboard/pvp-battle/${lobbyCode}`, {
+                  state: {
+                    lobbyCode,
+                    difficulty: difficultyResponse.data.data.difficulty,
+                    isHost: false,
+                    hostUsername,
+                    guestUsername,
+                    hostId,
+                    guestId
+                  }
+                });
+              }, 300);
+            } catch (err) {
+              console.error("Error updating session:", err);
+              setIsNavigating(false); // Reset if there's an error
+            }
           } else {
             console.log("Host has selected difficulty but hasn't entered the battle yet. Waiting...");
           }
@@ -207,7 +221,7 @@ export default function Player2ModeSelection() {
     const interval = setInterval(checkDifficulty, 1200);
 
     return () => clearInterval(interval);
-  }, [lobbyCode, navigate, hostUsername, guestUsername, hostId, guestId]);
+  }, [lobbyCode, navigate, hostUsername, guestUsername, hostId, guestId, isNavigating]);
 
   const handleLeavePage = () => {
     addDebugInfo('Handling leave action...');
