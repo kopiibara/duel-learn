@@ -8,8 +8,7 @@ import { useOnlineStatus } from "../../../hooks/useOnlineStatus";
 import { useLobbyStatus } from "../../../hooks/useLobbyStatus";
 import SelectStudyMaterialModal from "../../modals/SelectStudyMaterialModal";
 import { useNavigate } from "react-router-dom";
-import { createNewLobby } from "../../../services/pvpLobbyService";
-import { generateCode } from "../../../pages/dashboard/play-battleground/utils/codeGenerator";
+import { createNewLobby, generateLobbyCode } from "../../../services/pvpLobbyService";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
 
 interface FriendListItemProps {
@@ -81,7 +80,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   // Handler for material selection
   const handleMaterialSelect = (material: StudyMaterial) => {
     // Generate a new lobby code
-    const lobbyCode = generateCode();
+    const lobbyCode = generateLobbyCode();
     
     // Create a new lobby state
     const lobbyState = createNewLobby(inviteMode, material);
@@ -115,12 +114,12 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center">
           <div className="relative">
-            <img
-              src={friend.display_picture || defaultPicture}
-              onClick={() => handleViewProfile(friend.firebase_uid)}
-              alt="Avatar"
-              className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
-            />
+          <img
+            src={friend.display_picture || defaultPicture}
+            onClick={() => handleViewProfile(friend.firebase_uid)}
+            alt="Avatar"
+            className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
+          />
             {/* Status indicator positioned to overlap the image corner */}
             <Tooltip 
               title={text} 
