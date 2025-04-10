@@ -148,7 +148,7 @@ const PrivateRoutes = () => {
 
   return (
     <GameStatusProvider>
-      
+
 
       <Routes>
         {/* Onboarding and Tutorial Routes */}
