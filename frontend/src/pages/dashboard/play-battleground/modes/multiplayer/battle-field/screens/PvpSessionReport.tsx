@@ -8,6 +8,7 @@ import { useAudio } from "../../../../../../../contexts/AudioContext";
 import { useEffect, useState } from "react";
 import CompleteOrVictory from "../../../../../../../../public/session-reports/CompleteOrVictory.png";
 import IncompleteOrDefeat from "../../../../../../../../public/session-reports/IncompleteOrDefeat.png";
+import axios from "axios";
 
 interface PvpSessionReportProps {
     timeSpent: string;
@@ -40,7 +41,8 @@ const StatisticBox = ({
     label,
     value,
     icon,
-}: StatisticProps & { icon: string }) => (
+    subValue,
+}: StatisticProps & { icon: string; subValue?: string }) => (
     <div className="backdrop-blur-sm px-10 py-7 rounded-md border w-[660px] border-[#3B354D] flex justify-between items-center">
         <div className="flex items-center gap-2">
             <img src={icon} alt="" className="w-5 h-5 mb-1 mr-3" />
@@ -48,7 +50,12 @@ const StatisticBox = ({
                 {label}
             </div>
         </div>
-        <div className="text-base font-bold text-white mt-1">{value}</div>
+        <div className="flex flex-col items-end">
+            <div className="text-base font-bold text-white mt-1">{value}</div>
+            {subValue && (
+                <div className="text-sm text-green-500 mt-1">{subValue}</div>
+            )}
+        </div>
     </div>
 );
 
@@ -56,6 +63,7 @@ const PvpSessionReport = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [showAllStats, setShowAllStats] = useState(false);
+    const [winStreak, setWinStreak] = useState(0);
 
     // If there's no state, redirect to home
     if (!location.state) {
@@ -85,6 +93,13 @@ const PvpSessionReport = () => {
 
     const { pauseAudio, playSessionCompleteSound } = useAudio();
 
+    // Calculate bonus points based on win streak
+    const getBonusPoints = (streak: number) => {
+        if (streak <= 0) return 0;
+        if (streak >= 6) return 50;
+        return streak * 10;
+    };
+
     // Keep the sound effects useEffects
     useEffect(() => {
         const playSound = async () => {
@@ -104,6 +119,25 @@ const PvpSessionReport = () => {
         return () => clearTimeout(timer);
     }, [pauseAudio]);
 
+    // Add new useEffect to fetch win streak
+    useEffect(() => {
+        const fetchWinStreak = async () => {
+            try {
+                const userId = isHost ? hostId : guestId;
+                if (userId) {
+                    const response = await axios.get(`${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/win-streak/${userId}`);
+                    if (response.data.success) {
+                        setWinStreak(response.data.data.win_streak);
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching win streak:', error);
+            }
+        };
+
+        fetchWinStreak();
+    }, [hostId, guestId, isHost]);
+
     // Add console logs to check passed data
     console.log("PVP Session Report Data:", {
         timeSpent,
@@ -116,7 +150,8 @@ const PvpSessionReport = () => {
         highestStreak,
         playerHealth,
         opponentHealth,
-        isWinner
+        isWinner,
+        winStreak
     });
 
     return (
@@ -150,11 +185,13 @@ const PvpSessionReport = () => {
                                 label="EARNED XP"
                                 value={`${earnedXP} XP`}
                                 icon={ManaIcon}
+                                subValue={winStreak > 0 ? `+${getBonusPoints(winStreak)} XP (Win Streak Bonus)` : undefined}
                             />
                             <StatisticBox
                                 label="EARNED COINS"
                                 value={`${earnedCoins} Coins`}
                                 icon={ManaIcon}
+                                subValue={winStreak > 0 ? `+${getBonusPoints(winStreak)} Coins (Win Streak Bonus)` : undefined}
                             />
                             <StatisticBox
                                 label="TOTAL TIME"
@@ -165,6 +202,12 @@ const PvpSessionReport = () => {
                                 label="BATTLE RESULT"
                                 value={isWinner ? "VICTORY" : "DEFEAT"}
                                 icon={ManaIcon}
+                            />
+                            <StatisticBox
+                                label="WIN STREAK"
+                                value={`${winStreak}x`}
+                                icon={ManaIcon}
+                                subValue={winStreak > 0 ? `Bonus: +${getBonusPoints(winStreak)} XP/Coins` : "No bonus"}
                             />
 
                             {showAllStats && (

@@ -13,14 +13,15 @@ import {
     getBattleRound,
     initializeBattleScores,
     getBattleScores,
-
     updateBattleScores,
     getActiveCardEffects,
     consumeCardEffect,
     checkCardBlockingEffects,
     checkMindControlEffects,
     applyPoisonEffects,
-    savePvpSessionReport
+    savePvpSessionReport,
+    getWinStreak,
+    updateWinStreak
 
 } from '../controller/GameplayController.js';
 
@@ -49,6 +50,10 @@ router.post('/battle/apply-poison-effects', applyPoisonEffects);
 router.post('/battle/initialize-scores', initializeBattleScores);
 router.get('/battle/scores/:session_uuid', getBattleScores);
 router.put('/battle/update-scores', updateBattleScores);
+
+// Win streak routes
+router.get('/battle/win-streak/:firebase_uid', getWinStreak);
+router.put('/battle/win-streak', updateWinStreak);
 
 // End the battle
 router.post('/battle/end', endBattle);

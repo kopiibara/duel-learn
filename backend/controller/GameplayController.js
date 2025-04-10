@@ -1965,4 +1965,127 @@ export const savePvpSessionReport = async (req, res) => {
             connection.release();
         }
     }
+};
+
+/**
+ * Get user's current win streak
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const getWinStreak = async (req, res) => {
+    let connection;
+    try {
+        const { firebase_uid } = req.params;
+
+        if (!firebase_uid) {
+            return res.status(400).json({
+                success: false,
+                message: "Firebase UID is required"
+            });
+        }
+
+        connection = await pool.getConnection();
+
+        // Get win streak from user_info table
+        const [result] = await connection.execute(
+            'SELECT win_streak FROM user_info WHERE firebase_uid = ?',
+            [firebase_uid]
+        );
+
+        if (result.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                win_streak: result[0].win_streak || 0
+            }
+        });
+
+    } catch (error) {
+        console.error('Error getting win streak:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to get win streak",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+/**
+ * Update user's win streak
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const updateWinStreak = async (req, res) => {
+    let connection;
+    try {
+        const { firebase_uid, is_winner } = req.body;
+
+        if (!firebase_uid || is_winner === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: "Firebase UID and winner status are required"
+            });
+        }
+
+        connection = await pool.getConnection();
+
+        // Get current win streak
+        const [currentStreak] = await connection.execute(
+            'SELECT win_streak FROM user_info WHERE firebase_uid = ?',
+            [firebase_uid]
+        );
+
+        if (currentStreak.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Calculate new win streak
+        let newStreak;
+        if (is_winner) {
+            // Get current streak value, ensuring it's a number
+            const currentStreakValue = currentStreak[0].win_streak === null ? 0 : parseInt(currentStreak[0].win_streak);
+
+            // Increment streak but cap at 5
+            newStreak = Math.min(currentStreakValue + 1, 5);
+
+            console.log('Current streak:', currentStreakValue, 'New streak:', newStreak); // Debug log
+        } else {
+            // Reset streak to 0 on loss
+            newStreak = 0;
+        }
+
+        // Update win streak in database
+        await connection.execute(
+            'UPDATE user_info SET win_streak = ? WHERE firebase_uid = ?',
+            [newStreak, firebase_uid]
+        );
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                win_streak: newStreak
+            }
+        });
+
+    } catch (error) {
+        console.error('Error updating win streak:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update win streak",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
 }; 
