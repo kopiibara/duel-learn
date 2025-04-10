@@ -994,19 +994,35 @@ const CreateStudyMaterial = () => {
             </Box>
 
             {/* Tags Input */}
-            <Box className="flex items-center">
-              <Stack spacing={1} sx={{ width: "100%" }}>
-                <Typography variant="subtitle1" className="text-[#3B354D]">
-                  Tags:
-                </Typography>
+            <Box className="flex">
+              <Stack
+                spacing={1}
+                sx={{ display: "inline-flex", maxWidth: "100%" }}
+              >
+                <Stack direction="row" spacing={1} alignItems="baseline">
+                  <Typography variant="subtitle1" className="text-[#3B354D]">
+                    Tags:
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color: "#9F9BAE",
+                      fontSize: "0.75rem",
+                    }}
+                  >
+                    (Type a custom tag or select from predefined subjects, then
+                    press Enter)
+                  </Typography>
+                </Stack>
                 <Box
                   sx={{
                     display: "inline-flex",
                     alignItems: "center",
+                    alignSelf: "flex-start",
                     flexWrap: "wrap",
                     gap: 0.5,
                     padding: { xs: "0.5rem", sm: "0.8rem" },
-                    width: { xs: "100%", sm: "fit-content" },
+                    width: "auto",
                     maxWidth: "100%",
                     border: "1px solid #3B354D",
                     borderRadius: "0.8rem",
@@ -1043,10 +1059,21 @@ const CreateStudyMaterial = () => {
                   ))}
 
                   {tags.length < MAX_TAGS && (
-                    <Box sx={{ position: "relative", minWidth: "200px" }}>
+                    <Box
+                      sx={{
+                        position: "relative",
+                        minWidth: "120px",
+                        maxWidth: "200px",
+                        flex: "0 1 auto",
+                      }}
+                    >
                       <TextField
                         variant="standard"
-                        placeholder="Type tag and press Enter"
+                        placeholder={
+                          inputValue || tags.length > 0
+                            ? ""
+                            : "Add a tag here ..."
+                        }
                         value={inputValue}
                         onChange={(e) => {
                           setInputValue(e.target.value);
@@ -1076,6 +1103,7 @@ const CreateStudyMaterial = () => {
                             background: "transparent",
                             fontSize: "1rem",
                             padding: "4px 6px",
+                            width: "100%",
                           },
                         }}
                       />
