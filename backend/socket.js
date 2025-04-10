@@ -384,7 +384,7 @@ const setupSocket = (server) => {
         activeUsers.delete(socket.userId);
         usersInLobby.delete(socket.userId);
         usersInGame.delete(socket.userId);
-        
+
         // Broadcast user offline status and not in game/lobby
         socket.broadcast.emit("userStatusChanged", {
           userId: socket.userId,
@@ -399,7 +399,7 @@ const setupSocket = (server) => {
           inGame: false,
           mode: null
         });
-        
+
         console.log(`👋 User ${socket.userId} disconnected (${reason})`);
       }
 
@@ -432,13 +432,13 @@ const setupSocket = (server) => {
       (data) => {
         const { userIds } = data;
         const onlineStatuses = {};
-        
+
         if (Array.isArray(userIds)) {
           userIds.forEach(userId => {
             onlineStatuses[userId] = isUserOnline(userId);
           });
         }
-        
+
         socket.emit("onlineStatusResponse", onlineStatuses);
       }
     );
@@ -457,13 +457,13 @@ const setupSocket = (server) => {
       (data) => {
         const { userIds } = data;
         const lobbyStatuses = {};
-        
+
         if (Array.isArray(userIds)) {
           userIds.forEach(userId => {
             lobbyStatuses[userId] = isUserInLobby(userId);
           });
         }
-        
+
         socket.emit("lobbyStatusResponse", lobbyStatuses);
       }
     );
@@ -476,13 +476,13 @@ const setupSocket = (server) => {
       "🎮",
       (data) => {
         const { userId, inLobby, lobbyCode } = data;
-        
+
         if (inLobby && lobbyCode) {
           usersInLobby.set(userId, lobbyCode);
         } else {
           usersInLobby.delete(userId);
         }
-        
+
         // Broadcast to all clients
         socket.broadcast.emit("userLobbyStatusChanged", {
           userId,
@@ -499,10 +499,10 @@ const setupSocket = (server) => {
       "🎮",
       (data) => {
         const { playerId, lobbyCode } = data;
-        
+
         // Store in the map
         usersInLobby.set(playerId, lobbyCode);
-        
+
         // Broadcast to all clients
         socket.broadcast.emit("player_joined_lobby", {
           playerId,
@@ -519,14 +519,78 @@ const setupSocket = (server) => {
       "🎮",
       (data) => {
         const { playerId } = data;
-        
+
         // Remove from the map
         usersInLobby.delete(playerId);
-        
+
         // Broadcast to all clients
         socket.broadcast.emit("player_left_lobby", {
           playerId
         });
+      }
+    );
+
+    // Handle difficulty selection leave
+    createEventHandler(
+      socket,
+      "leave_difficulty_selection",
+      ["lobbyCode", "leavingPlayerId", "isHost"],
+      "🎮",
+      (data) => {
+        const { lobbyCode, leavingPlayerId, isHost } = data;
+
+        console.log(`Player ${leavingPlayerId} (${isHost ? 'Host' : 'Guest'}) leaving lobby ${lobbyCode}`);
+
+        // Leave the socket room
+        socket.leave(lobbyCode);
+
+        // Remove from lobby tracking
+        usersInLobby.delete(leavingPlayerId);
+
+        // Broadcast to everyone in the lobby except the leaver
+        socket.to(lobbyCode).emit("player_left_difficulty_selection", {
+          leavingPlayerId,
+          isHost,
+          timestamp: new Date().toISOString()
+        });
+
+        // IMPORTANT: Also emit a direct broadcast to ALL clients to ensure everyone gets the message
+        // This helps in case socket.to() has any issues
+        io.emit("player_left_difficulty_selection", {
+          leavingPlayerId,
+          isHost,
+          timestamp: new Date().toISOString()
+        });
+
+        // Also emit a general lobby status update
+        io.emit("lobby_status_update", {
+          lobbyCode,
+          status: "player_left",
+          leavingPlayerId,
+          isHost,
+          timestamp: new Date().toISOString()
+        });
+
+        // Clean up the lobby if it was the host who left
+        if (isHost) {
+          // Notify all clients in the lobby that it's being closed
+          io.to(lobbyCode).emit("lobby_closed", {
+            reason: "host_left",
+            lobbyCode,
+            timestamp: new Date().toISOString()
+          });
+
+          // Force all remaining clients to leave the lobby room
+          const room = io.sockets.adapter.rooms.get(lobbyCode);
+          if (room) {
+            for (const clientId of room) {
+              const clientSocket = io.sockets.sockets.get(clientId);
+              if (clientSocket) {
+                clientSocket.leave(lobbyCode);
+              }
+            }
+          }
+        }
       }
     );
 
@@ -539,7 +603,7 @@ const setupSocket = (server) => {
       const userGame = usersInGame.get(userId);
       return userGame ? userGame.mode : null;
     };
-    
+
     // Handle game status requests
     createEventHandler(
       socket,
@@ -549,7 +613,7 @@ const setupSocket = (server) => {
       (data) => {
         const { userIds } = data;
         const gameStatuses = {};
-        
+
         if (Array.isArray(userIds)) {
           userIds.forEach(userId => {
             gameStatuses[userId] = {
@@ -558,7 +622,7 @@ const setupSocket = (server) => {
             };
           });
         }
-        
+
         socket.emit("gameStatusResponse", gameStatuses);
       }
     );
@@ -571,7 +635,7 @@ const setupSocket = (server) => {
       "🎮",
       (data) => {
         const { userId, inGame, mode } = data;
-        
+
         if (inGame && mode) {
           // Store the game mode with the user ID
           usersInGame.set(userId, { mode });
@@ -580,7 +644,7 @@ const setupSocket = (server) => {
         } else {
           usersInGame.delete(userId);
         }
-        
+
         // Broadcast to all clients
         socket.broadcast.emit("userGameStatusChanged", {
           userId,
@@ -598,12 +662,12 @@ const setupSocket = (server) => {
       "🎮",
       (data) => {
         const { playerId, mode } = data;
-        
+
         // Store in the map
         usersInGame.set(playerId, { mode });
         // Remove from lobby if in game
         usersInLobby.delete(playerId);
-        
+
         // Broadcast to all clients
         socket.broadcast.emit("player_entered_game", {
           playerId,
@@ -620,14 +684,115 @@ const setupSocket = (server) => {
       "🎮",
       (data) => {
         const { playerId } = data;
-        
+
         // Remove from the map
         usersInGame.delete(playerId);
-        
+
         // Broadcast to all clients
         socket.broadcast.emit("player_exited_game", {
           playerId
         });
+      }
+    );
+
+    // Handle direct room join/leave
+    createEventHandler(
+      socket,
+      "join",
+      [],
+      "🔌",
+      (data) => {
+        try {
+          const roomId = data; // Can be just a string or from an object
+          const room = typeof roomId === 'string' ? roomId : data?.roomId;
+
+          if (room) {
+            console.log(`Socket ${socket.id} joining room ${room}`);
+            socket.join(room);
+            socket.emit("room_joined", { room });
+          }
+        } catch (error) {
+          console.error("Error in join room:", error);
+        }
+      }
+    );
+
+    createEventHandler(
+      socket,
+      "leave",
+      [],
+      "🔌",
+      (data) => {
+        try {
+          const roomId = data; // Can be just a string or from an object
+          const room = typeof roomId === 'string' ? roomId : data?.roomId;
+
+          if (room) {
+            console.log(`Socket ${socket.id} leaving room ${room}`);
+            socket.leave(room);
+            socket.emit("room_left", { room });
+          }
+        } catch (error) {
+          console.error("Error in leave room:", error);
+        }
+      }
+    );
+
+    // Direct message to a lobby
+    createEventHandler(
+      socket,
+      "to_lobby",
+      ["lobbyCode"],
+      "📣",
+      (data) => {
+        try {
+          const { lobbyCode, type, playerId, isHost, ...rest } = data;
+
+          if (!lobbyCode) {
+            console.error("Missing lobbyCode in to_lobby event");
+            return;
+          }
+
+          // Enhanced logging
+          console.log(`Direct lobby message: ${type} to ${lobbyCode}`, data);
+
+          // Broadcast to the lobby
+          socket.to(lobbyCode).emit("lobby_message", {
+            type,
+            playerId,
+            isHost,
+            timestamp: new Date().toISOString(),
+            ...rest
+          });
+
+          // If this is a player_left message, also emit specific events
+          if (type === "player_left") {
+            // Emit the player_left_difficulty_selection event for compatibility
+            socket.to(lobbyCode).emit("player_left_difficulty_selection", {
+              leavingPlayerId: playerId,
+              isHost: isHost || false,
+              timestamp: new Date().toISOString()
+            });
+
+            // Also emit to everyone as a fallback
+            io.emit("player_left_difficulty_selection", {
+              leavingPlayerId: playerId,
+              isHost: isHost || false,
+              timestamp: new Date().toISOString()
+            });
+
+            // Emit lobby status update
+            io.emit("lobby_status_update", {
+              lobbyCode,
+              status: "player_left",
+              leavingPlayerId: playerId,
+              isHost: isHost || false,
+              timestamp: new Date().toISOString()
+            });
+          }
+        } catch (error) {
+          console.error("Error handling to_lobby event:", error);
+        }
       }
     );
   });

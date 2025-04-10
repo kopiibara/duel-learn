@@ -4,7 +4,11 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import "./styles/HostModeSelection.css";
+import "./styles/animations.css";
 import { KeyboardArrowLeft, KeyboardArrowRight } from "@mui/icons-material";
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import { Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, Button, IconButton } from '@mui/material';
+import { socket, PlayerLeftData, LobbyClosedData, LobbyStatusUpdate } from "../../../../../../../src/socket";
 import "../../../../../user-onboarding/styles/EffectUserOnboarding.css";
 import CardBackImg from "../../../../../../assets/General/CardDesignBack.png";
 import DefaultBackHoverCard from "../../../../../../assets/cards/DefaultCardInside.png";
@@ -15,8 +19,137 @@ export default function Player2ModeSelection() {
   const { hostUsername, guestUsername, lobbyCode, hostId, guestId } = location.state || {};
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>("Easy Mode");
   const [hostSelectedDifficulty, setHostSelectedDifficulty] = useState<string | null>(null);
+  const [openLeaveModal, setOpenLeaveModal] = useState(false);
+  const [hostLeft, setHostLeft] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
 
-  console.log("Player2ModeSelection state:", { hostUsername, guestUsername, hostId, guestId, lobbyCode });
+  // Add debug info
+  const addDebugInfo = (info: string) => {
+    console.log(`[GUEST DEBUG] ${info}`);
+    setDebugInfo(prev => [...prev, `${new Date().toLocaleTimeString()}: ${info}`].slice(-10));
+  };
+
+  // Add socket event tracking
+  const [socketEvents, setSocketEvents] = useState<string[]>([]);
+  const trackSocketEvent = (event: string, data?: any) => {
+    const eventInfo = `${event}: ${data ? JSON.stringify(data).substring(0, 100) : 'no data'}`;
+    console.log(`[SOCKET EVENT] ${eventInfo}`);
+    setSocketEvents(prev => [...prev, `${new Date().toLocaleTimeString()}: ${eventInfo}`].slice(-5));
+  };
+
+  // Socket debug setup
+  useEffect(() => {
+    // Create a handler that captures all socket events
+    const handleAny = (event: string, ...args: any[]) => {
+      trackSocketEvent(event, args[0]);
+    };
+
+    socket.onAny(handleAny);
+
+    return () => {
+      socket.offAny(handleAny);
+    };
+  }, []);
+
+  // Debug connection status
+  useEffect(() => {
+    const updateConnectionStatus = () => {
+      const status = document.body.getAttribute('data-socket-status');
+      addDebugInfo(`Socket status: ${status}`);
+    };
+    updateConnectionStatus();
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-socket-status') {
+          updateConnectionStatus();
+        }
+      });
+    });
+    observer.observe(document.body, { attributes: true });
+    return () => observer.disconnect();
+  }, []);
+
+  // Make sure we join the lobby room to receive events
+  useEffect(() => {
+    if (lobbyCode) {
+      addDebugInfo(`Joining lobby: ${lobbyCode}`);
+      // Join using socket.io room
+      socket.emit('join', lobbyCode);
+    }
+
+    return () => {
+      if (lobbyCode) {
+        socket.emit('leave', lobbyCode);
+      }
+    };
+  }, [lobbyCode]);
+
+  useEffect(() => {
+    addDebugInfo(`Component mounted with lobbyCode: ${lobbyCode}`);
+    addDebugInfo(`Host: ${hostUsername}, Guest: ${guestUsername}, HostId: ${hostId}`);
+
+    const handleHostLeave = () => {
+      setHostLeft(true);
+      addDebugInfo('Host left, preparing to redirect...');
+      // Force navigation after delay
+      const timer = setTimeout(() => {
+        addDebugInfo('Forcing navigation to dashboard...');
+        window.location.href = '/dashboard/home';
+      }, 3000);
+
+      // Cleanup timer if component unmounts
+      return () => clearTimeout(timer);
+    };
+
+    // Listen for host leaving
+    socket.on("player_left_difficulty_selection", (data: PlayerLeftData) => {
+      addDebugInfo(`Received leave event: ${JSON.stringify(data)}`);
+      console.log("Player left data:", data, "Host ID:", hostId);
+
+      // Check if this is the host leaving - multiple ways to verify
+      if (data.isHost) {
+        if (data.leavingPlayerId === hostId) {
+          addDebugInfo(`Match by ID: Host ${hostId} left`);
+          handleHostLeave();
+        } else {
+          addDebugInfo(`WARNING: Host left but ID doesn't match our host: ${data.leavingPlayerId} vs ${hostId}`);
+          // Still handle as host left since isHost flag is true
+          handleHostLeave();
+        }
+      }
+    });
+
+    // Listen for lobby closed event
+    socket.on("lobby_closed", (data: LobbyClosedData) => {
+      addDebugInfo(`Lobby closed: ${JSON.stringify(data)}`);
+      if (data.reason === 'host_left') {
+        handleHostLeave();
+      }
+    });
+
+    // Listen for lobby status updates
+    socket.on("lobby_status_update", (data: LobbyStatusUpdate) => {
+      addDebugInfo(`Lobby status update: ${JSON.stringify(data)}`);
+      if (data.status === 'player_left' && data.isHost) {
+        if (data.leavingPlayerId === hostId) {
+          addDebugInfo(`Match by lobby status: Host ${hostId} left`);
+          handleHostLeave();
+        } else {
+          addDebugInfo(`WARNING: Host left from lobby status but ID doesn't match: ${data.leavingPlayerId} vs ${hostId}`);
+          // Still handle as host left since isHost flag is true
+          handleHostLeave();
+        }
+      }
+    });
+
+    // Cleanup function
+    return () => {
+      socket.off("player_left_difficulty_selection");
+      socket.off("lobby_closed");
+      socket.off("lobby_status_update");
+      addDebugInfo('Cleaned up socket listeners');
+    };
+  }, [navigate, lobbyCode, hostId, hostUsername, guestUsername]);
 
   // Poll for host's difficulty selection
   useEffect(() => {
@@ -76,6 +209,46 @@ export default function Player2ModeSelection() {
     return () => clearInterval(interval);
   }, [lobbyCode, navigate, hostUsername, guestUsername, hostId, guestId]);
 
+  const handleLeavePage = () => {
+    addDebugInfo('Handling leave action...');
+    if (!guestId || !lobbyCode) {
+      addDebugInfo('Error: Missing guestId or lobbyCode');
+      return;
+    }
+
+    try {
+      // Broadcast multiple leave notifications for redundancy
+      addDebugInfo(`Emitting leave event for ${guestId} from lobby ${lobbyCode}`);
+
+      // Primary leave notification
+      socket.emit("leave_difficulty_selection", {
+        lobbyCode,
+        leavingPlayerId: guestId,
+        isHost: false
+      });
+
+      // Also emit a direct message to the lobby
+      socket.emit("to_lobby", {
+        lobbyCode,
+        type: "player_left",
+        playerId: guestId,
+        isHost: false
+      });
+
+      // Explicitly disconnect from the socket
+      setTimeout(() => {
+        addDebugInfo('Emitted leave event, navigating...');
+        // Force navigation using window.location
+        window.location.href = '/dashboard/home';
+      }, 500); // Small delay to allow socket events to be sent
+    } catch (err) {
+      const error = err as Error;
+      addDebugInfo(`Error leaving: ${error.message}`);
+      // Still force navigation even if socket emit fails
+      window.location.href = '/dashboard/home';
+    }
+  };
+
   const handleManualSelection = (mode: string) => {
     setSelectedDifficulty(mode);
   };
@@ -102,6 +275,117 @@ export default function Player2ModeSelection() {
 
   return (
     <div className="flex justify-center items-center min-h-screen text-white p-4 md:p-8">
+      {/* Debug Panel - Commented out for production
+      <div className="fixed bottom-4 left-4 z-[9999] bg-black bg-opacity-90 p-4 rounded-lg text-white text-sm max-w-[400px]">
+        <h3 className="font-bold mb-2">Debug Info (Guest View):</h3>
+        {debugInfo.map((info, index) => (
+          <div key={index} className="mb-1 text-xs">{info}</div>
+        ))}
+        
+        <h3 className="font-bold mt-4 mb-2">Socket Events:</h3>
+        {socketEvents.map((event, index) => (
+          <div key={`event-${index}`} className="mb-1 text-xs text-green-400">{event}</div>
+        ))}
+        
+        <div className="mt-3 pt-2 border-t border-gray-700">
+          <p className="text-xs text-yellow-400">Host ID: {hostId || 'unknown'}</p>
+          <p className="text-xs text-yellow-400">Lobby: {lobbyCode || 'unknown'}</p>
+        </div>
+      </div>
+      */}
+
+      {/* Back Button */}
+      <IconButton
+        onClick={() => {
+          addDebugInfo('Back button clicked');
+          setOpenLeaveModal(true);
+        }}
+        disabled={hostLeft}
+        sx={{
+          position: 'absolute',
+          top: '20px',
+          left: '20px',
+          color: 'white',
+          backgroundColor: 'rgba(107, 33, 168, 0.1)',
+          '&:hover': {
+            backgroundColor: 'rgba(107, 33, 168, 0.2)',
+          },
+          zIndex: 1000,
+          opacity: hostLeft ? 0.5 : 1,
+        }}
+      >
+        <ArrowBackIcon />
+      </IconButton>
+
+      {/* Leave Confirmation Modal */}
+      <Dialog
+        open={openLeaveModal}
+        onClose={() => {
+          addDebugInfo('Modal closed');
+          setOpenLeaveModal(false);
+        }}
+        PaperProps={{
+          style: {
+            backgroundColor: '#1a1a1a',
+            color: 'white',
+            border: '1px solid #333',
+          },
+        }}
+      >
+        <DialogTitle>Leave Game Setup?</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: 'gray' }}>
+            {hostLeft
+              ? "The host has left. You will be redirected shortly."
+              : "Are you sure you want to leave? This will end the game setup process."}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ padding: 2 }}>
+          <Button
+            onClick={() => {
+              addDebugInfo('Leave cancelled');
+              setOpenLeaveModal(false);
+            }}
+            disabled={hostLeft}
+            sx={{
+              color: 'white',
+              opacity: hostLeft ? 0.5 : 1,
+              '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)' }
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              addDebugInfo('Leave confirmed');
+              handleLeavePage();
+            }}
+            disabled={hostLeft}
+            variant="contained"
+            sx={{
+              backgroundColor: '#6B21A8',
+              opacity: hostLeft ? 0.5 : 1,
+              '&:hover': { backgroundColor: '#5B1C98' }
+            }}
+          >
+            Leave
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Host Left Alert */}
+      {hostLeft && (
+        <div className="fixed top-4 right-4 z-50 bg-red-600 text-white px-6 py-3 rounded-lg shadow-lg animate-pulse border-2 border-red-400">
+          <div className="flex items-center">
+            <div className="mr-3 text-xl">⚠️</div>
+            <div>
+              <p className="font-bold text-lg">{hostUsername} has left the game</p>
+              <p className="text-sm mt-1">Redirecting to dashboard...</p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="w-full max-w-5xl mt-10 md:mt-20 flex flex-col items-center">
         {/* Header */}
         <div className="text-center mb-8 md:mb-12">
@@ -119,7 +403,8 @@ export default function Player2ModeSelection() {
           <div className="flex space-x-3 md:space-x-10">
             <button
               onClick={() => handleManualSelection("Easy Mode")}
-              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-base transition-all cursor-pointer ${selectedDifficulty === "Easy Mode"
+              disabled={hostLeft}
+              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-base transition-all ${hostLeft ? "opacity-50 cursor-not-allowed " : "cursor-pointer "}${selectedDifficulty === "Easy Mode"
                 ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
                 : "text-gray-400 hover:text-gray-300"
                 }`}
@@ -128,7 +413,8 @@ export default function Player2ModeSelection() {
             </button>
             <button
               onClick={() => handleManualSelection("Average Mode")}
-              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg transition-all cursor-pointer ${selectedDifficulty === "Average Mode"
+              disabled={hostLeft}
+              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg transition-all ${hostLeft ? "opacity-50 cursor-not-allowed " : "cursor-pointer "}${selectedDifficulty === "Average Mode"
                 ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
                 : "text-gray-400 hover:text-gray-300"
                 }`}
@@ -137,7 +423,8 @@ export default function Player2ModeSelection() {
             </button>
             <button
               onClick={() => handleManualSelection("Hard Mode")}
-              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg transition-all cursor-pointer ${selectedDifficulty === "Hard Mode"
+              disabled={hostLeft}
+              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg transition-all ${hostLeft ? "opacity-50 cursor-not-allowed " : "cursor-pointer "}${selectedDifficulty === "Hard Mode"
                 ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
                 : "text-gray-400 hover:text-gray-300"
                 }`}
@@ -201,8 +488,9 @@ export default function Player2ModeSelection() {
           <button
             className="p-1 md:p-2 bg-transparent"
             onClick={() => handleDifficultyChange("left")}
+            disabled={hostLeft}
           >
-            <KeyboardArrowLeft />
+            <KeyboardArrowLeft style={{ opacity: hostLeft ? 0.5 : 1 }} />
           </button>
           <p className="text-center text-sm md:text-lg text-gray-300 mx-2 md:mx-8">
             {selectedDifficulty === "Easy Mode" &&
@@ -215,8 +503,9 @@ export default function Player2ModeSelection() {
           <button
             className="p-1 md:p-2 bg-transparent"
             onClick={() => handleDifficultyChange("right")}
+            disabled={hostLeft}
           >
-            <KeyboardArrowRight />
+            <KeyboardArrowRight style={{ opacity: hostLeft ? 0.5 : 1 }} />
           </button>
         </div>
       </div>
