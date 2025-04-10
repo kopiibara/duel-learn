@@ -240,7 +240,93 @@ const setupSocket = (server) => {
       });
     });
 
-    // Battle invitation system
+    // Battle invitation system - updated with enhanced functionality
+    const createBattleInvitationEventHandler = (socket) => {
+      // Handle battle invitation sending
+      createEventHandler(
+        socket,
+        "battle_invitation",
+        ["senderId", "receiverId", "lobbyCode"],
+        "🎮",
+        (data) => {
+          const {
+            senderId,
+            senderName,
+            senderLevel,
+            senderPicture,
+            receiverId,
+            receiverName,
+            receiverLevel,
+            receiverPicture,
+            lobbyCode
+          } = data;
+
+          io.to(receiverId).emit("battle_invitation", {
+            senderId,
+            senderName,
+            senderLevel,
+            senderPicture,
+            receiverId,
+            receiverName,
+            receiverLevel,
+            receiverPicture,
+            lobbyCode
+          });
+
+          socket.emit("battle_invitation_sent", {
+            success: true,
+            receiverId,
+            receiverName,
+            receiverLevel,
+            receiverPicture,
+            lobbyCode
+          });
+        }
+      );
+
+      // Handle battle invitation acceptance
+      createEventHandler(
+        socket,
+        "accept_battle_invitation",
+        ["senderId", "receiverId", "lobbyCode"],
+        "✅",
+        (data) => {
+          const { senderId, receiverId, receiverName, lobbyCode } = data;
+
+          // Notify sender if active
+          if (activeUsers.has(senderId)) {
+            io.to(senderId).emit("battle_invitation_accepted", {
+              receiverId,
+              receiverName,
+              lobbyCode
+            });
+          }
+        }
+      );
+
+      // Handle battle invitation rejection
+      createEventHandler(
+        socket,
+        "decline_battle_invitation",
+        ["senderId", "receiverId", "lobbyCode"],
+        "❌",
+        (data) => {
+          const { senderId, receiverId, receiverName, lobbyCode } = data;
+
+          // Notify sender
+          io.to(senderId).emit("battle_invitation_declined", {
+            receiverId,
+            receiverName,
+            lobbyCode
+          });
+        }
+      );
+    };
+
+    // Register all battle invitation event handlers at once
+    createBattleInvitationEventHandler(socket);
+
+    // For backward compatibility - provide legacy support for old notify_battle_invitation
     createEventHandler(
       socket,
       "notify_battle_invitation",
@@ -255,38 +341,6 @@ const setupSocket = (server) => {
           receiverId,
           lobbyCode,
           timestamp: new Date().toISOString(),
-        });
-      }
-    );
-
-    createEventHandler(
-      socket,
-      "accept_battle_invitation",
-      ["senderId", "receiverId", "lobbyCode"],
-      "🎮",
-      (data) => {
-        const { senderId, receiverId, lobbyCode } = data;
-        const notificationData = {
-          senderId, receiverId, lobbyCode,
-          timestamp: new Date().toISOString()
-        };
-
-        // Notify both players
-        [senderId, receiverId].forEach(userId => {
-          io.to(userId).emit("battle_invitation_accepted", notificationData);
-        });
-      }
-    );
-
-    createEventHandler(
-      socket,
-      "decline_battle_invitation",
-      ["senderId", "receiverId"],
-      "❌",
-      (data) => {
-        const { senderId, receiverId, lobbyCode } = data;
-        io.to(senderId).emit("battle_invitation_declined", {
-          senderId, receiverId, lobbyCode
         });
       }
     );
