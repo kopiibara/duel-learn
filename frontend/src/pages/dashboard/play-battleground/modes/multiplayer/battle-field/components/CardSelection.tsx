@@ -4,7 +4,12 @@ import axios from "axios"; // Import axios for API calls
 
 // Import the actual card images
 import cardBackImage from "../../../../../../../assets/General/CardDesignBack.png";
-import cardFrontImage from "../../../../../../../assets/cards/DefaultCardInside.png";
+import NormalCardQuickDraw from "/GameBattle/NormalCardQuickDraw.png";
+import NormalCardTimeManipulation from "/GameBattle/NormalCardTimeManipulation.png"
+import EpicCardAnswerShield from "/GameBattle/EpicCardAnswerShield.png";
+import EpicCardRegeneration from "/GameBattle/EpicCardRegeneration.png"
+import RareCardMindControl from "/GameBattle/RareCardMindControl.png"
+import RareCardPoisonType from "/GameBattle/RareCardPoisonType.png"
 
 // Define card types
 interface Card {
@@ -12,6 +17,7 @@ interface Card {
     name: string;
     description: string;
     type: string;
+    image?: string; // Added image property
 }
 
 export interface CardSelectionProps {
@@ -60,16 +66,16 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             { id: "basic-1", name: "Basic Card", type: "Basic Card", description: "No effect" }
         ],
         normal: [
-            { id: "normal-1", name: "Time Manipulation", type: "Normal Power Card", description: "Reduce your opponent's answer time" },
-            { id: "normal-2", name: "Quick Draw", type: "Normal Power Card", description: "Answer twice in a row without waiting for your opponent's turn" }
+            { id: "normal-1", name: "Time Manipulation", type: "Normal Power Card", description: "Reduce your opponent's answer time", image: NormalCardTimeManipulation },
+            { id: "normal-2", name: "Quick Draw", type: "Normal Power Card", description: "Answer twice in a row without waiting for your opponent's turn", image: NormalCardQuickDraw }
         ],
         epic: [
-            { id: "epic-1", name: "Answer Shield", type: "Epic Power Card", description: "Block one card used by your opponent" },
-            { id: "epic-2", name: "Regeneration", type: "Epic Power Card", description: "Gain +10 hp if the question is answered correctly" }
+            { id: "epic-1", name: "Answer Shield", type: "Epic Power Card", description: "Block one card used by your opponent", image: EpicCardAnswerShield },
+            { id: "epic-2", name: "Regeneration", type: "Epic Power Card", description: "Gain +10 hp if the question is answered correctly", image: EpicCardRegeneration }
         ],
         rare: [
-            { id: "rare-1", name: "Mind Control", type: "Rare Power Card", description: "Forces the opponent to answer the next question without any power-ups" },
-            { id: "rare-2", name: "Poison Type", type: "Rare Power Card", description: "It gives the enemy a poison type effect that last 3 rounds" }
+            { id: "rare-1", name: "Mind Control", type: "Rare Power Card", description: "Forces the opponent to answer the next question without any power-ups", image: RareCardMindControl },
+            { id: "rare-2", name: "Poison Type", type: "Rare Power Card", description: "It gives the enemy a poison type effect that last 3 rounds", image: RareCardPoisonType }
         ]
     };
 
@@ -462,7 +468,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                     <AnimatePresence onExitComplete={handleBackCardExitComplete}>
                         {showBackCard && (
                             <motion.div
-                                className="w-[220px] h-[320px] overflow-hidden shadow-lg shadow-purple-500/30"
+                                className="w-[280px] h-[380px] overflow-hidden shadow-lg shadow-purple-500/30"
                                 initial={{ scale: 0.5, opacity: 0 }}
                                 animate={{ scale: 1, opacity: 1, rotateY: 0 }}
                                 exit={{ rotateY: 90, opacity: 0 }}
@@ -482,14 +488,14 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
                     {/* Timer display when it's the player's turn and options are shown */}
                     {showCardOptions && backCardExitComplete && (
-                        <div className="absolute top-[150px] text-white text-2xl font-bold">
+                        <div className="absolute top-[100px] text-white text-2xl font-bold">
                             Time remaining: <span className={selectionTimer <= 3 ? "text-red-500" : "text-white"}>{selectionTimer}s</span>
                         </div>
                     )}
 
                     <AnimatePresence>
                         {showCardOptions && backCardExitComplete && !mindControlActive && (
-                            <div className="flex gap-4">
+                            <div className="flex gap-8">
                                 {selectedCards.map((card, index) => {
                                     // Only render this card if it's in the visibleCardIndices array
                                     if (!visibleCardIndices.includes(index) && hasCardBlocking) {
@@ -499,7 +505,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                                     return (
                                         <motion.div
                                             key={card.id + "-" + index} // Add index to key to ensure uniqueness when the same card appears twice
-                                            className={`w-[200px] h-[300px] rounded-xl overflow-hidden cursor-pointer shadow-lg relative ${getCardBackground(card.type)} border-2 border-white/20`}
+                                            className={`w-[280px] h-[380px] rounded-xl overflow-hidden cursor-pointer shadow-lg relative ${card.image ? '' : getCardBackground(card.type)}`}
                                             initial={{ opacity: 0, y: 20, rotateY: -90 }}
                                             animate={{ opacity: 1, y: 0, rotateY: 0 }}
                                             transition={{
@@ -514,17 +520,26 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                                                 transition: { duration: 0.2 }
                                             }}
                                         >
-                                            {/* For all cards, display the card name and info */}
-                                            <div className="flex flex-col h-full p-4 text-white">
-                                                <div className="text-lg font-bold mb-2">{card.name}</div>
-                                                <div className="text-xs italic mb-4">{card.type}</div>
-                                                <div className="border-t border-white/20 my-2 pt-2">
-                                                    <p className="text-sm">{card.description}</p>
+                                            {/* For cards with images, display the image */}
+                                            {card.image ? (
+                                                <img
+                                                    src={card.image}
+                                                    alt={card.name}
+                                                    className="w-full h-full object-fill"
+                                                />
+                                            ) : (
+                                                /* For basic cards without images, keep the coded UI */
+                                                <div className="flex flex-col h-full p-6 text-white">
+                                                    <div className="text-2xl font-bold mb-4">{card.name}</div>
+                                                    <div className="text-lg italic mb-6">{card.type}</div>
+                                                    <div className="border-t border-white/20 my-4 pt-4">
+                                                        <p className="text-xl">{card.description}</p>
+                                                    </div>
+                                                    <div className="mt-auto flex justify-end">
+                                                        <div className="text-sm italic opacity-60">Card ID: {card.id}</div>
+                                                    </div>
                                                 </div>
-                                                <div className="mt-auto flex justify-end">
-                                                    <div className="text-xs italic opacity-60">Card ID: {card.id}</div>
-                                                </div>
-                                            </div>
+                                            )}
                                         </motion.div>
                                     );
                                 })}
@@ -533,7 +548,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                     </AnimatePresence>
 
                     {showCardOptions && backCardExitComplete && (
-                        <div className="absolute bottom-[170px] text-white text-xl font-semibold">
+                        <div className="absolute bottom-[120px] text-white text-xl font-semibold">
                             Choose a card to use in this round
                         </div>
                     )}
