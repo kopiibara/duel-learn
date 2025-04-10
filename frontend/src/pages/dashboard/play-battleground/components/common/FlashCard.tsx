@@ -37,10 +37,49 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
 }) => {
     const [imageLoaded, setImageLoaded] = useState(false);
     const [imageError, setImageError] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
+    const [displayedQuestion, setDisplayedQuestion] = useState(question);
+    const [displayedAnswer, setDisplayedAnswer] = useState(correctAnswer);
+    const [displayedImageUrl, setDisplayedImageUrl] = useState<string | null>(null);
+    const [cardOpacity, setCardOpacity] = useState(1);
 
     // Get image URL from currentQuestion.itemInfo and validate it's not null/undefined
     const imageUrl = currentQuestion?.itemInfo?.image || null;
     const hasValidImage = imageUrl && imageUrl !== 'null' && !imageUrl.includes('undefined');
+
+    // Handle question and answer updates with transition
+    useEffect(() => {
+        // When the question changes
+        if (question !== displayedQuestion || correctAnswer !== displayedAnswer || imageUrl !== displayedImageUrl) {
+            // Fade out
+            setCardOpacity(0);
+            
+            // Wait for fade out to complete, then update content
+            const timer = setTimeout(() => {
+                setDisplayedQuestion(question);
+                setDisplayedAnswer(correctAnswer);
+                setDisplayedImageUrl(imageUrl);
+                setImageLoaded(false);
+                
+                // Fade in with the new content
+                setCardOpacity(1);
+                setIsLoading(false);
+            }, 300); // Match this duration with CSS transition time
+            
+            return () => clearTimeout(timer);
+        } else {
+            setIsLoading(false);
+        }
+    }, [question, correctAnswer, imageUrl, displayedQuestion, displayedAnswer, displayedImageUrl]);
+
+    // Reset loading state when component first mounts
+    useEffect(() => {
+        setIsLoading(true);
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, []);
 
     // Debug logging
     useEffect(() => {
@@ -83,65 +122,71 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
                 style={{
                     backfaceVisibility: "hidden",
                     transition: "opacity 0.3s",
-                    opacity: isFlipped ? 0 : 1
+                    opacity: isFlipped ? 0 : cardOpacity
                 }}
             >
-                {/* Only render image section if we have a valid image */}
-                {hasValidImage && (
-                    <div className="w-full h-[50%] mb-4 relative flex items-center justify-center">
-                        {!imageLoaded && !imageError && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
-                                <span className="text-gray-400">Loading image...</span>
-                            </div>
-                        )}
-                        <img 
-                            src={imageUrl}
-                            alt="Question visual"
-                            className={`w-full h-full object-contain rounded-lg transition-opacity duration-300 ${
-                                imageLoaded ? 'opacity-100' : 'opacity-0'
-                            }`}
-                            onLoad={() => {
-                                console.log("Image loaded successfully:", imageUrl);
-                                setImageLoaded(true);
-                                setImageError(false);
-                            }}
-                            onError={(e) => {
-                                console.error("Image failed to load:", imageUrl, e);
-                                setImageError(true);
-                                setImageLoaded(false);
-                            }}
-                        />
-                        {imageError && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
-                                <span className="text-gray-400">Failed to load image</span>
-                            </div>
-                        )}
+                {isLoading ? (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <p className="text-center text-gray-400 text-xl">Loading question...</p>
                     </div>
+                ) : (
+                    <>
+                        {/* Only render image section if we have a valid image */}
+                        {hasValidImage && displayedImageUrl && (
+                            <div className="w-full h-[50%] mb-4 relative flex items-center justify-center">
+                                {!imageLoaded && !imageError && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+                                        <span className="text-gray-400">Loading image...</span>
+                                    </div>
+                                )}
+                                <img 
+                                    src={displayedImageUrl}
+                                    alt="Question visual"
+                                    className={`w-full h-full object-contain rounded-lg transition-opacity duration-300 ${
+                                        imageLoaded ? 'opacity-100' : 'opacity-0'
+                                    }`}
+                                    onLoad={() => {
+                                        setImageLoaded(true);
+                                        setImageError(false);
+                                    }}
+                                    onError={(e) => {
+                                        setImageError(true);
+                                        setImageLoaded(false);
+                                    }}
+                                />
+                                {imageError && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+                                        <span className="text-gray-400">Failed to load image</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Question Section - adjust height based on whether we have an image */}
+                        <div className={`flex-1 flex items-center justify-center ${hasValidImage && displayedImageUrl ? 'h-[45%]' : 'h-full'}`}>
+                            <p className="text-center text-black text-2xl max-w-[600px]">
+                                {displayedQuestion}
+                            </p>
+                        </div>
+
+                        {/* Reveal Button */}
+                        <button 
+                            className="absolute bottom-6 right-9 flex items-center space-x-2 text-[#4D18E8] hover:text-[#4D18E8] transition-all duration-200 ease-in-out hover:scale-105 hover:font-bold transform"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onReveal && !disabled) {
+                                    onReveal();
+                                }
+                            }}
+                            disabled={disabled}
+                        >
+                            <VisibilityIcon className="w-5 h-5 text-[#4D18E8]" />
+                            <span className="text-sm font-bold text-[#4D18E8]">
+                                {disabled ? "ANSWER REVEALED" : "REVEAL ANSWER"}
+                            </span>
+                        </button>
+                    </>
                 )}
-
-                {/* Question Section - adjust height based on whether we have an image */}
-                <div className={`flex-1 flex items-center justify-center ${hasValidImage ? 'h-[45%]' : 'h-full'}`}>
-                    <p className="text-center text-black text-2xl max-w-[600px]">
-                        {question || <span className="animate-pulse">Loading question...</span>}
-                    </p>
-                </div>
-
-                {/* Reveal Button */}
-                <button 
-                    className="absolute bottom-6 right-9 flex items-center space-x-2 text-[#4D18E8] hover:text-[#4D18E8] transition-all duration-200 ease-in-out hover:scale-105 hover:font-bold transform"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        if (onReveal && !disabled) {
-                            onReveal();
-                        }
-                    }}
-                    disabled={disabled}
-                >
-                    <VisibilityIcon className="w-5 h-5 text-[#4D18E8]" />
-                    <span className="text-sm font-bold text-[#4D18E8]">
-                        {disabled ? "ANSWER REVEALED" : "REVEAL ANSWER"}
-                    </span>
-                </button>
             </div>
 
             {/* Back of card (Answer) */}
@@ -151,12 +196,12 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
                     backfaceVisibility: "hidden",
                     transform: "rotateY(180deg)",
                     transition: "opacity 0.3s",
-                    opacity: isFlipped && !isTransitioning ? 1 : 0,
+                    opacity: isFlipped && !isTransitioning ? cardOpacity : 0,
                     display: isTransitioning ? 'none' : 'flex'
                 }}
             >
                 <p className="text-center text-black text-3xl font-bold">
-                    {correctAnswer || <span className="animate-pulse">Loading answer...</span>}
+                    {displayedAnswer}
                 </p>
             </div>
         </div>
