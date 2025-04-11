@@ -90,17 +90,28 @@ const formatDateTime = (date: Date): string => {
 
 const BanModal: React.FC<BanModalProps> = ({ isOpen, onClose, banUntil }) => {
   const [timeLeft, setTimeLeft] = useState<string>("");
+  const [isBanExpired, setIsBanExpired] = useState(false);
 
   useEffect(() => {
     const updateTimeLeft = () => {
+      const now = new Date();
+      const diff = banUntil.getTime() - now.getTime();
+      const isExpired = diff <= 0;
+
       setTimeLeft(formatTimeLeft(banUntil));
+      setIsBanExpired(isExpired);
+
+      // If ban just expired, update the UI
+      if (isExpired && !isBanExpired) {
+        setIsBanExpired(true);
+      }
     };
 
     updateTimeLeft();
     const interval = setInterval(updateTimeLeft, 1000);
 
     return () => clearInterval(interval);
-  }, [banUntil]);
+  }, [banUntil, isBanExpired]);
 
   if (!isOpen) return null;
 
@@ -114,15 +125,17 @@ const BanModal: React.FC<BanModalProps> = ({ isOpen, onClose, banUntil }) => {
         <p className="text-white mb-4">
           Ban expires: {formatDateTime(banUntil)}
         </p>
-        <p className="text-yellow-400 font-semibold mb-6">
-          Time remaining: {timeLeft}
+        <p className={`${isBanExpired ? 'text-green-400' : 'text-yellow-400'} font-semibold mb-6`}>
+          {isBanExpired ? "Ban has expired!" : `Time remaining: ${timeLeft}`}
         </p>
-        <button
-          onClick={onClose}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
-        >
-          Close
-        </button>
+        {isBanExpired && (
+          <button
+            onClick={onClose}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Close
+          </button>
+        )}
       </div>
     </div>
   );
@@ -229,6 +242,7 @@ const PVPLobby: React.FC = () => {
   // Add these new states in the main PVPLobby component after the existing states
   const [showBanModal, setShowBanModal] = useState(false);
   const [userBanUntil, setUserBanUntil] = useState<Date | null>(null);
+  const [isBanActive, setIsBanActive] = useState(false);
 
   // Set the state variables
   useEffect(() => {
@@ -392,6 +406,10 @@ const PVPLobby: React.FC = () => {
 
   // Open the confirmation dialog
   const handleBackClick = () => {
+    if (isBanActive) {
+      toast.error("You cannot leave while banned. Please wait until your ban expires.");
+      return;
+    }
     setOpenDialog(true); // Show the modal on back button click
   };
 
@@ -413,22 +431,10 @@ const PVPLobby: React.FC = () => {
 
     const checkBattleStarted = async () => {
       try {
-        // First check if user is banned
-        const banResponse = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/user/ban-status/${user?.firebase_uid}`
-        );
+        // First check if user is banned - REMOVED, now checking on component mount
+        // Skip the ban check here since we already check on component mount
 
-        if (banResponse.data.success && banResponse.data.data.banUntil) {
-          const banUntil = new Date(banResponse.data.data.banUntil);
-          if (banUntil > new Date()) {
-            setUserBanUntil(banUntil);
-            // Remove the immediate show of ban modal
-            // setShowBanModal(true);
-            return; // Stop here if user is banned
-          }
-        }
-
-        // If not banned, proceed with battle status check
+        // Proceed with battle status check directly
         const response = await axios.get(
           `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/battle-status/${lobbyCode}`
         );
@@ -483,13 +489,7 @@ const PVPLobby: React.FC = () => {
         return;
       }
 
-      // Check ban status before starting battle
-      // This will automatically reset earlyLeaves to 0 if ban has expired
-      const isBanned = await checkUserBanStatus();
-      if (isBanned) {
-        setShowBanModal(true);
-        return;
-      }
+      // Ban check removed from here since we check on component mount
 
       setBattleStartLoading(true);
 
@@ -532,14 +532,7 @@ const PVPLobby: React.FC = () => {
         setBattleStartLoading(false);
       }
     } else {
-      // For guest: check ban status before toggling ready state
-      // This will automatically reset earlyLeaves to 0 if ban has expired
-      const isBanned = await checkUserBanStatus();
-      if (isBanned) {
-        setShowBanModal(true);
-        return;
-      }
-      // Toggle ready state
+      // For guest: toggle ready state (no ban check needed here anymore)
       toggleGuestReadyState();
     }
   };
@@ -1145,7 +1138,7 @@ const PVPLobby: React.FC = () => {
     };
   }, [socket, lobbyCode]);
 
-  // Modify the useEffect that runs when the component mounts to emit a createLobby event for hosts
+  // Update the useEffect that runs when the component mounts to emit a createLobby event for hosts
   useEffect(() => {
     // Initialize lobby
     if (isCurrentUserGuest && lobbyCode) {
@@ -1163,6 +1156,35 @@ const PVPLobby: React.FC = () => {
 
     // ... existing code for non-socket initializations ...
   }, [isCurrentUserGuest, lobbyCode, socket, user?.firebase_uid, user?.username, user?.level, user?.display_picture]);
+
+  // Add a new useEffect to check ban status when component mounts
+  useEffect(() => {
+    // Only check ban status if we have user data
+    if (!user?.firebase_uid) return;
+
+    const checkInitialBanStatus = async () => {
+      try {
+        console.log("Checking initial ban status for user:", user.firebase_uid);
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/user/ban-status/${user.firebase_uid}`
+        );
+
+        if (response.data.success && response.data.data.banUntil) {
+          const banUntil = new Date(response.data.data.banUntil);
+          if (banUntil > new Date()) {
+            setUserBanUntil(banUntil);
+            setShowBanModal(true); // Show ban modal immediately
+            setIsBanActive(true); // Mark ban as active
+            console.log("User is banned until:", banUntil);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking initial ban status:", error);
+      }
+    };
+
+    checkInitialBanStatus();
+  }, [user?.firebase_uid]);
 
   // Add a new useEffect that handles auto-invitation when coming from FriendListItem
   useEffect(() => {
@@ -1329,27 +1351,34 @@ const PVPLobby: React.FC = () => {
     };
   }, [socket, lobbyCode, isCurrentUserGuest, user?.firebase_uid]);
 
-  // Add this new function after the existing functions
-  const checkUserBanStatus = async () => {
-    try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/user/ban-status/${user?.firebase_uid}`
-      );
-
-      if (response.data.success) {
-        // If ban has expired, the backend will automatically reset earlyLeaves to 0
-        if (response.data.data.banUntil) {
-          const banUntil = new Date(response.data.data.banUntil);
-          if (banUntil > new Date()) {
-            setUserBanUntil(banUntil);
-            return true; // User is banned
-          }
-        }
+  // Add a useEffect to check if ban is still active
+  useEffect(() => {
+    if (!userBanUntil) return;
+    
+    const checkBanStatus = () => {
+      const now = new Date();
+      const isBanned = userBanUntil > now;
+      setIsBanActive(isBanned);
+      
+      if (isBanned) {
+        // Ensure the modal is shown if user is banned
+        setShowBanModal(true);
       }
-      return false; // User is not banned
-    } catch (error) {
-      console.error("Error checking ban status:", error);
-      return false;
+    };
+    
+    // Check immediately
+    checkBanStatus();
+    
+    // Then check every second
+    const interval = setInterval(checkBanStatus, 1000);
+    
+    return () => clearInterval(interval);
+  }, [userBanUntil]);
+
+  // Modify ban modal close handler to only allow closing if ban is expired
+  const handleBanModalClose = () => {
+    if (!isBanActive) {
+      setShowBanModal(false);
     }
   };
 
@@ -1513,7 +1542,7 @@ const PVPLobby: React.FC = () => {
       {userBanUntil && (
         <BanModal
           isOpen={showBanModal}
-          onClose={() => setShowBanModal(false)}
+          onClose={handleBanModalClose}
           banUntil={userBanUntil}
         />
       )}
