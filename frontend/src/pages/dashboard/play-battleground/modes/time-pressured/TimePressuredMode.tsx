@@ -85,24 +85,24 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 
   // 5. Game logic hook
   const {
-    currentQuestion,
-    isFlipped,
-    handleFlip,
-    handleAnswerSubmit: originalHandleAnswerSubmit,
-    correctCount,
-    incorrectCount,
-    showResult,
-    showNextButton,
-    handleNextQuestion: originalHandleNextQuestion,
-    getButtonStyle,
-    questionTimer,
-    timerProgress,
-    currentStreak,
-    highestStreak,
-    masteredCount,
-    unmasteredCount,
-    handleRevealAnswer,
-    cardDisabled,
+    currentQuestion = {},
+    isFlipped = false,
+    handleFlip = () => {},
+    handleAnswerSubmit: originalHandleAnswerSubmit = () => {},
+    correctCount = 0,
+    incorrectCount = 0,
+    showResult = false,
+    showNextButton = false,
+    handleNextQuestion: originalHandleNextQuestion = () => {},
+    getButtonStyle = () => "",
+    questionTimer = null,
+    timerProgress = 100,
+    currentStreak = 0,
+    highestStreak = 0,
+    masteredCount = 0,
+    unmasteredCount = 0,
+    handleRevealAnswer = () => {},
+    cardDisabled = false,
   } = useGameLogic({
     mode,
     material,
@@ -110,7 +110,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     timeLimit,
     aiQuestions,
     isGameReady,
-  });
+  }) || {};
 
   // 6. Helper functions (move these outside useEffect)
   const calculateExpGained = useCallback((isComplete: boolean, totalItems: number): number => {
@@ -541,14 +541,14 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
               }}
               disabled={showResult}
               className={`w-full p-4 rounded-lg bg-transparent py-10 px-10 border-2 text-center
-                                ${
-                                  showResult
-                                    ? currentQuestion?.isCorrect
-                                      ? "border-[#6DBE45]" // Green border for correct answers
-                                      : "border-[#FF3B3F]" // Red border for incorrect answers
-                                    : "border-gray-600" // Default gray border
-                                }
-                                text-white focus:outline-none placeholder:text-[#6F658D]`}
+                ${
+                  showResult
+                    ? currentQuestion?.isCorrect
+                      ? "border-[#52A647]" // Green border for correct answers
+                      : "border-[#FF3B3F]" // Red border for incorrect answers
+                    : "border-gray-600" // Default gray border
+                }
+                text-white focus:outline-none placeholder:text-[#6F658D]`}
               placeholder="Type your answer here..."
             />
           </div>
@@ -643,9 +643,9 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
         exp_gained: expGained,
         coins_gained: null,
         game_mode: mode.toLowerCase(),
-        total_time: sessionData.timeSpent,        // Using timeSpent directly
-        mastered: sessionData.correctCount,       // Using correctCount directly
-        unmastered: sessionData.incorrectCount    // Using incorrectCount directly
+        total_time: sessionData.timeSpent,
+        mastered: sessionData.correctCount,
+        unmastered: sessionData.incorrectCount
       };
 
       console.log("Sending payload to server:", payload);
@@ -766,13 +766,15 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
               />
             </div>
             {renderQuestionContent()}
-            {showNextButton && (
-              <button
-                onClick={handleNextQuestion}
-                className="mt-6 px-8 py-3 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
-              >
-                Next Question
-              </button>
+            {showResult && (
+              <div className="flex justify-center mt-6">
+                <button
+                  onClick={handleNextQuestion}
+                  className="px-6 py-2 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
+                >
+                  Next Question
+                </button>
+              </div>
             )}
           </div>
         </main>

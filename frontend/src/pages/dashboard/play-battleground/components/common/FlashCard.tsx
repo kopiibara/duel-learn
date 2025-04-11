@@ -1,4 +1,4 @@
-import React, { memo, useState, useEffect } from 'react';
+import React, { memo, useState, useEffect, useRef } from 'react';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 
 interface FlashCardProps {
@@ -21,6 +21,7 @@ interface FlashCardProps {
         correctAnswer?: string;
     } | null;
     isTransitioning?: boolean;
+    questionId?: string;
 }
 
 const FlashCard: React.FC<FlashCardProps> = memo(({ 
@@ -33,7 +34,8 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
     type,
     disabled = false,
     currentQuestion,
-    isTransitioning = false
+    isTransitioning = false,
+    questionId = ''
 }) => {
     const [imageLoaded, setImageLoaded] = useState(false);
     const [imageError, setImageError] = useState(false);
@@ -42,68 +44,90 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
     const [displayedAnswer, setDisplayedAnswer] = useState(correctAnswer);
     const [displayedImageUrl, setDisplayedImageUrl] = useState<string | null>(null);
     const [cardOpacity, setCardOpacity] = useState(1);
+    const [isTransitioningInternal, setIsTransitioningInternal] = useState(false);
+    const transitionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const previousQuestionIdRef = useRef<string>(questionId);
+    const isInitialMountRef = useRef(true);
 
     // Get image URL from currentQuestion.itemInfo and validate it's not null/undefined
     const imageUrl = currentQuestion?.itemInfo?.image || null;
     const hasValidImage = imageUrl && imageUrl !== 'null' && !imageUrl.includes('undefined');
 
+    // Clear any existing timeouts when component unmounts
+    useEffect(() => {
+        return () => {
+            if (transitionTimeoutRef.current) {
+                clearTimeout(transitionTimeoutRef.current);
+            }
+        };
+    }, []);
+
+    // Handle initial mount
+    useEffect(() => {
+        if (isInitialMountRef.current) {
+            setDisplayedQuestion(question);
+            setDisplayedAnswer(correctAnswer);
+            setDisplayedImageUrl(imageUrl);
+            setIsLoading(false);
+            isInitialMountRef.current = false;
+        }
+    }, []);
+
     // Handle question and answer updates with transition
     useEffect(() => {
-        // When the question changes
-        if (question !== displayedQuestion || correctAnswer !== displayedAnswer || imageUrl !== displayedImageUrl) {
-            // Fade out
+        // Skip transition on initial mount
+        if (isInitialMountRef.current) {
+            return;
+        }
+
+        // Only proceed if we have a new question or if the current question has changed
+        if (questionId !== previousQuestionIdRef.current || 
+            question !== displayedQuestion || 
+            correctAnswer !== displayedAnswer || 
+            imageUrl !== displayedImageUrl) {
+            
+            // Set transitioning state
+            setIsTransitioningInternal(true);
             setCardOpacity(0);
             
+            // Clear any existing timeout
+            if (transitionTimeoutRef.current) {
+                clearTimeout(transitionTimeoutRef.current);
+            }
+
             // Wait for fade out to complete, then update content
-            const timer = setTimeout(() => {
+            transitionTimeoutRef.current = setTimeout(() => {
                 setDisplayedQuestion(question);
                 setDisplayedAnswer(correctAnswer);
                 setDisplayedImageUrl(imageUrl);
                 setImageLoaded(false);
+                previousQuestionIdRef.current = questionId;
                 
                 // Fade in with the new content
                 setCardOpacity(1);
                 setIsLoading(false);
-            }, 300); // Match this duration with CSS transition time
-            
-            return () => clearTimeout(timer);
-        } else {
-            setIsLoading(false);
+                setIsTransitioningInternal(false);
+            }, 300);
         }
-    }, [question, correctAnswer, imageUrl, displayedQuestion, displayedAnswer, displayedImageUrl]);
+    }, [question, correctAnswer, imageUrl, questionId]);
 
-    // Reset loading state when component first mounts
+    // Handle image loading
     useEffect(() => {
-        setIsLoading(true);
-        const timer = setTimeout(() => {
-            setIsLoading(false);
-        }, 300);
-        return () => clearTimeout(timer);
-    }, []);
+        if (imageUrl) {
+            setImageLoaded(false);
+            setImageError(false);
+        }
+    }, [imageUrl]);
 
-    // Debug logging
-    useEffect(() => {
-        console.log("FlashCard mounted with props:", {
-            hasValidImage,
-            imageUrl,
-            currentQuestion,
-            itemInfo: currentQuestion?.itemInfo,
-            correctAnswer,
-            isFlipped
-        });
-    }, [hasValidImage, imageUrl, currentQuestion, correctAnswer, isFlipped]);
+    const handleImageLoad = () => {
+        setImageLoaded(true);
+        setImageError(false);
+    };
 
-    // Add image loading debug
-    console.log("Image render debug:", {
-        imageUrl,
-        imageLoaded,
-        imageError,
-        currentQuestion: currentQuestion?.itemInfo,
-        hasImage: Boolean(imageUrl),
-        fullQuestion: currentQuestion,
-        correctAnswer,
-        isFlipped
-    });
+    const handleImageError = () => {
+        setImageError(true);
+        setImageLoaded(false);
+    };
 
     return (
         <div
@@ -125,7 +149,7 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
                     opacity: isFlipped ? 0 : cardOpacity
                 }}
             >
-                {isLoading ? (
+                {isLoading || isTransitioningInternal ? (
                     <div className="w-full h-full flex items-center justify-center">
                         <p className="text-center text-gray-400 text-xl">Loading question...</p>
                     </div>
@@ -145,14 +169,8 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
                                     className={`w-full h-full object-contain rounded-lg transition-opacity duration-300 ${
                                         imageLoaded ? 'opacity-100' : 'opacity-0'
                                     }`}
-                                    onLoad={() => {
-                                        setImageLoaded(true);
-                                        setImageError(false);
-                                    }}
-                                    onError={(e) => {
-                                        setImageError(true);
-                                        setImageLoaded(false);
-                                    }}
+                                    onLoad={handleImageLoad}
+                                    onError={handleImageError}
                                 />
                                 {imageError && (
                                     <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
@@ -196,8 +214,8 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
                     backfaceVisibility: "hidden",
                     transform: "rotateY(180deg)",
                     transition: "opacity 0.3s",
-                    opacity: isFlipped && !isTransitioning ? cardOpacity : 0,
-                    display: isTransitioning ? 'none' : 'flex'
+                    opacity: isFlipped && !isTransitioning && !isTransitioningInternal ? cardOpacity : 0,
+                    display: (isTransitioning || isTransitioningInternal) ? 'none' : 'flex'
                 }}
             >
                 <p className="text-center text-black text-3xl font-bold">
@@ -207,8 +225,9 @@ const FlashCard: React.FC<FlashCardProps> = memo(({
         </div>
     );
 }, (prevProps, nextProps) => {
-    // Update memo comparison to include currentQuestion, correctAnswer, and isTransitioning
+    // Enhanced memo comparison
     return (
+        prevProps.questionId === nextProps.questionId &&
         prevProps.question === nextProps.question &&
         prevProps.correctAnswer === nextProps.correctAnswer &&
         prevProps.isFlipped === nextProps.isFlipped &&

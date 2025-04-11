@@ -8,6 +8,8 @@ import AutoConfettiAnimation from "../../../../pages/dashboard/play-battleground
 import { useAudio } from "../../../../contexts/AudioContext"; // Import the useAudio hook
 import { useEffect, useState } from "react"; // Add useState
 import axios from "axios"; // Import axios for API calls
+import SessionIncomplete from '../../../../../public/GameBattle/session-incomplete.png'; // Import session-incomplete image
+import AlmostThere from '../../../../../public/GameBattle/almost-there.png'
 
 interface SessionReportProps {
   timeSpent: string;
@@ -127,6 +129,10 @@ const SessionReport = () => {
     highestStreak,
   });
 
+  const totalItems = material?.items?.length || 0;
+  const adjustedMasteredCount = mode === "Peaceful" ? totalItems : masteredCount;
+  const adjustedUnmasteredCount = mode === "Peaceful" ? 0 : unmasteredCount;
+
   return (
     <div
       style={{ overflow: "auto", height: "80vh" }}
@@ -140,8 +146,8 @@ const SessionReport = () => {
         <div className="flex flex-col items-center">
           <div className="relative inline-block mx-auto mt-[490px]">
             <img
-              src={SessionComplete}
-              alt="SESSION COMPLETE"
+              src={earlyEnd ? AlmostThere : SessionComplete}
+              alt={earlyEnd ? "ALMOST THERE" : "SESSION COMPLETE"}
               className="relative z-10 w-[554px] h-[96px]"
             />
           </div>
@@ -149,8 +155,8 @@ const SessionReport = () => {
           {/* Character Image */}
           <div className="flex justify-center mt-12">
             <img
-              src={CharacterImage}
-              alt="Session complete character"
+              src={earlyEnd ? SessionIncomplete : CharacterImage}
+              alt={earlyEnd ? "Session incomplete character" : "Session complete character"}
               className="w-[673px] h-[348px] object-contain"
             />
           </div>
@@ -174,12 +180,12 @@ const SessionReport = () => {
                 <>
                   <StatisticBox
                     label="MASTERED"
-                    value={masteredCount}
+                    value={adjustedMasteredCount}
                     icon={ManaIcon}
                   />
                   <StatisticBox
                     label="UNMASTERED"
-                    value={unmasteredCount}
+                    value={adjustedUnmasteredCount}
                     icon={ManaIcon}
                   />
                 </>
