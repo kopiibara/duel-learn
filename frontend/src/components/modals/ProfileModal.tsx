@@ -394,7 +394,7 @@ const ProfileModal = ({
       aria-labelledby="profile-modal-title"
       sx={{
         "& .MuiModal-backdrop": {
-          backgroundColor: "rgba(0, 0, 0, 0.2)",
+          backgroundColor: "rgba(0, 0, 0, 0.3)",
         },
       }}
     >
@@ -410,6 +410,7 @@ const ProfileModal = ({
           overflow: "auto",
           bgcolor: "#120F1B",
           borderRadius: "0.8rem",
+          border: "2px solid #3B354D",
           boxShadow: 24,
           p: { xs: 2, sm: 3, md: 5 },
           "&:focus": { outline: "none" },
@@ -420,7 +421,7 @@ const ProfileModal = ({
             className="self-start flex items-center gap-2 pb-2 text-[#3B354C] hover:text-inherit transition-colors"
             onClick={onClose}
           >
-            <ArrowBackIcon fontSize="small" /> Close
+            <ArrowBackIcon fontSize="small" /> Back
           </button>
 
           {loadingUserData ? (
@@ -457,8 +458,18 @@ const ProfileModal = ({
                     {friendshipStatus &&
                       friendshipStatus.mutual_friends.count > 0 && (
                         <p className="text-[0.75rem] text-[#C6C1D8] mt-1">
-                          {friendshipStatus.mutual_friends.count} mutual friend
-                          {friendshipStatus.mutual_friends.count > 1 ? "s" : ""}
+                          {friendshipStatus.mutual_friends.count}
+                          {isOwnProfile
+                            ? ` friend${
+                                friendshipStatus.mutual_friends.count > 1
+                                  ? "s"
+                                  : ""
+                              }`
+                            : ` mutual friend${
+                                friendshipStatus.mutual_friends.count > 1
+                                  ? "s"
+                                  : ""
+                              }`}
                         </p>
                       )}
                   </div>
@@ -481,11 +492,12 @@ const ProfileModal = ({
               </div>
 
               {/* Mutual Friends (if any) */}
+              {/* Mutual Friends (if any) */}
               {friendshipStatus &&
                 friendshipStatus.mutual_friends.list.length > 0 && (
                   <div className="p-3 sm:p-4 bg-[#3B354D15] rounded-[0.8rem]">
                     <p className="text-[#9F9BAE] font-medium text-[0.9rem] sm:text-base mb-2">
-                      Mutual Friends:
+                      {isOwnProfile ? "Your Friends:" : "Mutual Friends:"}
                     </p>
                     <div className="flex gap-2 sm:gap-3 overflow-x-auto py-1 sm:py-2">
                       {friendshipStatus.mutual_friends.list.map((friend) => (

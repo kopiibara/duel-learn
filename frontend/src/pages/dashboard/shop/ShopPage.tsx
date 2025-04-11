@@ -15,11 +15,8 @@ import CancelSubscription from "../../../components/premium/CancelSubscription";
 const Shop = () => {
   const navigate = useNavigate();
   const { user, updateUser } = useUser();
-
   const isPremium = user?.account_type === "premium"; // Check if the user is premium
-
   const userCoins = user?.coins || 0;
-
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
@@ -333,7 +330,7 @@ const Shop = () => {
               learning!
             </p>
             <button
-              className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px]  bg-white text-[#9F87E5] rounded-full font-bold"
+              className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px]  bg-white text-[#9F87E5] rounded-full font-bold hover:scale-105 transition-all duration-300 ease-in-out"
               onClick={() => navigate("/dashboard/buy-premium-account")}
             >
               TRY IT NOW
@@ -366,7 +363,7 @@ const Shop = () => {
                 More Info
               </button>
               <button
-                className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px] sm:text-[15px] bg-white text-[#3e2880] rounded-full font-bold"
+                className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px] sm:text-[15px] bg-white text-[#3e2880] rounded-full font-bold hover:scale-105 transition-all duration-300 ease-in-out"
                 onClick={handleOpenCancelSubsModal}
               >
                 Cancel Subscription

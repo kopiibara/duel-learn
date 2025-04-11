@@ -29,7 +29,7 @@ const DiscoverMore = () => {
     : cards.length === 1
     ? 100 // Single card: 60%
     : isMediumScreen && cardsToShow === 2
-    ? 70 // Medium screen with 2 cards: 50% each
+    ? 100 // Medium screen with 2 cards: 50% each
     : 100 / maxCardsToShow; // Default distribution
 
   useEffect(() => {

@@ -8,6 +8,8 @@ import { useUser } from "../../../contexts/UserContext";
 import defaultPicture from "/profile-picture/default-picture.svg";
 import { useMediaQuery, useTheme } from "@mui/material";
 import { LeaderboardPlayer } from "../../../types/leaderboardObject";
+import { Friend } from "../../../contexts/UserContext";
+import ProfileModal from "../../modals/ProfileModal";
 
 const Leaderboards = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,6 +18,8 @@ const Leaderboards = () => {
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
   const { user } = useUser();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -127,6 +131,11 @@ const Leaderboards = () => {
     return undefined;
   };
 
+  const handleViewProfile = (friendId: string) => {
+    setSelectedFriend(friendId);
+    setProfileModalOpen(true);
+  };
+
   // Updated renderPlayerItem with better mobile responsiveness
   const renderPlayerItem = (
     player: LeaderboardPlayer,
@@ -159,14 +168,16 @@ const Leaderboards = () => {
           </div>
 
           {/* Avatar with fixed dimensions */}
-          <div className="flex-shrink-0 mr-1 sm:mr-2">
+          <div
+            onClick={() => handleViewProfile(player.firebase_uid)} // Changed from friend.firebase_uid
+            className="flex-shrink-0 mr-1 sm:mr-2 cursor-pointer"
+          >
             <img
               src={player.display_picture || defaultPicture}
               alt="Avatar"
-              className="w-8 sm:w-10 md:w-12 h-auto rounded-[5px] ml-1 sm:ml-2 object-cover"
+              className="w-8 sm:w-10 md:w-12 h-auto rounded-[5px] ml-1 sm:ml-2 object-cover hover:scale-110 transition-all duration-300 ease-in"
             />
           </div>
-
           {/* Username with truncation */}
           <p
             className={`truncate text-xs sm:text-sm text-[#E2DDF3] max-w-[60px] sm:max-w-none ${player.isCurrentUser}`}
@@ -198,96 +209,103 @@ const Leaderboards = () => {
   const top3Players = leaderboardData.filter((player) => player.rank <= 3);
 
   return (
-    <Box className="rounded-[0.8rem] shadow-md border-[0.2rem] border-[#3B354C] w-full">
-      <div className="px-6 sm:px-6 md:px-8 pt-6 sm:pt-6 md:pt-8 pb-3 sm:pb-4">
-        <div className="flex flex-row items-center mb-4 sm:mb-4 gap-2 sm:gap-4">
-          <img
-            src="/leaderboard.png"
-            className="w-4 sm:w-8 md:w-8 h-auto"
-            alt="icon"
-          />
-          <h2 className="text-sm sm:text-base md:text-lg font-semibold">
-            Leaderboards
-          </h2>
+    <>
+      <Box className="rounded-[0.8rem] shadow-md border-[0.2rem] border-[#3B354C] w-full">
+        <div className="px-6 sm:px-6 md:px-8 pt-6 sm:pt-6 md:pt-8 pb-3 sm:pb-4">
+          <div className="flex flex-row items-center mb-4 sm:mb-4 gap-2 sm:gap-4">
+            <img
+              src="/leaderboard.png"
+              className="w-4 sm:w-8 md:w-8 h-auto"
+              alt="icon"
+            />
+            <h2 className="text-sm sm:text-base md:text-lg font-semibold">
+              Leaderboards
+            </h2>
+          </div>
+
+          <hr className="border-t-2 border-[#3B354D] mb-2 sm:mb-4 rounded-full" />
+
+          {loading ? (
+            <div className="flex justify-center items-center h-32 sm:h-60">
+              <CircularProgress size={isMobile ? 24 : 40} />
+            </div>
+          ) : error ? (
+            <div className="text-center text-red-500 text-xs sm:text-sm py-2 sm:py-4">
+              {error}
+            </div>
+          ) : leaderboardData.length === 0 ? (
+            <div className="text-center text-gray-400 text-xs sm:text-sm py-2 sm:py-4">
+              No friends found. Add friends to see your leaderboard!
+            </div>
+          ) : (
+            <div className="flex flex-col space-y-1 sm:space-y-2">
+              {/* Top 3 Players - always without background styling */}
+              {top3Players.map((player) => renderPlayerItem(player, false))}
+
+              {/* Always add separator and current user with background styling */}
+              {currentUser && currentUser.rank > 3 && (
+                <>
+                  <hr className="border-t-2 border-[#3B354D] my-1 sm:my-2 rounded-full" />
+                  {renderPlayerItem(currentUser, true)}
+                </>
+              )}
+            </div>
+          )}
         </div>
 
-        <hr className="border-t-2 border-[#3B354D] mb-2 sm:mb-4 rounded-full" />
+        {/* Footer section */}
+        {leaderboardData.length > 3 && (
+          <Stack
+            direction={"row"}
+            spacing={1}
+            className="flex justify-center bg-[#120F1C] py-2 sm:py-3 px-2 sm:px-4 border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
+          >
+            <p
+              className={`text-xs sm:text-sm ${
+                leaderboardData.length > 3
+                  ? "text-[#3B354D] hover:text-[#A38CE6] cursor-pointer transition-colors font-bold"
+                  : "text-[#232029] cursor-not-allowed font-bold"
+              }`}
+              onClick={() => leaderboardData.length > 3 && setIsModalOpen(true)}
+            >
+              VIEW MORE
+            </p>
+          </Stack>
+        )}
 
-        {loading ? (
-          <div className="flex justify-center items-center h-32 sm:h-60">
-            <CircularProgress size={isMobile ? 24 : 40} />
-          </div>
-        ) : error ? (
-          <div className="text-center text-red-500 text-xs sm:text-sm py-2 sm:py-4">
-            {error}
-          </div>
-        ) : leaderboardData.length === 0 ? (
-          <div className="text-center text-gray-400 text-xs sm:text-sm py-2 sm:py-4">
-            No friends found. Add friends to see your leaderboard!
-          </div>
-        ) : (
-          <div className="flex flex-col space-y-1 sm:space-y-2">
-            {/* Top 3 Players - always without background styling */}
-            {top3Players.map((player) => renderPlayerItem(player, false))}
-
-            {/* Always add separator and current user with background styling */}
-            {currentUser && currentUser.rank > 3 && (
-              <>
-                <hr className="border-t-2 border-[#3B354D] my-1 sm:my-2 rounded-full" />
-                {renderPlayerItem(currentUser, true)}
-              </>
-            )}
+        {/* Modal with updated styling for mobile */}
+        {isModalOpen && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-2 sm:p-4"
+            onClick={() => setIsModalOpen(false)}
+          >
+            <div
+              className="bg-[#080511] px-3 sm:px-5 md:px-8 py-4 sm:py-6 border-[#3B354D] border rounded-[0.8rem] w-full max-w-3xl max-h-[90vh] shadow-lg flex flex-col space-y-3 sm:space-y-4 items-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-base sm:text-lg md:text-xl text-white font-semibold">
+                Friend Leaderboard
+              </h2>
+              <hr className="border-t-2 border-[#363D46] w-full mb-2 sm:mb-4" />
+              <div className="overflow-y-auto w-full max-h-[300px] sm:max-h-[400px] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-2 sm:space-y-3">
+                {leaderboardData.map((player) => renderPlayerItem(player))}
+              </div>
+              <button
+                className="mt-2 sm:mt-4 bg-[#4D1EE3] text-white px-4 sm:px-6 py-2 sm:py-3 rounded-md hover:bg-[#3B1BC9] text-xs sm:text-sm"
+                onClick={() => setIsModalOpen(false)}
+              >
+                Close
+              </button>
+            </div>
           </div>
         )}
-      </div>
-
-      {/* Footer section */}
-      {leaderboardData.length > 3 && (
-        <Stack
-          direction={"row"}
-          spacing={1}
-          className="flex justify-center bg-[#120F1C] py-2 sm:py-3 px-2 sm:px-4 border-t-[0.2rem] rounded-b-[0.8rem] border-[#3B354C]"
-        >
-          <p
-            className={`text-xs sm:text-sm ${
-              leaderboardData.length > 3
-                ? "text-[#3B354D] hover:text-[#A38CE6] cursor-pointer transition-colors font-bold"
-                : "text-[#232029] cursor-not-allowed font-bold"
-            }`}
-            onClick={() => leaderboardData.length > 3 && setIsModalOpen(true)}
-          >
-            VIEW MORE
-          </p>
-        </Stack>
-      )}
-
-      {/* Modal with updated styling for mobile */}
-      {isModalOpen && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-2 sm:p-4"
-          onClick={() => setIsModalOpen(false)}
-        >
-          <div
-            className="bg-[#080511] px-3 sm:px-5 md:px-8 py-4 sm:py-6 border-[#3B354D] border rounded-[0.8rem] w-full max-w-3xl max-h-[90vh] shadow-lg flex flex-col space-y-3 sm:space-y-4 items-center"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-base sm:text-lg md:text-xl text-white font-semibold">
-              Friend Leaderboard
-            </h2>
-            <hr className="border-t-2 border-[#363D46] w-full mb-2 sm:mb-4" />
-            <div className="overflow-y-auto w-full max-h-[300px] sm:max-h-[400px] scrollbar-thin scrollbar-thumb-[#221d35] scrollbar-track-transparent space-y-2 sm:space-y-3">
-              {leaderboardData.map((player) => renderPlayerItem(player))}
-            </div>
-            <button
-              className="mt-2 sm:mt-4 bg-[#4D1EE3] text-white px-4 sm:px-6 py-2 sm:py-3 rounded-md hover:bg-[#3B1BC9] text-xs sm:text-sm"
-              onClick={() => setIsModalOpen(false)}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-    </Box>
+      </Box>
+      <ProfileModal
+        open={profileModalOpen}
+        onClose={() => setProfileModalOpen(false)}
+        userId={selectedFriend || undefined}
+      />
+    </>
   );
 };
 

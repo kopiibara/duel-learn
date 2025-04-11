@@ -225,7 +225,11 @@ const FindFriends: React.FC = () => {
                     arrow
                   >
                     <button
-                      className="bg-[#5CA654] text-white py-2 px-4 rounded-md hover:scale-105 transition-all duration-300"
+                      className={`${
+                        sentRequests[otherUser.firebase_uid]
+                          ? "bg-[#4D74E3]" // Blue color for pending state
+                          : "bg-[#5CA654]" // Original green color
+                      } text-white py-2 px-4 rounded-md hover:scale-105 transition-all duration-300`}
                       onClick={() => {
                         if (
                           !user?.firebase_uid ||
@@ -258,12 +262,6 @@ const FindFriends: React.FC = () => {
                           receiver_id: otherUser.firebase_uid,
                           receiver_username: otherUser.username,
                         };
-
-                        // Show notification to the sender immediately
-                        setSnackbar({
-                          open: true,
-                          message: `You sent a friend request to ${otherUser.username}!`,
-                        });
 
                         // Send via socket for real-time notification
                         console.log(
@@ -307,15 +305,6 @@ const FindFriends: React.FC = () => {
                       ) : (
                         <PersonAddIcon sx={{ fontSize: 18 }} />
                       )}
-                    </button>
-                  </Tooltip>
-
-                  <Tooltip title="View Profile" enterDelay={100} arrow>
-                    <button
-                      className="bg-[#3A3A8B] text-white py-2 px-4 rounded-md hover:scale-105 transition-all duration-300"
-                      onClick={() => handleViewProfile(otherUser.firebase_uid)}
-                    >
-                      <VisibilityIcon sx={{ fontSize: 18 }} />
                     </button>
                   </Tooltip>
                 </div>

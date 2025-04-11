@@ -644,18 +644,23 @@ export default {
 
       // Update display picture if provided
       if (display_picture) {
+        // Remove "/public" prefix if present
+        const trimmedDisplayPicture = display_picture.startsWith('/public')
+          ? display_picture.substring(7) // Remove first 7 characters ('/public')
+          : display_picture;
+
         await connection.execute(
           `UPDATE users SET display_picture = ?, updated_at = ? WHERE firebase_uid = ?;`,
-          [display_picture, moment().format("YYYY-MM-DD HH:mm:ss"), firebase_uid]
+          [trimmedDisplayPicture, moment().format("YYYY-MM-DD HH:mm:ss"), firebase_uid]
         );
 
         await connection.execute(
           `UPDATE user_info SET display_picture = ? WHERE firebase_uid = ?;`,
-          [display_picture, firebase_uid]
+          [trimmedDisplayPicture, firebase_uid]
         );
 
         await admin.firestore().collection("users").doc(firebase_uid).update({
-          display_picture: display_picture,
+          display_picture: trimmedDisplayPicture,
           updated_at: moment().format("YYYY-MM-DD HH:mm:ss"),
         });
       }

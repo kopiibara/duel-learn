@@ -234,7 +234,7 @@ const ViewStudyMaterial = () => {
 
   return (
     <PageTransition>
-      <Box className="min-h-screen w-full px-4 md:px-8">
+      <Box className="min-h-screen w-full ">
         <DocumentHead title={studyMaterial?.title + " | Duel Learn"} />
         <Stack spacing={2} sx={{ pt: { xs: 2, md: 3 } }}>
           <Stack

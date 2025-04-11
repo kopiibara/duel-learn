@@ -5,7 +5,6 @@ import studyMaterialRoutes from "./routes/StudyMaterialRoutes.js";
 import userRoutes from "./routes/UserAccount.js";
 import friendRoutes from "./routes/FriendRoutes.js";
 import userInfoRoutes from "./routes/UserInfoRoutes.js";
-import lobbyRoutes from "./routes/lobby.routes.js";
 import battleRoutes from "./routes/battle.routes.js";
 import gameplayRoutes from "./routes/gameplay.routes.js";
 import openAiRoutes from "./routes/OpenAiRoutes.js";
@@ -18,7 +17,10 @@ import paymentRoutes from "./routes/PaymentRoutes.js"; // Import payment routes
 import { corsMiddleware } from "./middleware/CorsMiddleware.js"; // Import CORS middleware
 import { coopMiddleware } from "./middleware/CoopMiddleware.js"; // Import COOP middleware
 import sessionReportRoutes from './routes/sessionReport.js';
-import { initSessionReportTable } from './models/SessionReport.js';// Load environment variables
+import { initSessionReportTable } from './models/SessionReport.js';
+import lobbyRoutes from "./routes/LobbyRoutes.js";
+
+// Load environment variables
 dotenv.config();
 
 // Connect to Database

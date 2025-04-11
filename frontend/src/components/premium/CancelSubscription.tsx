@@ -134,7 +134,7 @@ const CancelSubscription = ({ open, onClose }: CancelSubscriptionProps) => {
           transform: "translate(-50%, -50%)",
           width: { xs: "90%", sm: 500 },
           bgcolor: "#1E1A29",
-          borderRadius: 2,
+          borderRadius: "0.8rem",
           boxShadow: 24,
           p: 4,
           outline: "none",
@@ -158,7 +158,7 @@ const CancelSubscription = ({ open, onClose }: CancelSubscriptionProps) => {
             flexDirection: "column",
             alignItems: "center",
             textAlign: "center",
-            borderRadius: "0.8rem",
+
             mt: 1,
           }}
         >

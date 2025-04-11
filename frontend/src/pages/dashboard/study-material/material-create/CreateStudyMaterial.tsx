@@ -858,7 +858,7 @@ const CreateStudyMaterial = () => {
   return (
     <>
       <PageTransition>
-        <Box className="h-full w-full px-2 sm:px-4 md:px-8">
+        <Box className="h-full w-full ">
           <DocumentHead
             title={
               editMode

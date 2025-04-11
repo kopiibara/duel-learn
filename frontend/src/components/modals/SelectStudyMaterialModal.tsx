@@ -21,7 +21,6 @@ import SearchIcon from "@mui/icons-material/Search";
 import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import ArrowDropUpIcon from "@mui/icons-material/ArrowDropUp";
 import { useUser } from "../../contexts/UserContext";
-import { generateCode } from "../../pages/dashboard/play-battleground/utils/codeGenerator";
 import { StudyMaterial } from "../../types/studyMaterialObject";
 import { createNewLobby, navigateToWelcomeScreen } from "../../services/pvpLobbyService";
 

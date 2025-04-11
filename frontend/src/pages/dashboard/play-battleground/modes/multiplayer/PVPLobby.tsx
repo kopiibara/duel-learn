@@ -6,7 +6,7 @@ import SelectStudyMaterialModal from "../../../../../components/modals/SelectStu
 import QuestionTypeSelectionModal from "../../components/modal/QuestionTypeSelectionModal";
 import InvitePlayerModal from "../../components/modal/InvitePlayerModal";
 import { useUser } from "../../../../../contexts/UserContext";
-import { generateCode } from "../../utils/codeGenerator";
+import { generateLobbyCode } from "../../../../../services/pvpLobbyService";
 import defaultAvatar from "/profile-picture/bunny-default.png";
 import { Socket } from "socket.io-client";
 import axios from "axios";
@@ -117,7 +117,7 @@ const PVPLobby: React.FC = () => {
 
   // Use URL param first, then state lobby code, then generate new one (only once)
   const [lobbyCode, setLobbyCode] = useState<string>(() => {
-    const code = urlLobbyCode || stateLobbyCode || generateCode();
+    const code = urlLobbyCode || stateLobbyCode || generateLobbyCode();
     console.log("Using lobby code:", code, { urlLobbyCode, stateLobbyCode });
     return code;
   });
@@ -1057,6 +1057,9 @@ const PVPLobby: React.FC = () => {
   // Add a state for settings update indicator
   const [settingsUpdated, setSettingsUpdated] = useState(false);
 
+  // Move useRef to component top level to fix invalid hook call
+  const invitationSentRef = useRef(false);
+
   // Modify the useEffect that periodically checks lobby settings
   useEffect(() => {
     // Only start polling if an invitation has been sent or we're a guest
@@ -1162,9 +1165,6 @@ const PVPLobby: React.FC = () => {
         console.log("Material or question types not ready yet, waiting...");
         return;
       }
-
-      // Track if we've already sent an invitation to avoid duplicates
-      const invitationSentRef = useRef(false);
 
       // Only send if we haven't already sent one and socket is connected
       if (!invitationSentRef.current && socket?.connected) {
