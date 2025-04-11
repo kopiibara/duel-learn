@@ -7,6 +7,7 @@ import Header from "../components/header/Header";
 import Footer from "../components/Footer";
 import RightSideBar from "../components/RighSideBar/RightSideBar";
 import DrawerRightSideBar from "../components/DrawerRightSideBar"; // Import the new Drawer component
+import { BattleInvitationCenter } from "../components"; // Import BattleInvitationCenter
 import { Box } from "@mui/system";
 import "../styles/custom-scrollbar.css";
 import WidgetsIcon from "@mui/icons-material/Widgets";
@@ -23,10 +24,12 @@ const DashboardLayout = () => {
 
   return (
     <Box
-      className={`h-screen px-8 flex flex-col lg:flex-row w-screen overflow-x-hidden ${
-        useMediaQuery("(min-width:1400px)") ? "px-11" : "px-25"
-      }`}
+      className={`h-screen px-8 flex flex-col lg:flex-row w-screen overflow-x-hidden ${useMediaQuery("(min-width:1400px)") ? "px-11" : "px-25"
+        }`}
     >
+      {/* BattleInvitationCenter - will only show in dashboard routes */}
+      <BattleInvitationCenter />
+
       {/* Sidebar (hidden on small screens) */}
       <aside className="hidden lg:block pl-4 pr-4 h-screen sticky top-0">
         <Box>
@@ -46,9 +49,8 @@ const DashboardLayout = () => {
         {/* Main Content Section */}
         <Box className="flex flex-1">
           <main
-            className={`flex-1 pt-3 relative ${
-              useMediaQuery("(min-width:1200px)") ? "px-11" : "px-25"
-            }`}
+            className={`flex-1 pt-3 relative ${useMediaQuery("(min-width:1200px)") ? "px-11" : "px-25"
+              }`}
           >
             <Outlet />
             <Footer />

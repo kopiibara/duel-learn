@@ -346,7 +346,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                   id="term"
                   className="border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full content-stretch text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-all ease-in-out duration-200"
                   rows={1}
-                  placeholder="Enter Term"
+                  placeholder="Term"
                   onInput={(e) =>
                     resizeTextarea(e.target as HTMLTextAreaElement)
                   }
@@ -368,8 +368,8 @@ const ItemComponent: FC<ItemComponentProps> = ({
                         : "#6F658D",
                     transition: "color 0.3s ease-in-out",
                     fontSize: "0.75rem",
-                    textAlign: "right",
-                    marginTop: "0.2rem",
+                    textAlign: "left",
+                    marginTop: "0.8rem",
                   }}
                 >
                   {item.term.length}/{MAX_TERM_LENGTH} characters
@@ -384,7 +384,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                       scanningEffect ? "opacity-80" : ""
                     }`}
                     rows={1}
-                    placeholder="Enter definition"
+                    placeholder="Definition"
                     onInput={(e) =>
                       resizeTextarea(e.target as HTMLTextAreaElement)
                     }
