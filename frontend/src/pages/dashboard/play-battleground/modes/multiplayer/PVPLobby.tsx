@@ -1354,24 +1354,24 @@ const PVPLobby: React.FC = () => {
   // Add a useEffect to check if ban is still active
   useEffect(() => {
     if (!userBanUntil) return;
-    
+
     const checkBanStatus = () => {
       const now = new Date();
       const isBanned = userBanUntil > now;
       setIsBanActive(isBanned);
-      
+
       if (isBanned) {
         // Ensure the modal is shown if user is banned
         setShowBanModal(true);
       }
     };
-    
+
     // Check immediately
     checkBanStatus();
-    
+
     // Then check every second
     const interval = setInterval(checkBanStatus, 1000);
-    
+
     return () => clearInterval(interval);
   }, [userBanUntil]);
 

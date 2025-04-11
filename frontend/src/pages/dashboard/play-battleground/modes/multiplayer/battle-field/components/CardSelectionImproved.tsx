@@ -29,10 +29,10 @@ export interface CardSelectionProps {
 }
 
 /**
- * CardSelection component handles the card selection UI during the battle
- * with improved card persistence logic
+ * Improved CardSelection component that ensures proper card persistence
+ * Only the selected card is replaced with a new random card, unselected cards stay the same
  */
-const CardSelection: React.FC<CardSelectionProps> = ({
+const CardSelectionImproved: React.FC<CardSelectionProps> = ({
     isMyTurn,
     opponentName,
     playerName,
@@ -52,38 +52,6 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     const [isFirstTurn, setIsFirstTurn] = useState(true);
     const [turnCount, setTurnCount] = useState(1);
     const [debugInfo, setDebugInfo] = useState<string>(""); // Debug info for easier troubleshooting
-
-    // Add stats tracking for card probabilities - with improved tracking
-    const [cardStats, setCardStats] = useState<{
-        basic: number,
-        normal: number,
-        epic: number,
-        rare: number,
-        total: number,
-        selections: {
-            name: string,
-            type: string
-        }[]
-    }>(() => {
-        // Try to load card stats from sessionStorage
-        const savedStats = sessionStorage.getItem('battle_card_stats');
-        if (savedStats) {
-            try {
-                return JSON.parse(savedStats);
-            } catch (e) {
-                console.error("Error parsing saved card stats:", e);
-            }
-        }
-        // Default initial state
-        return {
-            basic: 0,
-            normal: 0,
-            epic: 0,
-            rare: 0,
-            total: 0,
-            selections: []
-        };
-    });
 
     // State for card blocking effect
     const [hasCardBlocking, setHasCardBlocking] = useState(false);
@@ -137,8 +105,6 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
     // Choose a single card based on probability distribution
     const selectSingleCardByProbability = (difficulty: string): Card => {
-        console.log(`Selecting card with difficulty: ${difficulty}`);
-
         // Extract just the first word (hard, easy, average) from strings like "Hard Mode"
         const difficultyWord = difficulty?.toLowerCase().split(' ')[0] || "average";
 
@@ -148,171 +114,46 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         else if (difficultyWord.includes("hard")) normalizedDifficulty = "hard";
         else normalizedDifficulty = "average"; // Default
 
-        console.log(`Normalized difficulty: ${normalizedDifficulty}`);
-
-        // Add debug information
-        setDebugInfo(prev => prev + `\nSelecting card with difficulty: ${normalizedDifficulty}`);
-
         const dist = probabilityDistribution[normalizedDifficulty] || probabilityDistribution.average;
 
-        // Log the probability distribution being used
-        console.log(`Using probability distribution:`, JSON.stringify(dist));
+        // Helper function to select a random card based on weights
+        const selectRandomCard = (cardPool: Card[], weights: Record<string, number>): Card => {
+            const totalWeight = Object.values(weights).reduce((sum, weight) => sum + weight, 0);
+            let random = Math.random() * totalWeight;
+
+            for (const card of cardPool) {
+                const weight = weights[card.name] || 0;
+                if (random < weight) return card;
+                random -= weight;
+            }
+
+            return cardPool[0]; // Fallback to first card
+        };
 
         // Select a card based on probability
         const random = Math.random() * 100;
-        console.log(`Random percentage: ${random}`);
-        setDebugInfo(prev => prev + `\nRandom percentage: ${random.toFixed(2)}`);
-
-        // Track the expected probability ranges for debugging
-        const basicRange = [0, dist.basic];
-        const normalRange = [dist.basic, dist.basic + dist.normal.total];
-        const epicRange = [dist.basic + dist.normal.total, dist.basic + dist.normal.total + dist.epic.total];
-        const rareRange = [dist.basic + dist.normal.total + dist.epic.total, 100];
-
-        setDebugInfo(prev => prev + `\nProbability ranges:`);
-        setDebugInfo(prev => prev + `\n  Basic: ${basicRange[0]}-${basicRange[1]}%`);
-        setDebugInfo(prev => prev + `\n  Normal: ${normalRange[0]}-${normalRange[1]}%`);
-        setDebugInfo(prev => prev + `\n  Epic: ${epicRange[0]}-${epicRange[1]}%`);
-        setDebugInfo(prev => prev + `\n  Rare: ${rareRange[0]}-${rareRange[1]}%`);
-
-        let selectedCard: Card;
 
         // Basic cards selection
         if (random < dist.basic) {
-            console.log(`Selected basic card type (${dist.basic}%)`);
-            setDebugInfo(prev => prev + `\nSelected basic card type (${dist.basic}%)`);
-            selectedCard = cardsByType.basic[Math.floor(Math.random() * cardsByType.basic.length)];
+            return cardsByType.basic[Math.floor(Math.random() * cardsByType.basic.length)];
         }
         // Normal cards selection
         else if (random < dist.basic + dist.normal.total) {
-            console.log(`Selected normal card type (${dist.normal.total}%)`);
-            setDebugInfo(prev => prev + `\nSelected normal card type (${dist.normal.total}%)`);
-
-            // Helper function to select a weighted card
-            const totalWeight = Object.values(dist.normal.distribution).reduce((sum, weight) => sum + weight, 0);
-            let weightRandom = Math.random() * totalWeight;
-            console.log(`Normal card weighted random: ${weightRandom}, total weight: ${totalWeight}`);
-
-            selectedCard = cardsByType.normal[0]; // Default fallback
-            for (const card of cardsByType.normal) {
-                const cardName = card.name as keyof typeof dist.normal.distribution;
-                const weight = dist.normal.distribution[cardName] || 0;
-                console.log(`Checking card: ${cardName}, weight: ${weight}`);
-                if (weightRandom < weight) {
-                    console.log(`Selected normal card: ${cardName}`);
-                    selectedCard = card;
-                    break;
-                }
-                weightRandom -= weight;
-            }
+            return selectRandomCard(cardsByType.normal, dist.normal.distribution);
         }
         // Epic cards selection
         else if (random < dist.basic + dist.normal.total + dist.epic.total) {
-            console.log(`Selected epic card type (${dist.epic.total}%)`);
-            setDebugInfo(prev => prev + `\nSelected epic card type (${dist.epic.total}%)`);
-
-            // Helper function to select a weighted card
-            const totalWeight = Object.values(dist.epic.distribution).reduce((sum, weight) => sum + weight, 0);
-            let weightRandom = Math.random() * totalWeight;
-            console.log(`Epic card weighted random: ${weightRandom}, total weight: ${totalWeight}`);
-
-            selectedCard = cardsByType.epic[0]; // Default fallback
-            for (const card of cardsByType.epic) {
-                const cardName = card.name as keyof typeof dist.epic.distribution;
-                const weight = dist.epic.distribution[cardName] || 0;
-                console.log(`Checking card: ${cardName}, weight: ${weight}`);
-                if (weightRandom < weight) {
-                    console.log(`Selected epic card: ${cardName}`);
-                    selectedCard = card;
-                    break;
-                }
-                weightRandom -= weight;
-            }
+            return selectRandomCard(cardsByType.epic, dist.epic.distribution);
         }
         // Rare cards selection
         else {
-            console.log(`Selected rare card type (${dist.rare.total}%)`);
-            setDebugInfo(prev => prev + `\nSelected rare card type (${dist.rare.total}%)`);
-
-            // Helper function to select a weighted card
-            const totalWeight = Object.values(dist.rare.distribution).reduce((sum, weight) => sum + weight, 0);
-            let weightRandom = Math.random() * totalWeight;
-            console.log(`Rare card weighted random: ${weightRandom}, total weight: ${totalWeight}`);
-
-            selectedCard = cardsByType.rare[0]; // Default fallback
-            for (const card of cardsByType.rare) {
-                const cardName = card.name as keyof typeof dist.rare.distribution;
-                const weight = dist.rare.distribution[cardName] || 0;
-                console.log(`Checking card: ${cardName}, weight: ${weight}`);
-                if (weightRandom < weight) {
-                    console.log(`Selected rare card: ${cardName}`);
-                    selectedCard = card;
-                    break;
-                }
-                weightRandom -= weight;
-            }
+            return selectRandomCard(cardsByType.rare, dist.rare.distribution);
         }
-
-        // Update card stats when we actually use a card
-        const cardType = selectedCard.type.toLowerCase();
-        let statType: "basic" | "normal" | "epic" | "rare" = "basic";
-
-        if (cardType.includes("basic")) {
-            statType = "basic";
-        } else if (cardType.includes("normal")) {
-            statType = "normal";
-        } else if (cardType.includes("epic")) {
-            statType = "epic";
-        } else if (cardType.includes("rare")) {
-            statType = "rare";
-        }
-
-        // Update the stats with the finalized card
-        setCardStats(prev => {
-            const newStats = {
-                ...prev,
-                [statType]: prev[statType] + 1,
-                total: prev.total + 1,
-                selections: [
-                    ...prev.selections,
-                    { name: selectedCard.name, type: selectedCard.type }
-                ].slice(-20) // Keep only last 20 selections to avoid growing too large
-            };
-
-            // Save to sessionStorage
-            sessionStorage.setItem('battle_card_stats', JSON.stringify(newStats));
-            return newStats;
-        });
-
-        setDebugInfo(prev => prev + `\nFinal card selected: ${selectedCard.name} (${selectedCard.type})`);
-        return selectedCard;
     };
 
-    // Generate three random cards - making sure they're all different when possible
+    // Generate three random cards
     const generateThreeRandomCards = (difficulty: string): Card[] => {
-        console.log("Generating three random cards");
-        setDebugInfo("Generating three random cards with " + difficulty + " difficulty");
-
-        // First card is completely random
-        const firstCard = selectSingleCardByProbability(difficulty);
-
-        // For the second card, try up to 3 times to get a different card
-        let secondCard: Card;
-        let attempts = 0;
-        do {
-            secondCard = selectSingleCardByProbability(difficulty);
-            attempts++;
-        } while (secondCard.id === firstCard.id && attempts < 3);
-
-        // For the third card, try up to 3 times to get a different card from both previous cards
-        let thirdCard: Card;
-        attempts = 0;
-        do {
-            thirdCard = selectSingleCardByProbability(difficulty);
-            attempts++;
-        } while ((thirdCard.id === firstCard.id || thirdCard.id === secondCard.id) && attempts < 3);
-
-        return [firstCard, secondCard, thirdCard];
+        return Array(3).fill(null).map(() => selectSingleCardByProbability(difficulty));
     };
 
     // Handle timer timeout - automatically select "no-card"
@@ -355,58 +196,12 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
     // Initialize cards for the first turn
     useEffect(() => {
-        try {
-            // First try to load state from sessionStorage
-            const savedCards = sessionStorage.getItem('battle_cards');
-            const savedLastIndex = sessionStorage.getItem('battle_last_selected_index');
-            const savedTurnCount = sessionStorage.getItem('battle_turn_count');
-            const savedIsFirstTurn = sessionStorage.getItem('battle_is_first_turn');
-
-            if (savedCards && isMyTurn) {
-                // Restore saved state if it exists
-                const parsedCards = JSON.parse(savedCards);
-                setCurrentCards(parsedCards);
-
-                if (savedLastIndex) {
-                    const parsedIndex = parseInt(savedLastIndex);
-                    setLastSelectedIndex(parsedIndex);
-
-                    // If we have a last selected index and it's not the first turn,
-                    // replace that card with a new random card
-                    if (savedIsFirstTurn === 'false') {
-                        const updatedCards = [...parsedCards];
-                        updatedCards[parsedIndex] = selectSingleCardByProbability(difficultyMode || "average");
-                        setCurrentCards(updatedCards);
-                        sessionStorage.setItem('battle_cards', JSON.stringify(updatedCards));
-                        setDebugInfo(`Restored and replaced card at index ${parsedIndex} with new random card`);
-                    } else {
-                        setDebugInfo("Restored cards from session storage");
-                    }
-                }
-
-                setTurnCount(savedTurnCount ? parseInt(savedTurnCount) : 1);
-                setIsFirstTurn(savedIsFirstTurn === 'true');
-            } else if (isMyTurn) {
-                // Generate new cards if no saved state
-                const initialCards = generateThreeRandomCards(difficultyMode || "average");
-                setCurrentCards(initialCards);
-                setDebugInfo("Initial setup: Generated 3 random cards for first turn");
-
-                // Save to session storage
-                sessionStorage.setItem('battle_cards', JSON.stringify(initialCards));
-                sessionStorage.setItem('battle_is_first_turn', 'true');
-                sessionStorage.setItem('battle_turn_count', '1');
-            }
-        } catch (error) {
-            console.error("Error initializing cards:", error);
-            // Fallback to generating new cards
-            if (isMyTurn) {
-                const initialCards = generateThreeRandomCards(difficultyMode || "average");
-                setCurrentCards(initialCards);
-                setDebugInfo("Error restoring state, generated new cards");
-            }
+        if (isFirstTurn && isMyTurn) {
+            const initialCards = generateThreeRandomCards(difficultyMode || "average");
+            setCurrentCards(initialCards);
+            setDebugInfo("Initial setup: Generated 3 random cards for first turn");
         }
-    }, [isMyTurn, difficultyMode]);
+    }, [isFirstTurn, isMyTurn, difficultyMode]);
 
     // Handle turn transitions - this is the key improvement that ensures proper card persistence
     useEffect(() => {
@@ -418,6 +213,24 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             setAnimationComplete(false);
             setSelectionTimer(8); // Reset timer to 8 seconds
             setTimerActive(false); // Don't start timer yet
+
+            // For the first turn, we already initialized cards in the previous useEffect
+            if (!isFirstTurn && lastSelectedIndex !== null) {
+                // On subsequent turns, create a new array that keeps the existing cards
+                const updatedCards = [...currentCards];
+
+                // Only replace the card at the lastSelectedIndex with a new random card
+                const oldCard = updatedCards[lastSelectedIndex]?.name || "unknown";
+                updatedCards[lastSelectedIndex] = selectSingleCardByProbability(difficultyMode || "average");
+                const newCard = updatedCards[lastSelectedIndex]?.name || "unknown";
+
+                // Update the cards array with our changes
+                setCurrentCards(updatedCards);
+                setDebugInfo(`Turn ${turnCount}: Replacing selected card at index ${lastSelectedIndex} (${oldCard} -> ${newCard})`);
+
+                // Increment turn count
+                setTurnCount(prevCount => prevCount + 1);
+            }
 
             // Start the card animation sequence
             const flipTimer = setTimeout(() => {
@@ -436,7 +249,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             setAnimationComplete(false);
             setTimerActive(false);
         }
-    }, [isMyTurn]);
+    }, [isMyTurn, difficultyMode]);
 
     // Handle when back card exit animation is complete
     const handleBackCardExitComplete = () => {
@@ -453,15 +266,11 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         // Store the selected index for the next turn
         setLastSelectedIndex(index);
 
-        // Save selected index to sessionStorage
-        sessionStorage.setItem('battle_last_selected_index', index.toString());
-
         // Log the selection
-        setDebugInfo(prev => prev + `\nCard selected: ${currentCards[index]?.name} at index ${index}`);
+        setDebugInfo(`Card selected: ${currentCards[index]?.name} at index ${index}`);
 
         // No longer the first turn
         setIsFirstTurn(false);
-        sessionStorage.setItem('battle_is_first_turn', 'false');
 
         // Pass the selected card to the parent component
         onCardSelected(cardId);
@@ -653,107 +462,13 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120">
-            {/* Enhanced debug panel - shows more detailed probability info */}
+            {/* Debug info hidden in production but useful during testing */}
             {process.env.NODE_ENV === 'development' && (
-                <div className="absolute top-0 right-0 bg-gray-800/90 p-2 text-white text-xs max-w-md opacity-90 overflow-y-auto max-h-[400px]">
-                    <div className="flex justify-between items-center mb-1">
-                        <h3 className="font-bold">Card Selection Debug</h3>
-                        <div className="flex gap-2">
-                            <span>Difficulty: <span className="font-semibold">{difficultyMode}</span></span>
-                        </div>
-                    </div>
-
-                    {/* Card statistics with expected vs actual */}
-                    <div className="grid grid-cols-5 gap-1 mb-2 text-center text-[10px]">
-                        <div className="bg-gray-700 p-1 rounded">
-                            <p className="font-bold">Basic</p>
-                            <p>{cardStats.basic}</p>
-                            <p>{cardStats.total > 0 ? ((cardStats.basic / cardStats.total) * 100).toFixed(1) + '%' : '0%'}</p>
-                            <p className="text-gray-300 text-[8px]">
-                                {difficultyMode?.toLowerCase().includes("easy") ? "70%" :
-                                    difficultyMode?.toLowerCase().includes("hard") ? "70%" : "70%"}
-                            </p>
-                        </div>
-                        <div className="bg-blue-700 p-1 rounded">
-                            <p className="font-bold">Normal</p>
-                            <p>{cardStats.normal}</p>
-                            <p>{cardStats.total > 0 ? ((cardStats.normal / cardStats.total) * 100).toFixed(1) + '%' : '0%'}</p>
-                            <p className="text-gray-300 text-[8px]">
-                                {difficultyMode?.toLowerCase().includes("easy") ? "30%" :
-                                    difficultyMode?.toLowerCase().includes("hard") ? "15%" : "20%"}
-                            </p>
-                        </div>
-                        <div className="bg-purple-700 p-1 rounded">
-                            <p className="font-bold">Epic</p>
-                            <p>{cardStats.epic}</p>
-                            <p>{cardStats.total > 0 ? ((cardStats.epic / cardStats.total) * 100).toFixed(1) + '%' : '0%'}</p>
-                            <p className="text-gray-300 text-[8px]">
-                                {difficultyMode?.toLowerCase().includes("easy") ? "0%" :
-                                    difficultyMode?.toLowerCase().includes("hard") ? "10%" : "10%"}
-                            </p>
-                        </div>
-                        <div className="bg-yellow-700 p-1 rounded">
-                            <p className="font-bold">Rare</p>
-                            <p>{cardStats.rare}</p>
-                            <p>{cardStats.total > 0 ? ((cardStats.rare / cardStats.total) * 100).toFixed(1) + '%' : '0%'}</p>
-                            <p className="text-gray-300 text-[8px]">
-                                {difficultyMode?.toLowerCase().includes("easy") ? "0%" :
-                                    difficultyMode?.toLowerCase().includes("hard") ? "5%" : "0%"}
-                            </p>
-                        </div>
-                        <div className="bg-gray-600 p-1 rounded">
-                            <p className="font-bold">Total</p>
-                            <p>{cardStats.total}</p>
-                            <p>100%</p>
-                        </div>
-                    </div>
-
-                    <div className="mb-1">
-                        <p>Turn: {turnCount}</p>
-                        <p>Last Selected: {lastSelectedIndex !== null ? lastSelectedIndex : 'None'}</p>
-                        <p>First Turn: {isFirstTurn ? 'Yes' : 'No'}</p>
-                    </div>
-
-                    {/* Recent card selection history */}
-                    {cardStats.selections.length > 0 && (
-                        <div className="mb-2">
-                            <p className="font-bold text-[9px]">Recent Card Selections:</p>
-                            <div className="bg-gray-900/60 p-1 rounded text-[8px] grid grid-cols-2 gap-x-2">
-                                {cardStats.selections.slice(-10).map((card, i) => (
-                                    <div key={i} className={`${card.type.toLowerCase().includes("basic") ? "text-gray-300" :
-                                        card.type.toLowerCase().includes("normal") ? "text-blue-300" :
-                                            card.type.toLowerCase().includes("epic") ? "text-purple-300" :
-                                                "text-yellow-300"
-                                        }`}>
-                                        {card.name} ({card.type.split(' ')[0]})
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="bg-gray-900 p-1 rounded text-[9px] font-mono max-h-[120px] overflow-y-auto">
-                        <pre className="whitespace-pre-wrap">{debugInfo}</pre>
-                    </div>
-
-                    {/* Clear stats button */}
-                    <button
-                        className="mt-1 bg-red-600 text-white text-[10px] px-2 py-1 rounded"
-                        onClick={() => {
-                            setCardStats({
-                                basic: 0,
-                                normal: 0,
-                                epic: 0,
-                                rare: 0,
-                                total: 0,
-                                selections: []
-                            });
-                            sessionStorage.removeItem('battle_card_stats');
-                            setDebugInfo("Stats cleared");
-                        }}
-                    >
-                        Clear Stats
-                    </button>
+                <div className="absolute top-0 right-0 bg-gray-800 p-2 text-white text-xs max-w-xs opacity-80">
+                    <p>Debug: {debugInfo}</p>
+                    <p>Turn: {turnCount}</p>
+                    <p>Last Selected: {lastSelectedIndex !== null ? lastSelectedIndex : 'None'}</p>
+                    <p>First Turn: {isFirstTurn ? 'Yes' : 'No'}</p>
                 </div>
             )}
 
@@ -889,4 +604,4 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     );
 };
 
-export default CardSelection; 
+export default CardSelectionImproved; 

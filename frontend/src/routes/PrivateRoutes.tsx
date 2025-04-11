@@ -39,6 +39,7 @@ import SearchPage from "../pages/dashboard/search/SearchPage";
 import SocketService from "../services/socketService";
 import { GameStatusProvider, useGameStatus } from "../contexts/GameStatusContext";
 import { GameMode } from "../hooks/useLobbyStatus";
+import CardSelectionTest from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/CardSelectionTest";
 
 // Create a wrapper component that handles game status changes
 const GameModeStatusWrapper = ({
@@ -233,6 +234,12 @@ const PrivateRoutes = () => {
         <Route
           path="/pvp-battle/session-report"
           element={<PvpSessionReport />}
+        />
+
+        {/* Test Route for Card Selection Debugging */}
+        <Route
+          path="/card-selection-test"
+          element={<CardSelectionTest />}
         />
       </Routes>
     </GameStatusProvider>

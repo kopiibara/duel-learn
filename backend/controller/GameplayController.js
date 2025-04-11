@@ -1917,6 +1917,85 @@ export const updateWinStreak = async (req, res) => {
     }
 };
 
+// Add this new function to check if a player has any card blocking effects
+export const checkCardBlockingEffects = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid, player_type } = req.params;
+
+        if (!session_uuid || !player_type) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: session_uuid and player_type"
+            });
+        }
+
+        console.log(`Checking card blocking effects for ${player_type} in session ${session_uuid}`);
+
+        // Get the battle session to access active card effects
+        const [sessionResult] = await connection.query(
+            `SELECT active_card_effects FROM battle_sessions 
+            WHERE session_uuid = ? AND is_active = 1`,
+            [session_uuid]
+        );
+
+        if (sessionResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle session not found or not active"
+            });
+        }
+
+        // Extract active card effects
+        let activeCardEffects = [];
+        let blockingEffects = [];
+
+        if (sessionResult[0].active_card_effects) {
+            try {
+                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
+
+                // Filter for blocking effects that target this player and are not used
+                blockingEffects = activeCardEffects.filter(effect =>
+                    effect.target === player_type &&
+                    effect.effect === "block_card" &&
+                    !effect.used
+                );
+
+                console.log(`Card blocking effects for ${player_type}: ${JSON.stringify(blockingEffects)}`);
+            } catch (e) {
+                console.error('Error parsing active_card_effects:', e);
+            }
+        }
+
+        const hasBlockingEffect = blockingEffects.length > 0;
+        const numCardsBlocked = hasBlockingEffect
+            ? blockingEffects.reduce((total, effect) => total + (effect.block_count || 1), 0)
+            : 0;
+
+        res.json({
+            success: true,
+            data: {
+                has_blocking_effect: hasBlockingEffect,
+                cards_blocked: numCardsBlocked,
+                effects: blockingEffects
+            }
+        });
+
+    } catch (error) {
+        console.error('Error checking card blocking effects:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to check card blocking effects",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+
 export const applyPoisonEffects = async (req, res) => {
     let connection;
     try {
@@ -2063,3 +2142,77 @@ export const applyPoisonEffects = async (req, res) => {
         if (connection) connection.release();
     }
 }; 
+
+// Add this new function to check if a player has mind control effects
+export const checkMindControlEffects = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid, player_type } = req.params;
+
+        if (!session_uuid || !player_type) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: session_uuid and player_type"
+            });
+        }
+
+        console.log(`Checking mind control effects for ${player_type} in session ${session_uuid}`);
+
+        // Get the battle session to access active card effects
+        const [sessionResult] = await connection.query(
+            `SELECT active_card_effects FROM battle_sessions 
+            WHERE session_uuid = ? AND is_active = 1`,
+            [session_uuid]
+        );
+
+        if (sessionResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle session not found or not active"
+            });
+        }
+
+        // Extract active card effects
+        let activeCardEffects = [];
+        let mindControlEffects = [];
+
+        if (sessionResult[0].active_card_effects) {
+            try {
+                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
+
+                // Filter for mind control effects that target this player and are not used
+                mindControlEffects = activeCardEffects.filter(effect =>
+                    effect.target === player_type &&
+                    effect.effect === "mind_control" &&
+                    !effect.used
+                );
+
+                console.log(`Mind control effects for ${player_type}: ${JSON.stringify(mindControlEffects)}`);
+            } catch (e) {
+                console.error('Error parsing active_card_effects:', e);
+            }
+        }
+
+        const hasMindControlEffect = mindControlEffects.length > 0;
+
+        res.json({
+            success: true,
+            data: {
+                has_mind_control_effect: hasMindControlEffect,
+                effects: mindControlEffects
+            }
+        });
+
+    } catch (error) {
+        console.error('Error checking mind control effects:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to check mind control effects",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
