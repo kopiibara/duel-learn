@@ -13,22 +13,22 @@ const WelcomePage = () => {
   const [fadeIn, setFadeIn] = useState(false);
   const navigate = useNavigate();
   const { user } = useUser();
-  const { playStartAudio, playLoopAudio, isPlaying, isMuted, toggleMute } = useAudio();
+  const { playStartAudio, playLoopAudio, isPlaying, isMuted, toggleMute } =
+    useAudio();
   const startAudioRef = useRef<HTMLAudioElement | null>(null);
   const loopAudioRef = useRef<HTMLAudioElement | null>(null);
   const [isAudioInitialized, setIsAudioInitialized] = useState(false);
 
   UseWandCursor();
 
-  const handleNavigate = (e: React.MouseEvent) => {
+  const handleNavigate = (e?: React.MouseEvent) => {
     // Check if the click was on the sound button
-    if ((e.target as HTMLElement).closest('button')) {
+    if (e && (e.target as HTMLElement).closest("button")) {
       return;
     }
     console.log("Navigating to /tutorial/step-one...");
     navigate("/dashboard/tutorial/step-one");
   };
-
   // Initialize audio elements
   useEffect(() => {
     if (!isAudioInitialized) {
@@ -95,7 +95,7 @@ const WelcomePage = () => {
     const timer = setTimeout(() => setFadeIn(true), 500);
 
     const handleKeyDown = (_event: KeyboardEvent) => {
-      handleNavigate(new MouseEvent('keydown'));
+      handleNavigate(); // Call without passing an event
     };
 
     window.addEventListener("keydown", handleKeyDown);

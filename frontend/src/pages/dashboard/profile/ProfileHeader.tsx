@@ -213,7 +213,7 @@ const ProfileHeader = () => {
 
       {/* Profile Info */}
       <div className="flex-1">
-        <div className="flex justify-center md:justify-start gap-2 items-center">
+        <div className="flex xs:grid justify-center md:justify-start gap-2 items-center">
           <h2 className="text-[30px] font-bold mr-4 text-[#E2DDF3]">
             {profileData.username}
           </h2>

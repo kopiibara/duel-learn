@@ -6,21 +6,15 @@ const useProfilePicture = (initialPicture: string) => {
   const [availablePictures, setAvailablePictures] = useState<string[]>([]);
 
   useEffect(() => {
-    const loadImages = async () => {
-      try {
-        const imageModules = import.meta.glob(
-          "../../public/profile-picture/*.{png,jpg,jpeg,svg}"
-        );
-        const imageUrls = await Promise.all(
-          Object.values(imageModules).map((importFn) => importFn())
-        );
-        setAvailablePictures(imageUrls.map((module: any) => module.default));
-      } catch (error) {
-        console.error("Error loading profile pictures:", error);
-      }
-    };
+    // For public folder assets, we should list them explicitly
+    // or fetch them from an API endpoint that returns available images
+    const profilePictures = [
+      "/profile-picture/capybara-default.png",
+      "/profile-picture/bunny-default.png",
+      "/profile-picture/cat-default.png",
+    ];
 
-    loadImages();
+    setAvailablePictures(profilePictures);
   }, []);
 
   const openModal = () => setIsModalOpen(true);
