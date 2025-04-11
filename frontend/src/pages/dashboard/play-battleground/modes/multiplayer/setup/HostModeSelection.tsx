@@ -228,20 +228,20 @@ export default function DifficultySelection() {
   };
 
   const getCardDimensions = () => {
-    let width = 120;  // base width for mobile
-    let height = 168; // base height for mobile
+    let width = 150;  // base width for mobile (increased from 120)
+    let height = 210; // base height for mobile (increased from 168)
 
     if (windowWidth >= 768) {  // md screens
-      width = 160;
-      height = 224;
+      width = 200;  // increased from 160
+      height = 280; // increased from 224
     }
     if (windowWidth >= 1024) { // lg screens
-      width = 180;
-      height = 252;
+      width = 220;  // increased from 180
+      height = 308; // increased from 252
     }
     if (windowWidth >= 1280) { // xl screens
-      width = 200;
-      height = 280;
+      width = 240;  // increased from 200
+      height = 336; // increased from 280
     }
     return { width: `${width}px`, height: `${height}px` };
   };
