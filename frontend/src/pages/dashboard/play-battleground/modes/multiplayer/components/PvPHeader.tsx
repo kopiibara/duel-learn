@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, IconButton } from "@mui/material";
+import { Button, IconButton, Tooltip } from "@mui/material";
 import { motion } from "framer-motion";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CachedIcon from "@mui/icons-material/Cached";
@@ -127,14 +127,29 @@ const PvPHeader: React.FC<PvPHeaderProps> = ({
           CHANGE QUESTION TYPE
         </Button>
 
-        <img
-          src={ManaIcon}
-          alt="Mana"
-          className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mr-1 ml-6"
-        />
-        <span className="text-[14px] sm:text-[16px] text-gray-300 mr-2 sm:mr-3">
-          {manaPoints}
-        </span>
+        <Tooltip
+          title="Mana"
+          arrow
+          sx={{
+            "& .MuiTooltip-tooltip": {
+              padding: "8px 12px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              animation: "fadeInOut 0.3s ease-in-out",
+            },
+          }}
+        >
+          <div className="flex items-center">
+            <img
+              src={ManaIcon}
+              alt="Mana"
+              className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mr-1 ml-6"
+            />
+            <span className="text-[14px] sm:text-[16px] text-gray-300 mr-2 sm:mr-3">
+              {manaPoints}
+            </span>
+          </div>
+        </Tooltip>
         <span className="animate-spin text-[14px] sm:text-[16px] text-purple-400">
           ⚙️
         </span>

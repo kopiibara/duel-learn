@@ -80,7 +80,6 @@ const PVPLobby: React.FC = () => {
 
   const { user, loading } = useUser(); // Get the user and loading state from UserContext
 
-  const [manaPoints, setManaPoints] = useState(40); // Example starting mana points
   const [_openManaAlert, setOpenManaAlert] = useState(false); // State for the mana points alert
   const [openDialog, setOpenDialog] = useState(false); // State to control the modal
   const [copySuccess, setCopySuccess] = useState(false); // To track if the text was copied
@@ -471,7 +470,7 @@ const PVPLobby: React.FC = () => {
         return;
       }
 
-      if (manaPoints < 10) {
+      if (user?.mana && user.mana < 10) {
         setOpenManaAlert(true);
         return;
       }
@@ -489,8 +488,8 @@ const PVPLobby: React.FC = () => {
         );
 
         if (response.data.success) {
-          // Deduct mana points
-          setManaPoints((prev) => prev - 10);
+          // Deduct mana points (this would need to be handled in backend or UserContext in a real app)
+          // No need to update local mana state anymore
           console.log("Battle Started!");
 
           // Get the appropriate IDs
@@ -1334,7 +1333,7 @@ console.log(joinedPlayer);
         selectedMaterial={selectedMaterial}
         selectedTypesFinal={selectedTypesFinal}
         questionTypes={questionTypes}
-        manaPoints={manaPoints}
+        manaPoints={user?.mana || 0}
         isCurrentUserGuest={isCurrentUserGuest}
       />
 
@@ -1425,7 +1424,7 @@ console.log(joinedPlayer);
             hostReady={playerReadyState.hostReady}
             guestReady={playerReadyState.guestReady}
             loading={readyStateLoading || battleStartLoading}
-            disabledReason={manaPoints < 10 ? "Not enough mana" : undefined}
+            disabledReason={user?.mana && user.mana < 10 ? "Not enough mana" : undefined}
           />
         </motion.div>
       </div>
