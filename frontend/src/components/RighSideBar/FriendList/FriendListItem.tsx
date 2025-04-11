@@ -10,6 +10,7 @@ import SelectStudyMaterialModal from "../../modals/SelectStudyMaterialModal";
 import { useNavigate } from "react-router-dom";
 import { createNewLobby, generateLobbyCode } from "../../../services/pvpLobbyService";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
+  import { useSnackbar } from "../../../contexts/SnackbarContext";
 
 interface FriendListItemProps {
   friend: Friend;
@@ -26,6 +27,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   // Use hooks to get status
   const isOnline = useOnlineStatus(friend.firebase_uid);
   const { isInLobby, isInGame, gameMode } = useLobbyStatus(friend.firebase_uid);
+  const { showSnackbar } = useSnackbar();
 
   const handleViewProfile = (friendId: string) => {
     setSelectedFriend(friendId);
@@ -71,9 +73,23 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   
   // Handler for the INVITE button
   const handleInviteClick = () => {
+    // Check if friend is online and not in game
+    if (!isOnline) {
+      showSnackbar(`${friend.username} is currently offline`, "error");
+      return;
+    }
+    
+    if (isInGame) {
+      showSnackbar(`${friend.username} is currently in ${text}`, "error");
+      return;
+    }
+    
     // Open material selection modal
     setMaterialModalOpen(true);
   };
+  
+  // Determine if invite should be disabled
+  const isInviteDisabled = !isOnline || isInGame;
   
   // Handler for material selection
   const handleMaterialSelect = (material: StudyMaterial) => {
@@ -154,6 +170,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
         <Button
           variant="contained"
           onClick={handleInviteClick}
+          disabled={isInviteDisabled}
           sx={{
             borderRadius: "0.6rem",
             padding: {
@@ -174,15 +191,16 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
             justifyContent: "center",
             alignItems: "center",
             transition: "all 0.3s ease",
-            backgroundColor: "#52A647",
-            borderWidth: "2px",
+            backgroundColor: isInviteDisabled ? "#2E5428" : "#52A647",
+            color: isInviteDisabled ? "#A0A0A0" : "inherit",
             "&:hover": {
-              transform: "scale(1.05)",
-              backgroundColor: "#45913c",
+              transform: isInviteDisabled ? "none" : "scale(1.05)",
+              backgroundColor: isInviteDisabled ? "#2E5428" : "#45913c",
             },
           }}
         >
-          INVITE
+          {!isOnline ? "OFFLINE" : 
+           isInGame ? "IN GAME" : "INVITE"}
         </Button>
       </div>
       {/* Profile Modal */}

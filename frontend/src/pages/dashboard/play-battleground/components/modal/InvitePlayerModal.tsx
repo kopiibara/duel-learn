@@ -21,10 +21,11 @@ interface FriendItemProps {
   };
   inviting: boolean;
   onInvite: (friend: Player) => void;
+  showSnackbar: (message: string, severity: "success" | "error" | "info" | "warning") => void;
 }
 
 // Update the FriendItem component with proper typing
-const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite }) => {
+const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite, showSnackbar }) => {
   // Now hooks are at the top level of this component with proper typing
   const isOnline = useOnlineStatus(friend.firebase_uid);
   const { isInLobby, isInGame, gameMode } = useLobbyStatus(friend.firebase_uid);
@@ -65,6 +66,24 @@ const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite }) =
   };
 
   const { color, text } = getStatusInfo();
+
+  // Determine if invite should be disabled
+  const isInviteDisabled = !isOnline || isInGame || inviting;
+
+  // Handle invite click with status check
+  const handleInviteClick = () => {
+    if (!isOnline) {
+      showSnackbar(`${friend.username} is currently offline`, "error");
+      return;
+    }
+    
+    if (isInGame) {
+      showSnackbar(`${friend.username} is currently in ${text}`, "error");
+      return;
+    }
+    
+    onInvite(friend);
+  };
 
   return (
     <div
@@ -107,10 +126,12 @@ const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite }) =
             color: "#A0A0A0"
           }
         }}
-        disabled={inviting}
-        onClick={() => onInvite(friend)}
+        disabled={isInviteDisabled}
+        onClick={handleInviteClick}
       >
-        {inviting ? "SENDING..." : "INVITE"}
+        {inviting ? "SENDING..." : 
+         !isOnline ? "OFFLINE" : 
+         isInGame ? "IN GAME" : "INVITE"}
       </Button>
     </div>
   );
@@ -290,6 +311,7 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
                 friend={friend} 
                 inviting={inviting} 
                 onInvite={handleInvite}
+                showSnackbar={showSnackbar}
               />
             ))
           )}
