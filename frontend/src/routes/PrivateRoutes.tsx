@@ -39,6 +39,7 @@ import SearchPage from "../pages/dashboard/search/SearchPage";
 import SocketService from "../services/socketService";
 import { GameStatusProvider, useGameStatus } from "../contexts/GameStatusContext";
 import { GameMode } from "../hooks/useLobbyStatus";
+import { BattleInvitationCenter } from "../components";
 
 // Create a wrapper component that handles game status changes
 const GameModeStatusWrapper = ({
@@ -148,7 +149,7 @@ const PrivateRoutes = () => {
 
   return (
     <GameStatusProvider>
-      
+
 
       <Routes>
         {/* Onboarding and Tutorial Routes */}
@@ -163,7 +164,12 @@ const PrivateRoutes = () => {
         <Route path="my-preferences" element={<Personalization />} />
 
         {/* Routes for the main dashboard after onboarding */}
-        <Route element={<DashboardLayout />}>
+        <Route element={
+          <>
+            <BattleInvitationCenter />
+            <DashboardLayout />
+          </>
+        }>
           <Route
             path="home"
             element={<Home setSelectedIndex={setSelectedIndex} />}
