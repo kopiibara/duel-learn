@@ -24,6 +24,7 @@ import { motion, AnimatePresence } from "framer-motion"; // Importing from Frame
 import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
 import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust the
 import Filter from "../../../../components/Filter"; // Adjust the
+import CauldronIcon from "/General/Cauldron.gif";
 import "../../../../styles/custom-scrollbar.css"; // Add this import
 
 // Add these imports near the top with your other imports
@@ -110,6 +111,8 @@ const CreateStudyMaterial = () => {
   const editMode = location.state?.editMode || false;
   const studyMaterialId = location.state?.studyMaterialId || null;
   const [_studyMaterial, setStudyMaterial] = useState(null);
+
+  const [isSaving, setIsSaving] = useState(false);
 
   // Initialize state using data from location if in edit mode
   const [tags, setTags] = useState<string[]>(location.state?.tags || []);
@@ -359,6 +362,8 @@ const CreateStudyMaterial = () => {
       );
       return;
     }
+
+    setIsSaving(true);
 
     // Define summary variable outside try block so it's accessible in the main scope
     let summary = "";
@@ -1134,9 +1139,7 @@ const CreateStudyMaterial = () => {
                             setSearchQuery("");
                           }
                         }}
-                        placeholder={
-                          tags.length > 0 ? "Add more..." : "Add a tag here..."
-                        }
+                        placeholder={tags.length > 0 ? "" : "Add a tag here..."}
                         style={{
                           border: "none",
                           outline: "none",
@@ -1381,7 +1384,6 @@ const CreateStudyMaterial = () => {
           </Stack>
         </Box>
       </PageTransition>
-
       {/* Scan Notes Modal */}
       <Modal
         open={scanModalOpen}
@@ -1760,12 +1762,49 @@ const CreateStudyMaterial = () => {
           </Button>
         </Paper>
       </Modal>
-
       <AutoHideSnackbar
         message={snackbarMessage}
         open={snackbarOpen}
         onClose={handleCloseSnackbar}
       />
+      {/* Saving overlay */}
+      <Modal
+        open={isSaving}
+        aria-labelledby="saving-modal"
+        aria-describedby="modal-showing-saving-progress"
+        disableAutoFocus
+        disableEnforceFocus
+        disableEscapeKeyDown
+      >
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 400,
+            bgcolor: "#120F1B",
+            boxShadow: 24,
+            p: 4,
+            borderRadius: "0.8rem",
+            outline: "none",
+            textAlign: "center",
+            alignItems: "center",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            gap: 2,
+          }}
+        >
+          <img src={CauldronIcon} alt="" className="w-32 h-auto" />
+          <Typography variant="h6" sx={{ color: "#E2DDF3", mb: 1 }}>
+            {editMode ? "Updating" : "Saving"} Your Study Material
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#9F9BAE" }}>
+            This may take a moment.
+          </Typography>
+        </Box>
+      </Modal>
     </>
   );
 };

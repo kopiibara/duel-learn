@@ -56,7 +56,7 @@ export default function LoadingScreen() {
             className="mt-8 text-2xl font-extrabold text-white max-md:mt-5"
             style={{ fontFamily: "Nunito" }}
           >
-            LOADING <span className="dot-1">.</span>
+            Loading Questions <span className="dot-1">.</span>
             <span className="dot-2">.</span>
             <span className="dot-3">.</span>
           </h1>

@@ -25,6 +25,8 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   const [inviteMode, setInviteMode] = useState<string>("PvP");
   const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
   const navigate = useNavigate();
+
+  // Use hooks to get status
   const isOnline = useOnlineStatus(friend.firebase_uid);
   const { isInLobby, isInGame, gameMode } = useLobbyStatus(friend.firebase_uid);
 
@@ -36,37 +38,35 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   // Get status color and text
   const getStatusInfo = () => {
     if (isInGame) {
-      // Game status takes priority - use orange
       let statusText = "In Game";
+      let color = "bg-orange-500"; // Default color
 
-      // Show specific game mode in tooltip if available
-      if (gameMode === "pvp-battle") {
-        statusText = "In PVP Battle";
-      } else if (gameMode === "peaceful-mode") {
-        statusText = "In Peaceful Mode";
-      } else if (gameMode === "time-pressured-mode") {
-        statusText = "In Time-Pressured Mode";
+      switch (gameMode) {
+        case "pvp-battle":
+          color = "bg-[#A4ADE6]"; // PvP Mode color
+          statusText = "In PVP Battle";
+          break;
+        case "peaceful-mode":
+          color = "bg-[#76F7C3]"; // Peaceful Mode color
+          statusText = "In Peaceful Mode";
+          break;
+        case "time-pressured-mode":
+          color = "bg-[#FFCF47]"; // Time Pressured Mode color
+          statusText = "In Time-Pressured Mode";
+          break;
+        case "creating-study-material":
+          color = "bg-[#4D18E8]"; // Creating Study Material color
+          statusText = "Creating Study Material";
+          break;
       }
 
-      return {
-        color: "bg-orange-500",
-        text: statusText,
-      };
+      return { color, text: statusText };
     } else if (isInLobby) {
-      return {
-        color: "bg-blue-500",
-        text: "In Lobby",
-      };
+      return { color: "bg-blue-500", text: "In Lobby" };
     } else if (isOnline) {
-      return {
-        color: "bg-green-500",
-        text: "Online",
-      };
+      return { color: "bg-green-500", text: "Online" };
     } else {
-      return {
-        color: "bg-gray-500",
-        text: "Offline",
-      };
+      return { color: "bg-gray-500", text: "Offline" };
     }
   };
 
@@ -119,7 +119,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
               src={friend.display_picture || defaultPicture}
               onClick={() => handleViewProfile(friend.firebase_uid)}
               alt="Avatar"
-              className="w-8 sm:w-10 md:w-12 cursor-pointer h-auto mr-3 rounded-[5px] hover:scale-110 transition-all duration-300 ease-in"
+              className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
             />
             {/* Status indicator positioned to overlap the image corner */}
             <Tooltip title={text} placement="top" arrow>

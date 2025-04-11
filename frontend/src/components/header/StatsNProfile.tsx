@@ -26,7 +26,7 @@ const StatsNProfile = () => {
   };
 
   return (
-    <Box className="flex items-center space-x-2 ">
+    <Box className="flex items-center space-x-3 ">
       {/* Coin */}
       <Tooltip
         title="Coin"
@@ -81,7 +81,7 @@ const StatsNProfile = () => {
           },
         }}
       >
-        <div className="flex items-center space-x-2 pr-2">
+        <div className="flex items-center space-x-2">
           <img src={TechPassIcon} alt="Tech Pass" className="w-6 h-auto" />
           <span className="text-[#9F9BAE] text-[0.9rem] hover:text-[#E2DDF3] ">
             {user?.tech_pass || 0}
@@ -102,7 +102,9 @@ const StatsNProfile = () => {
             },
           }}
         >
-          <img src={PremiumLabel} alt="" />
+          <div className="flex items-center space-x-2 mr-4">
+            <img src={PremiumLabel} alt="" className="w-5 h-auto" />
+          </div>
         </Tooltip>
       )}
 
