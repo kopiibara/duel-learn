@@ -22,9 +22,9 @@ export const useGetAchievements = () => {
   });
   const fetchStartTimeRef = useRef(0);
 
-  const fetchAchievements = useCallback(async () => {
-    // Return cached data if available
-    if (achievementsCache.current.isFetched) {
+  const fetchAchievements = useCallback(async (forceRefresh = false) => {
+    // Return cached data if available and not forcing refresh
+    if (achievementsCache.current.isFetched && !forceRefresh) {
       return achievementsCache.current.data;
     }
 
@@ -32,9 +32,12 @@ export const useGetAchievements = () => {
       const startTime = Date.now();
       fetchStartTimeRef.current = startTime;
 
+      // Add cache-busting parameter when forcing a refresh
       const url = `${
         import.meta.env.VITE_BACKEND_URL
-      }/api/achievement/get-achievements`;
+      }/api/achievement/get-achievements${
+        forceRefresh ? `?timestamp=${Date.now()}` : ""
+      }`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -180,90 +183,95 @@ export const getMysticElder = () => {
     return resultPath;
   };
 
-  const fetchMysticElder = useCallback(async (firebase_uid: string) => {
-    // Return cached data if available
-    if (achievementsCache.current.isFetched) {
-      return achievementsCache.current.data;
-    }
-
-    try {
-      const startTime = Date.now();
-      fetchStartTimeRef.current = startTime;
-
-      const url = `${
-        import.meta.env.VITE_BACKEND_URL
-      }/api/achievement/check-mystic-elder/${firebase_uid}`;
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-        },
-      });
-
-      const endTime = Date.now();
-      const duration = endTime - startTime;
-      console.log(`Fetch Mystic Elder duration: ${duration} ms`);
-
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
+  const fetchMysticElder = useCallback(
+    async (firebase_uid: string, forceRefresh = false) => {
+      // Return cached data if available
+      if (achievementsCache.current.isFetched && !forceRefresh) {
+        return achievementsCache.current.data;
       }
 
-      const data = (await response.json()) as MysticElderResponse;
+      try {
+        const startTime = Date.now();
+        fetchStartTimeRef.current = startTime;
 
-      // Process the achievement data to handle progressive levels
-      const userLevel = data.userLevel;
-      const mysticElderLevel = getMysticElderLevel(userLevel);
+        const url = `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/achievement/check-mystic-elder/${firebase_uid}${
+          forceRefresh ? `?timestamp=${Date.now()}` : ""
+        }`;
 
-      // Determine progress text based on level
-      let progressText = "";
-      if (userLevel >= 30) {
-        progressText = "Complete";
-      } else if (userLevel >= 20) {
-        progressText = `${userLevel}/30`;
-      } else if (userLevel >= 10) {
-        progressText = `${userLevel}/20`;
-      } else if (userLevel >= 5) {
-        progressText = `${userLevel}/10`;
-      } else if (userLevel > 0) {
-        progressText = `${userLevel}/5`;
-      } else {
-        progressText = "0/5";
+        const response = await fetch(url, {
+          method: "GET",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        });
+
+        const endTime = Date.now();
+        const duration = endTime - startTime;
+        console.log(`Fetch Mystic Elder duration: ${duration} ms`);
+
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        const data = (await response.json()) as MysticElderResponse;
+
+        // Process the achievement data to handle progressive levels
+        const userLevel = data.userLevel;
+        const mysticElderLevel = getMysticElderLevel(userLevel);
+
+        // Determine progress text based on level
+        let progressText = "";
+        if (userLevel >= 30) {
+          progressText = "Complete";
+        } else if (userLevel >= 20) {
+          progressText = `${userLevel}/30`;
+        } else if (userLevel >= 10) {
+          progressText = `${userLevel}/20`;
+        } else if (userLevel >= 5) {
+          progressText = `${userLevel}/10`;
+        } else if (userLevel > 0) {
+          progressText = `${userLevel}/5`;
+        } else {
+          progressText = "0/5";
+        }
+
+        // Create formatted achievement with correct level and image
+        const formattedAchievement: FormattedAchievement = {
+          id: data.mysticElderAchievement.achievement_id,
+          name: data.mysticElderAchievement.achievement_name,
+          description: getMysticElderDescription(mysticElderLevel),
+          progress: getMysticElderProgress(mysticElderLevel, userLevel),
+          baseImage: getMysticElderImage(
+            data.mysticElderAchievement.achievement_picture_url,
+            mysticElderLevel
+          ),
+          progressText: progressText, // Add the new progress text
+        };
+
+        // Create enhanced response with formatted achievement
+        const enhancedData: EnhancedMysticElderResponse = {
+          ...data,
+          formattedAchievement,
+        };
+
+        // Store the processed data in cache
+        achievementsCache.current = {
+          isFetched: true,
+          data: enhancedData,
+        };
+
+        return enhancedData;
+      } catch (error) {
+        console.error("Error fetching Mystic Elder achievement:", error);
+        achievementsCache.current.isFetched = true;
+        return null;
       }
-
-      // Create formatted achievement with correct level and image
-      const formattedAchievement: FormattedAchievement = {
-        id: data.mysticElderAchievement.achievement_id,
-        name: data.mysticElderAchievement.achievement_name,
-        description: getMysticElderDescription(mysticElderLevel),
-        progress: getMysticElderProgress(mysticElderLevel, userLevel),
-        baseImage: getMysticElderImage(
-          data.mysticElderAchievement.achievement_picture_url,
-          mysticElderLevel
-        ),
-        progressText: progressText, // Add the new progress text
-      };
-
-      // Create enhanced response with formatted achievement
-      const enhancedData: EnhancedMysticElderResponse = {
-        ...data,
-        formattedAchievement,
-      };
-
-      // Store the processed data in cache
-      achievementsCache.current = {
-        isFetched: true,
-        data: enhancedData,
-      };
-
-      return enhancedData;
-    } catch (error) {
-      console.error("Error fetching Mystic Elder achievement:", error);
-      achievementsCache.current.isFetched = true;
-      return null;
-    }
-  }, []);
+    },
+    []
+  );
 
   // Function to clear the cache if needed
   const clearCache = useCallback(() => {

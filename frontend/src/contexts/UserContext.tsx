@@ -19,6 +19,7 @@ interface User {
   email_verified: boolean;
   isSSO: boolean;
   account_type: "free" | "premium" | "admin";
+  account_type_plan: string | null;
   isNew: boolean;
   level: number;
   exp: number;

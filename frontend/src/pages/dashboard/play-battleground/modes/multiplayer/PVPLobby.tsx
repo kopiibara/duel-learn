@@ -171,6 +171,10 @@ const PVPLobby: React.FC = () => {
   // Add invitationSent state
   const [invitationSent, setInvitationSent] = useState<boolean>(false);
 
+  // Add a ref to track socket reconnection attempts
+  const reconnectionAttemptsRef = useRef(0);
+  const MAX_RECONNECTION_ATTEMPTS = 5;
+
   // Set the state variables
   useEffect(() => {
     if (mode) {
@@ -189,6 +193,76 @@ const PVPLobby: React.FC = () => {
     }
   }, [mode, material, selectedTypes, location.state?.isGuest]);
 
+  // Add socket monitoring to detect and handle socket ID becoming null
+  useEffect(() => {
+    // Only run if we have a user
+    if (loading || !user?.firebase_uid) return;
+
+    // Setup interval to check socket status
+    const socketMonitor = setInterval(() => {
+      // Get current socket from state and service
+      const currentSocket = socket;
+      const socketService = SocketService.getInstance();
+      const serviceSocket = socketService.getSocket();
+      
+      // Check if socket is null, not connected, or ID is null/undefined
+      const socketInvalid = !currentSocket || 
+                           !currentSocket.connected || 
+                           !currentSocket.id ||
+                           currentSocket.id === 'undefined';
+                           
+      // If socket from service is valid but state socket is invalid, use service socket
+      if (serviceSocket && serviceSocket.connected && serviceSocket.id && socketInvalid) {
+        console.log("Socket monitor: Using existing valid socket from service");
+        setSocket(serviceSocket);
+        reconnectionAttemptsRef.current = 0;
+        return;
+      }
+      
+      // If both are invalid, try to reconnect if under max attempts
+      if ((socketInvalid || !serviceSocket || !serviceSocket.connected) && 
+          reconnectionAttemptsRef.current < MAX_RECONNECTION_ATTEMPTS) {
+          
+        console.log(`Socket invalid or disconnected. Reconnection attempt ${reconnectionAttemptsRef.current + 1}/${MAX_RECONNECTION_ATTEMPTS}`);
+        
+        // Increment attempt counter
+        reconnectionAttemptsRef.current++;
+        
+        // Attempt reconnection
+        const newSocket = socketService.connect(user.firebase_uid);
+        
+        // Register connect handler
+        if (newSocket) {
+          newSocket.once('connect', () => {
+            console.log("Socket reconnected successfully");
+            setSocket(newSocket);
+            reconnectionAttemptsRef.current = 0;
+            
+            // Re-register in lobby after reconnection
+            newSocket.emit("userLobbyStatusChanged", {
+              userId: user.firebase_uid,
+              inLobby: true,
+              lobbyCode: lobbyCode
+            });
+            
+            newSocket.emit("player_joined_lobby", {
+              playerId: user.firebase_uid,
+              lobbyCode: lobbyCode,
+              level:user.level,
+              display_picture: user.display_picture
+
+            });
+          });
+        }
+      }
+    }, 3000); // Check every 3 seconds
+    
+    // Clear interval on cleanup
+    return () => {
+      clearInterval(socketMonitor);
+    };
+  }, [socket, user?.firebase_uid, loading, lobbyCode]);
+
   // Update the socket initialization effect
   useEffect(() => {
     if (loading || !user?.firebase_uid) {
@@ -199,6 +273,9 @@ const PVPLobby: React.FC = () => {
     console.log("Setting up socket service for user:", user.firebase_uid);
     const socketService = SocketService.getInstance();
     const newSocket = socketService.connect(user.firebase_uid);
+    
+    // Reset reconnection attempts counter
+    reconnectionAttemptsRef.current = 0;
 
     // Wait for socket to connect
     if (!newSocket.connected) {
@@ -209,6 +286,12 @@ const PVPLobby: React.FC = () => {
     } else {
       setSocket(newSocket);
     }
+
+    // Add disconnect handler to detect when socket becomes invalid
+    newSocket.on('disconnect', (reason) => {
+      console.log(`Socket disconnected: ${reason}`);
+      // We don't set socket to null here - the monitor will handle reconnection
+    });
 
     // IMPORTANT: Use the service's on method for better reliability
     const handleBattleInvitation = (data: any) => {
@@ -717,6 +800,7 @@ const PVPLobby: React.FC = () => {
     // For host: listen for players joining the lobby
     const handlePlayerJoined = (data: PlayerJoinedData) => {
       console.log("Player joined lobby:", data);
+    
       if (data.lobbyCode === lobbyCode && !isCurrentUserGuest) {
         // Add the player to our state
         const joinedPlayer = {
@@ -725,8 +809,24 @@ const PVPLobby: React.FC = () => {
           level: data.playerLevel || 1,
           display_picture: data.playerPicture || defaultAvatar,
         };
-
+console.log(joinedPlayer);
         setInvitedPlayer(joinedPlayer);
+
+        // Set invitation sent to trigger polling mechanisms
+        setInvitationSent(true);
+
+        // Update the full players array with both host and guest info
+        setPlayers([
+          // Current user (host) info
+          {
+            firebase_uid: user?.firebase_uid || "",
+            username: user?.username || "Player 1",
+            level: user?.level || 1,
+            display_picture: user?.display_picture || defaultAvatar,
+          },
+          // Joined player (guest) info
+          joinedPlayer
+        ]);
 
         // Send current lobby state to the joined player
         socket.emit("lobby_info_response", {

@@ -6,7 +6,8 @@ import Sidebar from "../components/Sidebar";
 import Header from "../components/header/Header";
 import Footer from "../components/Footer";
 import RightSideBar from "../components/RighSideBar/RightSideBar";
-import DrawerRightSideBar from "../components/DrawerRightSideBar";
+import DrawerRightSideBar from "../components/DrawerRightSideBar"; // Import the new Drawer component
+import { BattleInvitationCenter } from "../components"; // Import BattleInvitationCenter
 import { Box } from "@mui/system";
 import "../styles/custom-scrollbar.css";
 import KeyboardArrowUpRoundedIcon from "@mui/icons-material/KeyboardArrowUpRounded";
@@ -22,11 +23,10 @@ const DashboardLayout = () => {
   };
 
   return (
-    <Box
-      className={`h-screen flex flex-col lg:flex-row w-screen overflow-x-hidden overflow-y-auto custom-scrollbar ${
-        useMediaQuery("(min-width:1400px)") ? "px-11" : "px-2"
-      }`}
-    >
+    <Box className="custom-scrollbar h-screen px-8 flex flex-col lg:flex-row w-screen overflow-x-hidden ">
+      {/* BattleInvitationCenter - will only show in dashboard routes */}
+      <BattleInvitationCenter />
+
       {/* Sidebar (hidden on small screens) */}
       <aside className="hidden lg:block pl-4 pr-4 h-screen sticky top-0">
         <Box>
@@ -48,7 +48,7 @@ const DashboardLayout = () => {
         <Box className="flex flex-1">
           <main
             className={`flex-1 pt-3 relative ${
-              useMediaQuery("(min-width:1200px)") ? "px-12" : "px-6"
+              useMediaQuery("(min-width:1200px)") ? "px-11" : "px-25"
             }`}
           >
             <Outlet />

@@ -5,7 +5,6 @@ import studyMaterialRoutes from "./routes/StudyMaterialRoutes.js";
 import userRoutes from "./routes/UserAccount.js";
 import friendRoutes from "./routes/FriendRoutes.js";
 import userInfoRoutes from "./routes/UserInfoRoutes.js";
-import battleRoutes from "./routes/battle.routes.js";
 import gameplayRoutes from "./routes/gameplay.routes.js";
 import openAiRoutes from "./routes/OpenAiRoutes.js";
 import searchRoutes from "./routes/SearchRoutes.js"; // Import search routes
@@ -19,6 +18,7 @@ import { coopMiddleware } from "./middleware/CoopMiddleware.js"; // Import COOP 
 import sessionReportRoutes from './routes/sessionReport.js';
 import { initSessionReportTable } from './models/SessionReport.js';
 import lobbyRoutes from "./routes/LobbyRoutes.js";
+import battleRoutes from './routes/battle.routes.js';
 
 // Load environment variables
 dotenv.config();
@@ -65,9 +65,9 @@ app.use("/api/gameplay", gameplayRoutes);
 app.use("/api/openai", openAiRoutes);
 app.use("/api/admin", adminRoutes); // Mount admin routes under /api/admin
 app.use("/api/ocr", ocrRoutes); // Mount OCR routes under /api/ocr
-app.use("/api/shop", shopRoutes);
-app.use("/api/achievement", achivementRoutes);
-app.use("/api/session-report", sessionReportRoutes);
+app.use('/api/session-report', sessionReportRoutes);
+app.use("/api/shop", shopRoutes); // Mount shop routes under /api/shop
+app.use("/api/achievement", achivementRoutes); // Mount achievement routes under /api/achievement
 app.use("/api/payment", paymentRoutes); // Mount payment routes under /api/payment
 
 // Add global error handler for uncaught exceptions

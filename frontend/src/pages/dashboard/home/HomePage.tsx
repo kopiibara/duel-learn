@@ -4,7 +4,7 @@ import DocumentHead from "../../../components/DocumentHead";
 import PageTransition from "../../../styles/PageTransition";
 
 import ChooseYourChallenge from "../../../components/ChooseYourChallenge";
-import DiscoverMore from "./DiscoverMore";
+import YourPickedTopics from "./YourPickedTopics";
 import HomeBanner from "./HomeBanner";
 
 const HomePage = ({
@@ -78,7 +78,7 @@ const HomePage = ({
                     fontWeight: 600,
                   }}
                 >
-                  Discover more materials
+                  Your Picked Topics
                 </Typography>
               </Stack>
               <Box flexGrow={1} />
@@ -110,7 +110,7 @@ const HomePage = ({
               </Button>
             </Stack>
             <Box className="w-full overflow-hidden">
-              <DiscoverMore />
+              <YourPickedTopics />
             </Box>
           </Stack>
 

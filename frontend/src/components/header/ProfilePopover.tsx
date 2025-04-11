@@ -45,6 +45,9 @@ export default function ProfilePopover({
   const handleSettings = () => {
     navigate("/dashboard/account-settings");
   };
+  const handlePersonalization = () => {
+    navigate("/dashboard/my-preferences");
+  };
 
   const handleOpenCancelSubsModal = () => {
     setShowCancelModal(true);
@@ -94,6 +97,25 @@ export default function ProfilePopover({
               }}
             >
               Settings
+            </Button>
+            <Button
+              variant="text"
+              onClick={handlePersonalization}
+              sx={{
+                justifyContent: "flex-start",
+                textTransform: "none",
+                color: "inherit",
+                fontWeight: 400,
+                borderRadius: "0.8rem",
+                padding: "0.6rem 1rem",
+                transition: "all 0.3s ease-in-out",
+                "&:hover": {
+                  transform: "scale(1.05)",
+                  backgroundColor: "#3B354C",
+                },
+              }}
+            >
+              Personalization
             </Button>
 
             <Button

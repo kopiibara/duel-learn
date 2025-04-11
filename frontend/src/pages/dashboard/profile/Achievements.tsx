@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import {
   AchievementObject,
   FormattedAchievement,
@@ -27,6 +28,7 @@ const Achievements = () => {
   const { fetchWisdomCollector } = getWisdomCollector();
   const { fetchArcaneScholar } = getArcaneScholar();
   const { user } = useUser();
+  const location = useLocation();
   const [achievements, setAchievements] = useState<FormattedAchievement[]>([]);
   const [mysticElder, setMysticElder] = useState<MysticElderAchievement | null>(
     null
@@ -164,95 +166,95 @@ const Achievements = () => {
     loadArcaneScholar();
   }, [fetchArcaneScholar, user?.firebase_uid]);
 
-  useEffect(() => {
-    const loadAchievements = async () => {
-      try {
-        setLoading(true);
-        const response =
-          (await fetchAchievements()) as AchievementResponse | null;
+  const loadAchievements = async (forceRefresh = false) => {
+    try {
+      setLoading(true);
+      const response = (await fetchAchievements(
+        forceRefresh
+      )) as AchievementResponse | null;
 
-        if (response && response.data) {
-          // Transform API data to match component's expected format
-          const formattedAchievements = response.data.map(
-            (achievement: AchievementObject) => ({
-              id: achievement.achievement_id,
-              name: achievement.achievement_name,
-              description: achievement.achievement_description,
-              progress: levelToProgress(achievement.achievement_level),
-              baseImage: achievement.achievement_picture_url,
-            })
+      if (response && response.data) {
+        // Transform API data to match component's expected format
+        const formattedAchievements = response.data.map(
+          (achievement: AchievementObject) => ({
+            id: achievement.achievement_id,
+            name: achievement.achievement_name,
+            description: achievement.achievement_description,
+            progress: levelToProgress(achievement.achievement_level),
+            baseImage: achievement.achievement_picture_url,
+          })
+        );
+
+        // Filter out special achievements from regular achievements
+        const filteredAchievements = formattedAchievements.filter(
+          (achievement) =>
+            achievement.name !== "Mystic Elder" &&
+            achievement.name !== "Wisdom Collector" &&
+            achievement.name !== "Arcane Scholar"
+        );
+
+        // Add enhanced versions if they exist
+        if (mysticElder && userLevel) {
+          const mysticElderResponse = await fetchMysticElder(
+            user?.firebase_uid || ""
           );
-
-          // Filter out special achievements from regular achievements
-          const filteredAchievements = formattedAchievements.filter(
-            (achievement) =>
-              achievement.name !== "Mystic Elder" &&
-              achievement.name !== "Wisdom Collector" &&
-              achievement.name !== "Arcane Scholar"
-          );
-
-          // Add enhanced versions if they exist
-          if (mysticElder && userLevel) {
-            const mysticElderResponse = await fetchMysticElder(
-              user?.firebase_uid || ""
+          if (mysticElderResponse?.formattedAchievement) {
+            filteredAchievements.unshift(
+              mysticElderResponse.formattedAchievement
             );
-            if (mysticElderResponse?.formattedAchievement) {
-              filteredAchievements.unshift(
-                mysticElderResponse.formattedAchievement
-              );
-            }
           }
-
-          if (wisdomCollector && studyMaterialCount) {
-            const wisdomCollectorResponse = await fetchWisdomCollector(
-              user?.firebase_uid || ""
-            );
-            if (wisdomCollectorResponse?.formattedAchievement) {
-              filteredAchievements.unshift(
-                wisdomCollectorResponse.formattedAchievement
-              );
-            }
-          }
-
-          if (arcaneScholar && completedSessionsCount) {
-            const arcaneScholarResponse = await fetchArcaneScholar(
-              user?.firebase_uid || ""
-            );
-            if (arcaneScholarResponse?.formattedAchievement) {
-              filteredAchievements.unshift(
-                arcaneScholarResponse.formattedAchievement
-              );
-            }
-          }
-
-          // For Arcane Scholar, we should still add it even if count is 0
-          try {
-            // Always attempt to fetch Arcane Scholar, regardless of count
-            const arcaneScholarResponse = await fetchArcaneScholar(
-              user?.firebase_uid || ""
-            );
-            if (arcaneScholarResponse?.formattedAchievement) {
-              filteredAchievements.unshift(
-                arcaneScholarResponse.formattedAchievement
-              );
-            }
-          } catch (err) {
-            console.error("Error adding Arcane Scholar achievement:", err);
-          }
-
-          console.log("Formatted Achievements:", filteredAchievements);
-          setAchievements(filteredAchievements);
-        } else {
-          setError("No achievement data received");
         }
-      } catch (err) {
-        setError("Failed to load achievements");
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
 
+        if (wisdomCollector && studyMaterialCount) {
+          const wisdomCollectorResponse = await fetchWisdomCollector(
+            user?.firebase_uid || ""
+          );
+          if (wisdomCollectorResponse?.formattedAchievement) {
+            filteredAchievements.unshift(
+              wisdomCollectorResponse.formattedAchievement
+            );
+          }
+        }
+
+        // Keep this block that always adds Arcane Scholar
+        try {
+          // Always attempt to fetch Arcane Scholar, regardless of count
+          const arcaneScholarResponse = await fetchArcaneScholar(
+            user?.firebase_uid || ""
+          );
+          if (arcaneScholarResponse?.formattedAchievement) {
+            filteredAchievements.unshift(
+              arcaneScholarResponse.formattedAchievement
+            );
+          }
+        } catch (err) {
+          console.error("Error adding Arcane Scholar achievement:", err);
+        }
+
+        console.log("Formatted Achievements:", filteredAchievements);
+        setAchievements(filteredAchievements);
+      } else {
+        setError("No achievement data received");
+      }
+    } catch (err) {
+      setError("Failed to load achievements");
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add detection for refresh parameter in URL
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const refresh = params.get("refresh");
+
+    if (refresh === "achievements") {
+      loadAchievements(true);
+    }
+  }, [location]);
+
+  useEffect(() => {
     loadAchievements();
   }, [
     fetchAchievements,

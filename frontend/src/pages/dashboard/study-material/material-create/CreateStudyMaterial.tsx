@@ -43,6 +43,8 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { SortableItem } from "../types/SortableItem";
+import { topics } from "../../../user-onboarding/data/topics";
+import Autocomplete from "@mui/material/Autocomplete";
 
 // Add this interface for term-definition pairs
 interface TermDefinitionPair {
@@ -52,6 +54,7 @@ interface TermDefinitionPair {
 
 // Add constant for maximum tags
 const MAX_TAGS = 5;
+const MAX_CUSTOM_TAGS = 2;
 const MAX_TITLE_LENGTH = 50;
 const MAX_TERM_LENGTH = 50;
 const MAX_DEFINITION_LENGTH = 500;
@@ -128,7 +131,18 @@ const CreateStudyMaterial = () => {
       ? location.state.visibility.toString()
       : "0"
   );
-  // ...existing code...
+  const [showCustomTagInput, setShowCustomTagInput] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [inputValue, setInputValue] = useState("");
+
+  // Flatten all subjects from topics
+  const allSubjects = topics
+    .flatMap((topic) => topic.subjects.map((subject) => subject.name))
+    .filter((value, index, self) => self.indexOf(value) === index); // Remove duplicates
+
+  const filteredSubjects = allSubjects.filter((subject) =>
+    subject.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Configure sensors for drag and drop
   const sensors = useSensors(
@@ -169,25 +183,39 @@ const CreateStudyMaterial = () => {
     }
   }, [editMode, title]);
 
-  const handleAddTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && currentTag.trim()) {
-      e.preventDefault(); // Prevent form submission on Enter
+  // Calculate custom tags count
+  const customTagsCount = tags.filter(
+    (tag) => !allSubjects.includes(tag)
+  ).length;
 
-      // Check if max tags limit is reached
-      if (tags.length >= MAX_TAGS) {
-        handleShowSnackbar(`Maximum ${MAX_TAGS} tags allowed`);
+  const handleAddTag = (newValue: string[]) => {
+    // Filter out empty values and get only the new tag
+    const newTag = newValue.find((tag) => !tags.includes(tag));
+
+    if (!newTag) return;
+
+    // Check total tags limit
+    if (newValue.length > MAX_TAGS) {
+      handleShowSnackbar(`Maximum ${MAX_TAGS} tags allowed`);
+      return;
+    }
+
+    // Check custom tags limit for non-predefined tags
+    if (!allSubjects.includes(newTag)) {
+      if (customTagsCount >= MAX_CUSTOM_TAGS) {
+        handleShowSnackbar(`Maximum ${MAX_CUSTOM_TAGS} custom tags allowed`);
         return;
       }
-
-      if (!tags.includes(currentTag.trim())) {
-        setTags([...tags, currentTag.trim()]);
-      }
-      setCurrentTag("");
     }
+
+    setTags(newValue);
   };
 
   const handleDeleteTag = (tagToDelete: string) => {
-    setTags(tags.filter((tag) => tag !== tagToDelete));
+    setTags((prev) => {
+      const newTags = prev.filter((tag) => tag !== tagToDelete);
+      return newTags;
+    });
   };
 
   // Function to handle adding a new item
@@ -868,7 +896,17 @@ const CreateStudyMaterial = () => {
           />
           <Stack spacing={{ xs: 1.5, sm: 2, md: 2.5 }}>
             {/* Title Input */}
-            <Box className="">
+            <Box
+              className="z-10"
+              sx={{
+                position: "sticky",
+                top: 0,
+                backgroundColor: "#080511", // Match app background color
+                paddingTop: "1rem",
+                width: "100%",
+                borderBottom: "0.8rem",
+              }}
+            >
               <Stack
                 direction={{ xs: "column", sm: "row" }}
                 spacing={{ xs: 1, sm: 2 }}
@@ -1007,20 +1045,31 @@ const CreateStudyMaterial = () => {
             </Box>
 
             {/* Tags Input */}
-            <Box className="flex items-center">
-              <Stack spacing={1} sx={{ width: "100%" }}>
-                <Typography variant="subtitle1" className="text-[#3B354D]">
-                  Tags:
-                </Typography>
+            <Box className="flex">
+              <Stack
+                spacing={1}
+                sx={{ display: "inline-flex", maxWidth: "100%" }}
+              >
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="subtitle1" className="text-[#3B354D]">
+                    Tags:
+                  </Typography>
+                  <Typography variant="caption" className="text-[#9F9BAE]">
+                    (Type a custom tag or select from predefined subjects, then
+                    press Enter)
+                  </Typography>
+                </Stack>
                 <Box
                   sx={{
                     display: "inline-flex",
                     alignItems: "center",
+                    alignSelf: "flex-start",
                     flexWrap: "wrap",
                     gap: 0.5,
-                    padding: { xs: "0.5rem", sm: "0.8rem" },
-                    width: { xs: "100%", sm: "fit-content" }, // Full width on mobile
-                    maxWidth: "100%", // Prevent overflow
+                    padding: { xs: "0.5rem", sm: "0.6rem" },
+                    width: "auto",
+                    minWidth: "14ch",
+                    maxWidth: "fit-content",
                     border: "1px solid #3B354D",
                     borderRadius: "0.8rem",
                     backgroundColor: "#3B354D",
@@ -1033,8 +1082,11 @@ const CreateStudyMaterial = () => {
                       backgroundColor: "#2F283A",
                       borderColor: "#9B85E1",
                     },
+                    "& > *": {
+                      // Apply to all direct children
+                      margin: tags.length === 0 ? "0" : "0.15rem",
+                    },
                   }}
-                  onClick={() => document.getElementById("tags")?.focus()}
                 >
                   {tags.map((tag, index) => (
                     <Chip
@@ -1042,7 +1094,9 @@ const CreateStudyMaterial = () => {
                       label={tag}
                       onDelete={() => handleDeleteTag(tag)}
                       sx={{
-                        backgroundColor: "#4D18E8 !important",
+                        backgroundColor: allSubjects.includes(tag)
+                          ? "#4D18E8 !important"
+                          : "#2A2636 !important",
                         color: "#E2DDF3",
                         width: "fit-content",
                         height: "fit-content",
@@ -1055,57 +1109,151 @@ const CreateStudyMaterial = () => {
                   ))}
 
                   {tags.length < MAX_TAGS && (
-                    <input
-                      id="tags"
-                      type="text"
-                      value={currentTag}
-                      onChange={(e) => setCurrentTag(e.target.value)}
-                      onKeyDown={handleAddTag}
-                      placeholder="Press enter"
-                      onInput={(e) => {
-                        const target = e.target as HTMLInputElement;
-                        const contentLength = target.value.length;
-                        const placeholderLength = target.placeholder.length;
-                        const textWidth = Math.max(
-                          contentLength,
-                          placeholderLength
-                        );
-                        target.style.width = `${Math.max(
-                          textWidth * 0.9,
-                          10
-                        )}ch`;
+                    <Box
+                      sx={{
+                        position: "relative",
+                        display: "inline-flex",
+                        alignItems: "center",
                       }}
-                      style={{
-                        border: "none",
-                        outline: "none",
-                        background: "transparent",
-                        width: "10ch",
-                        flex: "0 0 auto",
-                        color: "#E2DDF3",
-                        fontSize: "1rem",
-                        paddingLeft: 6,
-                        textAlign: "left",
-                        cursor: "text",
-                        overflow: "hidden",
-                      }}
-                      className="tag-input-placeholder"
-                    />
+                    >
+                      <input
+                        id="tags"
+                        type="text"
+                        value={inputValue}
+                        onChange={(e) => {
+                          setInputValue(e.target.value);
+                          setSearchQuery(e.target.value);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && inputValue.trim()) {
+                            e.preventDefault();
+                            if (!tags.includes(inputValue.trim())) {
+                              handleAddTag([...tags, inputValue.trim()]);
+                            }
+                            setInputValue("");
+                            setSearchQuery("");
+                          }
+                        }}
+                        placeholder={
+                          tags.length > 0 ? "Add more..." : "Add a tag here..."
+                        }
+                        style={{
+                          border: "none",
+                          outline: "none",
+                          background: "transparent",
+                          width: inputValue
+                            ? `${inputValue.length * 8 + 8}px`
+                            : tags.length > 0
+                            ? "ch"
+                            : "14ch",
+                          color: "#E2DDF3",
+                          fontSize: "1rem",
+                          padding: "6px 3px",
+                          margin: 0,
+                          textAlign: "left",
+                          cursor: "text",
+                          caretColor: "#E2DDF3",
+                        }}
+                        className="tag-input-placeholder"
+                      />
+                      {inputValue && filteredSubjects.length > 0 && (
+                        <Paper
+                          sx={{
+                            position: "absolute",
+                            top: "100%",
+                            left: 0,
+                            width: "200px", // Set fixed width
+                            mt: 1,
+                            maxHeight: "200px",
+                            overflow: "auto",
+                            backgroundColor: "#2A2636",
+                            color: "#E2DDF3",
+                            border: "1px solid #3B354D",
+                            borderRadius: "0.8rem",
+                            zIndex: 1000,
+                            "&::-webkit-scrollbar": {
+                              width: "8px",
+                            },
+                            "&::-webkit-scrollbar-track": {
+                              background: "transparent",
+                            },
+                            "&::-webkit-scrollbar-thumb": {
+                              backgroundColor: "#382e53",
+                              borderRadius: "4px",
+                            },
+                            "&::-webkit-scrollbar-thumb:hover": {
+                              backgroundColor: "#261d3f",
+                            },
+                          }}
+                        >
+                          {filteredSubjects.map((subject, index) => (
+                            <Box
+                              key={index}
+                              onClick={() => {
+                                if (!tags.includes(subject)) {
+                                  handleAddTag([...tags, subject]);
+                                }
+                                setInputValue("");
+                                setSearchQuery("");
+                              }}
+                              sx={{
+                                padding: "8px 16px",
+                                cursor: "pointer",
+                                width: "auto",
+                                "&:hover": {
+                                  backgroundColor: "#3B354D",
+                                },
+                                borderBottom:
+                                  index < filteredSubjects.length - 1
+                                    ? "1px solid #3B354D"
+                                    : "none",
+                              }}
+                            >
+                              <Typography variant="body2">{subject}</Typography>
+                            </Box>
+                          ))}
+                        </Paper>
+                      )}
+                    </Box>
                   )}
                 </Box>
-                {/* Tag counter */}
-                <Typography
-                  variant="caption"
+                {/* Tag counters */}
+                <Box
                   sx={{
-                    color: tags.length >= MAX_TAGS ? "#E57373" : "#6F658D",
-                    transition: "color 0.3s ease-in-out",
-                    marginTop: "0.2rem",
-                    fontSize: "0.75rem",
-                    textAlign: "left",
-                    maxWidth: "100%", // Changed from specific percentages
+                    position: "relative",
+                    zIndex: 0,
+                    marginTop: "0.5rem",
+                    clear: "both",
                   }}
                 >
-                  {tags.length}/{MAX_TAGS} tags used
-                </Typography>
+                  <Stack direction="row" spacing={2}>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color: tags.length >= MAX_TAGS ? "#E57373" : "#6F658D",
+                        transition: "color 0.3s ease-in-out",
+                        fontSize: "0.75rem",
+                        textAlign: "left",
+                      }}
+                    >
+                      {tags.length}/{MAX_TAGS} total tags
+                    </Typography>
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color:
+                          customTagsCount >= MAX_CUSTOM_TAGS
+                            ? "#E57373"
+                            : "#6F658D",
+                        transition: "color 0.3s ease-in-out",
+                        fontSize: "0.75rem",
+                        textAlign: "left",
+                      }}
+                    >
+                      {customTagsCount}/{MAX_CUSTOM_TAGS} custom tags
+                    </Typography>
+                  </Stack>
+                </Box>
               </Stack>
             </Box>
 
@@ -1476,9 +1624,7 @@ const CreateStudyMaterial = () => {
                               alignItems: "center",
                               fontWeight: "medium",
                             }}
-                          >
-                            [IMG]
-                          </Box>
+                          ></Box>
                         )}
                         <Typography
                           variant="body2"

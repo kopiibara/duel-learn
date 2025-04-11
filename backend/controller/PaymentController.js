@@ -68,14 +68,14 @@ const PaymentController = {
 
                 try {
                     const [userResult] = await pool.query(
-                        'UPDATE users SET account_type = ? WHERE firebase_uid = ?',
-                        ['premium', firebase_uid]
+                        'UPDATE users SET account_type = ? ,account_type_plan = ? WHERE firebase_uid = ?',
+                        ['premium', planName, firebase_uid]
                     );
                     console.log(`Updated users table: ${userResult.affectedRows} row(s)`);
 
                     const [userInfoResult] = await pool.query(
-                        'UPDATE user_info SET account_type = ? WHERE firebase_uid = ?',
-                        ['premium', firebase_uid]
+                        'UPDATE user_info SET account_type = ?, account_type_plan = ? WHERE firebase_uid = ?',
+                        ['premium', planName, firebase_uid]
                     );
                     console.log(`Updated user_info table: ${userInfoResult.affectedRows} row(s)`);
                 } catch (error) {
@@ -344,13 +344,15 @@ const PaymentController = {
                     'UPDATE user_payment SET status = ?, paid_at = NOW() WHERE id = ?',
                     ['active', paymentId]
                 );
+
                 await pool.query(
-                    'UPDATE users SET account_type = ? WHERE firebase_uid = ?',
-                    ['premium', payment.firebase_uid]
+                    'UPDATE users SET account_type = ?, account_type_plan = ? WHERE firebase_uid = ?',
+                    ['premium', payment.plan, payment.firebase_uid]
                 );
+
                 await pool.query(
-                    'UPDATE user_info SET account_type = ? WHERE firebase_uid = ?',
-                    ['premium', payment.firebase_uid]
+                    'UPDATE user_info SET account_type = ?, account_type_plan = ? WHERE firebase_uid = ?',
+                    ['premium', payment.plan, payment.firebase_uid]
                 );
             }
 
@@ -419,12 +421,12 @@ const PaymentController = {
             );
 
             await pool.query(
-                'UPDATE users SET account_type = ? WHERE firebase_uid = ?',
-                ['free', firebase_uid]
+                'UPDATE users SET account_type = ?, account_type_plan = ? WHERE firebase_uid = ?',
+                ['free', 'free', firebase_uid]
             );
             await pool.query(
-                'UPDATE user_info SET account_type = ? WHERE firebase_uid = ?',
-                ['free', firebase_uid]
+                'UPDATE user_info SET account_type = ?, account_type_plan = ? WHERE firebase_uid = ?',
+                ['free', 'free', firebase_uid]
             );
 
             return res.status(200).json({

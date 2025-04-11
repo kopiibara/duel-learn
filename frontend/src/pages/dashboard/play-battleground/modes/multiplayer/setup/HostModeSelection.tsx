@@ -2,9 +2,25 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import {
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Button,
+  IconButton,
+} from "@mui/material";
+import {
+  socket,
+  PlayerLeftData,
+  LobbyStatusUpdate,
+} from "../../../../../../../src/socket";
 import axios from "axios";
 import CardBackImg from "/General/CardDesignBack.png";
 import DefaultBackHoverCard from "/cards/DefaultCardInside.png";
+import "./styles/animations.css";
 
 // Utility function for conditional class names
 const cn = (...classes: string[]) => classes.filter(Boolean).join(" ");
@@ -19,7 +35,7 @@ export default function DifficultySelection() {
     hostId,
     guestId,
     material,
-    questionTypes, // Extract questionTypes from location state
+    questionTypes,
   } = location.state || {};
 
   console.log("DifficultySelection state:", {
@@ -29,7 +45,7 @@ export default function DifficultySelection() {
     hostId,
     guestId,
     material,
-    questionTypes, // Log questionTypes to verify
+    questionTypes,
     locationState: location.state,
   });
 
@@ -38,6 +54,168 @@ export default function DifficultySelection() {
   const [windowWidth, setWindowWidth] = useState<number>(
     typeof window !== "undefined" ? window.innerWidth : 0
   );
+  const [openLeaveModal, setOpenLeaveModal] = useState(false);
+  const [guestLeft, setGuestLeft] = useState(false);
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  const [socketEvents, setSocketEvents] = useState<string[]>([]);
+
+  // Add debug info
+  const addDebugInfo = (info: string) => {
+    console.log(`[HOST DEBUG] ${info}`);
+    setDebugInfo((prev) =>
+      [...prev, `${new Date().toLocaleTimeString()}: ${info}`].slice(-10)
+    );
+  };
+
+  // Add socket event tracking
+  const trackSocketEvent = (event: string, data?: any) => {
+    const eventInfo = `${event}: ${
+      data ? JSON.stringify(data).substring(0, 100) : "no data"
+    }`;
+    console.log(`[SOCKET EVENT] ${eventInfo}`);
+    setSocketEvents((prev) =>
+      [...prev, `${new Date().toLocaleTimeString()}: ${eventInfo}`].slice(-5)
+    );
+  };
+
+  // Socket debug setup
+  useEffect(() => {
+    // Create a handler that captures all socket events
+    const handleAny = (event: string, ...args: any[]) => {
+      trackSocketEvent(event, args[0]);
+    };
+
+    socket.onAny(handleAny);
+
+    return () => {
+      socket.offAny(handleAny);
+    };
+  }, []);
+
+  // Debug connection status
+  useEffect(() => {
+    const updateConnectionStatus = () => {
+      const status = document.body.getAttribute("data-socket-status");
+      addDebugInfo(`Socket status: ${status}`);
+    };
+    updateConnectionStatus();
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === "data-socket-status") {
+          updateConnectionStatus();
+        }
+      });
+    });
+    observer.observe(document.body, { attributes: true });
+    return () => observer.disconnect();
+  }, []);
+
+  // Make sure we join the lobby room to receive events
+  useEffect(() => {
+    if (lobbyCode) {
+      addDebugInfo(`Joining lobby: ${lobbyCode}`);
+      // Join using socket.io room
+      socket.emit("join", lobbyCode);
+    }
+
+    return () => {
+      if (lobbyCode) {
+        socket.emit("leave", lobbyCode);
+      }
+    };
+  }, [lobbyCode]);
+
+  useEffect(() => {
+    addDebugInfo(`Component mounted with lobbyCode: ${lobbyCode}`);
+    addDebugInfo(
+      `Host: ${hostUsername}, Guest: ${guestUsername}, GuestId: ${guestId}`
+    );
+
+    const handleGuestLeave = () => {
+      addDebugInfo("Guest left, showing notification...");
+      setGuestLeft(true);
+
+      // Force navigation after delay
+      const timer = setTimeout(() => {
+        addDebugInfo("Forcing navigation to dashboard...");
+        window.location.href = "/dashboard/home";
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    };
+
+    // Listen for guest leaving through direct event
+    socket.on("player_left_difficulty_selection", (data: PlayerLeftData) => {
+      trackSocketEvent("player_left_difficulty_selection", data);
+      addDebugInfo(`Received leave event: ${JSON.stringify(data)}`);
+      console.log("Player left data:", data, "Guest ID:", guestId);
+
+      // Check if this is the guest leaving
+      if (!data.isHost) {
+        // If we know the guest ID, check it matches
+        if (guestId && data.leavingPlayerId === guestId) {
+          addDebugInfo(`Match by ID: Guest ${guestId} left`);
+          handleGuestLeave();
+        }
+        // Or just assume any non-host leaving is our guest
+        else {
+          addDebugInfo(`Non-host left: ${data.leavingPlayerId}`);
+          handleGuestLeave();
+        }
+      }
+    });
+
+    // Listen for lobby status updates
+    socket.on("lobby_status_update", (data: LobbyStatusUpdate) => {
+      trackSocketEvent("lobby_status_update", data);
+      addDebugInfo(`Lobby status update: ${JSON.stringify(data)}`);
+
+      if (data.status === "player_left" && !data.isHost) {
+        // Any non-host player leaving should trigger our notification
+        addDebugInfo(`Player left from lobby status: ${data.leavingPlayerId}`);
+        handleGuestLeave();
+      }
+    });
+
+    // Fallback direct connection monitoring
+    const checkGuestConnection = setInterval(() => {
+      if (lobbyCode && guestId && !guestLeft) {
+        // Poll server to check if guest is still in lobby
+        axios
+          .get(
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/battle/check-player/${lobbyCode}/${guestId}`
+          )
+          .then((response) => {
+            if (response.data && response.data.status === "left") {
+              addDebugInfo("Guest detected as left via API check");
+              handleGuestLeave();
+            }
+          })
+          .catch((err) => {
+            console.error("Error checking guest status", err);
+          });
+      }
+    }, 10000); // Check every 10 seconds
+
+    // Handle direct client disconnection
+    const handleDisconnect = () => {
+      addDebugInfo("Socket disconnected, checking guest status");
+      // Extra logic could be added here
+    };
+
+    socket.on("disconnect", handleDisconnect);
+
+    // Cleanup function
+    return () => {
+      socket.off("player_left_difficulty_selection");
+      socket.off("lobby_status_update");
+      socket.off("disconnect", handleDisconnect);
+      clearInterval(checkGuestConnection);
+      addDebugInfo("Cleaned up socket listeners");
+    };
+  }, [lobbyCode, guestId, hostUsername, guestUsername, guestLeft]);
 
   // Responsive window width tracking
   useEffect(() => {
@@ -48,6 +226,28 @@ export default function DifficultySelection() {
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  const handleLeavePage = () => {
+    addDebugInfo("Handling leave action...");
+    if (!hostId || !lobbyCode) {
+      addDebugInfo("Error: Missing hostId or lobbyCode");
+      return;
+    }
+
+    try {
+      socket.emit("leave_difficulty_selection", {
+        lobbyCode,
+        leavingPlayerId: hostId,
+        isHost: true,
+      });
+      addDebugInfo("Emitted leave event, navigating...");
+      window.location.href = "/dashboard/home";
+    } catch (err) {
+      const error = err as Error;
+      addDebugInfo(`Error leaving: ${error.message}`);
+      window.location.href = "/dashboard/home";
+    }
+  };
 
   const getCardDimensions = () => {
     let width = 120;
@@ -159,6 +359,121 @@ export default function DifficultySelection() {
 
   return (
     <div className="min-h-screen flex items-center justify-center text-white p-4 md:p-8 overflow-x-hidden">
+      {/* Debug Panel - Commented out for production 
+      <div className="fixed bottom-4 left-4 z-[9999] bg-black bg-opacity-90 p-4 rounded-lg text-white text-sm max-w-[400px]">
+        <h3 className="font-bold mb-2">Debug Info:</h3>
+        {debugInfo.map((info, index) => (
+          <div key={index} className="mb-1 text-xs">{info}</div>
+        ))}
+        
+        <h3 className="font-bold mt-4 mb-2">Socket Events:</h3>
+        {socketEvents.map((event, index) => (
+          <div key={`event-${index}`} className="mb-1 text-xs text-green-400">{event}</div>
+        ))}
+        
+        <div className="mt-3 pt-2 border-t border-gray-700">
+          <p className="text-xs text-yellow-400">Guest ID: {guestId || 'unknown'}</p>
+          <p className="text-xs text-yellow-400">Lobby: {lobbyCode || 'unknown'}</p>
+        </div>
+      </div>
+      */}
+
+      {/* Back Button */}
+      <IconButton
+        onClick={() => {
+          addDebugInfo("Back button clicked");
+          setOpenLeaveModal(true);
+        }}
+        disabled={guestLeft}
+        sx={{
+          position: "absolute",
+          top: "20px",
+          left: "20px",
+          color: "white",
+          backgroundColor: "rgba(107, 33, 168, 0.1)",
+          "&:hover": {
+            backgroundColor: "rgba(107, 33, 168, 0.2)",
+          },
+          zIndex: 1000,
+          opacity: guestLeft ? 0.5 : 1,
+        }}
+      >
+        <ArrowBackIcon />
+      </IconButton>
+
+      {/* Leave Confirmation Modal */}
+      <Dialog
+        open={openLeaveModal}
+        onClose={() => {
+          addDebugInfo("Modal closed");
+          setOpenLeaveModal(false);
+        }}
+        PaperProps={{
+          style: {
+            backgroundColor: "#1a1a1a",
+            color: "white",
+            border: "1px solid #333",
+          },
+        }}
+      >
+        <DialogTitle>Leave Game Setup?</DialogTitle>
+        <DialogContent>
+          <DialogContentText sx={{ color: "gray" }}>
+            {guestLeft
+              ? "The guest has left. You will be redirected shortly."
+              : "Are you sure you want to leave? This will end the game setup process for both players."}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions sx={{ padding: 2 }}>
+          <Button
+            onClick={() => {
+              addDebugInfo("Leave cancelled");
+              setOpenLeaveModal(false);
+            }}
+            disabled={guestLeft}
+            sx={{
+              color: "white",
+              opacity: guestLeft ? 0.5 : 1,
+              "&:hover": { backgroundColor: "rgba(255, 255, 255, 0.1)" },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              addDebugInfo("Leave confirmed");
+              handleLeavePage();
+            }}
+            disabled={guestLeft}
+            variant="contained"
+            sx={{
+              backgroundColor: "#6B21A8",
+              opacity: guestLeft ? 0.5 : 1,
+              "&:hover": { backgroundColor: "#5B1C98" },
+            }}
+          >
+            Leave
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Guest Left Alert */}
+      {guestLeft && (
+        <div className="fixed top-4 right-4 z-50 bg-red-600 text-white px-8 py-4 rounded-lg shadow-lg animate-pulse border-2 border-red-400 max-w-md">
+          <div className="flex items-center">
+            <div className="mr-4 text-2xl">⚠️</div>
+            <div>
+              <p className="font-bold text-xl">
+                {guestUsername} has left the game!
+              </p>
+              <p className="text-base mt-2">
+                Redirecting to dashboard in a few seconds...
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="w-full max-w-7xl mx-auto mt-10 md:mt-16 lg:mt-28">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr,1fr] gap-8 lg:gap-16 xl:gap-24">
           {/* Left Column - Difficulty Selection */}
@@ -177,11 +492,13 @@ export default function DifficultySelection() {
                 <button
                   key={difficulty}
                   onClick={() => setSelectedDifficulty(difficulty)}
+                  disabled={guestLeft}
                   className={cn(
                     "w-full md:max-w-[550px] py-6 md:py-10 pl-5 md:pl-10 rounded-xl text-lg md:text-xl font-medium text-left transition-all duration-200",
                     selectedDifficulty === difficulty
                       ? "bg-[#49347e] border-2 md:border-4 border-[#3d2577]"
-                      : "bg-[#3B354D]"
+                      : "bg-[#3B354D]",
+                    guestLeft ? "opacity-50 cursor-not-allowed" : ""
                   )}
                 >
                   {difficulty}
@@ -191,7 +508,11 @@ export default function DifficultySelection() {
 
             <button
               onClick={handleStartGame}
-              className="w-full md:w-[240px] py-3 md:py-4 px-7 rounded-xl bg-indigo-600 hover:bg-indigo-700 transition-colors font-bold text-lg text-white"
+              disabled={guestLeft}
+              className={cn(
+                "w-full md:w-[240px] py-3 md:py-4 px-7 rounded-xl bg-indigo-600 hover:bg-indigo-700 transition-colors font-bold text-lg text-white",
+                guestLeft ? "opacity-50 cursor-not-allowed" : ""
+              )}
             >
               Start Game
             </button>
