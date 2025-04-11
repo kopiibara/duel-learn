@@ -66,7 +66,7 @@ export function useBattle({
     // =========== BATTLE LEAVER ============
 
     // Handle leaving the battle and updating the database
-    const handleLeaveBattle = async () => {
+    const handleLeaveBattle = async (battle_end_reason: string = 'Left The Game', early_leaver_id?: string) => {
         // Prevent multiple calls
         if (isEndingBattle) {
             console.log("Already ending battle, ignoring duplicate call");
@@ -88,7 +88,9 @@ export function useBattle({
                 hostId,
                 guestId,
                 isHost,
-                winnerId: isHost ? guestId : hostId
+                winnerId: isHost ? guestId : hostId,
+                battle_end_reason,
+                early_leaver_id
             });
 
             if (!battleState?.session_uuid && !battleState?.ID) {
@@ -99,9 +101,10 @@ export function useBattle({
             const payload = {
                 lobby_code: lobbyCode,
                 winner_id: isHost ? guestId : hostId, // Opponent wins if player leaves
-                battle_end_reason: 'Left The Game',
+                battle_end_reason,
                 session_uuid: battleState?.session_uuid,
-                session_id: battleState?.ID // Include numeric ID as fallback
+                session_id: battleState?.ID, // Include numeric ID as fallback
+                early_leaver_id // Include the ID of the player who left early
             };
 
             console.log("Sending battle end request with payload:", payload);
@@ -141,7 +144,8 @@ export function useBattle({
                     const fallbackPayload = {
                         lobby_code: lobbyCode,
                         winner_id: isHost ? guestId : hostId,
-                        battle_end_reason: 'Left The Game'
+                        battle_end_reason,
+                        early_leaver_id
                     };
 
                     const fallbackResponse = await axios.post(
@@ -226,7 +230,7 @@ export function useBattle({
 
                     try {
                         // Wait for the leave battle function to complete
-                        await handleLeaveBattle();
+                        await handleLeaveBattle('Left The Game', currentUserId);
 
                         // The handleLeaveBattle function already handles navigation
                     } catch (err) {
@@ -274,14 +278,15 @@ export function useBattle({
 
                         try {
                             // Wait for the leave battle function to complete
-                            await handleLeaveBattle();
-
-                            // The handleLeaveBattle function already handles navigation
+                            await handleLeaveBattle('Left The Game', currentUserId);
                         } catch (err) {
                             console.error("Error in handleLeaveBattle called from URL change:", err);
                             // Force redirect even if error occurs
                             window.location.replace('/dashboard/home');
                         }
+                    } else {
+                        // User cancelled, navigate back to battle
+                        window.history.pushState(null, '', '/pvp-battle');
                     }
                 }
             } else {

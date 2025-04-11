@@ -16,17 +16,13 @@ import {
     updateBattleScores,
     getActiveCardEffects,
     consumeCardEffect,
-    checkCardBlockingEffects,
-    checkMindControlEffects,
-    applyPoisonEffects,
     savePvpSessionReport,
     getWinStreak,
-    updateWinStreak
-
+    updateWinStreak,
+    checkUserBanStatus
 } from '../controller/GameplayController.js';
 
 const router = express.Router();
-
 
 // New routes for battle_sessions
 router.post('/battle/initialize-session', initializeBattleSession);
@@ -42,9 +38,6 @@ router.get('/battle/round/:session_uuid', getBattleRound);
 // Card effects
 router.get('/battle/card-effects/:session_uuid/:player_type', getActiveCardEffects);
 router.post('/battle/consume-card-effect', consumeCardEffect);
-router.get('/battle/card-blocking-effects/:session_uuid/:player_type', checkCardBlockingEffects);
-router.get('/battle/mind-control-effects/:session_uuid/:player_type', checkMindControlEffects);
-router.post('/battle/apply-poison-effects', applyPoisonEffects);
 
 // Battle scores
 router.post('/battle/initialize-scores', initializeBattleScores);
@@ -54,6 +47,9 @@ router.put('/battle/update-scores', updateBattleScores);
 // Win streak routes
 router.get('/battle/win-streak/:firebase_uid', getWinStreak);
 router.put('/battle/win-streak', updateWinStreak);
+
+// User ban status route
+router.get('/user/ban-status/:firebase_uid', checkUserBanStatus);
 
 // End the battle
 router.post('/battle/end', endBattle);

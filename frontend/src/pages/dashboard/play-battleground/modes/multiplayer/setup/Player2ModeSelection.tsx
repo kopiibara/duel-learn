@@ -186,6 +186,9 @@ export default function Player2ModeSelection() {
                 guest_in_battle: true // Mark guest as entered
               });
 
+              // Clear the interval before navigation
+              clearInterval(interval);
+
               // Add slight delay before navigation to ensure state updates properly
               setTimeout(() => {
                 // Navigate to battle
@@ -198,7 +201,8 @@ export default function Player2ModeSelection() {
                     guestUsername,
                     hostId,
                     guestId
-                  }
+                  },
+                  replace: true // Use replace instead of push to prevent back navigation
                 });
               }, 300);
             } catch (err) {
@@ -220,7 +224,9 @@ export default function Player2ModeSelection() {
     // Then check every 1.2 seconds
     const interval = setInterval(checkDifficulty, 1200);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, [lobbyCode, navigate, hostUsername, guestUsername, hostId, guestId, isNavigating]);
 
   const handleLeavePage = () => {

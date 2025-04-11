@@ -58,6 +58,76 @@ interface StudyMaterial {
   [key: string]: any; // For any other properties
 }
 
+interface BanModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  banUntil: Date;
+}
+
+const formatTimeLeft = (banUntil: Date): string => {
+  const now = new Date();
+  const diff = banUntil.getTime() - now.getTime();
+
+  if (diff <= 0) return "Ban expired";
+
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+  return `${hours}h ${minutes}m ${seconds}s`;
+};
+
+const formatDateTime = (date: Date): string => {
+  return date.toLocaleString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+};
+
+const BanModal: React.FC<BanModalProps> = ({ isOpen, onClose, banUntil }) => {
+  const [timeLeft, setTimeLeft] = useState<string>("");
+
+  useEffect(() => {
+    const updateTimeLeft = () => {
+      setTimeLeft(formatTimeLeft(banUntil));
+    };
+
+    updateTimeLeft();
+    const interval = setInterval(updateTimeLeft, 1000);
+
+    return () => clearInterval(interval);
+  }, [banUntil]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+        <h2 className="text-xl font-bold text-red-500 mb-4">Account Temporarily Banned</h2>
+        <p className="text-white mb-4">
+          You are temporarily banned from battles due to leaving games early.
+        </p>
+        <p className="text-white mb-4">
+          Ban expires: {formatDateTime(banUntil)}
+        </p>
+        <p className="text-yellow-400 font-semibold mb-6">
+          Time remaining: {timeLeft}
+        </p>
+        <button
+          onClick={onClose}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+};
+
 const PVPLobby: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -156,6 +226,10 @@ const PVPLobby: React.FC = () => {
   // Add invitationSent state
   const [invitationSent, setInvitationSent] = useState<boolean>(false);
 
+  // Add these new states in the main PVPLobby component after the existing states
+  const [showBanModal, setShowBanModal] = useState(false);
+  const [userBanUntil, setUserBanUntil] = useState<Date | null>(null);
+
   // Set the state variables
   useEffect(() => {
     if (mode) {
@@ -251,7 +325,7 @@ const PVPLobby: React.FC = () => {
         inLobby: true,
         lobbyCode: lobbyCode
       });
-      
+
       // Also broadcast player joined lobby event
       newSocket.emit("player_joined_lobby", {
         playerId: user.firebase_uid,
@@ -266,7 +340,7 @@ const PVPLobby: React.FC = () => {
           inLobby: true,
           lobbyCode: lobbyCode
         });
-        
+
         // Also broadcast player joined lobby event
         newSocket.emit("player_joined_lobby", {
           playerId: user.firebase_uid,
@@ -339,6 +413,22 @@ const PVPLobby: React.FC = () => {
 
     const checkBattleStarted = async () => {
       try {
+        // First check if user is banned
+        const banResponse = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/user/ban-status/${user?.firebase_uid}`
+        );
+
+        if (banResponse.data.success && banResponse.data.data.banUntil) {
+          const banUntil = new Date(banResponse.data.data.banUntil);
+          if (banUntil > new Date()) {
+            setUserBanUntil(banUntil);
+            // Remove the immediate show of ban modal
+            // setShowBanModal(true);
+            return; // Stop here if user is banned
+          }
+        }
+
+        // If not banned, proceed with battle status check
         const response = await axios.get(
           `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby/battle-status/${lobbyCode}`
         );
@@ -393,6 +483,14 @@ const PVPLobby: React.FC = () => {
         return;
       }
 
+      // Check ban status before starting battle
+      // This will automatically reset earlyLeaves to 0 if ban has expired
+      const isBanned = await checkUserBanStatus();
+      if (isBanned) {
+        setShowBanModal(true);
+        return;
+      }
+
       setBattleStartLoading(true);
 
       try {
@@ -434,7 +532,14 @@ const PVPLobby: React.FC = () => {
         setBattleStartLoading(false);
       }
     } else {
-      // For guest: toggle ready state
+      // For guest: check ban status before toggling ready state
+      // This will automatically reset earlyLeaves to 0 if ban has expired
+      const isBanned = await checkUserBanStatus();
+      if (isBanned) {
+        setShowBanModal(true);
+        return;
+      }
+      // Toggle ready state
       toggleGuestReadyState();
     }
   };
@@ -512,13 +617,13 @@ const PVPLobby: React.FC = () => {
 
       // Set the invited player in state
       setInvitedPlayer(friend);
-      
+
       // For manual invites (from the invite modal), close the modal
       setShowInviteModal(false);
-      
+
       // Set invitation sent state to start polling
       setInvitationSent(true);
-      
+
       // Create invitation data
       const invitationData = {
         sender_id: user.firebase_uid,
@@ -551,7 +656,7 @@ const PVPLobby: React.FC = () => {
         lobbyCode: lobbyCode,
         timestamp: new Date().toISOString(),
       };
-      
+
       // Get or create socket connection
       let currentSocket = socket;
       if (!currentSocket) {
@@ -583,7 +688,7 @@ const PVPLobby: React.FC = () => {
         isPending: false,
         invitedAt: new Date()
       });
-      
+
       // Show error toast
       toast.error("Failed to send invitation. Please try again.");
     }
@@ -915,7 +1020,7 @@ const PVPLobby: React.FC = () => {
     }
 
     console.log(`Starting ready state polling. Invitation sent: ${invitationSent}, Is guest: ${isCurrentUserGuest}`);
-    
+
     // Check immediately
     checkReadyState();
 
@@ -985,7 +1090,7 @@ const PVPLobby: React.FC = () => {
     }
 
     console.log(`Starting lobby settings polling. Invitation sent: ${invitationSent}, Is guest: ${isCurrentUserGuest}`);
-    
+
     // Check immediately
     checkLobbySettings();
 
@@ -998,7 +1103,7 @@ const PVPLobby: React.FC = () => {
   // Add this to handle real-time player joining through sockets
   useEffect(() => {
     if (!socket) return;
-    
+
     // Handle a player joining lobby in real-time
     const handlePlayerJoiningLobby = (data: {
       lobbyCode: string;
@@ -1008,10 +1113,10 @@ const PVPLobby: React.FC = () => {
       playerPicture?: string | null;
     }) => {
       console.log(`Player joining lobby via socket: ${data.playerName || data.playerId}`);
-      
+
       // Only process if we're in this lobby
       if (data.lobbyCode !== lobbyCode) return;
-      
+
       // Create player object from received data
       const joiningPlayer: Player = {
         firebase_uid: data.playerId,
@@ -1019,21 +1124,21 @@ const PVPLobby: React.FC = () => {
         level: data.playerLevel || 1,
         display_picture: data.playerPicture || null
       };
-      
+
       // Add player to guest player state
       setInvitedPlayer(joiningPlayer);
       setShowInviteModal(true);
-      
+
       // Play a sound or add visual notification if desired
       // playSoundEffect("playerJoined.mp3");
-      
+
       // Show notification toast
       toast.success(`${joiningPlayer.username} joined your lobby!`);
     };
-    
+
     // Set up the event listener
     socket.on("playerJoiningLobby", handlePlayerJoiningLobby);
-    
+
     // Clean up
     return () => {
       socket.off("playerJoiningLobby", handlePlayerJoiningLobby);
@@ -1052,10 +1157,10 @@ const PVPLobby: React.FC = () => {
         hostLevel: user?.level,
         hostPicture: user?.display_picture || null
       });
-      
+
       console.log(`Host created lobby: ${lobbyCode}`);
     }
-    
+
     // ... existing code for non-socket initializations ...
   }, [isCurrentUserGuest, lobbyCode, socket, user?.firebase_uid, user?.username, user?.level, user?.display_picture]);
 
@@ -1064,29 +1169,29 @@ const PVPLobby: React.FC = () => {
     // Only process if we have a friendToInvite from location state and socket is connected
     if (friendToInvite && user?.firebase_uid && !isCurrentUserGuest) {
       console.log("Auto-sending invite to friend:", friendToInvite);
-      
+
       // Check if we have material and question types ready
       if (!selectedMaterial || selectedTypesFinal.length === 0) {
         console.log("Material or question types not ready yet, waiting...");
         return;
       }
-      
+
       // Only send if we haven't already sent one and socket is connected
       if (!invitationSentRef.current && socket?.connected) {
         // Set a small delay to ensure everything is initialized properly
         const timer = setTimeout(async () => {
           try {
             console.log("Sending auto-invitation to:", friendToInvite.username);
-            
+
             // Set invited player status to pending
             setInvitedPlayerStatus({
               isPending: true,
               invitedAt: new Date()
             });
-            
+
             // Set the invited player in state
             setInvitedPlayer(friendToInvite);
-            
+
             // Create invitation data
             const invitationData = {
               lobby_code: lobbyCode,
@@ -1104,17 +1209,17 @@ const PVPLobby: React.FC = () => {
               guest_ready: false,
               battle_started: false
             };
-            
+
             // Make POST request to create battle invitation
             const response = await axios.post(
               `${import.meta.env.VITE_BACKEND_URL}/api/battle/invitations-lobby`,
               invitationData
             );
-            
+
             if (!response.data.success) {
               throw new Error("Failed to create battle invitation");
             }
-            
+
             // Create the notification data for socket
             const notificationData = {
               senderId: user.firebase_uid,
@@ -1128,23 +1233,23 @@ const PVPLobby: React.FC = () => {
               lobbyCode: lobbyCode,
               timestamp: new Date().toISOString(),
             };
-            
+
             // Emit socket event to notify the friend
             console.log("Emitting battle invitation socket event:", notificationData);
             socket.emit("notify_battle_invitation", notificationData);
-            
+
             // Also emit battle_invitation event for better compatibility
             socket.emit("battle_invitation", notificationData);
-            
+
             // Mark as sent
             invitationSentRef.current = true;
-            
+
             // Set invitation sent state to start polling
             setInvitationSent(true);
-            
+
             // Show success notification
             toast.success(`Invitation sent to ${friendToInvite.username}!`);
-            
+
           } catch (error) {
             console.error("Error sending auto-invitation:", error);
             // Reset pending status on error
@@ -1152,14 +1257,14 @@ const PVPLobby: React.FC = () => {
               isPending: false,
               invitedAt: new Date()
             });
-            
+
             setInvitedPlayer(null);
-            
+
             // Show error toast
             toast.error("Failed to send invitation. Please try again.");
           }
         }, 1500);
-        
+
         return () => clearTimeout(timer);
       }
     }
@@ -1169,17 +1274,17 @@ const PVPLobby: React.FC = () => {
   useEffect(() => {
     const handleInvitationClosed = (event: CustomEvent) => {
       console.log('Battle invitation closed event received in PVPLobby', event.detail);
-      
+
       // Verify this event is for our lobby
       if (event.detail.lobbyCode === lobbyCode) {
         console.log('Resetting invitation status for lobby', lobbyCode);
-        
+
         // Reset the invitation status
         setInvitedPlayerStatus({
           isPending: false,
           invitedAt: new Date()
         });
-        
+
         // Remove the invited player display
         setInvitedPlayer(null);
       }
@@ -1187,7 +1292,7 @@ const PVPLobby: React.FC = () => {
 
     // Add event listener
     window.addEventListener('battle_invitation_closed', handleInvitationClosed as EventListener);
-    
+
     // Clean up event listener
     return () => {
       window.removeEventListener('battle_invitation_closed', handleInvitationClosed as EventListener);
@@ -1224,6 +1329,30 @@ const PVPLobby: React.FC = () => {
     };
   }, [socket, lobbyCode, isCurrentUserGuest, user?.firebase_uid]);
 
+  // Add this new function after the existing functions
+  const checkUserBanStatus = async () => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/user/ban-status/${user?.firebase_uid}`
+      );
+
+      if (response.data.success) {
+        // If ban has expired, the backend will automatically reset earlyLeaves to 0
+        if (response.data.data.banUntil) {
+          const banUntil = new Date(response.data.data.banUntil);
+          if (banUntil > new Date()) {
+            setUserBanUntil(banUntil);
+            return true; // User is banned
+          }
+        }
+      }
+      return false; // User is not banned
+    } catch (error) {
+      console.error("Error checking ban status:", error);
+      return false;
+    }
+  };
+
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-white px-6 py-8 overflow-hidden">
       {/* Full-Width Fixed Header */}
@@ -1255,7 +1384,7 @@ const PVPLobby: React.FC = () => {
               animate={{ x: 0 }}
               transition={{ type: "spring", stiffness: 100, damping: 20 }}
             >
-              <PlayerCard 
+              <PlayerCard
                 player={isCurrentUserGuest ? players[0] : {
                   firebase_uid: user?.firebase_uid || "",
                   username: user?.username || "Player 1",
@@ -1288,7 +1417,7 @@ const PVPLobby: React.FC = () => {
               className="flex flex-col mr-[-250px] ml-[210px] items-center"
             >
               {isCurrentUserGuest ? (
-                <PlayerCard 
+                <PlayerCard
                   player={{
                     firebase_uid: user?.firebase_uid || "",
                     username: user?.username || "Player 2",
@@ -1298,7 +1427,7 @@ const PVPLobby: React.FC = () => {
                   isHost={false}
                 />
               ) : (
-                <PlayerCard 
+                <PlayerCard
                   player={invitedPlayer}
                   isHost={false}
                   isPending={invitedPlayerStatus.isPending}
@@ -1377,6 +1506,15 @@ const PVPLobby: React.FC = () => {
             id: selectedMaterial.id || "",
             title: selectedMaterial.title
           } : null}
+        />
+      )}
+
+      {/* Ban Modal */}
+      {userBanUntil && (
+        <BanModal
+          isOpen={showBanModal}
+          onClose={() => setShowBanModal(false)}
+          banUntil={userBanUntil}
         />
       )}
     </div>
