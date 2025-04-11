@@ -9,6 +9,12 @@ import axios from "axios";
 import CardBackImg from "../../../../../../assets/General/CardDesignBack.png";
 import DefaultBackHoverCard from "../../../../../../assets/cards/DefaultCardInside.png";
 import "./styles/animations.css";
+import NormalCardQuickDraw from "/GameBattle/NormalCardQuickDraw.png";
+import NormalCardTimeManipulation from "/GameBattle/NormalCardTimeManipulation.png"
+import EpicCardAnswerShield from "/GameBattle/EpicCardAnswerShield.png";
+import EpicCardRegeneration from "/GameBattle/EpicCardRegeneration.png"
+import RareCardMindControl from "/GameBattle/RareCardMindControl.png"
+import RareCardPoisonType from "/GameBattle/RareCardPoisonType.png"
 
 // Utility function for conditional class names
 const cn = (...classes: string[]) => classes.filter(Boolean).join(" ");
@@ -222,17 +228,35 @@ export default function DifficultySelection() {
   };
 
   const getCardDimensions = () => {
-    let width = 120;
-    let height = 168;
-    if (windowWidth >= 768) {
-      width = 150;
-      height = 210;
+    let width = 120;  // base width for mobile
+    let height = 168; // base height for mobile
+
+    if (windowWidth >= 768) {  // md screens
+      width = 160;
+      height = 224;
     }
-    if (windowWidth >= 1024) {
+    if (windowWidth >= 1024) { // lg screens
       width = 180;
-      height = 250;
+      height = 252;
+    }
+    if (windowWidth >= 1280) { // xl screens
+      width = 200;
+      height = 280;
     }
     return { width: `${width}px`, height: `${height}px` };
+  };
+
+  const getCardImages = () => {
+    switch (selectedDifficulty) {
+      case "Easy Mode":
+        return [NormalCardQuickDraw, NormalCardTimeManipulation];
+      case "Average Mode":
+        return [EpicCardAnswerShield, EpicCardRegeneration];
+      case "Hard Mode":
+        return [RareCardMindControl, RareCardPoisonType];
+      default:
+        return [NormalCardQuickDraw, NormalCardTimeManipulation];
+    }
   };
 
   const handleStartGame = async () => {
@@ -315,6 +339,7 @@ export default function DifficultySelection() {
   };
 
   const cardDimensions = getCardDimensions();
+  const cardImages = getCardImages();
 
   return (
     <div className="min-h-screen flex items-center justify-center text-white p-4 md:p-8 overflow-x-hidden">
@@ -430,7 +455,7 @@ export default function DifficultySelection() {
       )}
 
       <div className="w-full max-w-7xl mx-auto mt-10 md:mt-16 lg:mt-28">
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr,1fr] gap-8 lg:gap-16 xl:gap-24">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 xl:gap-4">
           {/* Left Column - Difficulty Selection */}
           <div className="flex flex-col items-center lg:items-start gap-4 px-4 md:px-8 order-2 lg:order-1">
             <div className="w-full text-center lg:text-left mb-4 md:mb-8">
@@ -468,27 +493,53 @@ export default function DifficultySelection() {
           </div>
 
           {/* Right Column - Card Display */}
-          <div className="flex flex-col items-center order-1 lg:order-2">
-            <div className="grid grid-cols-2 gap-4 sm:gap-8 md:gap-12 mx-auto lg:ml-28 lg:mt-[-25px] mb-8 md:mb-14 relative">
+          <div className="flex flex-col items-center justify-center order-1 lg:order-2 h-full">
+            <div className="relative w-full flex flex-col items-center justify-center">
+              {/* Glow effect */}
               <div className="absolute w-[300px] h-[300px] md:w-[400px] md:h-[400px] lg:w-[600px] lg:h-[600px] bg-[#6B21A8] blur-[150px] md:blur-[200px] lg:blur-[250px] rounded-full opacity-40 animate-pulse"
                 style={{ top: "50%", left: "50%", transform: "translate(-50%, -50%)", zIndex: 0, animation: "pulse 3s infinite alternate" }}></div>
 
-              {[0, 1, 2, 3].map((index) => (
-                <motion.div key={index} className="relative z-10 perspective mx-auto" style={{ width: cardDimensions.width, height: cardDimensions.height, perspective: "1000px", transformStyle: "preserve-3d" }} initial="initial" whileHover="hover" variants={cardVariants}>
-                  <motion.div className="absolute w-full h-full backface-hidden" style={{ backfaceVisibility: "hidden" }}>
-                    <img src={CardBackImg} alt="Card back design" className="w-full h-full object-contain" />
+              {/* Cards Container */}
+              <div className="flex justify-center items-center mb-8 relative z-10 space-x-10"
+                style={{
+                  width: "clamp(300px, 45vw, 600px)"
+                }}>
+                {[0, 1].map((index) => (
+                  <motion.div
+                    key={index}
+                    className="relative z-10 perspective"
+                    style={{
+                      width: cardDimensions.width,
+                      height: cardDimensions.height,
+                      perspective: "1000px",
+                      transformStyle: "preserve-3d"
+                    }}
+                    initial="initial"
+                    whileHover="hover"
+                    variants={cardVariants}
+                  >
+                    <motion.div className="absolute w-full h-full backface-hidden" style={{ backfaceVisibility: "hidden" }}>
+                      <img src={CardBackImg} alt="Card back design" className="w-full h-full object-contain" />
+                    </motion.div>
+                    <motion.div className="absolute w-full h-full backface-hidden" style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
+                      <img src={getCardImages()[index]} alt={`Card ${index + 1}`} className="w-full h-full object-contain" />
+                    </motion.div>
                   </motion.div>
-                  <motion.div className="absolute w-full h-full backface-hidden" style={{ backfaceVisibility: "hidden", transform: "rotateY(180deg)" }}>
-                    <img src={DefaultBackHoverCard} alt="Card hover design" className="w-full h-full object-contain" />
-                  </motion.div>
-                </motion.div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            <div className="flex justify-between items-center mx-auto lg:ml-28 w-full max-w-[530px] px-4">
-              <button onClick={() => handleDifficultyChange("left")} aria-label="Previous difficulty"><ChevronLeft size={28} /></button>
-              <p className="text-center text-base md:text-lg text-gray-300 px-4">{getDifficultyDescription()}</p>
-              <button onClick={() => handleDifficultyChange("right")} aria-label="Next difficulty"><ChevronRight size={28} /></button>
+              {/* Description */}
+              <div className="flex justify-center items-center w-full max-w-md mt-4">
+                <button onClick={() => handleDifficultyChange("left")} aria-label="Previous difficulty" className="p-2">
+                  <ChevronLeft size={28} />
+                </button>
+                <p className="text-center text-base md:text-lg text-gray-300 px-4 flex-1">
+                  {getDifficultyDescription()}
+                </p>
+                <button onClick={() => handleDifficultyChange("right")} aria-label="Next difficulty" className="p-2">
+                  <ChevronRight size={28} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
