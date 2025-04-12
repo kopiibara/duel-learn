@@ -17,6 +17,7 @@ interface AudioContextType {
   playCorrectAnswerSound: () => Promise<void>;
   playIncorrectAnswerSound: () => Promise<void>;
   playSessionCompleteSound: () => Promise<void>;
+  playSessionIncompleteSound: () => Promise<void>;
   playTimePressuredAudio: (timeRemaining: number) => Promise<void>;
   setActiveModeAudio: (mode: string) => Promise<void>;
   pauseAudio: () => void;
@@ -47,6 +48,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const correctAnswerSoundRef = useRef<HTMLAudioElement | null>(null);
   const incorrectAnswerSoundRef = useRef<HTMLAudioElement | null>(null);
   const sessionCompleteSoundRef = useRef<HTMLAudioElement | null>(null);
+  const sessionIncompleteSoundRef = useRef<HTMLAudioElement | null>(null);
   const timePressuredAudioRef = useRef<HTMLAudioElement | null>(null);
   const timePressuredSpeedUpAudioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -67,6 +69,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
     sessionCompleteSoundRef.current = new Audio(
       "/sounds-sfx/session-report-completed.mp3"
     );
+    sessionIncompleteSoundRef.current = new Audio("/sounds-sfx/session-incomplete.wav");
     timePressuredAudioRef.current = new Audio("/sounds-sfx/time-pressured.mp3");
     timePressuredSpeedUpAudioRef.current = new Audio(
       "/sounds-sfx/time-pressured-speed-up.mp3"
@@ -161,6 +164,10 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
       if (sessionCompleteSoundRef.current) {
         sessionCompleteSoundRef.current.pause();
         sessionCompleteSoundRef.current = null;
+      }
+      if (sessionIncompleteSoundRef.current) {
+        sessionIncompleteSoundRef.current.pause();
+        sessionIncompleteSoundRef.current = null;
       }
       if (timePressuredAudioRef.current) {
         timePressuredAudioRef.current.pause();
@@ -336,17 +343,23 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
   const playSessionCompleteSound = useCallback(async () => {
     if (sessionCompleteSoundRef.current) {
       try {
-        // Ensure the audio is properly initialized
-        if (!sessionCompleteSoundRef.current.src) {
-          sessionCompleteSoundRef.current = new Audio(
-            "/sounds-sfx/session-report-completed.mp3"
-          );
-        }
         sessionCompleteSoundRef.current.currentTime = 0;
         sessionCompleteSoundRef.current.volume = 1;
         await sessionCompleteSoundRef.current.play();
       } catch (error) {
         console.error("Error playing session complete sound:", error);
+      }
+    }
+  }, []);
+
+  const playSessionIncompleteSound = useCallback(async () => {
+    if (sessionIncompleteSoundRef.current) {
+      try {
+        sessionIncompleteSoundRef.current.currentTime = 0;
+        sessionIncompleteSoundRef.current.volume = 1;
+        await sessionIncompleteSoundRef.current.play();
+      } catch (error) {
+        console.error("Error playing session incomplete sound:", error);
       }
     }
   }, []);
@@ -593,6 +606,7 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({
         playCorrectAnswerSound,
         playIncorrectAnswerSound,
         playSessionCompleteSound,
+        playSessionIncompleteSound,
         playTimePressuredAudio,
         setActiveModeAudio,
         pauseAudio,

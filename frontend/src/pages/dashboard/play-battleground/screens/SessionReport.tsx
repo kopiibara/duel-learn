@@ -68,17 +68,19 @@ const SessionReport = () => {
     unmasteredCount,
   } = location.state as SessionReportProps;
 
-  const { pauseAudio, playSessionCompleteSound } = useAudio();
+  const { pauseAudio, playSessionCompleteSound, playSessionIncompleteSound } = useAudio();
 
   // Keep the sound effects useEffects
   useEffect(() => {
     const playSound = async () => {
-      if (!earlyEnd) {
+      if (earlyEnd) {
+        await playSessionIncompleteSound();
+      } else {
         await playSessionCompleteSound();
       }
     };
     playSound();
-  }, [earlyEnd, playSessionCompleteSound]);
+  }, [earlyEnd, playSessionCompleteSound, playSessionIncompleteSound]);
 
   useEffect(() => {
     const delay = mode !== "Peaceful" ? 1000 : 0;

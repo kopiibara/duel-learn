@@ -777,6 +777,28 @@ export const useGameLogic = ({
     return;
   }
 
+  const handleFlip = () => {
+    if (showResult) return;
+    
+    console.log("User flipped card to reveal answer");
+    
+    // First, reveal the current question's answer
+    setIsCorrect(false);
+    setIncorrectCount(prev => prev + 1);
+    setCurrentStreak(0);
+    setShowResult(true);
+    setShowNextButton(true);
+    setIsFlipped(true);
+    
+    // Add revealed question to retake list if not already in it
+    if (!retakeQuestions.some(q => 
+      q.question === currentQuestion.question && 
+      q.correctAnswer === currentQuestion.correctAnswer
+    )) {
+      setRetakeQuestions(prev => [...prev, currentQuestion]);
+    }
+  };
+
   return {
     currentQuestion,
     isFlipped,
@@ -798,7 +820,7 @@ export const useGameLogic = ({
     retakeQuestionsCount,
     retakePhase,
     isTransitioning,
-    handleFlip: () => setIsFlipped(!isFlipped),
+    handleFlip,
     handleAnswerSubmit,
     handleNextQuestion,
     getButtonStyle,
