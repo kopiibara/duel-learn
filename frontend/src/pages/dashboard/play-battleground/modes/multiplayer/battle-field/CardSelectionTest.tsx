@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 
 // Import the card images
-import cardBackImage from "../../../../../../assets/General/CardDesignBack.png";
+import BasicCard from "/GameBattle/BasicCard.png"
 import NormalCardQuickDraw from "/GameBattle/NormalCardQuickDraw.png";
 import NormalCardTimeManipulation from "/GameBattle/NormalCardTimeManipulation.png";
 import EpicCardAnswerShield from "/GameBattle/EpicCardAnswerShield.png";
@@ -22,7 +22,7 @@ interface Card {
 const CardSelectionTest: React.FC = () => {
     // Card state management
     const [selectedCards, setSelectedCards] = useState<Card[]>([]);
-    const [persistentCards, setPersistentCards] = useState<Card[]>([]);
+    const [persistentCards, setPersistentCards] = useState<Card[]>([])
     const [lastSelectedIndex, setLastSelectedIndex] = useState<number | null>(null);
     const [isFirstTurn, setIsFirstTurn] = useState(true);
     const [turnCount, setTurnCount] = useState(1);
@@ -45,7 +45,7 @@ const CardSelectionTest: React.FC = () => {
     // Cards grouped by type
     const cardsByType = {
         basic: [
-            { id: "basic-1", name: "Basic Card", type: "Basic Card", description: "No effect" }
+            { id: "basic-1", name: "Basic Card", type: "Basic Card", description: "No effect", image: BasicCard }
         ],
         normal: [
             { id: "normal-1", name: "Time Manipulation", type: "Normal Power Card", description: "Reduce your opponent's answer time", image: NormalCardTimeManipulation },

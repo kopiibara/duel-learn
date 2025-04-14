@@ -4,6 +4,7 @@ import axios from "axios";
 
 // Import the actual card images
 import cardBackImage from "../../../../../../../assets/General/CardDesignBack.png";
+import BasicCard from "/GameBattle/BasicCard.png"
 import NormalCardQuickDraw from "/GameBattle/NormalCardQuickDraw.png";
 import NormalCardTimeManipulation from "/GameBattle/NormalCardTimeManipulation.png"
 import EpicCardAnswerShield from "/GameBattle/EpicCardAnswerShield.png";
@@ -97,7 +98,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     // Cards grouped by type for easier selection
     const cardsByType = {
         basic: [
-            { id: "basic-1", name: "Basic Card", type: "Basic Card", description: "No effect" }
+            { id: "basic-1", name: "Basic Card", type: "Basic Card", description: "No effect", image: BasicCard }
         ],
         normal: [
             { id: "normal-1", name: "Time Manipulation", type: "Normal Power Card", description: "Reduce your opponent's answer time", image: NormalCardTimeManipulation },
@@ -182,6 +183,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             console.log(`Selected basic card type (${dist.basic}%)`);
             setDebugInfo(prev => prev + `\nSelected basic card type (${dist.basic}%)`);
             selectedCard = cardsByType.basic[Math.floor(Math.random() * cardsByType.basic.length)];
+            console.log("Basic card selected:", selectedCard);
+            console.log("Card image property:", selectedCard.image);
         }
         // Normal cards selection
         else if (random < dist.basic + dist.normal.total) {
@@ -205,6 +208,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                 }
                 weightRandom -= weight;
             }
+            console.log("Normal card selected:", selectedCard);
+            console.log("Card image property:", selectedCard.image);
         }
         // Epic cards selection
         else if (random < dist.basic + dist.normal.total + dist.epic.total) {
@@ -228,6 +233,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                 }
                 weightRandom -= weight;
             }
+            console.log("Epic card selected:", selectedCard);
+            console.log("Card image property:", selectedCard.image);
         }
         // Rare cards selection
         else {
@@ -251,6 +258,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                 }
                 weightRandom -= weight;
             }
+            console.log("Rare card selected:", selectedCard);
+            console.log("Card image property:", selectedCard.image);
         }
 
         // Update card stats when we actually use a card
@@ -284,6 +293,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             return newStats;
         });
 
+        // Check if image is present before returning the card
+        console.log(`Final card selected: ${selectedCard.name} (${selectedCard.type}) with image:`, selectedCard.image);
         setDebugInfo(prev => prev + `\nFinal card selected: ${selectedCard.name} (${selectedCard.type})`);
         return selectedCard;
     };
@@ -295,6 +306,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
         // First card is completely random
         const firstCard = selectSingleCardByProbability(difficulty);
+        console.log("First card generated:", firstCard.name, "with image:", firstCard.image);
 
         // For the second card, try up to 3 times to get a different card
         let secondCard: Card;
@@ -303,6 +315,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             secondCard = selectSingleCardByProbability(difficulty);
             attempts++;
         } while (secondCard.id === firstCard.id && attempts < 3);
+        console.log("Second card generated:", secondCard.name, "with image:", secondCard.image);
 
         // For the third card, try up to 3 times to get a different card from both previous cards
         let thirdCard: Card;
@@ -311,8 +324,12 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             thirdCard = selectSingleCardByProbability(difficulty);
             attempts++;
         } while ((thirdCard.id === firstCard.id || thirdCard.id === secondCard.id) && attempts < 3);
+        console.log("Third card generated:", thirdCard.name, "with image:", thirdCard.image);
 
-        return [firstCard, secondCard, thirdCard];
+        const generatedCards = [firstCard, secondCard, thirdCard];
+        console.log("All generated cards:", generatedCards);
+
+        return generatedCards;
     };
 
     // Handle timer timeout - automatically select "no-card"
@@ -356,15 +373,48 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     // Initialize cards for the first turn
     useEffect(() => {
         try {
+            // Helper function to reattach image references to cards loaded from storage
+            const reattachImageReferences = (cards: Card[]): Card[] => {
+                return cards.map(card => {
+                    // Find the matching card in the cardsByType object to get the correct image reference
+                    for (const type in cardsByType) {
+                        const cardType = type as keyof typeof cardsByType;
+                        const matchingCard = cardsByType[cardType].find(c => c.id === card.id);
+                        if (matchingCard) {
+                            console.log(`Reattaching image for ${card.name}:`, matchingCard.image);
+                            return { ...card, image: matchingCard.image };
+                        }
+                    }
+                    console.log(`No matching card found for ${card.name}`);
+                    return card;
+                });
+            };
+
             // First try to load state from sessionStorage
             const savedCards = sessionStorage.getItem('battle_cards');
             const savedLastIndex = sessionStorage.getItem('battle_last_selected_index');
             const savedTurnCount = sessionStorage.getItem('battle_turn_count');
             const savedIsFirstTurn = sessionStorage.getItem('battle_is_first_turn');
 
+            console.log("Loading session storage data:");
+            console.log("Saved cards:", savedCards);
+            console.log("Saved last index:", savedLastIndex);
+            console.log("Saved turn count:", savedTurnCount);
+            console.log("Saved is first turn:", savedIsFirstTurn);
+
             if (savedCards && isMyTurn) {
                 // Restore saved state if it exists
-                const parsedCards = JSON.parse(savedCards);
+                let parsedCards = JSON.parse(savedCards);
+                console.log("Parsed cards from storage (before reattaching):", parsedCards);
+
+                // Reattach image references that were lost during storage
+                parsedCards = reattachImageReferences(parsedCards);
+                console.log("Cards after reattaching images:", parsedCards);
+
+                parsedCards.forEach((card: Card, idx: number) => {
+                    console.log(`Card ${idx} (${card.name}):`, card.image ? "Has image" : "No image");
+                });
+
                 setCurrentCards(parsedCards);
 
                 if (savedLastIndex) {
@@ -375,9 +425,19 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                     // replace that card with a new random card
                     if (savedIsFirstTurn === 'false') {
                         const updatedCards = [...parsedCards];
-                        updatedCards[parsedIndex] = selectSingleCardByProbability(difficultyMode || "average");
+                        const newCard = selectSingleCardByProbability(difficultyMode || "average");
+                        console.log("Generated replacement card:", newCard);
+                        console.log("Replacement card image:", newCard.image);
+
+                        updatedCards[parsedIndex] = newCard;
+                        console.log("Updated cards after replacement:", updatedCards);
+
                         setCurrentCards(updatedCards);
+
+                        // Save to session storage - no need to reattach images as they'll be reattached on load
+                        console.log("Saving updated cards to session storage");
                         sessionStorage.setItem('battle_cards', JSON.stringify(updatedCards));
+
                         setDebugInfo(`Restored and replaced card at index ${parsedIndex} with new random card`);
                     } else {
                         setDebugInfo("Restored cards from session storage");
@@ -389,11 +449,26 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             } else if (isMyTurn) {
                 // Generate new cards if no saved state
                 const initialCards = generateThreeRandomCards(difficultyMode || "average");
+                console.log("Initial cards generated:", initialCards);
+                console.log("Saving initial cards to session storage");
+
                 setCurrentCards(initialCards);
                 setDebugInfo("Initial setup: Generated 3 random cards for first turn");
 
                 // Save to session storage
                 sessionStorage.setItem('battle_cards', JSON.stringify(initialCards));
+
+                // Check what was actually saved
+                const savedCardsCheck = sessionStorage.getItem('battle_cards');
+                console.log("Verification of saved cards:", savedCardsCheck);
+                if (savedCardsCheck) {
+                    const parsedCheck = JSON.parse(savedCardsCheck);
+                    console.log("Parsed verification cards:", parsedCheck);
+                    parsedCheck.forEach((card: Card, idx: number) => {
+                        console.log(`Verification Card ${idx} (${card.name}):`, card.image ? "Has image" : "No image");
+                    });
+                }
+
                 sessionStorage.setItem('battle_is_first_turn', 'true');
                 sessionStorage.setItem('battle_turn_count', '1');
             }
@@ -654,7 +729,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     return (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120">
             {/* Enhanced debug panel - shows more detailed probability info */}
-            {process.env.NODE_ENV === 'development' && (
+            {/* {process.env.NODE_ENV === 'development' && (
                 <div className="absolute top-0 right-0 bg-gray-800/90 p-2 text-white text-xs max-w-md opacity-90 overflow-y-auto max-h-[400px]">
                     <div className="flex justify-between items-center mb-1">
                         <h3 className="font-bold">Card Selection Debug</h3>
@@ -663,7 +738,6 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                         </div>
                     </div>
 
-                    {/* Card statistics with expected vs actual */}
                     <div className="grid grid-cols-5 gap-1 mb-2 text-center text-[10px]">
                         <div className="bg-gray-700 p-1 rounded">
                             <p className="font-bold">Basic</p>
@@ -714,7 +788,6 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                         <p>First Turn: {isFirstTurn ? 'Yes' : 'No'}</p>
                     </div>
 
-                    {/* Recent card selection history */}
                     {cardStats.selections.length > 0 && (
                         <div className="mb-2">
                             <p className="font-bold text-[9px]">Recent Card Selections:</p>
@@ -736,7 +809,6 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                         <pre className="whitespace-pre-wrap">{debugInfo}</pre>
                     </div>
 
-                    {/* Clear stats button */}
                     <button
                         className="mt-1 bg-red-600 text-white text-[10px] px-2 py-1 rounded"
                         onClick={() => {
@@ -755,7 +827,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                         Clear Stats
                     </button>
                 </div>
-            )}
+            )} */}
 
             {/* Only show turn indicator when it's NOT the player's turn */}
             {!isMyTurn && (
@@ -823,7 +895,6 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                                                 transition: { duration: 0.2 }
                                             }}
                                         >
-                                            {/* For cards with images, display the image */}
                                             {card.image ? (
                                                 <img
                                                     src={card.image}
@@ -831,15 +902,11 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                                                     className="w-full h-full object-fill"
                                                 />
                                             ) : (
-                                                /* For basic cards without images, keep the coded UI */
-                                                <div className="flex flex-col h-full p-6 text-white">
+                                                <div className={`flex flex-col h-full p-6 text-white ${getCardBackground(card.type)}`}>
                                                     <div className="text-2xl font-bold mb-4">{card.name}</div>
                                                     <div className="text-lg italic mb-6">{card.type}</div>
                                                     <div className="border-t border-white/20 my-4 pt-4">
                                                         <p className="text-xl">{card.description}</p>
-                                                    </div>
-                                                    <div className="mt-auto flex justify-end">
-                                                        <div className="text-sm italic opacity-60">Card ID: {card.id}</div>
                                                     </div>
                                                 </div>
                                             )}

@@ -128,6 +128,7 @@ export default function PvpBattle() {
   // Add a state to track current turn number for poison effects
   const [currentTurnNumber, setCurrentTurnNumber] = useState(0);
   const [poisonEffectActive, setPoisonEffectActive] = useState(false);
+  const [poisonTurnsRemaining, setPoisonTurnsRemaining] = useState(0);
 
   // Battle statistics tracking
   const [battleStats, setBattleStats] = useState({
@@ -734,8 +735,29 @@ export default function PvpBattle() {
             }
           }
 
+          // Check active poison effects
+          interface PoisonEffect {
+            turns_remaining: number;
+            effect: string;
+            type: string;
+            target: string;
+          }
+
+          const activePoisonEffects = response.data.data.active_poison_effects as PoisonEffect[] || [];
+          if (activePoisonEffects.length > 0) {
+            // Get the max turns remaining from all active poison effects
+            const maxTurnsRemaining = Math.max(...activePoisonEffects.map(effect => effect.turns_remaining));
+            setPoisonTurnsRemaining(maxTurnsRemaining);
+
+            // Set poison effect as active if any turns remain
+            setPoisonEffectActive(maxTurnsRemaining > 0);
+          } else {
+            // No more active poison effects
+            setPoisonTurnsRemaining(0);
+            setPoisonEffectActive(false);
+          }
+
           // Show poison damage notification
-          setPoisonEffectActive(true);
           const damage = response.data.data.poison_damage_applied;
 
           const messageElement = document.createElement('div');
@@ -747,11 +769,15 @@ export default function PvpBattle() {
           `;
           document.body.appendChild(messageElement);
 
-          // Remove the message after 2 seconds
+          // Remove only the message after 2 seconds, but keep the poison effect indicator
           setTimeout(() => {
             document.body.removeChild(messageElement);
-            setPoisonEffectActive(false);
           }, 2000);
+        } else {
+          // Check if poison effect has ended
+          if (poisonTurnsRemaining <= 0) {
+            setPoisonEffectActive(false);
+          }
         }
       } catch (error) {
         console.error("Error applying poison effects:", error);
@@ -762,7 +788,7 @@ export default function PvpBattle() {
     if (isMyTurn && currentTurnNumber > 0) {
       checkAndApplyPoisonEffects();
     }
-  }, [isMyTurn, currentTurnNumber, battleState?.session_uuid, isHost]);
+  }, [isMyTurn, currentTurnNumber, battleState?.session_uuid, isHost, poisonTurnsRemaining]);
 
   // Set battle start time when game starts
   useEffect(() => {
@@ -798,6 +824,7 @@ export default function PvpBattle() {
           health={playerHealth}
           maxHealth={maxHealth}
           userId={currentUserId}
+          poisonEffectActive={poisonEffectActive}
         />
 
         <QuestionTimer
@@ -813,6 +840,7 @@ export default function PvpBattle() {
           maxHealth={maxHealth}
           isRightAligned
           userId={opponentId}
+          poisonEffectActive={false}
         />
 
         {/* Settings button */}

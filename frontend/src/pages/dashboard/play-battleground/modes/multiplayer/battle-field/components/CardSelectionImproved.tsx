@@ -4,6 +4,7 @@ import axios from "axios";
 
 // Import the actual card images
 import cardBackImage from "../../../../../../../assets/General/CardDesignBack.png";
+import BasicCard from "/GameBattle/BasicCard.png"
 import NormalCardQuickDraw from "/GameBattle/NormalCardQuickDraw.png";
 import NormalCardTimeManipulation from "/GameBattle/NormalCardTimeManipulation.png"
 import EpicCardAnswerShield from "/GameBattle/EpicCardAnswerShield.png";
@@ -65,7 +66,7 @@ const CardSelectionImproved: React.FC<CardSelectionProps> = ({
     // Cards grouped by type for easier selection
     const cardsByType = {
         basic: [
-            { id: "basic-1", name: "Basic Card", type: "Basic Card", description: "No effect" }
+            { id: "basic-1", name: "Basic Card", type: "Basic Card", description: "No effect", image: BasicCard }
         ],
         normal: [
             { id: "normal-1", name: "Time Manipulation", type: "Normal Power Card", description: "Reduce your opponent's answer time", image: NormalCardTimeManipulation },
