@@ -31,8 +31,6 @@ const Leaderboards = () => {
         return;
       }
 
-      // Update the try-catch block in fetchLeaderboardData with better type handling:
-
       try {
         setLoading(true);
 
@@ -62,10 +60,11 @@ const Leaderboards = () => {
             if (Array.isArray(parsedData)) {
               console.log("Successfully parsed string as JSON array");
 
-              // Add rank if missing
+              // Add rank if missing AND mark current user
               const dataWithRank = parsedData.map((player, index) => ({
                 ...player,
                 rank: player.rank || index + 1,
+                isCurrentUser: player.firebase_uid === user.firebase_uid,
               }));
 
               setLeaderboardData(dataWithRank);
@@ -88,10 +87,11 @@ const Leaderboards = () => {
         }
         if (Array.isArray(response.data)) {
           console.log("Processing array data:", response.data.length, "items");
-          // Add rank if not already present
+          // Add rank if not already present AND mark current user
           const dataWithRank = response.data.map((player, index) => ({
             ...player,
             rank: player.rank || index + 1,
+            isCurrentUser: player.firebase_uid === user.firebase_uid,
           }));
 
           setLeaderboardData(dataWithRank);
@@ -136,7 +136,7 @@ const Leaderboards = () => {
     setProfileModalOpen(true);
   };
 
-  // Updated renderPlayerItem with better mobile responsiveness
+  // New function to render a player item
   const renderPlayerItem = (
     player: LeaderboardPlayer,
     showBackground = true
@@ -144,58 +144,52 @@ const Leaderboards = () => {
     return (
       <div
         key={player.firebase_uid}
-        className={`flex items-center justify-between py-2 sm:py-3 px-1 sm:px-2 w-full ${
+        className={`flex items-center justify-between mb-4 w-full ${
           showBackground && player.isCurrentUser
-            ? "bg-[#221f2e] rounded-lg"
+            ? "bg-[#221f2e] rounded-lg px-2 py-3"
             : ""
         }`}
       >
         {/* Left side with rank, avatar and username */}
         <div className="flex items-center min-w-0 flex-1">
           {/* Rank indicator - fixed width container */}
-          <div className="flex-shrink-0 w-5 sm:w-6 min-w-[20px] sm:min-w-[24px] flex justify-center mr-1 sm:mr-2">
+          <div className="flex-shrink-0 w-6 min-w-[24px] flex justify-center mr-2">
             {player.rank <= 3 ? (
               <img
                 src={getMedal(player.rank)}
                 alt={`Rank ${player.rank}`}
-                className="w-5 sm:w-6 h-auto"
+                className="w-6 h-auto min-w-[30px] "
               />
             ) : (
-              <p className="text-xs sm:text-sm font-semibold text-center">
-                {player.rank}
-              </p>
+              <p className="text-sm font-semibold text-center">{player.rank}</p>
             )}
           </div>
 
           {/* Avatar with fixed dimensions */}
-          <div
-            onClick={() => handleViewProfile(player.firebase_uid)} // Changed from friend.firebase_uid
-            className="flex-shrink-0 mr-1 sm:mr-2 cursor-pointer"
-          >
+          <div className="flex-shrink-0 mr-2">
             <img
               src={player.display_picture || defaultPicture}
               alt="Avatar"
-              className="w-8 sm:w-10 md:w-12 h-auto rounded-[5px] ml-1 sm:ml-2 object-cover hover:scale-110 transition-all duration-300 ease-in"
+              className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-2 ml-4 rounded-[5px]  object-cover"
             />
           </div>
+
           {/* Username with truncation */}
           <p
-            className={`truncate text-xs sm:text-sm text-[#E2DDF3] max-w-[60px] sm:max-w-none ${player.isCurrentUser}`}
+            className={`truncate text-sm sm:text-base text-[#E2DDF3] ${player.isCurrentUser}`}
           >
             {player.username}
           </p>
         </div>
 
         {/* Right side with level and XP - now properly pushed to the right edge */}
-        <div className="flex-shrink-0 flex items-center gap-1 ml-1 sm:ml-2">
-          <p className="text-[10px] sm:text-xs truncate whitespace-nowrap text-[#9F9BAE]">
-            Lvl {player.level}
+        <div className="flex-shrink-0 flex items-center gap-1 ml-2">
+          <p className="text-xs truncate whitespace-nowrap text-[#9F9BAE]">
+            Level {player.level}
           </p>
-          <p className="text-[#9F9BAE] text-[10px] sm:text-xs hidden xs:inline">
-            •
-          </p>
-          <p className="text-[10px] sm:text-xs whitespace-nowrap text-[#9F9BAE]">
-            {isMobile ? "XP" : "EXP"} {player.exp}
+          <p className="text-[#9F9BAE] text-xs">•</p>
+          <p className="text-xs whitespace-nowrap text-[#9F9BAE]">
+            EXP {player.exp}
           </p>
         </div>
       </div>
@@ -239,11 +233,11 @@ const Leaderboards = () => {
             </div>
           ) : (
             <div className="flex flex-col space-y-1 sm:space-y-2">
-              {/* Top 3 Players - always without background styling */}
+              {/* Top 3 Players - always without highlighting */}
               {top3Players.map((player) => renderPlayerItem(player, false))}
 
-              {/* Always add separator and current user with background styling */}
-              {currentUser && currentUser.rank > 3 && (
+              {/* Always show current user with separator below top 3 */}
+              {currentUser && (
                 <>
                   <hr className="border-t-2 border-[#3B354D] my-1 sm:my-2 rounded-full" />
                   {renderPlayerItem(currentUser, true)}
