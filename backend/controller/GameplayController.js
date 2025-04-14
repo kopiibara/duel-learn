@@ -11,7 +11,8 @@ export const endBattle = async (req, res) => {
             winner_id,
             battle_end_reason,
             session_id,
-            session_uuid
+            session_uuid,
+            early_leaver_id  // Add this to track who left early
         } = req.body;
 
         console.log("endBattle request:", {
@@ -19,7 +20,8 @@ export const endBattle = async (req, res) => {
             winner_id,
             battle_end_reason,
             session_id,
-            session_uuid
+            session_uuid,
+            early_leaver_id
         });
 
         // Validate required fields
@@ -28,6 +30,51 @@ export const endBattle = async (req, res) => {
                 success: false,
                 message: "Missing required fields: lobby_code and battle_end_reason are required"
             });
+        }
+
+        // Handle early leave tracking if applicable
+        if (battle_end_reason === 'Left The Game' && early_leaver_id) {
+            // Start a transaction for early leave handling
+            await connection.beginTransaction();
+
+            try {
+                // Get current early leaves count
+                const [userInfo] = await connection.query(
+                    'SELECT earlyLeaves FROM user_info WHERE firebase_uid = ?',
+                    [early_leaver_id]
+                );
+
+                if (userInfo.length > 0) {
+                    const currentEarlyLeaves = userInfo[0].earlyLeaves || 0;
+                    const newEarlyLeaves = currentEarlyLeaves + 1;
+
+                    // Check if user should be banned (3 early leaves)
+                    if (newEarlyLeaves >= 3) {
+                        // Set ban until 24 hours from now
+                        const banUntil = new Date();
+                        banUntil.setHours(banUntil.getHours() + 24);
+
+                        // Update user with new early leaves count and ban time
+                        await connection.query(
+                            'UPDATE user_info SET earlyLeaves = ?, banUntil = ? WHERE firebase_uid = ?',
+                            [newEarlyLeaves, banUntil, early_leaver_id]
+                        );
+
+                        console.log(`User ${early_leaver_id} banned until ${banUntil} for excessive early leaves`);
+                    } else {
+                        // Just increment early leaves
+                        await connection.query(
+                            'UPDATE user_info SET earlyLeaves = ? WHERE firebase_uid = ?',
+                            [newEarlyLeaves, early_leaver_id]
+                        );
+
+                        console.log(`Incremented early leaves for user ${early_leaver_id} to ${newEarlyLeaves}`);
+                    }
+                }
+            } catch (error) {
+                await connection.rollback();
+                throw error;
+            }
         }
 
         // Determine which identifier to use to find the session
@@ -175,6 +222,11 @@ export const endBattle = async (req, res) => {
             });
         }
 
+        // Commit any pending transactions
+        if (battle_end_reason === 'Left The Game') {
+            await connection.commit();
+        }
+
         // Log the battle end for debugging
         console.log(`Battle ended: Session ${sessionQuery}, Reason: ${battle_end_reason}, Winner: ${winner_id || 'None'}`);
 
@@ -190,6 +242,15 @@ export const endBattle = async (req, res) => {
         });
 
     } catch (error) {
+        // Rollback transaction if there was an error during early leave handling
+        if (connection) {
+            try {
+                await connection.rollback();
+            } catch (rollbackError) {
+                console.error('Error rolling back transaction:', rollbackError);
+            }
+        }
+
         console.error('Error ending battle:', error);
         res.status(500).json({
             success: false,
@@ -1515,299 +1576,65 @@ export const consumeCardEffect = async (req, res) => {
     }
 };
 
-// Add this new function to check if a player has any card blocking effects
-export const checkCardBlockingEffects = async (req, res) => {
+// Add this new function to check user's ban status
+export const checkUserBanStatus = async (req, res) => {
     let connection;
     try {
-        connection = await pool.getConnection();
+        const { firebase_uid } = req.params;
 
-        const { session_uuid, player_type } = req.params;
-
-        if (!session_uuid || !player_type) {
+        if (!firebase_uid) {
             return res.status(400).json({
                 success: false,
-                message: "Missing required fields: session_uuid and player_type"
+                message: "Firebase UID is required"
             });
         }
 
-        console.log(`Checking card blocking effects for ${player_type} in session ${session_uuid}`);
+        connection = await pool.getConnection();
 
-        // Get the battle session to access active card effects
-        const [sessionResult] = await connection.query(
-            `SELECT active_card_effects FROM battle_sessions 
-            WHERE session_uuid = ? AND is_active = 1`,
-            [session_uuid]
+        // Get user's ban status
+        const [userInfo] = await connection.query(
+            'SELECT banUntil, earlyLeaves FROM user_info WHERE firebase_uid = ?',
+            [firebase_uid]
         );
 
-        if (sessionResult.length === 0) {
+        if (userInfo.length === 0) {
             return res.status(404).json({
                 success: false,
-                message: "Battle session not found or not active"
+                message: "User not found"
             });
         }
 
-        // Extract active card effects
-        let activeCardEffects = [];
-        let blockingEffects = [];
+        // Check if user is currently banned
+        const banUntil = userInfo[0].banUntil;
+        const earlyLeaves = userInfo[0].earlyLeaves || 0;
+        const now = new Date();
 
-        if (sessionResult[0].active_card_effects) {
-            try {
-                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
+        // If banUntil is in the future, user is banned
+        const isBanned = banUntil && new Date(banUntil) > now;
 
-                // Filter for blocking effects that target this player and are not used
-                blockingEffects = activeCardEffects.filter(effect =>
-                    effect.target === player_type &&
-                    effect.effect === "block_card" &&
-                    !effect.used
-                );
-
-                console.log(`Card blocking effects for ${player_type}: ${JSON.stringify(blockingEffects)}`);
-            } catch (e) {
-                console.error('Error parsing active_card_effects:', e);
-            }
+        // If ban has expired, reset early leaves
+        if (banUntil && new Date(banUntil) <= now) {
+            await connection.query(
+                'UPDATE user_info SET banUntil = NULL, earlyLeaves = 0 WHERE firebase_uid = ?',
+                [firebase_uid]
+            );
         }
 
-        const hasBlockingEffect = blockingEffects.length > 0;
-        const numCardsBlocked = hasBlockingEffect
-            ? blockingEffects.reduce((total, effect) => total + (effect.block_count || 1), 0)
-            : 0;
-
-        res.json({
+        return res.status(200).json({
             success: true,
             data: {
-                has_blocking_effect: hasBlockingEffect,
-                cards_blocked: numCardsBlocked,
-                effects: blockingEffects
+                isBanned,
+                banUntil: isBanned ? banUntil : null,
+                earlyLeaves,
+                banExpired: banUntil && new Date(banUntil) <= now
             }
         });
 
     } catch (error) {
-        console.error('Error checking card blocking effects:', error);
-        res.status(500).json({
+        console.error('Error checking ban status:', error);
+        return res.status(500).json({
             success: false,
-            message: "Failed to check card blocking effects",
-            error: error.message
-        });
-    } finally {
-        if (connection) connection.release();
-    }
-};
-
-// Add this new function to check if a player has mind control effects
-export const checkMindControlEffects = async (req, res) => {
-    let connection;
-    try {
-        connection = await pool.getConnection();
-
-        const { session_uuid, player_type } = req.params;
-
-        if (!session_uuid || !player_type) {
-            return res.status(400).json({
-                success: false,
-                message: "Missing required fields: session_uuid and player_type"
-            });
-        }
-
-        console.log(`Checking mind control effects for ${player_type} in session ${session_uuid}`);
-
-        // Get the battle session to access active card effects
-        const [sessionResult] = await connection.query(
-            `SELECT active_card_effects FROM battle_sessions 
-            WHERE session_uuid = ? AND is_active = 1`,
-            [session_uuid]
-        );
-
-        if (sessionResult.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "Battle session not found or not active"
-            });
-        }
-
-        // Extract active card effects
-        let activeCardEffects = [];
-        let mindControlEffects = [];
-
-        if (sessionResult[0].active_card_effects) {
-            try {
-                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
-
-                // Filter for mind control effects that target this player and are not used
-                mindControlEffects = activeCardEffects.filter(effect =>
-                    effect.target === player_type &&
-                    effect.effect === "mind_control" &&
-                    !effect.used
-                );
-
-                console.log(`Mind control effects for ${player_type}: ${JSON.stringify(mindControlEffects)}`);
-            } catch (e) {
-                console.error('Error parsing active_card_effects:', e);
-            }
-        }
-
-        const hasMindControlEffect = mindControlEffects.length > 0;
-
-        res.json({
-            success: true,
-            data: {
-                has_mind_control_effect: hasMindControlEffect,
-                effects: mindControlEffects
-            }
-        });
-
-    } catch (error) {
-        console.error('Error checking mind control effects:', error);
-        res.status(500).json({
-            success: false,
-            message: "Failed to check mind control effects",
-            error: error.message
-        });
-    } finally {
-        if (connection) connection.release();
-    }
-};
-
-// Add this new function to apply poison effects
-export const applyPoisonEffects = async (req, res) => {
-    let connection;
-    try {
-        connection = await pool.getConnection();
-
-        const { session_uuid, player_type, current_turn_number } = req.body;
-
-        if (!session_uuid || !player_type) {
-            return res.status(400).json({
-                success: false,
-                message: "Missing required fields: session_uuid and player_type"
-            });
-        }
-
-        console.log(`Applying poison effects for ${player_type} in session ${session_uuid}`);
-
-        // Get the battle session to access active card effects
-        const [sessionResult] = await connection.query(
-            `SELECT active_card_effects FROM battle_sessions 
-            WHERE session_uuid = ? AND is_active = 1`,
-            [session_uuid]
-        );
-
-        if (sessionResult.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "Battle session not found or not active"
-            });
-        }
-
-        // Extract active card effects
-        let activeCardEffects = [];
-        let poisonEffects = [];
-        let poisonDamageApplied = 0;
-        let effectsUpdated = false;
-
-        if (sessionResult[0].active_card_effects) {
-            try {
-                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
-
-                // Find poison effects targeting this player
-                poisonEffects = activeCardEffects.filter(effect =>
-                    effect.target === player_type &&
-                    effect.effect === "poison" &&
-                    effect.turns_remaining > 0
-                );
-
-                console.log(`Found ${poisonEffects.length} active poison effects for ${player_type}`);
-
-                // Process each poison effect
-                for (let i = 0; i < activeCardEffects.length; i++) {
-                    const effect = activeCardEffects[i];
-
-                    if (effect.target === player_type &&
-                        effect.effect === "poison" &&
-                        effect.turns_remaining > 0) {
-
-                        // Check if we already applied this effect for the current turn
-                        const turnNumber = current_turn_number || Date.now(); // Use timestamp as fallback
-
-                        if (!effect.applied_for_turns || !effect.applied_for_turns.includes(turnNumber)) {
-                            // Apply poison damage
-                            const damage = effect.damage_per_turn || 5;
-                            poisonDamageApplied += damage;
-
-                            // Update the effect to track that we applied it for this turn
-                            activeCardEffects[i].turns_remaining -= 1;
-
-                            if (!activeCardEffects[i].applied_for_turns) {
-                                activeCardEffects[i].applied_for_turns = [];
-                            }
-
-                            activeCardEffects[i].applied_for_turns.push(turnNumber);
-
-                            console.log(`Applied poison damage: ${damage}, turns remaining: ${activeCardEffects[i].turns_remaining}`);
-
-                            effectsUpdated = true;
-                        } else {
-                            console.log(`Poison effect already applied for turn ${turnNumber}`);
-                        }
-                    }
-                }
-
-                // Apply the accumulated poison damage to the player's health
-                if (poisonDamageApplied > 0) {
-                    const healthField = player_type === 'host' ? 'host_health' : 'guest_health';
-                    await connection.query(
-                        `UPDATE battle_scores 
-                        SET ${healthField} = GREATEST(0, ${healthField} - ?)
-                        WHERE session_uuid = ?`,
-                        [poisonDamageApplied, session_uuid]
-                    );
-
-                    console.log(`Applied total poison damage of ${poisonDamageApplied} to ${player_type}`);
-                }
-
-                // Update the session with the modified effects if needed
-                if (effectsUpdated) {
-                    await connection.query(
-                        `UPDATE battle_sessions 
-                        SET active_card_effects = ?,
-                            updated_at = CURRENT_TIMESTAMP
-                        WHERE session_uuid = ? AND is_active = 1`,
-                        [JSON.stringify(activeCardEffects), session_uuid]
-                    );
-
-                    console.log(`Updated poison effects in session ${session_uuid}`);
-                }
-
-            } catch (e) {
-                console.error('Error parsing or updating active_card_effects:', e);
-                return res.status(500).json({
-                    success: false,
-                    message: "Error processing poison effects",
-                    error: e.message
-                });
-            }
-        }
-
-        // Get the updated health status
-        const [updatedScores] = await connection.query(
-            `SELECT * FROM battle_scores WHERE session_uuid = ?`,
-            [session_uuid]
-        );
-
-        res.json({
-            success: true,
-            message: poisonDamageApplied > 0 ? `Applied ${poisonDamageApplied} poison damage to ${player_type}` : "No poison damage to apply",
-            data: {
-                poison_damage_applied: poisonDamageApplied,
-                updated_scores: updatedScores[0] || null,
-                active_poison_effects: poisonEffects.filter(e => e.turns_remaining > 0)
-            }
-        });
-
-    } catch (error) {
-        console.error('Error applying poison effects:', error);
-        res.status(500).json({
-            success: false,
-            message: "Failed to apply poison effects",
+            message: "Failed to check ban status",
             error: error.message
         });
     } finally {
@@ -2088,4 +1915,304 @@ export const updateWinStreak = async (req, res) => {
     } finally {
         if (connection) connection.release();
     }
+};
+
+// Add this new function to check if a player has any card blocking effects
+export const checkCardBlockingEffects = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid, player_type } = req.params;
+
+        if (!session_uuid || !player_type) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: session_uuid and player_type"
+            });
+        }
+
+        console.log(`Checking card blocking effects for ${player_type} in session ${session_uuid}`);
+
+        // Get the battle session to access active card effects
+        const [sessionResult] = await connection.query(
+            `SELECT active_card_effects FROM battle_sessions 
+            WHERE session_uuid = ? AND is_active = 1`,
+            [session_uuid]
+        );
+
+        if (sessionResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle session not found or not active"
+            });
+        }
+
+        // Extract active card effects
+        let activeCardEffects = [];
+        let blockingEffects = [];
+
+        if (sessionResult[0].active_card_effects) {
+            try {
+                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
+
+                // Filter for blocking effects that target this player and are not used
+                blockingEffects = activeCardEffects.filter(effect =>
+                    effect.target === player_type &&
+                    effect.effect === "block_card" &&
+                    !effect.used
+                );
+
+                console.log(`Card blocking effects for ${player_type}: ${JSON.stringify(blockingEffects)}`);
+            } catch (e) {
+                console.error('Error parsing active_card_effects:', e);
+            }
+        }
+
+        const hasBlockingEffect = blockingEffects.length > 0;
+        const numCardsBlocked = hasBlockingEffect
+            ? blockingEffects.reduce((total, effect) => total + (effect.block_count || 1), 0)
+            : 0;
+
+        res.json({
+            success: true,
+            data: {
+                has_blocking_effect: hasBlockingEffect,
+                cards_blocked: numCardsBlocked,
+                effects: blockingEffects
+            }
+        });
+
+    } catch (error) {
+        console.error('Error checking card blocking effects:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to check card blocking effects",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+
+export const applyPoisonEffects = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid, player_type, current_turn_number } = req.body;
+
+        if (!session_uuid || !player_type) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: session_uuid and player_type"
+            });
+        }
+
+        console.log(`Applying poison effects for ${player_type} in session ${session_uuid}`);
+
+        // Get the battle session to access active card effects
+        const [sessionResult] = await connection.query(
+            `SELECT active_card_effects FROM battle_sessions 
+            WHERE session_uuid = ? AND is_active = 1`,
+            [session_uuid]
+        );
+
+        if (sessionResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle session not found or not active"
+            });
+        }
+
+        // Extract active card effects
+        let activeCardEffects = [];
+        let poisonEffects = [];
+        let poisonDamageApplied = 0;
+        let effectsUpdated = false;
+
+        if (sessionResult[0].active_card_effects) {
+            try {
+                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
+
+                // Find poison effects targeting this player
+                poisonEffects = activeCardEffects.filter(effect =>
+                    effect.target === player_type &&
+                    effect.effect === "poison" &&
+                    effect.turns_remaining > 0
+                );
+
+                console.log(`Found ${poisonEffects.length} active poison effects for ${player_type}`);
+
+                // Process each poison effect
+                for (let i = 0; i < activeCardEffects.length; i++) {
+                    const effect = activeCardEffects[i];
+
+                    if (effect.target === player_type &&
+                        effect.effect === "poison" &&
+                        effect.turns_remaining > 0) {
+
+                        // Check if we already applied this effect for the current turn
+                        const turnNumber = current_turn_number || Date.now(); // Use timestamp as fallback
+
+                        if (!effect.applied_for_turns || !effect.applied_for_turns.includes(turnNumber)) {
+                            // Apply poison damage
+                            const damage = effect.damage_per_turn || 5;
+                            poisonDamageApplied += damage;
+
+                            // Update the effect to track that we applied it for this turn
+                            activeCardEffects[i].turns_remaining -= 1;
+
+                            if (!activeCardEffects[i].applied_for_turns) {
+                                activeCardEffects[i].applied_for_turns = [];
+                            }
+
+                            activeCardEffects[i].applied_for_turns.push(turnNumber);
+
+                            console.log(`Applied poison damage: ${damage}, turns remaining: ${activeCardEffects[i].turns_remaining}`);
+
+                            effectsUpdated = true;
+                        } else {
+                            console.log(`Poison effect already applied for turn ${turnNumber}`);
+                        }
+                    }
+                }
+
+                // Apply the accumulated poison damage to the player's health
+                if (poisonDamageApplied > 0) {
+                    const healthField = player_type === 'host' ? 'host_health' : 'guest_health';
+                    await connection.query(
+                        `UPDATE battle_scores 
+                        SET ${healthField} = GREATEST(0, ${healthField} - ?)
+                        WHERE session_uuid = ?`,
+                        [poisonDamageApplied, session_uuid]
+                    );
+
+                    console.log(`Applied total poison damage of ${poisonDamageApplied} to ${player_type}`);
+                }
+
+                // Update the session with the modified effects if needed
+                if (effectsUpdated) {
+                    await connection.query(
+                        `UPDATE battle_sessions 
+                        SET active_card_effects = ?,
+                            updated_at = CURRENT_TIMESTAMP
+                        WHERE session_uuid = ? AND is_active = 1`,
+                        [JSON.stringify(activeCardEffects), session_uuid]
+                    );
+
+                    console.log(`Updated poison effects in session ${session_uuid}`);
+                }
+
+            } catch (e) {
+                console.error('Error parsing or updating active_card_effects:', e);
+                return res.status(500).json({
+                    success: false,
+                    message: "Error processing poison effects",
+                    error: e.message
+                });
+            }
+        }
+
+        // Get the updated health status
+        const [updatedScores] = await connection.query(
+            `SELECT * FROM battle_scores WHERE session_uuid = ?`,
+            [session_uuid]
+        );
+
+        res.json({
+            success: true,
+            message: poisonDamageApplied > 0 ? `Applied ${poisonDamageApplied} poison damage to ${player_type}` : "No poison damage to apply",
+            data: {
+                poison_damage_applied: poisonDamageApplied,
+                updated_scores: updatedScores[0] || null,
+                active_poison_effects: poisonEffects.filter(e => e.turns_remaining > 0)
+            }
+        });
+
+    } catch (error) {
+        console.error('Error applying poison effects:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to apply poison effects",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
 }; 
+
+// Add this new function to check if a player has mind control effects
+export const checkMindControlEffects = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid, player_type } = req.params;
+
+        if (!session_uuid || !player_type) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: session_uuid and player_type"
+            });
+        }
+
+        console.log(`Checking mind control effects for ${player_type} in session ${session_uuid}`);
+
+        // Get the battle session to access active card effects
+        const [sessionResult] = await connection.query(
+            `SELECT active_card_effects FROM battle_sessions 
+            WHERE session_uuid = ? AND is_active = 1`,
+            [session_uuid]
+        );
+
+        if (sessionResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle session not found or not active"
+            });
+        }
+
+        // Extract active card effects
+        let activeCardEffects = [];
+        let mindControlEffects = [];
+
+        if (sessionResult[0].active_card_effects) {
+            try {
+                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
+
+                // Filter for mind control effects that target this player and are not used
+                mindControlEffects = activeCardEffects.filter(effect =>
+                    effect.target === player_type &&
+                    effect.effect === "mind_control" &&
+                    !effect.used
+                );
+
+                console.log(`Mind control effects for ${player_type}: ${JSON.stringify(mindControlEffects)}`);
+            } catch (e) {
+                console.error('Error parsing active_card_effects:', e);
+            }
+        }
+
+        const hasMindControlEffect = mindControlEffects.length > 0;
+
+        res.json({
+            success: true,
+            data: {
+                has_mind_control_effect: hasMindControlEffect,
+                effects: mindControlEffects
+            }
+        });
+
+    } catch (error) {
+        console.error('Error checking mind control effects:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to check mind control effects",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};

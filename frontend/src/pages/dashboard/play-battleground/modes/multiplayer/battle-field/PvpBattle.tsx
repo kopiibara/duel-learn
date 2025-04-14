@@ -668,12 +668,13 @@ export default function PvpBattle() {
 
     // Show confirmation dialog
     const confirmLeave = window.confirm(
-      "Are you sure you want to leave the battle? Your progress will be lost and the battle will end."
+      "Are you sure you want to leave the battle? Your progress will be lost, the battle will end, and you may be penalized for leaving early."
     );
 
     if (confirmLeave) {
       try {
-        await handleLeaveBattle();
+        // Call handleLeaveBattle with the current user's ID
+        await handleLeaveBattle('Left The Game', currentUserId);
       } catch (error) {
         console.error("Error leaving battle:", error);
         // Force navigation anyway on error

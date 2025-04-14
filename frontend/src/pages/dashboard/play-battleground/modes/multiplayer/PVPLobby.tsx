@@ -58,6 +58,95 @@ interface StudyMaterial {
   [key: string]: any; // For any other properties
 }
 
+interface BanModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  banUntil: Date;
+}
+
+const formatTimeLeft = (banUntil: Date): string => {
+  const now = new Date();
+  const diff = banUntil.getTime() - now.getTime();
+
+  if (diff <= 0) return "Ban expired";
+
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+  return `${hours}h ${minutes}m ${seconds}s`;
+};
+
+const formatDateTime = (date: Date): string => {
+  return date.toLocaleString("en-US", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+};
+
+const BanModal: React.FC<BanModalProps> = ({ isOpen, onClose, banUntil }) => {
+  const [timeLeft, setTimeLeft] = useState<string>("");
+  const [isBanExpired, setIsBanExpired] = useState(false);
+
+  useEffect(() => {
+    const updateTimeLeft = () => {
+      const now = new Date();
+      const diff = banUntil.getTime() - now.getTime();
+      const isExpired = diff <= 0;
+
+      setTimeLeft(formatTimeLeft(banUntil));
+      setIsBanExpired(isExpired);
+
+      // If ban just expired, update the UI
+      if (isExpired && !isBanExpired) {
+        setIsBanExpired(true);
+      }
+    };
+
+    updateTimeLeft();
+    const interval = setInterval(updateTimeLeft, 1000);
+
+    return () => clearInterval(interval);
+  }, [banUntil, isBanExpired]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
+        <h2 className="text-xl font-bold text-red-500 mb-4">
+          Account Temporarily Banned
+        </h2>
+        <p className="text-white mb-4">
+          You are temporarily banned from battles due to leaving games early.
+        </p>
+        <p className="text-white mb-4">
+          Ban expires: {formatDateTime(banUntil)}
+        </p>
+        <p
+          className={`${
+            isBanExpired ? "text-green-400" : "text-yellow-400"
+          } font-semibold mb-6`}
+        >
+          {isBanExpired ? "Ban has expired!" : `Time remaining: ${timeLeft}`}
+        </p>
+        {isBanExpired && (
+          <button
+            onClick={onClose}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+          >
+            Close
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const PVPLobby: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -175,6 +264,11 @@ const PVPLobby: React.FC = () => {
   const reconnectionAttemptsRef = useRef(0);
   const MAX_RECONNECTION_ATTEMPTS = 5;
 
+  // Add these new states in the main PVPLobby component after the existing states
+  const [showBanModal, setShowBanModal] = useState(false);
+  const [userBanUntil, setUserBanUntil] = useState<Date | null>(null);
+  const [isBanActive, setIsBanActive] = useState(false);
+
   // Set the state variables
   useEffect(() => {
     if (mode) {
@@ -204,59 +298,69 @@ const PVPLobby: React.FC = () => {
       const currentSocket = socket;
       const socketService = SocketService.getInstance();
       const serviceSocket = socketService.getSocket();
-      
+
       // Check if socket is null, not connected, or ID is null/undefined
-      const socketInvalid = !currentSocket || 
-                           !currentSocket.connected || 
-                           !currentSocket.id ||
-                           currentSocket.id === 'undefined';
-                           
+      const socketInvalid =
+        !currentSocket ||
+        !currentSocket.connected ||
+        !currentSocket.id ||
+        currentSocket.id === "undefined";
+
       // If socket from service is valid but state socket is invalid, use service socket
-      if (serviceSocket && serviceSocket.connected && serviceSocket.id && socketInvalid) {
+      if (
+        serviceSocket &&
+        serviceSocket.connected &&
+        serviceSocket.id &&
+        socketInvalid
+      ) {
         console.log("Socket monitor: Using existing valid socket from service");
         setSocket(serviceSocket);
         reconnectionAttemptsRef.current = 0;
         return;
       }
-      
+
       // If both are invalid, try to reconnect if under max attempts
-      if ((socketInvalid || !serviceSocket || !serviceSocket.connected) && 
-          reconnectionAttemptsRef.current < MAX_RECONNECTION_ATTEMPTS) {
-          
-        console.log(`Socket invalid or disconnected. Reconnection attempt ${reconnectionAttemptsRef.current + 1}/${MAX_RECONNECTION_ATTEMPTS}`);
-        
+      if (
+        (socketInvalid || !serviceSocket || !serviceSocket.connected) &&
+        reconnectionAttemptsRef.current < MAX_RECONNECTION_ATTEMPTS
+      ) {
+        console.log(
+          `Socket invalid or disconnected. Reconnection attempt ${
+            reconnectionAttemptsRef.current + 1
+          }/${MAX_RECONNECTION_ATTEMPTS}`
+        );
+
         // Increment attempt counter
         reconnectionAttemptsRef.current++;
-        
+
         // Attempt reconnection
         const newSocket = socketService.connect(user.firebase_uid);
-        
+
         // Register connect handler
         if (newSocket) {
-          newSocket.once('connect', () => {
+          newSocket.once("connect", () => {
             console.log("Socket reconnected successfully");
             setSocket(newSocket);
             reconnectionAttemptsRef.current = 0;
-            
+
             // Re-register in lobby after reconnection
             newSocket.emit("userLobbyStatusChanged", {
               userId: user.firebase_uid,
               inLobby: true,
-              lobbyCode: lobbyCode
+              lobbyCode: lobbyCode,
             });
-            
+
             newSocket.emit("player_joined_lobby", {
               playerId: user.firebase_uid,
               lobbyCode: lobbyCode,
-              level:user.level,
-              display_picture: user.display_picture
-
+              level: user.level,
+              display_picture: user.display_picture,
             });
           });
         }
       }
     }, 3000); // Check every 3 seconds
-    
+
     // Clear interval on cleanup
     return () => {
       clearInterval(socketMonitor);
@@ -273,7 +377,7 @@ const PVPLobby: React.FC = () => {
     console.log("Setting up socket service for user:", user.firebase_uid);
     const socketService = SocketService.getInstance();
     const newSocket = socketService.connect(user.firebase_uid);
-    
+
     // Reset reconnection attempts counter
     reconnectionAttemptsRef.current = 0;
 
@@ -288,7 +392,7 @@ const PVPLobby: React.FC = () => {
     }
 
     // Add disconnect handler to detect when socket becomes invalid
-    newSocket.on('disconnect', (reason) => {
+    newSocket.on("disconnect", (reason) => {
       console.log(`Socket disconnected: ${reason}`);
       // We don't set socket to null here - the monitor will handle reconnection
     });
@@ -800,7 +904,7 @@ const PVPLobby: React.FC = () => {
     // For host: listen for players joining the lobby
     const handlePlayerJoined = (data: PlayerJoinedData) => {
       console.log("Player joined lobby:", data);
-    
+
       if (data.lobbyCode === lobbyCode && !isCurrentUserGuest) {
         // Add the player to our state
         const joinedPlayer = {
@@ -809,7 +913,7 @@ const PVPLobby: React.FC = () => {
           level: data.playerLevel || 1,
           display_picture: data.playerPicture || defaultAvatar,
         };
-console.log(joinedPlayer);
+        console.log(joinedPlayer);
         setInvitedPlayer(joinedPlayer);
 
         // Set invitation sent to trigger polling mechanisms
@@ -825,7 +929,7 @@ console.log(joinedPlayer);
             display_picture: user?.display_picture || defaultAvatar,
           },
           // Joined player (guest) info
-          joinedPlayer
+          joinedPlayer,
         ]);
 
         // Send current lobby state to the joined player
@@ -1446,6 +1550,37 @@ console.log(joinedPlayer);
     };
   }, [socket, lobbyCode, isCurrentUserGuest, user?.firebase_uid]);
 
+  // Add a useEffect to check if ban is still active
+  useEffect(() => {
+    if (!userBanUntil) return;
+
+    const checkBanStatus = () => {
+      const now = new Date();
+      const isBanned = userBanUntil > now;
+      setIsBanActive(isBanned);
+
+      if (isBanned) {
+        // Ensure the modal is shown if user is banned
+        setShowBanModal(true);
+      }
+    };
+
+    // Check immediately
+    checkBanStatus();
+
+    // Then check every second
+    const interval = setInterval(checkBanStatus, 1000);
+
+    return () => clearInterval(interval);
+  }, [userBanUntil]);
+
+  // Modify ban modal close handler to only allow closing if ban is expired
+  const handleBanModalClose = () => {
+    if (!isBanActive) {
+      setShowBanModal(false);
+    }
+  };
+
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-white px-6 py-8 overflow-hidden">
       {/* Full-Width Fixed Header */}
@@ -1603,6 +1738,14 @@ console.log(joinedPlayer);
                 }
               : null
           }
+        />
+      )}
+
+      {userBanUntil && (
+        <BanModal
+          isOpen={showBanModal}
+          onClose={handleBanModalClose}
+          banUntil={userBanUntil}
         />
       )}
     </div>

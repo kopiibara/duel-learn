@@ -25,6 +25,12 @@ import {
 import "../../../../../user-onboarding/styles/EffectUserOnboarding.css";
 import CardBackImg from "/General/CardDesignBack.png";
 import DefaultBackHoverCard from "/cards/DefaultCardInside.png";
+import NormalCardQuickDraw from "/GameBattle/NormalCardQuickDraw.png";
+import NormalCardTimeManipulation from "/GameBattle/NormalCardTimeManipulation.png";
+import EpicCardAnswerShield from "/GameBattle/EpicCardAnswerShield.png";
+import EpicCardRegeneration from "/GameBattle/EpicCardRegeneration.png";
+import RareCardMindControl from "/GameBattle/RareCardMindControl.png";
+import RareCardPoisonType from "/GameBattle/RareCardPoisonType.png";
 
 export default function Player2ModeSelection() {
   const location = useLocation();
@@ -230,6 +236,9 @@ export default function Player2ModeSelection() {
                 }
               );
 
+              // Clear the interval before navigation
+              clearInterval(interval);
+
               // Add slight delay before navigation to ensure state updates properly
               setTimeout(() => {
                 // Navigate to battle
@@ -243,6 +252,7 @@ export default function Player2ModeSelection() {
                     hostId,
                     guestId,
                   },
+                  replace: true, // Use replace instead of push to prevent back navigation
                 });
               }, 300);
             } catch (err) {
@@ -266,7 +276,9 @@ export default function Player2ModeSelection() {
     // Then check every 1.2 seconds
     const interval = setInterval(checkDifficulty, 1200);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, [
     lobbyCode,
     navigate,
@@ -340,6 +352,19 @@ export default function Player2ModeSelection() {
       } else if (selectedDifficulty === "Hard Mode") {
         setSelectedDifficulty("Easy Mode"); // Loop back to Easy Mode
       }
+    }
+  };
+
+  const getCardImages = () => {
+    switch (selectedDifficulty) {
+      case "Easy Mode":
+        return [NormalCardQuickDraw, NormalCardTimeManipulation];
+      case "Average Mode":
+        return [EpicCardAnswerShield, EpicCardRegeneration];
+      case "Hard Mode":
+        return [RareCardMindControl, RareCardPoisonType];
+      default:
+        return [NormalCardQuickDraw, NormalCardTimeManipulation];
     }
   };
 
@@ -533,17 +558,20 @@ export default function Player2ModeSelection() {
 
           {/* Cards with responsive spacing */}
           <div
-            className="grid grid-cols-2 sm:grid-cols-4 gap-4 md:gap-8 lg:gap-14 mb-8 md:mb-14 relative z-10 mx-auto px-2"
-            style={{ maxWidth: "fit-content" }}
+            className="grid grid-cols-2 gap-4 md:gap-8 lg:gap-14 mb-8 md:mb-14 relative z-10 mx-auto px-2"
+            style={{
+              maxWidth: "fit-content",
+              width: "clamp(300px, 50vw, 500px)",
+              placeItems: "center",
+            }}
           >
-            {[1, 2, 3, 4].map((card) => (
+            {[0, 1].map((index) => (
               <div
-                key={card}
+                key={index}
                 className="flip-card relative z-10"
                 style={{
                   width: "clamp(120px, 20vw, 180px)",
                   height: "clamp(160px, 28vw, 250px)",
-                  margin: "0 auto",
                 }}
               >
                 <div className="flip-card-inner">
@@ -556,8 +584,8 @@ export default function Player2ModeSelection() {
                   </div>
                   <div className="flip-card-back">
                     <img
-                      src={DefaultBackHoverCard}
-                      alt="Card hover design"
+                      src={getCardImages()[index]}
+                      alt={`Card ${index + 1}`}
                       className="w-full h-full object-contain"
                     />
                   </div>

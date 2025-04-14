@@ -44,8 +44,8 @@ import {
   useGameStatus,
 } from "../contexts/GameStatusContext";
 import { GameMode } from "../hooks/useLobbyStatus";
-import { BattleInvitationCenter } from "../components";
-
+import CardSelectionTest from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/CardSelectionTest";
+import BattleInvitationCenter from "../components/battle/BattleInvitationCenter";
 // Create a wrapper component that handles game status changes
 const GameModeStatusWrapper = ({
   children,
@@ -253,6 +253,9 @@ const PrivateRoutes = () => {
           path="/pvp-battle/session-report"
           element={<PvpSessionReport />}
         />
+
+        {/* Test Route for Card Selection Debugging */}
+        <Route path="/card-selection-test" element={<CardSelectionTest />} />
       </Routes>
     </GameStatusProvider>
   );
