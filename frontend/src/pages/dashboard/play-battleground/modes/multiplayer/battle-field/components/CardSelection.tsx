@@ -253,7 +253,13 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     setDebugInfo((prev) => prev + `\n  Epic: ${epicRange[0]}-${epicRange[1]}%`);
     setDebugInfo((prev) => prev + `\n  Rare: ${rareRange[0]}-${rareRange[1]}%`);
 
-    let selectedCard: Card;
+    let selectedCard: Card = {
+      id: "basic-1",
+      name: "Basic Card",
+      type: "Basic Card",
+      description: "No effect",
+      image: BasicCard,
+    };
 
     // Basic cards selection
     if (random < dist.basic) {
@@ -394,6 +400,35 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       return newStats;
     });
 
+    // Before returning the card, ensure it has an image
+    if (!selectedCard.image) {
+      console.warn(
+        `Selected card ${selectedCard.name} has no image, applying fallback`
+      );
+      // Find the matching card type to get a default image
+      if (selectedCard.type.toLowerCase().includes("basic")) {
+        selectedCard.image = BasicCard;
+      } else if (selectedCard.type.toLowerCase().includes("normal")) {
+        // Choose one of the normal card images
+        selectedCard.image = selectedCard.name.includes("Time")
+          ? NormalCardTimeManipulation
+          : NormalCardQuickDraw;
+      } else if (selectedCard.type.toLowerCase().includes("epic")) {
+        // Choose one of the epic card images
+        selectedCard.image = selectedCard.name.includes("Shield")
+          ? EpicCardAnswerShield
+          : EpicCardRegeneration;
+      } else if (selectedCard.type.toLowerCase().includes("rare")) {
+        // Choose one of the rare card images
+        selectedCard.image = selectedCard.name.includes("Mind")
+          ? RareCardMindControl
+          : RareCardPoisonType;
+      } else {
+        // Last resort fallback
+        selectedCard.image = cardBackImage;
+      }
+    }
+
     // Check if image is present before returning the card
     console.log(
       `Final card selected: ${selectedCard.name} (${selectedCard.type}) with image:`,
@@ -423,19 +458,35 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       firstCard.image
     );
 
+    // Ensure first card has an image
+    const safeFirstCard = firstCard.image
+      ? firstCard
+      : {
+          ...firstCard,
+          image: cardBackImage, // Fallback image
+        };
+
     // For the second card, try up to 3 times to get a different card
     let secondCard: Card;
     let attempts = 0;
     do {
       secondCard = selectSingleCardByProbability(difficulty);
       attempts++;
-    } while (secondCard.id === firstCard.id && attempts < 3);
+    } while (secondCard.id === safeFirstCard.id && attempts < 3);
     console.log(
       "Second card generated:",
       secondCard.name,
       "with image:",
       secondCard.image
     );
+
+    // Ensure second card has an image
+    const safeSecondCard = secondCard.image
+      ? secondCard
+      : {
+          ...secondCard,
+          image: cardBackImage, // Fallback image
+        };
 
     // For the third card, try up to 3 times to get a different card from both previous cards
     let thirdCard: Card;
@@ -444,7 +495,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       thirdCard = selectSingleCardByProbability(difficulty);
       attempts++;
     } while (
-      (thirdCard.id === firstCard.id || thirdCard.id === secondCard.id) &&
+      (thirdCard.id === safeFirstCard.id ||
+        thirdCard.id === safeSecondCard.id) &&
       attempts < 3
     );
     console.log(
@@ -454,7 +506,15 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       thirdCard.image
     );
 
-    const generatedCards = [firstCard, secondCard, thirdCard];
+    // Ensure third card has an image
+    const safeThirdCard = thirdCard.image
+      ? thirdCard
+      : {
+          ...thirdCard,
+          image: cardBackImage, // Fallback image
+        };
+
+    const generatedCards = [safeFirstCard, safeSecondCard, safeThirdCard];
     console.log("All generated cards:", generatedCards);
 
     return generatedCards;
@@ -505,22 +565,24 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       // Helper function to reattach image references to cards loaded from storage
       const reattachImageReferences = (cards: Card[]): Card[] => {
         return cards.map((card) => {
-          // Find the matching card in the cardsByType object to get the correct image reference
+          // If the card already has an image, leave it as is
+          if (card.image) {
+            return card;
+          }
+
+          // Otherwise, try to find a matching card in the cardsByType
           for (const type in cardsByType) {
             const cardType = type as keyof typeof cardsByType;
             const matchingCard = cardsByType[cardType].find(
               (c) => c.id === card.id
             );
-            if (matchingCard) {
-              console.log(
-                `Reattaching image for ${card.name}:`,
-                matchingCard.image
-              );
+            if (matchingCard && matchingCard.image) {
               return { ...card, image: matchingCard.image };
             }
           }
-          console.log(`No matching card found for ${card.name}`);
-          return card;
+
+          // If no match found, return with default image
+          return { ...card, image: cardBackImage };
         });
       };
 
@@ -628,13 +690,19 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       }
     } catch (error) {
       console.error("Error initializing cards:", error);
-      // Fallback to generating new cards
+      // Fallback to generating new cards with safe defaults
       if (isMyTurn) {
-        const initialCards = generateThreeRandomCards(
-          difficultyMode || "average"
-        );
+        const initialCards = Array(3)
+          .fill(null)
+          .map(() => ({
+            id: "basic-1",
+            name: "Basic Card",
+            type: "Basic Card",
+            description: "No effect",
+            image: BasicCard,
+          }));
         setCurrentCards(initialCards);
-        setDebugInfo("Error restoring state, generated new cards");
+        setDebugInfo("Error restoring state, generated fallback cards");
       }
     }
   }, [isMyTurn, difficultyMode]);
@@ -642,7 +710,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   // Handle turn transitions - this is the key improvement that ensures proper card persistence
   useEffect(() => {
     if (isMyTurn) {
-      // Reset animation states
+      // Reset animation states with delay to prevent overlap
       setShowBackCard(true);
       setShowCardOptions(false);
       setBackCardExitComplete(false);
@@ -650,15 +718,17 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       setSelectionTimer(8); // Reset timer to 8 seconds
       setTimerActive(false); // Don't start timer yet
 
-      // Start the card animation sequence
-      const flipTimer = setTimeout(() => {
-        setShowBackCard(false);
-        setTimeout(() => {
-          setAnimationComplete(true);
-        }, 500);
-      }, 1000);
+      // Start the card animation sequence with a delay for smoother transitions
+      setTimeout(() => {
+        const flipTimer = setTimeout(() => {
+          setShowBackCard(false);
+          setTimeout(() => {
+            setAnimationComplete(true);
+          }, 500);
+        }, 1000);
 
-      return () => clearTimeout(flipTimer);
+        return () => clearTimeout(flipTimer);
+      }, 200);
     } else {
       // Reset state when it's not my turn
       setShowBackCard(false);
@@ -671,9 +741,12 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
   // Handle when back card exit animation is complete
   const handleBackCardExitComplete = () => {
-    setBackCardExitComplete(true);
-    setShowCardOptions(true);
-    setTimerActive(true); // Start the selection timer
+    // Add a small delay before showing cards to ensure animations don't overlap
+    setTimeout(() => {
+      setBackCardExitComplete(true);
+      setShowCardOptions(true);
+      setTimerActive(true); // Start the selection timer
+    }, 100); // Small delay to prevent animation conflicts
   };
 
   // Handle card selection
@@ -1018,16 +1091,13 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
       {isMyTurn && (
         <>
-          <AnimatePresence
-            mode="wait"
-            onExitComplete={handleBackCardExitComplete}
-          >
+          <AnimatePresence onExitComplete={handleBackCardExitComplete}>
             {showBackCard && (
               <motion.div
                 className="w-[280px] h-[380px] overflow-hidden shadow-lg shadow-purple-500/30"
                 initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1, rotateY: 0 }}
-                exit={{ rotateY: 90, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ opacity: 0 }}
                 transition={{
                   duration: 0.7,
                   exit: { duration: 0.5 },
@@ -1054,53 +1124,69 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             </div>
           )}
 
-          <AnimatePresence mode="sync">
+          <AnimatePresence>
             {showCardOptions && backCardExitComplete && !mindControlActive && (
               <div className="flex gap-8">
-                {currentCards.map((card, index) => {
+                {currentCards.filter(Boolean).map((card, index) => {
                   // Only render this card if it's in the visibleCardIndices array
                   if (!visibleCardIndices.includes(index) && hasCardBlocking) {
                     return null; // Skip this card if it's blocked
                   }
 
+                  // Ensure the card has all required properties
+                  const safeCard = {
+                    ...card,
+                    id: card.id || `fallback-${index}`,
+                    name: card.name || "Card",
+                    type: card.type || "Basic Card",
+                    description: card.description || "No effect",
+                    image: card.image || cardBackImage,
+                  };
+
                   return (
                     <motion.div
-                      key={card.id + "-" + index} // Add index to key to ensure uniqueness when the same card appears twice
+                      key={`card-${index}`}
                       className={`w-[280px] h-[380px] rounded-xl overflow-hidden cursor-pointer shadow-lg relative ${
-                        card.image ? "" : getCardBackground(card.type)
+                        safeCard.image ? "" : getCardBackground(safeCard.type)
                       }`}
-                      initial={{ opacity: 0, y: 20, rotateY: -90 }}
-                      animate={{ opacity: 1, y: 0, rotateY: 0 }}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
                       transition={{
                         duration: 0.4,
                         delay: index * 0.15,
-                        ease: "easeOut",
                       }}
-                      onClick={() => handleCardSelect(card.id, index)}
+                      onClick={() => handleCardSelect(safeCard.id, index)}
                       whileHover={{
                         y: -10,
                         scale: 1.05,
-                        transition: { duration: 0.2 },
                       }}
                     >
-                      {card.image ? (
+                      {safeCard.image ? (
                         <img
-                          src={card.image}
-                          alt={card.name}
+                          src={safeCard.image}
+                          alt={safeCard.name}
                           className="w-full h-full object-fill"
+                          onError={(e) => {
+                            // Fallback if image fails to load
+                            const imgElement = e.target as HTMLImageElement;
+                            imgElement.src = cardBackImage;
+                            imgElement.onerror = null; // Prevent infinite loop
+                          }}
                         />
                       ) : (
                         <div
                           className={`flex flex-col h-full p-6 text-white ${getCardBackground(
-                            card.type
+                            safeCard.type
                           )}`}
                         >
                           <div className="text-2xl font-bold mb-4">
-                            {card.name}
+                            {safeCard.name}
                           </div>
-                          <div className="text-lg italic mb-6">{card.type}</div>
+                          <div className="text-lg italic mb-6">
+                            {safeCard.type}
+                          </div>
                           <div className="border-t border-white/20 my-4 pt-4">
-                            <p className="text-xl">{card.description}</p>
+                            <p className="text-xl">{safeCard.description}</p>
                           </div>
                         </div>
                       )}
