@@ -260,10 +260,6 @@ const PVPLobby: React.FC = () => {
   // Add invitationSent state
   const [invitationSent, setInvitationSent] = useState<boolean>(false);
 
-  // Add a ref to track socket reconnection attempts
-  const reconnectionAttemptsRef = useRef(0);
-  const MAX_RECONNECTION_ATTEMPTS = 5;
-
   // Add these new states in the main PVPLobby component after the existing states
   const [showBanModal, setShowBanModal] = useState(false);
   const [userBanUntil, setUserBanUntil] = useState<Date | null>(null);
@@ -287,86 +283,6 @@ const PVPLobby: React.FC = () => {
     }
   }, [mode, material, selectedTypes, location.state?.isGuest]);
 
-  // Add socket monitoring to detect and handle socket ID becoming null
-  useEffect(() => {
-    // Only run if we have a user
-    if (loading || !user?.firebase_uid) return;
-
-    // Setup interval to check socket status
-    const socketMonitor = setInterval(() => {
-      // Get current socket from state and service
-      const currentSocket = socket;
-      const socketService = SocketService.getInstance();
-      const serviceSocket = socketService.getSocket();
-
-      // Check if socket is null, not connected, or ID is null/undefined
-      const socketInvalid =
-        !currentSocket ||
-        !currentSocket.connected ||
-        !currentSocket.id ||
-        currentSocket.id === "undefined";
-
-      // If socket from service is valid but state socket is invalid, use service socket
-      if (
-        serviceSocket &&
-        serviceSocket.connected &&
-        serviceSocket.id &&
-        socketInvalid
-      ) {
-        console.log("Socket monitor: Using existing valid socket from service");
-        setSocket(serviceSocket);
-        reconnectionAttemptsRef.current = 0;
-        return;
-      }
-
-      // If both are invalid, try to reconnect if under max attempts
-      if (
-        (socketInvalid || !serviceSocket || !serviceSocket.connected) &&
-        reconnectionAttemptsRef.current < MAX_RECONNECTION_ATTEMPTS
-      ) {
-        console.log(
-          `Socket invalid or disconnected. Reconnection attempt ${
-            reconnectionAttemptsRef.current + 1
-          }/${MAX_RECONNECTION_ATTEMPTS}`
-        );
-
-        // Increment attempt counter
-        reconnectionAttemptsRef.current++;
-
-        // Attempt reconnection
-        const newSocket = socketService.connect(user.firebase_uid);
-
-        // Register connect handler
-        if (newSocket) {
-          newSocket.once("connect", () => {
-            console.log("Socket reconnected successfully");
-            setSocket(newSocket);
-            reconnectionAttemptsRef.current = 0;
-
-            // Re-register in lobby after reconnection
-            newSocket.emit("userLobbyStatusChanged", {
-              userId: user.firebase_uid,
-              inLobby: true,
-              lobbyCode: lobbyCode,
-            });
-
-            newSocket.emit("player_joined_lobby", {
-              playerId: user.firebase_uid,
-              lobbyCode: lobbyCode,
-              level: user.level,
-              display_picture: user.display_picture,
-            });
-          });
-        }
-      }
-    }, 3000); // Check every 3 seconds
-
-    // Clear interval on cleanup
-    return () => {
-      clearInterval(socketMonitor);
-    };
-  }, [socket, user?.firebase_uid, loading, lobbyCode]);
-
   // Update the socket initialization effect
   useEffect(() => {
     if (loading || !user?.firebase_uid) {
@@ -378,9 +294,6 @@ const PVPLobby: React.FC = () => {
     const socketService = SocketService.getInstance();
     const newSocket = socketService.connect(user.firebase_uid);
 
-    // Reset reconnection attempts counter
-    reconnectionAttemptsRef.current = 0;
-
     // Wait for socket to connect
     if (!newSocket.connected) {
       newSocket.on("connect", () => {
@@ -390,12 +303,6 @@ const PVPLobby: React.FC = () => {
     } else {
       setSocket(newSocket);
     }
-
-    // Add disconnect handler to detect when socket becomes invalid
-    newSocket.on("disconnect", (reason) => {
-      console.log(`Socket disconnected: ${reason}`);
-      // We don't set socket to null here - the monitor will handle reconnection
-    });
 
     // IMPORTANT: Use the service's on method for better reliability
     const handleBattleInvitation = (data: any) => {
@@ -523,6 +430,12 @@ const PVPLobby: React.FC = () => {
 
   // Open the confirmation dialog
   const handleBackClick = () => {
+    if (isBanActive) {
+      toast.error(
+        "You cannot leave while banned. Please wait until your ban expires."
+      );
+      return;
+    }
     setOpenDialog(true); // Show the modal on back button click
   };
 
@@ -544,6 +457,10 @@ const PVPLobby: React.FC = () => {
 
     const checkBattleStarted = async () => {
       try {
+        // First check if user is banned - REMOVED, now checking on component mount
+        // Skip the ban check here since we already check on component mount
+
+        // Proceed with battle status check directly
         const response = await axios.get(
           `${
             import.meta.env.VITE_BACKEND_URL
@@ -611,6 +528,8 @@ const PVPLobby: React.FC = () => {
         return;
       }
 
+      // Ban check removed from here since we check on component mount
+
       setBattleStartLoading(true);
 
       try {
@@ -656,7 +575,7 @@ const PVPLobby: React.FC = () => {
         setBattleStartLoading(false);
       }
     } else {
-      // For guest: toggle ready state
+      // For guest: toggle ready state (no ban check needed here anymore)
       toggleGuestReadyState();
     }
   };
@@ -904,7 +823,6 @@ const PVPLobby: React.FC = () => {
     // For host: listen for players joining the lobby
     const handlePlayerJoined = (data: PlayerJoinedData) => {
       console.log("Player joined lobby:", data);
-
       if (data.lobbyCode === lobbyCode && !isCurrentUserGuest) {
         // Add the player to our state
         const joinedPlayer = {
@@ -913,24 +831,8 @@ const PVPLobby: React.FC = () => {
           level: data.playerLevel || 1,
           display_picture: data.playerPicture || defaultAvatar,
         };
-        console.log(joinedPlayer);
+
         setInvitedPlayer(joinedPlayer);
-
-        // Set invitation sent to trigger polling mechanisms
-        setInvitationSent(true);
-
-        // Update the full players array with both host and guest info
-        setPlayers([
-          // Current user (host) info
-          {
-            firebase_uid: user?.firebase_uid || "",
-            username: user?.username || "Player 1",
-            level: user?.level || 1,
-            display_picture: user?.display_picture || defaultAvatar,
-          },
-          // Joined player (guest) info
-          joinedPlayer,
-        ]);
 
         // Send current lobby state to the joined player
         socket.emit("lobby_info_response", {
@@ -1331,7 +1233,7 @@ const PVPLobby: React.FC = () => {
     };
   }, [socket, lobbyCode]);
 
-  // Modify the useEffect that runs when the component mounts to emit a createLobby event for hosts
+  // Update the useEffect that runs when the component mounts to emit a createLobby event for hosts
   useEffect(() => {
     // Initialize lobby
     if (isCurrentUserGuest && lobbyCode) {
@@ -1357,6 +1259,37 @@ const PVPLobby: React.FC = () => {
     user?.level,
     user?.display_picture,
   ]);
+
+  // Add a new useEffect to check ban status when component mounts
+  useEffect(() => {
+    // Only check ban status if we have user data
+    if (!user?.firebase_uid) return;
+
+    const checkInitialBanStatus = async () => {
+      try {
+        console.log("Checking initial ban status for user:", user.firebase_uid);
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/user/ban-status/${
+            user.firebase_uid
+          }`
+        );
+
+        if (response.data.success && response.data.data.banUntil) {
+          const banUntil = new Date(response.data.data.banUntil);
+          if (banUntil > new Date()) {
+            setUserBanUntil(banUntil);
+            setShowBanModal(true); // Show ban modal immediately
+            setIsBanActive(true); // Mark ban as active
+            console.log("User is banned until:", banUntil);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking initial ban status:", error);
+      }
+    };
+
+    checkInitialBanStatus();
+  }, [user?.firebase_uid]);
 
   // Add a new useEffect that handles auto-invitation when coming from FriendListItem
   useEffect(() => {
@@ -1741,6 +1674,7 @@ const PVPLobby: React.FC = () => {
         />
       )}
 
+      {/* Ban Modal */}
       {userBanUntil && (
         <BanModal
           isOpen={showBanModal}

@@ -8,8 +8,8 @@ import AutoConfettiAnimation from "../../../../pages/dashboard/play-battleground
 import { useAudio } from "../../../../contexts/AudioContext"; // Import the useAudio hook
 import { useEffect, useState } from "react"; // Add useState
 import axios from "axios"; // Import axios for API calls
-import SessionIncomplete from "../../../../../public/GameBattle/session-incomplete.png"; // Import session-incomplete image
-import AlmostThere from "../../../../../public/GameBattle/almost-there.png";
+import SessionIncomplete from "/GameBattle/session-incomplete.png"; // Import session-incomplete image
+import AlmostThere from "/GameBattle/almost-there.png";
 
 interface SessionReportProps {
   timeSpent: string;
