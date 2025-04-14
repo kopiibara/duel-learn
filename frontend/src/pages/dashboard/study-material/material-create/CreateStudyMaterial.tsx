@@ -61,7 +61,7 @@ const MAX_TERM_LENGTH = 50;
 const MAX_DEFINITION_LENGTH = 500;
 const MAX_IMAGE_SIZE_MB = 10;
 const MAX_TOTAL_PAYLOAD_MB = 50;
-const MIN_REQUIRED_ITEMS = 10;
+const MIN_REQUIRED_ITEMS = 1;
 
 // Add this helper function to check file size
 const getFileSizeInMB = (base64String: string): number => {
@@ -106,13 +106,12 @@ const CreateStudyMaterial = () => {
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Check if we're in edit mode
   const editMode = location.state?.editMode || false;
   const studyMaterialId = location.state?.studyMaterialId || null;
   const [_studyMaterial, setStudyMaterial] = useState(null);
-
-  const [isSaving, setIsSaving] = useState(false);
 
   // Initialize state using data from location if in edit mode
   const [tags, setTags] = useState<string[]>(location.state?.tags || []);
@@ -513,6 +512,9 @@ const CreateStudyMaterial = () => {
     } catch (error) {
       console.error("Error in handleSaveButton:", error);
       handleShowSnackbar("An unexpected error occurred. Please try again.");
+    } finally {
+      // Set loading state back to false when done
+      setIsSaving(false);
     }
   };
 
@@ -1026,6 +1028,7 @@ const CreateStudyMaterial = () => {
                   </Button>
                   <Button
                     variant="contained"
+                    disabled={isSaving}
                     sx={{
                       borderRadius: "0.8rem",
                       display: "flex",
@@ -1040,10 +1043,21 @@ const CreateStudyMaterial = () => {
                       "&:hover": {
                         transform: "scale(1.05)",
                       },
+                      "&.Mui-disabled": {
+                        backgroundColor: "#4D18E8",
+                        color: "#E2DDF3",
+                        opacity: 0.7,
+                      },
                     }}
                     onClick={handleSaveButton}
                   >
-                    {editMode ? "Update" : "Save"}
+                    {isSaving ? (
+                      <CircularProgress size={20} sx={{ color: "#E2DDF3" }} />
+                    ) : editMode ? (
+                      "Update"
+                    ) : (
+                      "Save"
+                    )}
                   </Button>
                 </Stack>
               </Stack>
