@@ -8,6 +8,7 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import PageTransition from "../../../../../styles/PageTransition";
+import { useUser } from "../../../../../contexts/UserContext";
 import { generateLobbyCode } from "../../../../../services/pvpLobbyService";
 import { usePvPLobby } from "../../../../../hooks/usePvPLobby";
 import axios from "axios";
@@ -16,6 +17,8 @@ const SetUpQuestionType: React.FC = () => {
   // Move all hooks to the top before any conditional logic
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useUser();
+  const manaPoints = user?.mana || 0; // Default to 0 if undefined
   const {
     selectedTypes: preSelectedTypes,
     material,
@@ -43,7 +46,6 @@ const SetUpQuestionType: React.FC = () => {
     },
   ]);
   const [openAlert, setOpenAlert] = useState(false); // State to control alert visibility
-  const [manaPoints, _setManaPoints] = useState(10); // State for dynamic mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana alert
   const [isGenerating, setIsGenerating] = useState(false);
   const [alertMessage, setAlertMessage] = useState<string>(
@@ -234,15 +236,19 @@ const SetUpQuestionType: React.FC = () => {
 
           {/* Right Side: Points + Animated Settings Icon */}
           <div className="flex items-center gap-1 sm:gap-2">
-            <img
-              src={ManaIcon}
-              alt="Mana"
-              className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mr-1"
-            />
-            <span className="text-[14px] sm:text-[16px] text-gray-300 mr-2 sm:mr-3">
-              {manaPoints}
-            </span>{" "}
-            {/* Dynamic mana points */}
+            {mode !== "Peaceful Mode" && (
+              <>
+                <img
+                  src={ManaIcon}
+                  alt="Mana"
+                  className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 mr-1"
+                />
+                <span className="text-[14px] sm:text-[16px] text-gray-300 mr-2 sm:mr-3">
+                  {manaPoints}
+                </span>
+              </>
+            )}
+
             <span className="animate-spin text-[14px] sm:text-[16px] text-purple-400">
               ⚙️
             </span>

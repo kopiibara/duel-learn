@@ -286,6 +286,221 @@ const AchievementController = {
         }
     },
 
+    getUserLongestStreak: async (req, res) => {
+        try {
+            const { firebase_uid } = req.params;
+            const skipCache = req.query.timestamp !== undefined;
+            const cacheKey = `longest_streak_${firebase_uid}`;
+
+            // Check cache first unless skipping
+            if (!skipCache) {
+                const cachedData = achievementCache.get(cacheKey);
+                if (cachedData) {
+                    console.log(`Cache hit for Longest Streak - user: ${firebase_uid}`);
+                    return res.status(200).json(cachedData);
+                }
+            }
+
+            // Get user's highest streak
+            const [result] = await pool.query(
+                `SELECT MAX(win_streak) as highest_streak FROM user_info WHERE firebase_uid = ?`,
+                [firebase_uid]
+            );
+
+            // Fetch the Duelist achievement details
+            const [duelistResult] = await pool.query(
+                `SELECT achievement_id, achievement_name, achievement_description, 
+                achievement_requirement, achievement_level, achievement_picture_url 
+                FROM achievements WHERE achievement_name = 'Duelist'`
+            );
+
+            if (duelistResult.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Duelist achievement not found",
+                });
+            }
+
+            const duelistAchievement = duelistResult[0];
+            const achieved = result[0].highest_streak >= duelistAchievement.achievement_requirement;
+
+            const response = {
+                success: true,
+                highest_streak: result[0].highest_streak,
+                duelistAchievement: {
+                    ...duelistAchievement,
+                    achieved
+                }
+            };
+
+            // Cache the result (5 minutes TTL)
+            achievementCache.set(cacheKey, response, 300);
+
+            res.status(200).json(response);
+        } catch (error) {
+            console.error("Error fetching user highest streak:", error);
+            res.status(500).json({
+                success: false,
+                message: "Failed to retrieve user highest streak",
+                error: error.message
+            });
+        }
+    },
+
+    getUserTotalPvPMatches: async (req, res) => {
+        try {
+            const { firebase_uid } = req.params;
+            const skipCache = req.query.timestamp !== undefined;
+            const cacheKey = `total_pvp_matches_${firebase_uid}`;
+
+            // Check cache first unless skipping
+            if (!skipCache) {
+                const cachedData = achievementCache.get(cacheKey);
+                if (cachedData) {
+                    console.log(`Cache hit for Total PvP Matches - user: ${firebase_uid}`);
+                    return res.status(200).json(cachedData);
+                }
+            }
+
+            // Check if user exists
+            const [userExists] = await pool.query(
+                'SELECT 1 FROM user_info WHERE firebase_uid = ?',
+                [firebase_uid]
+            );
+
+            if (userExists.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                });
+            }
+
+            // Count matches where user was either host or guest
+            const [result] = await pool.query(
+                `SELECT COUNT(*) as total_matches 
+                 FROM pvp_battle_sessions
+                 WHERE host_id = ? OR guest_id = ?`,
+                [firebase_uid, firebase_uid]
+            );
+
+            // Fetch the Battle Archmage achievement
+            const [battleArchmageResult] = await pool.query(
+                `SELECT achievement_id, achievement_name, achievement_description, 
+                achievement_requirement, achievement_level, achievement_picture_url 
+                FROM achievements WHERE achievement_name = 'Battle Archmage'`
+            );
+
+            if (battleArchmageResult.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Battle Archmage achievement not found",
+                });
+            }
+
+            const battleArchmageAchievement = battleArchmageResult[0];
+            const totalMatches = result[0].total_matches || 0;
+            const achieved = totalMatches >= battleArchmageAchievement.achievement_requirement;
+
+            const response = {
+                success: true,
+                total_matches: totalMatches,
+                battleArchmageAchievement: {
+                    ...battleArchmageAchievement,
+                    achieved
+                }
+            };
+
+            // Cache the result (5 minutes TTL)
+            achievementCache.set(cacheKey, response, 300);
+
+            res.status(200).json(response);
+        } catch (error) {
+            console.error("Error fetching user total PvP matches:", error);
+            res.status(500).json({
+                success: false,
+                message: "Failed to retrieve user total PvP matches",
+                error: error.message
+            });
+        }
+    },
+
+    getUserTotalPvPWins: async (req, res) => {
+        try {
+            const { firebase_uid } = req.params;
+            const skipCache = req.query.timestamp !== undefined;
+            const cacheKey = `total_pvp_wins_${firebase_uid}`;
+
+            // Check cache first unless skipping
+            if (!skipCache) {
+                const cachedData = achievementCache.get(cacheKey);
+                if (cachedData) {
+                    console.log(`Cache hit for Total PvP Wins - user: ${firebase_uid}`);
+                    return res.status(200).json(cachedData);
+                }
+            }
+
+            // Check if user exists
+            const [userExists] = await pool.query(
+                'SELECT 1 FROM user_info WHERE firebase_uid = ?',
+                [firebase_uid]
+            );
+
+            if (userExists.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                });
+            }
+
+            // Count matches where user is the winner
+            const [result] = await pool.query(
+                `SELECT COUNT(*) as total_wins 
+                 FROM pvp_battle_sessions
+                 WHERE winner_id = ?`,
+                [firebase_uid]
+            );
+
+            // Fetch the Best Magician achievement
+            const [bestMagicianResult] = await pool.query(
+                `SELECT achievement_id, achievement_name, achievement_description, 
+                achievement_requirement, achievement_level, achievement_picture_url 
+                FROM achievements WHERE achievement_name = 'Best Magician'`
+            );
+
+            if (bestMagicianResult.length === 0) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Best Magician achievement not found",
+                });
+            }
+
+            const bestMagicianAchievement = bestMagicianResult[0];
+            const totalWins = result[0].total_wins || 0;
+            const achieved = totalWins >= bestMagicianAchievement.achievement_requirement;
+
+            const response = {
+                success: true,
+                total_wins: totalWins,
+                bestMagicianAchievement: {
+                    ...bestMagicianAchievement,
+                    achieved
+                }
+            };
+
+            // Cache the result (5 minutes TTL)
+            achievementCache.set(cacheKey, response, 300);
+
+            res.status(200).json(response);
+        } catch (error) {
+            console.error("Error fetching user total PvP wins:", error);
+            res.status(500).json({
+                success: false,
+                message: "Failed to retrieve user total PvP wins",
+                error: error.message
+            });
+        }
+    },
+
     // Add method to programmatically invalidate cache when achievements change
     invalidateCache: async (req, res) => {
         const { firebase_uid } = req.body;

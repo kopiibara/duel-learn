@@ -71,13 +71,17 @@ const PaymentController = {
                         'UPDATE users SET account_type = ? ,account_type_plan = ? WHERE firebase_uid = ?',
                         ['premium', planName, firebase_uid]
                     );
-                    console.log(`Updated users table: ${userResult.affectedRows} row(s)`);
-
                     const [userInfoResult] = await pool.query(
-                        'UPDATE user_info SET account_type = ?, account_type_plan = ? WHERE firebase_uid = ?',
-                        ['premium', planName, firebase_uid]
+                        'UPDATE user_info SET account_type = ?, account_type_plan = ?, exp = exp + 1000, mana = ? , coins = coins + 500, tech_pass = tech_pass + 5 WHERE firebase_uid = ?',
+                        ['premium', planName, 200, firebase_uid]
                     );
-                    console.log(`Updated user_info table: ${userInfoResult.affectedRows} row(s)`);
+
+                    const [userItemsResult] = await pool.query(
+                        'UPDATE user_items SET quantity = quantity + 5 WHERE firebase_uid = ? AND item_code = ?',
+                        [firebase_uid, 'ITEM002TP']
+                    );
+
+
                 } catch (error) {
                     console.error('Error updating account type:', error);
                 }
@@ -351,8 +355,13 @@ const PaymentController = {
                 );
 
                 await pool.query(
-                    'UPDATE user_info SET account_type = ?, account_type_plan = ? WHERE firebase_uid = ?',
-                    ['premium', payment.plan, payment.firebase_uid]
+                    'UPDATE user_info SET account_type = ?, account_type_plan = ?, exp = exp + 1000, mana = ? , coins = coins + 500, tech_pass = tech_pass + 5 WHERE firebase_uid = ?',
+                    ['premium', payment.plan, 200, payment.firebase_uid]
+                );
+
+                await pool.query(
+                    'UPDATE user_items SET quantity = quantity + 5 WHERE firebase_uid = ? AND item_code = ?',
+                    [payment.firebase_uid, 'ITEM002TP']
                 );
             }
 

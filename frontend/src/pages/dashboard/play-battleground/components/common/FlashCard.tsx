@@ -140,7 +140,7 @@ const FlashCard: React.FC<FlashCardProps> = memo(
         className={`w-full max-w-[900px] h-[380px] mt-[-60px] bg-white rounded-lg p-8 relative ${
           disabled ? "cursor-default" : "cursor-pointer"
         }`}
-        onClick={() => !disabled && onFlip && onFlip()}
+        onDoubleClick={() => !disabled && onFlip && onFlip()}
         style={{
           perspective: "1000px",
           transformStyle: "preserve-3d",

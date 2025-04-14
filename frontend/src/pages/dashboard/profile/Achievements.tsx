@@ -10,6 +10,9 @@ import {
   getMysticElder,
   getWisdomCollector,
   getArcaneScholar,
+  getBattleArchmage,
+  getDuelist,
+  getBestMagician,
 } from "./hooks/getAchievement";
 import { useUser } from "../../../contexts/UserContext";
 
@@ -27,6 +30,9 @@ const Achievements = () => {
   const { fetchMysticElder } = getMysticElder();
   const { fetchWisdomCollector } = getWisdomCollector();
   const { fetchArcaneScholar } = getArcaneScholar();
+  const { fetchBattleArchmage } = getBattleArchmage();
+  const { fetchDuelist } = getDuelist();
+  const { fetchBestMagician } = getBestMagician();
   const { user } = useUser();
   const location = useLocation();
   const [achievements, setAchievements] = useState<FormattedAchievement[]>([]);
@@ -48,6 +54,22 @@ const Achievements = () => {
     string | null
   >(null);
   const [arcaneScholarError, setArcaneScholarError] = useState<string | null>(
+    null
+  );
+  const [battleArchmage, setBattleArchmage] = useState(null);
+  const [pvpMatchesCount, setPvpMatchesCount] = useState(0);
+  const [battleArchmageLoading, setBattleArchmageLoading] = useState(true);
+  const [battleArchmageError, setBattleArchmageError] = useState<string | null>(
+    null
+  );
+  const [duelist, setDuelist] = useState(null);
+  const [winStreak, setWinStreak] = useState(0);
+  const [duelistLoading, setDuelistLoading] = useState(true);
+  const [duelistError, setDuelistError] = useState<string | null>(null);
+  const [bestMagician, setBestMagician] = useState(null);
+  const [pvpWinsCount, setPvpWinsCount] = useState(0);
+  const [bestMagicianLoading, setBestMagicianLoading] = useState(true);
+  const [bestMagicianError, setBestMagicianError] = useState<string | null>(
     null
   );
 
@@ -166,6 +188,96 @@ const Achievements = () => {
     loadArcaneScholar();
   }, [fetchArcaneScholar, user?.firebase_uid]);
 
+  // Load Battle Archmage achievement
+  useEffect(() => {
+    const loadBattleArchmage = async () => {
+      if (!user?.firebase_uid) {
+        setBattleArchmageError("User not authenticated");
+        setBattleArchmageLoading(false);
+        return;
+      }
+
+      try {
+        setBattleArchmageLoading(true);
+        const response = await fetchBattleArchmage(user.firebase_uid);
+
+        if (response && response.success) {
+          setBattleArchmage(response.battleArchmageAchievement);
+          setPvpMatchesCount(response.total_matches);
+        } else {
+          setBattleArchmageError("Failed to load Battle Archmage achievement");
+        }
+      } catch (err) {
+        setBattleArchmageError("Error loading Battle Archmage achievement");
+        console.error(err);
+      } finally {
+        setBattleArchmageLoading(false);
+      }
+    };
+
+    loadBattleArchmage();
+  }, [fetchBattleArchmage, user?.firebase_uid]);
+
+  // Load Duelist achievement
+  useEffect(() => {
+    const loadDuelist = async () => {
+      if (!user?.firebase_uid) {
+        setDuelistError("User not authenticated");
+        setDuelistLoading(false);
+        return;
+      }
+
+      try {
+        setDuelistLoading(true);
+        const response = await fetchDuelist(user.firebase_uid);
+
+        if (response && response.success) {
+          setDuelist(response.duelistAchievement);
+          setWinStreak(response.highest_streak);
+        } else {
+          setDuelistError("Failed to load Duelist achievement");
+        }
+      } catch (err) {
+        setDuelistError("Error loading Duelist achievement");
+        console.error(err);
+      } finally {
+        setDuelistLoading(false);
+      }
+    };
+
+    loadDuelist();
+  }, [fetchDuelist, user?.firebase_uid]);
+
+  // Load Best Magician achievement
+  useEffect(() => {
+    const loadBestMagician = async () => {
+      if (!user?.firebase_uid) {
+        setBestMagicianError("User not authenticated");
+        setBestMagicianLoading(false);
+        return;
+      }
+
+      try {
+        setBestMagicianLoading(true);
+        const response = await fetchBestMagician(user.firebase_uid);
+
+        if (response && response.success) {
+          setBestMagician(response.bestMagicianAchievement);
+          setPvpWinsCount(response.total_wins);
+        } else {
+          setBestMagicianError("Failed to load Best Magician achievement");
+        }
+      } catch (err) {
+        setBestMagicianError("Error loading Best Magician achievement");
+        console.error(err);
+      } finally {
+        setBestMagicianLoading(false);
+      }
+    };
+
+    loadBestMagician();
+  }, [fetchBestMagician, user?.firebase_uid]);
+
   const loadAchievements = async (forceRefresh = false) => {
     try {
       setLoading(true);
@@ -187,10 +299,22 @@ const Achievements = () => {
 
         // Filter out special achievements from regular achievements
         const filteredAchievements = formattedAchievements.filter(
-          (achievement) =>
-            achievement.name !== "Mystic Elder" &&
-            achievement.name !== "Wisdom Collector" &&
-            achievement.name !== "Arcane Scholar"
+          (achievement) => {
+            // Normalize achievement name by trimming and converting to lowercase
+            const name = achievement.name.trim().toLowerCase();
+            return !(
+              (
+                name === "mystic elder" ||
+                name === "wisdom collector" ||
+                name === "arcane scholar" ||
+                name === "battle archmage" ||
+                name === "duelist" ||
+                name.startsWith("duelist") || // Handle variations like "Duelist "
+                name === "best magician" ||
+                name.startsWith("best magician")
+              ) // Handle variations like "Best Magician "
+            );
+          }
         );
 
         // Add enhanced versions if they exist
@@ -231,6 +355,44 @@ const Achievements = () => {
           console.error("Error adding Arcane Scholar achievement:", err);
         }
 
+        try {
+          // Always attempt to fetch Battle Archmage
+          const battleArchmageResponse = await fetchBattleArchmage(
+            user?.firebase_uid || ""
+          );
+          if (battleArchmageResponse?.formattedAchievement) {
+            filteredAchievements.unshift(
+              battleArchmageResponse.formattedAchievement
+            );
+          }
+        } catch (err) {
+          console.error("Error adding Battle Archmage achievement:", err);
+        }
+
+        try {
+          // Always attempt to fetch Duelist
+          const duelistResponse = await fetchDuelist(user?.firebase_uid || "");
+          if (duelistResponse?.formattedAchievement) {
+            filteredAchievements.unshift(duelistResponse.formattedAchievement);
+          }
+        } catch (err) {
+          console.error("Error adding Duelist achievement:", err);
+        }
+
+        try {
+          // Always attempt to fetch Best Magician
+          const bestMagicianResponse = await fetchBestMagician(
+            user?.firebase_uid || ""
+          );
+          if (bestMagicianResponse?.formattedAchievement) {
+            filteredAchievements.unshift(
+              bestMagicianResponse.formattedAchievement
+            );
+          }
+        } catch (err) {
+          console.error("Error adding Best Magician achievement:", err);
+        }
+
         console.log("Formatted Achievements:", filteredAchievements);
         setAchievements(filteredAchievements);
       } else {
@@ -264,9 +426,18 @@ const Achievements = () => {
     studyMaterialCount,
     arcaneScholar,
     completedSessionsCount,
+    battleArchmage,
+    pvpMatchesCount,
+    duelist,
+    winStreak,
+    bestMagician,
+    pvpWinsCount,
     fetchMysticElder,
     fetchWisdomCollector,
     fetchArcaneScholar,
+    fetchBattleArchmage,
+    fetchDuelist,
+    fetchBestMagician,
     user?.firebase_uid,
   ]);
 

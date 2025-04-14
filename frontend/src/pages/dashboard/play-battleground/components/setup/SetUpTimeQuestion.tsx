@@ -6,10 +6,13 @@ import ManaIcon from "/ManaIcon.png";
 import IconButton from "@mui/material/IconButton";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Slider } from "@mui/material";
+import { useUser } from "../../../../../contexts/UserContext";
 
 const SetUpTimeQuestion: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useUser();
+  const manaPoints = user?.mana || 0; // Default to 0 if undefined
   const { mode, material, selectedTypes } = location.state || {};
   console.log(
     "Mode:",
@@ -23,7 +26,6 @@ const SetUpTimeQuestion: React.FC = () => {
   // Add manaCost variable
   const manaCost = 10; // This can be changed later to fetch from DB or props
   const [timeLimit, setTimeLimit] = useState(10);
-  const [manaPoints, _setManaPoints] = useState(10); // Example starting mana points
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana points alert
 
   const handleSliderChange = (_event: Event, newValue: number | number[]) => {

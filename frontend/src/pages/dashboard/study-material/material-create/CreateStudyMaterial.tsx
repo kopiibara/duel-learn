@@ -97,6 +97,7 @@ const CreateStudyMaterial = () => {
   const navigate = useNavigate();
   const location = useLocation(); // Add this line
   const { user, updateUser } = useUser();
+  const isPremium = user?.account_type === "premium";
 
   // Properly type the socket state
   const [socket, setSocket] = useState<Socket | null>(null);
@@ -565,10 +566,10 @@ const CreateStudyMaterial = () => {
 
   // Function to handle opening the scan notes modal
   const handleOpenScanModal = () => {
-    // Check if user has tech passes before allowing them to process
-    if (!user || !user.tech_pass || user.tech_pass <= 0) {
+    // Check if user is premium or has tech passes before allowing them to process
+    if (!isPremium && (!user?.tech_pass || user?.tech_pass <= 0)) {
       handleShowSnackbar(
-        "You need a Tech Pass to use the scanning feature. Purchase Tech Passes from the shop."
+        "You need a Tech Pass to use the scanning feature. Purchase Tech Passes from the shop or upgrade to Premium."
       );
       return;
     }
@@ -776,9 +777,9 @@ const CreateStudyMaterial = () => {
           `Added ${newItems.length} new terms and definitions!`
         );
 
-        // Deduct a tech pass using the API
+        // Deduct a tech pass using the API - only if not premium
         try {
-          if (user?.firebase_uid) {
+          if (user?.firebase_uid && !isPremium && user?.tech_pass > 0) {
             const techPassResponse = await fetch(
               `${import.meta.env.VITE_BACKEND_URL}/api/shop/use-tech-pass/${
                 user.firebase_uid
@@ -1725,23 +1726,28 @@ const CreateStudyMaterial = () => {
             disabled={
               uploadedFiles.length === 0 ||
               isProcessing ||
-              !user?.tech_pass ||
-              user.tech_pass <= 0
+              (!isPremium && (!user?.tech_pass || user.tech_pass <= 0))
             }
             onClick={handleProcessFile}
             sx={{
               backgroundColor:
-                user?.tech_pass && user.tech_pass > 0 ? "#4D18E8" : "#3B354D",
+                isPremium || (user?.tech_pass && user.tech_pass > 0)
+                  ? "#4D18E8"
+                  : "#3B354D",
               color:
-                user?.tech_pass && user.tech_pass > 0 ? "#E2DDF3" : "#9F9BAE",
+                isPremium || (user?.tech_pass && user.tech_pass > 0)
+                  ? "#E2DDF3"
+                  : "#9F9BAE",
               borderRadius: "0.8rem",
               padding: "0.8rem",
               transition: "all 0.3s ease",
               "&:hover": {
                 backgroundColor:
-                  user?.tech_pass && user.tech_pass > 0 ? "#6939FF" : "#3B354D",
+                  isPremium || (user?.tech_pass && user.tech_pass > 0)
+                    ? "#6939FF"
+                    : "#3B354D",
                 transform:
-                  user?.tech_pass && user.tech_pass > 0
+                  isPremium || (user?.tech_pass && user.tech_pass > 0)
                     ? "scale(1.02)"
                     : "scale(1)",
               },
@@ -1756,14 +1762,16 @@ const CreateStudyMaterial = () => {
                 <CircularProgress size={24} sx={{ color: "#E2DDF3", mr: 1 }} />
                 Processing...
               </>
-            ) : user?.tech_pass && user.tech_pass > 0 ? (
+            ) : isPremium || (user?.tech_pass && user.tech_pass > 0) ? (
               <>
                 Generate cards from{" "}
                 {uploadedFiles.length > 0 ? uploadedFiles.length : ""}
                 {uploadedFiles.length === 1 ? " File" : " Files"}
-                <span className="ml-2 text-[#A38CE6] font-medium">
-                  (Uses 1 Tech Pass)
-                </span>
+                {!isPremium && (
+                  <span className="ml-2 text-[#A38CE6] font-medium">
+                    (Uses 1 Tech Pass)
+                  </span>
+                )}
               </>
             ) : (
               <>

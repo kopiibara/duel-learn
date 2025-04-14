@@ -256,20 +256,6 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
             <ArrowBackIcon />
           </IconButton>
 
-          {/* Close button */}
-          <IconButton
-            aria-label="close"
-            onClick={handleClose}
-            sx={{
-              position: "absolute",
-              top: 16,
-              right: 16,
-              color: "#FFFFFF",
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-
           {/* Modal Friend List Image */}
           <Box
             component="img"

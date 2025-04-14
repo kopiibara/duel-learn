@@ -68,7 +68,8 @@ const SessionReport = () => {
     unmasteredCount,
   } = location.state as SessionReportProps;
 
-  const { pauseAudio, playSessionCompleteSound, playSessionIncompleteSound } = useAudio();
+  const { pauseAudio, playSessionCompleteSound, playSessionIncompleteSound } =
+    useAudio();
 
   // Keep the sound effects useEffects
   useEffect(() => {
@@ -228,7 +229,7 @@ const SessionReport = () => {
               },
             }}
             onClick={() =>
-              navigate("/dashboard/setup/questions", {
+              navigate("/dashboard/welcome-game-mode", {
                 state: { mode, material },
               })
             }
