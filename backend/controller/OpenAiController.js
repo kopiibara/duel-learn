@@ -26,7 +26,6 @@ const getItemIdFromStudyMaterial = async (
     console.log(`- Term: "${term}"`);
     console.log(`- Item Number: ${itemNumber}`);
 
-
     // Try exact term match
     const [exactTermResults] = await pool.query(
       `SELECT item_id, item_number FROM study_material_content 
@@ -96,22 +95,30 @@ const getItemIdFromStudyMaterial = async (
     );
 
     if (allItems && allItems.length > 0) {
-      console.log(`Found ${allItems.length} total items for study material ${studyMaterialId}:`);
-      allItems.forEach(item => {
-        console.log(`- Item ${item.item_number}: ID=${item.item_id}, Term="${item.term}"`);
+      console.log(
+        `Found ${allItems.length} total items for study material ${studyMaterialId}:`
+      );
+      allItems.forEach((item) => {
+        console.log(
+          `- Item ${item.item_number}: ID=${item.item_id}, Term="${item.term}"`
+        );
       });
 
       // Try to find a match by position/index
       if (itemNumber && itemNumber <= allItems.length) {
         const indexMatch = allItems[itemNumber - 1];
-        console.log(`Using item at position ${itemNumber}: ID=${indexMatch.item_id}, Term="${indexMatch.term}"`);
+        console.log(
+          `Using item at position ${itemNumber}: ID=${indexMatch.item_id}, Term="${indexMatch.term}"`
+        );
         return {
           itemId: indexMatch.item_id,
-          itemNumber: indexMatch.item_number
+          itemNumber: indexMatch.item_number,
         };
       }
     } else {
-      console.log(`No items found at all for study material ${studyMaterialId}`);
+      console.log(
+        `No items found at all for study material ${studyMaterialId}`
+      );
     }
 
     // Log failure and return null if no match found
@@ -123,20 +130,28 @@ const getItemIdFromStudyMaterial = async (
     console.log(`FALLBACK: Using item_number ${itemNumber} as item_id`);
     return {
       itemId: itemNumber.toString(),
-      itemNumber: itemNumber
+      itemNumber: itemNumber,
     };
   } catch (error) {
     console.error("Error fetching item_id from study_material_content:", error);
     // Fallback to using the itemNumber as the ID
     return {
       itemId: itemNumber?.toString() || "0",
-      itemNumber: itemNumber || 0
+      itemNumber: itemNumber || 0,
     };
   }
 };
 
 // Helper function to store generated questions in the database
-const storeGeneratedQuestions = async (studyMaterialId, itemId, itemNumber, term, definition, question, gameMode = "peaceful") => {
+const storeGeneratedQuestions = async (
+  studyMaterialId,
+  itemId,
+  itemNumber,
+  term,
+  definition,
+  question,
+  gameMode = "peaceful"
+) => {
   console.log("=== STORING GENERATED QUESTION ===");
   console.log(`Study Material ID: ${studyMaterialId}`);
   console.log(`Item ID: ${itemId}, Item Number: ${itemNumber}`);
@@ -147,7 +162,7 @@ const storeGeneratedQuestions = async (studyMaterialId, itemId, itemNumber, term
   const normalizedGameMode = gameMode.toLowerCase().trim();
 
   try {
-    const { pool } = await import('../config/db.js');
+    const { pool } = await import("../config/db.js");
 
     // Determine the question type
     const questionType = question.type || question.questionType;
@@ -167,13 +182,15 @@ const storeGeneratedQuestions = async (studyMaterialId, itemId, itemNumber, term
       itemId,
       itemNumber,
       questionType,
-      normalizedGameMode
+      normalizedGameMode,
     ];
 
     // Execute the delete to remove any existing questions
     const [deleteResult] = await pool.query(deleteQuery, deleteParams);
     if (deleteResult.affectedRows > 0) {
-      console.log(`Deleted ${deleteResult.affectedRows} existing ${questionType} questions for study material ID ${studyMaterialId}, item ID ${itemId}`);
+      console.log(
+        `Deleted ${deleteResult.affectedRows} existing ${questionType} questions for study material ID ${studyMaterialId}, item ID ${itemId}`
+      );
     }
 
     // Process question data based on type
@@ -182,7 +199,11 @@ const storeGeneratedQuestions = async (studyMaterialId, itemId, itemNumber, term
     let answer = question.answer || question.correctAnswer;
 
     // Handle choices for multiple-choice questions
-    if ((questionType === 'multiple-choice' || questionType === 'Multiple Choice') && question.options) {
+    if (
+      (questionType === "multiple-choice" ||
+        questionType === "Multiple Choice") &&
+      question.options
+    ) {
       choicesJSON = JSON.stringify(question.options);
     }
 
@@ -204,7 +225,7 @@ const storeGeneratedQuestions = async (studyMaterialId, itemId, itemNumber, term
       questionText,
       answer,
       choicesJSON,
-      normalizedGameMode
+      normalizedGameMode,
     ];
 
     console.log("Inserting question with values:", values);
@@ -222,12 +243,14 @@ const storeGeneratedQuestions = async (studyMaterialId, itemId, itemNumber, term
 // Update the clearQuestionsForMaterial function
 const clearQuestionsForMaterial = async (studyMaterialId, gameMode) => {
   try {
-    const { pool } = await import('../config/db.js');
+    const { pool } = await import("../config/db.js");
 
-    console.log(`Clearing existing questions for study material ${studyMaterialId} and game mode ${gameMode}`);
+    console.log(
+      `Clearing existing questions for study material ${studyMaterialId} and game mode ${gameMode}`
+    );
 
     const [existingQuestions] = await pool.query(
-      'SELECT id, item_number FROM generated_material WHERE study_material_id = ? AND game_mode = ?',
+      "SELECT id, item_number FROM generated_material WHERE study_material_id = ? AND game_mode = ?",
       [studyMaterialId, gameMode]
     );
 
@@ -237,7 +260,10 @@ const clearQuestionsForMaterial = async (studyMaterialId, gameMode) => {
         WHERE study_material_id = ? AND game_mode = ?
       `;
 
-      const [result] = await pool.execute(deleteQuery, [studyMaterialId, gameMode]);
+      const [result] = await pool.execute(deleteQuery, [
+        studyMaterialId,
+        gameMode,
+      ]);
       console.log(`Cleared ${result.affectedRows} existing questions`);
     }
 
@@ -263,7 +289,7 @@ const getBalancedAnswerPosition = (currentDistribution, totalQuestions) => {
 
   // If no available options, reset distribution
   if (availableOptions.length === 0) {
-    return ['A', 'B', 'C', 'D'][Math.floor(Math.random() * 4)];
+    return ["A", "B", "C", "D"][Math.floor(Math.random() * 4)];
   }
 
   // Randomly select from available options
@@ -345,14 +371,161 @@ const generateMultipleChoiceQuestion = async (term, definition, context) => {
   // Your OpenAI API call here
 };
 
+// Helper function to compare material content and determine if a new summary is needed
+const shouldGenerateNewSummary = async (studyMaterialId, newContent) => {
+  try {
+    const { pool } = await import("../config/db.js");
+
+    // Get the current material's content and summary
+    const [currentMaterial] = await pool.query(
+      `SELECT title, tags, summary, content_hash 
+       FROM study_material_info 
+       WHERE study_material_id = ?`,
+      [studyMaterialId]
+    );
+
+    if (!currentMaterial || currentMaterial.length === 0) {
+      console.log("No existing material found, generating new summary");
+      return true;
+    }
+
+    const existingMaterial = currentMaterial[0];
+
+    // Rule 1: If title or tags have changed, always generate new summary
+    const existingTags = JSON.parse(existingMaterial.tags || "[]").sort();
+    const newTags = newContent.tags.sort();
+    const titleChanged = existingMaterial.title !== newContent.title;
+    const tagsChanged =
+      JSON.stringify(existingTags) !== JSON.stringify(newTags);
+
+    if (titleChanged || tagsChanged) {
+      console.log("Title or tags changed, generating new summary");
+      return true;
+    }
+
+    // Rule 2: For term and definition changes, check if they impact the current summary
+    const [currentContent] = await pool.query(
+      `SELECT term, definition 
+       FROM study_material_content 
+       WHERE study_material_id = ? 
+       ORDER BY term`,
+      [studyMaterialId]
+    );
+
+    // If number of items changed significantly (more than 20%), generate new summary
+    const itemCountChange = Math.abs(
+      currentContent.length - newContent.items.length
+    );
+    const significantItemChange = itemCountChange > currentContent.length * 0.2;
+
+    if (significantItemChange) {
+      console.log(
+        "Significant change in number of items, generating new summary"
+      );
+      return true;
+    }
+
+    // Calculate content hash for the new content
+    const newContentHash = calculateContentHash(newContent.items);
+
+    // If content hash matches, no need for new summary
+    if (existingMaterial.content_hash === newContentHash) {
+      console.log("Content hash matches, reusing existing summary");
+      return false;
+    }
+
+    // If we have an existing summary, check if it still applies to the content changes
+    if (existingMaterial.summary) {
+      const prompt = `
+        Analyze if this summary still accurately represents the updated study material.
+        Only recommend a new summary if the changes significantly alter the core concepts or themes.
+        Minor wording changes or clarifications should not trigger a new summary.
+        
+        Current Summary: "${existingMaterial.summary}"
+        
+        Updated Material:
+        Title: "${newContent.title}"
+        Tags: ${JSON.stringify(newTags)}
+        Items: ${JSON.stringify(
+          newContent.items.map((item) => ({
+            term: item.term,
+            definition: item.definition,
+          }))
+        )}
+        
+        Return a JSON object with:
+        {
+          "stillApplies": boolean,
+          "reason": "brief explanation"
+        }
+      `;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an expert at analyzing if summaries still accurately represent updated content. Be lenient with minor changes and only recommend new summaries when core concepts or themes are significantly altered.",
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.2,
+      });
+
+      const response = JSON.parse(completion.choices[0].message.content);
+
+      if (response.stillApplies) {
+        console.log("Existing summary still applies:", response.reason);
+        return false;
+      }
+
+      console.log("Existing summary no longer applies:", response.reason);
+      return true;
+    }
+
+    // If we get here, content is identical or changes are minor
+    console.log(
+      "Content unchanged or changes are minor, reusing existing summary"
+    );
+    return false;
+  } catch (error) {
+    console.error("Error in shouldGenerateNewSummary:", error);
+    // On error, generate new summary to be safe
+    return true;
+  }
+};
+
+// Helper function to calculate content hash
+const calculateContentHash = (items) => {
+  // Sort items by term to ensure consistent hashing
+  const sortedItems = [...items].sort((a, b) => a.term.localeCompare(b.term));
+
+  // Create a string representation of the content
+  const contentString = sortedItems
+    .map((item) => `${item.term}:${item.definition}`)
+    .join("|");
+
+  // Simple hash function
+  let hash = 0;
+  for (let i = 0; i < contentString.length; i++) {
+    const char = contentString.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+
+  return hash.toString(16);
+};
+
 export const OpenAiController = {
   generateSummary: async (req, res) => {
     try {
-      const { tags, items } = req.body;
+      const { tags, items, studyMaterialId } = req.body;
 
       console.log("Received summary generation request with data:", {
         tagCount: tags?.length || 0,
         itemCount: items?.length || 0,
+        studyMaterialId,
       });
 
       if (!items || !Array.isArray(items) || items.length === 0) {
@@ -363,18 +536,68 @@ export const OpenAiController = {
         });
       }
 
-      const prompt = `Generate an overview that will cater the topic of the following details of the study material:  
-            Tags: ${tags ? tags.join(", ") : "No tags"}  
-            Items: ${items
-          .map((item) => `${item.term}: ${item.definition}`)
-          .join("\n")}  
-            
-            Make it so that it will gather the attention of the user that will read this overview and will make them interested to read the full study material.
-            
-            Rules:  
-            1. Make it concise, clear, and professional.  
-            2. Highlight the main idea in a cool way.  
-            3. Use simple and engaging language`;
+      // Check if we need to generate a new summary
+      const needsNewSummary = await shouldGenerateNewSummary(studyMaterialId, {
+        title: req.body.title || "",
+        tags: tags || [],
+        items: items,
+      });
+
+      if (!needsNewSummary) {
+        // Get the existing summary
+        const { pool } = await import("../config/db.js");
+        const [currentMaterial] = await pool.query(
+          `SELECT summary FROM study_material_info WHERE study_material_id = ?`,
+          [studyMaterialId]
+        );
+
+        if (
+          currentMaterial &&
+          currentMaterial.length > 0 &&
+          currentMaterial[0].summary
+        ) {
+          console.log("Reusing existing summary");
+          return res.json({ summary: currentMaterial[0].summary });
+        }
+      }
+
+      const prompt = `Generate a concise overview-style summary (maximum 500 characters) for the following study material. Focus on describing the content that is actually present in the material:
+
+      Tags: ${tags ? tags.join(", ") : "No tags"}  
+      Items: ${items
+        .map((item) => `${item.term}: ${item.definition}`)
+        .join("\n")}  
+
+      Rules:
+      1. CRITICAL: Keep the entire summary not more than 500 characters (including spaces and line breaks)
+      2. Write in a clear, concise style that maximizes information in limited space
+      3. Create a focused overview that:
+        - Introduces the core subject matter
+        - Highlights 2-3 key themes or concepts
+        - Gives a quick preview of what to expect based on the terms and definitions provided
+        - Don't include terminologies or sentences that are not explicitly defined in the material
+        - No need to include application if not necessary
+        - Focus on what the material includes, not what it can teach you because it will be too out of scope
+      4. Format efficiently:
+        - Use 1-2 short paragraphs maximum
+        - Double line breaks ("\\n\\n") between paragraphs
+        - Keep sentences brief but informative
+      5. Prioritize content:
+        - Focus on the most important themes
+        - Mention only the most representative terms
+        - Skip minor details
+      6. Make every character count while maintaining readability
+      7. Avoid making assumptions about what the material can teach you
+      8. Avoid overgeneralizing the material, and strictly use the definitions and terms provided
+      9. Use a "In this material, ..." kind of sentence to start the summary
+
+      Example for reference:
+      
+      Java is a programming language that is used to create applications for the web.
+      
+      Then, summary should not include terms that are out of the scope of the material. Like, "Users will learn how to code in Java" or "Users will learn how to create applications for the web".
+
+      IMPORTANT: The 500-character limit is strict - responses exceeding this will be truncated.`;
 
       console.log("Calling OpenAI API...");
 
@@ -389,11 +612,22 @@ export const OpenAiController = {
             },
             { role: "user", content: prompt },
           ],
-          max_tokens: 50, // Limit response length
+          max_tokens: 100, // Increased from 50 to 200 to allow for longer summaries
         });
 
         const summary = completion.choices[0].message.content.trim();
         console.log("Generated summary:", summary);
+
+        // Update the material with the new summary
+        if (studyMaterialId) {
+          const { pool } = await import("../config/db.js");
+          await pool.query(
+            `UPDATE study_material_info 
+             SET summary = ? 
+             WHERE study_material_id = ?`,
+            [summary, studyMaterialId]
+          );
+        }
 
         res.json({ summary });
       } catch (openaiError) {
@@ -427,7 +661,10 @@ export const OpenAiController = {
 
   generateIdentification: async (req, res) => {
     try {
-      console.log("Received identification question request with body:", req.body);
+      console.log(
+        "Received identification question request with body:",
+        req.body
+      );
       const {
         term,
         definition,
@@ -444,7 +681,7 @@ export const OpenAiController = {
         requestedItemId,
         itemNumber,
         term,
-        gameMode
+        gameMode,
       });
 
       // Try to get the actual itemId from the database
@@ -452,18 +689,32 @@ export const OpenAiController = {
       let actualItemNumber = itemNumber;
 
       // Only try to look up the ID if it seems to be a number (not a UUID)
-      if (!requestedItemId || !isNaN(requestedItemId) || parseInt(requestedItemId) == requestedItemId) {
+      if (
+        !requestedItemId ||
+        !isNaN(requestedItemId) ||
+        parseInt(requestedItemId) == requestedItemId
+      ) {
         console.log("Looking up actual item ID from database...");
-        const itemResult = await getItemIdFromStudyMaterial(studyMaterialId, term, itemNumber);
+        const itemResult = await getItemIdFromStudyMaterial(
+          studyMaterialId,
+          term,
+          itemNumber
+        );
         if (itemResult) {
           actualItemId = itemResult.itemId;
           actualItemNumber = itemResult.itemNumber;
-          console.log(`Using actual item ID: ${actualItemId} (from database lookup)`);
+          console.log(
+            `Using actual item ID: ${actualItemId} (from database lookup)`
+          );
         } else {
-          console.log(`Using requested item ID: ${requestedItemId} (database lookup failed)`);
+          console.log(
+            `Using requested item ID: ${requestedItemId} (database lookup failed)`
+          );
         }
       } else {
-        console.log(`Using requested item ID: ${requestedItemId} (appears to be a valid UUID)`);
+        console.log(
+          `Using requested item ID: ${requestedItemId} (appears to be a valid UUID)`
+        );
       }
 
       const cleanedTerm = term.replace(/^[A-D]\.\s+/, "").trim();
@@ -479,15 +730,15 @@ export const OpenAiController = {
           term: cleanedTerm,
           definition: definition,
           itemId: actualItemId,
-          itemNumber: actualItemNumber
-        }
+          itemNumber: actualItemNumber,
+        },
       };
 
       console.log("Generated identification question:", question);
 
       // Store the question directly with REPLACE INTO
       try {
-        const { pool } = await import('../config/db.js');
+        const { pool } = await import("../config/db.js");
 
         // Use REPLACE INTO to overwrite any existing question with the same key
         const replaceQuery = `
@@ -507,7 +758,7 @@ export const OpenAiController = {
           question.question,
           cleanedTerm, // answer
           null, // choices
-          gameMode
+          gameMode,
         ];
 
         console.log("Replacing identification question with values:", values);
@@ -547,7 +798,7 @@ export const OpenAiController = {
         requestedItemId,
         itemNumber,
         term,
-        gameMode
+        gameMode,
       });
 
       // Try to get the actual itemId from the database
@@ -555,25 +806,42 @@ export const OpenAiController = {
       let actualItemNumber = itemNumber;
 
       // Only try to look up the ID if it seems to be a number (not a UUID)
-      if (!requestedItemId || !isNaN(requestedItemId) || parseInt(requestedItemId) == requestedItemId) {
+      if (
+        !requestedItemId ||
+        !isNaN(requestedItemId) ||
+        parseInt(requestedItemId) == requestedItemId
+      ) {
         console.log("Looking up actual item ID from database...");
-        const itemResult = await getItemIdFromStudyMaterial(studyMaterialId, term, itemNumber);
+        const itemResult = await getItemIdFromStudyMaterial(
+          studyMaterialId,
+          term,
+          itemNumber
+        );
         if (itemResult) {
           actualItemId = itemResult.itemId;
           actualItemNumber = itemResult.itemNumber;
-          console.log(`Using actual item ID: ${actualItemId} (from database lookup)`);
+          console.log(
+            `Using actual item ID: ${actualItemId} (from database lookup)`
+          );
         } else {
-          console.log(`Using requested item ID: ${requestedItemId} (database lookup failed)`);
+          console.log(
+            `Using requested item ID: ${requestedItemId} (database lookup failed)`
+          );
         }
       } else {
-        console.log(`Using requested item ID: ${requestedItemId} (appears to be a valid UUID)`);
+        console.log(
+          `Using requested item ID: ${requestedItemId} (appears to be a valid UUID)`
+        );
       }
 
       // Clean the term
       const cleanedTerm = term.replace(/^[A-D]\.\s+/, "").trim();
 
       // Get balanced true/false answer
-      const correctAnswer = getBalancedTrueFalseAnswer(trueFalseDistribution, 10);
+      const correctAnswer = getBalancedTrueFalseAnswer(
+        trueFalseDistribution,
+        10
+      );
 
       // Update distribution
       trueFalseDistribution[correctAnswer]++;
@@ -608,7 +876,8 @@ export const OpenAiController = {
         messages: [
           {
             role: "system",
-            content: "You are an expert at creating engaging true/false questions that test understanding rather than just memorization. Your statements are clear, unambiguous, and require careful thought to answer correctly. CRITICAL RULE: You MUST ensure the statement you create is genuinely TRUE or FALSE as requested in the prompt - this is non-negotiable and the most important rule.",
+            content:
+              "You are an expert at creating engaging true/false questions that test understanding rather than just memorization. Your statements are clear, unambiguous, and require careful thought to answer correctly. CRITICAL RULE: You MUST ensure the statement you create is genuinely TRUE or FALSE as requested in the prompt - this is non-negotiable and the most important rule.",
           },
           { role: "user", content: prompt },
         ],
@@ -624,7 +893,9 @@ export const OpenAiController = {
 
       // Validate the response has the correct answer format
       if (question.answer !== correctAnswer) {
-        console.error(`CRITICAL: AI generated wrong answer format "${question.answer}" instead of "${correctAnswer}". Forcing correct answer.`);
+        console.error(
+          `CRITICAL: AI generated wrong answer format "${question.answer}" instead of "${correctAnswer}". Forcing correct answer.`
+        );
         question.answer = correctAnswer;
       }
 
@@ -639,8 +910,8 @@ export const OpenAiController = {
           term: cleanedTerm,
           definition: definition,
           itemId: actualItemId,
-          itemNumber: actualItemNumber
-        }
+          itemNumber: actualItemNumber,
+        },
       };
 
       console.log("Generated true/false question:", formattedQuestion);
@@ -648,7 +919,7 @@ export const OpenAiController = {
 
       // Store the true-false question directly with REPLACE INTO
       try {
-        const { pool } = await import('../config/db.js');
+        const { pool } = await import("../config/db.js");
 
         // Use REPLACE INTO to overwrite any existing question with the same key
         const replaceQuery = `
@@ -668,13 +939,15 @@ export const OpenAiController = {
           formattedQuestion.question,
           formattedQuestion.answer, // answer
           null, // choices
-          gameMode
+          gameMode,
         ];
 
         console.log("Replacing true-false question with values:", values);
 
         const [result] = await pool.query(replaceQuery, values);
-        console.log(`✅ True-false question stored successfully, ID: ${result.insertId}`);
+        console.log(
+          `✅ True-false question stored successfully, ID: ${result.insertId}`
+        );
       } catch (storageError) {
         console.error("Error storing true-false question:", storageError);
       }
@@ -691,7 +964,10 @@ export const OpenAiController = {
 
   generateMultipleChoice: async (req, res) => {
     try {
-      console.log("Received multiple-choice question request with body:", req.body);
+      console.log(
+        "Received multiple-choice question request with body:",
+        req.body
+      );
       const {
         term,
         definition,
@@ -708,7 +984,7 @@ export const OpenAiController = {
         requestedItemId,
         itemNumber,
         term,
-        gameMode
+        gameMode,
       });
 
       // Try to get the actual itemId from the database
@@ -716,18 +992,32 @@ export const OpenAiController = {
       let actualItemNumber = itemNumber;
 
       // Only try to look up the ID if it seems to be a number (not a UUID)
-      if (!requestedItemId || !isNaN(requestedItemId) || parseInt(requestedItemId) == requestedItemId) {
+      if (
+        !requestedItemId ||
+        !isNaN(requestedItemId) ||
+        parseInt(requestedItemId) == requestedItemId
+      ) {
         console.log("Looking up actual item ID from database...");
-        const itemResult = await getItemIdFromStudyMaterial(studyMaterialId, term, itemNumber);
+        const itemResult = await getItemIdFromStudyMaterial(
+          studyMaterialId,
+          term,
+          itemNumber
+        );
         if (itemResult) {
           actualItemId = itemResult.itemId;
           actualItemNumber = itemResult.itemNumber;
-          console.log(`Using actual item ID: ${actualItemId} (from database lookup)`);
+          console.log(
+            `Using actual item ID: ${actualItemId} (from database lookup)`
+          );
         } else {
-          console.log(`Using requested item ID: ${requestedItemId} (database lookup failed)`);
+          console.log(
+            `Using requested item ID: ${requestedItemId} (database lookup failed)`
+          );
         }
       } else {
-        console.log(`Using requested item ID: ${requestedItemId} (appears to be a valid UUID)`);
+        console.log(
+          `Using requested item ID: ${requestedItemId} (appears to be a valid UUID)`
+        );
       }
 
       // Clean the term
@@ -778,7 +1068,8 @@ Format the response exactly as:
           messages: [
             {
               role: "system",
-              content: "You are an expert at creating multiple-choice questions where all options are similar terms that could be easily confused with each other. Focus on generating options that are of similar length, style, and from the same domain as the correct answer. CRITICAL RULE: You MUST include the exact correct term as one of the options - this is non-negotiable and the most important rule. Double-check your output to ensure this requirement is met.",
+              content:
+                "You are an expert at creating multiple-choice questions where all options are similar terms that could be easily confused with each other. Focus on generating options that are of similar length, style, and from the same domain as the correct answer. CRITICAL RULE: You MUST include the exact correct term as one of the options - this is non-negotiable and the most important rule. Double-check your output to ensure this requirement is met.",
             },
             { role: "user", content: prompt },
           ],
@@ -797,29 +1088,38 @@ Format the response exactly as:
 
           if (parsedResponse.answer) {
             // The answer should be in format: "A. term" where A is the letter and term is the answer
-            const answerParts = parsedResponse.answer.split('. ');
+            const answerParts = parsedResponse.answer.split(". ");
             if (answerParts.length > 1) {
-              correctAnswer = answerParts.slice(1).join('. ').trim();
+              correctAnswer = answerParts.slice(1).join(". ").trim();
             }
-            console.log(`Extracted correct answer: "${correctAnswer}" from "${parsedResponse.answer}"`);
+            console.log(
+              `Extracted correct answer: "${correctAnswer}" from "${parsedResponse.answer}"`
+            );
           } else {
-            console.warn("No answer found in parsed response, using the cleaned term as fallback");
+            console.warn(
+              "No answer found in parsed response, using the cleaned term as fallback"
+            );
           }
 
           // CRITICAL: Verify that the correct answer is actually present in one of the options
-          const optionsValues = Object.values(parsedResponse.options).map(opt =>
-            typeof opt === 'string' ? opt.toLowerCase().trim() : ''
+          const optionsValues = Object.values(parsedResponse.options).map(
+            (opt) => (typeof opt === "string" ? opt.toLowerCase().trim() : "")
           );
           const normalizedCorrectAnswer = correctAnswer.toLowerCase().trim();
 
-          if (!optionsValues.some(opt => opt === normalizedCorrectAnswer)) {
-            console.error("CRITICAL: Correct answer not found in options. Enforcing correct answer placement.");
+          if (!optionsValues.some((opt) => opt === normalizedCorrectAnswer)) {
+            console.error(
+              "CRITICAL: Correct answer not found in options. Enforcing correct answer placement."
+            );
 
             // Force the correct answer to be placed in one of the options (option A as fallback)
-            const position = correctPosition || 'A';
+            const position = correctPosition || "A";
             parsedResponse.options[position] = correctAnswer;
 
-            console.log("Modified options to ensure correct answer is present:", parsedResponse.options);
+            console.log(
+              "Modified options to ensure correct answer is present:",
+              parsedResponse.options
+            );
           }
 
           // Format the final response
@@ -834,8 +1134,8 @@ Format the response exactly as:
               term: cleanedTerm,
               definition: definition,
               itemId: actualItemId,
-              itemNumber: actualItemNumber
-            }
+              itemNumber: actualItemNumber,
+            },
           };
 
           console.log("Formatted question:", formattedQuestion);
@@ -843,7 +1143,7 @@ Format the response exactly as:
 
           // Store the multiple-choice question directly with REPLACE INTO
           try {
-            const { pool } = await import('../config/db.js');
+            const { pool } = await import("../config/db.js");
 
             // Convert options to JSON string
             const choicesJSON = JSON.stringify(formattedQuestion.options);
@@ -866,41 +1166,46 @@ Format the response exactly as:
               formattedQuestion.question,
               correctAnswer, // Now using the extracted correct answer
               choicesJSON, // choices
-              gameMode
+              gameMode,
             ];
 
-            console.log("Replacing multiple-choice question with values:", values);
+            console.log(
+              "Replacing multiple-choice question with values:",
+              values
+            );
 
             const [result] = await pool.query(replaceQuery, values);
-            console.log(`✅ Multiple-choice question stored successfully, ID: ${result.insertId}`);
+            console.log(
+              `✅ Multiple-choice question stored successfully, ID: ${result.insertId}`
+            );
           } catch (storageError) {
-            console.error("Error storing multiple-choice question:", storageError);
+            console.error(
+              "Error storing multiple-choice question:",
+              storageError
+            );
           }
 
           return res.json([formattedQuestion]);
-
         } catch (parseError) {
           console.error("Error parsing OpenAI response:", parseError);
           console.log("Raw response that failed to parse:", responseText);
           return res.status(500).json({
             error: "Failed to parse OpenAI response",
-            details: parseError.message
+            details: parseError.message,
           });
         }
-
       } catch (openaiError) {
         console.error("OpenAI API error:", openaiError);
         return res.status(500).json({
           error: "OpenAI API error",
-          details: openaiError.message
+          details: openaiError.message,
         });
       }
-
     } catch (error) {
       console.error("Error in generateMultipleChoice:", error);
       return res.status(500).json({
         error: "Internal server error",
-        details: error.message
+        details: error.message,
       });
     }
   },
@@ -1122,28 +1427,28 @@ Important:
           providedItems.length > 0
             ? providedItems
             : questions.map((q, index) => {
-              // First try to get item from itemInfo
-              if (q.itemInfo && q.itemInfo.term && q.itemInfo.definition) {
-                console.log(
-                  `Creating item from question ${index + 1} itemInfo:`,
-                  q.itemInfo
-                );
-                return {
-                  id: q.itemInfo.itemId || index + 1,
-                  term: q.itemInfo.term,
-                  definition: q.itemInfo.definition,
-                };
-              } else {
-                // Fall back to creating from question fields
-                const item = {
-                  id: index + 1,
-                  term: q.correctAnswer || q.answer || `Item ${index + 1}`,
-                  definition: q.question || `Definition ${index + 1}`,
-                };
-                console.log(`Created dummy item ${index + 1}:`, item);
-                return item;
-              }
-            });
+                // First try to get item from itemInfo
+                if (q.itemInfo && q.itemInfo.term && q.itemInfo.definition) {
+                  console.log(
+                    `Creating item from question ${index + 1} itemInfo:`,
+                    q.itemInfo
+                  );
+                  return {
+                    id: q.itemInfo.itemId || index + 1,
+                    term: q.itemInfo.term,
+                    definition: q.itemInfo.definition,
+                  };
+                } else {
+                  // Fall back to creating from question fields
+                  const item = {
+                    id: index + 1,
+                    term: q.correctAnswer || q.answer || `Item ${index + 1}`,
+                    definition: q.question || `Definition ${index + 1}`,
+                  };
+                  console.log(`Created dummy item ${index + 1}:`, item);
+                  return item;
+                }
+              });
 
         console.log(`Processed ${processedItems.length} items for storage`);
 
@@ -1255,7 +1560,8 @@ Important:
 
               // Fetch the actual item_id from study_material_content with enhanced debugging
               console.log(
-                `Looking up content for identification question ${i + 1
+                `Looking up content for identification question ${
+                  i + 1
                 } with term "${term}"`
               );
               const contentItem = await getItemIdFromStudyMaterial(
@@ -1288,7 +1594,8 @@ Important:
               }
 
               console.log(
-                `Using item_id ${actualItemId} and item_number ${actualItemNumber} for identification question ${i + 1
+                `Using item_id ${actualItemId} and item_number ${actualItemNumber} for identification question ${
+                  i + 1
                 }`
               );
 
@@ -1311,7 +1618,8 @@ Important:
               ];
 
               console.log(
-                `Executing direct insert for identification question ${i + 1
+                `Executing direct insert for identification question ${
+                  i + 1
                 }...`
               );
               console.log(`Direct insert values:`, directInsertValues);
@@ -1325,12 +1633,14 @@ Important:
 
                 if (directResult.affectedRows > 0) {
                   console.log(
-                    `✅ Successfully inserted identification question ${i + 1
+                    `✅ Successfully inserted identification question ${
+                      i + 1
                     } directly`
                   );
                 } else {
                   console.warn(
-                    `⚠️ Direct insertion affected 0 rows for identification question ${i + 1
+                    `⚠️ Direct insertion affected 0 rows for identification question ${
+                      i + 1
                     }`
                   );
                 }
@@ -1365,7 +1675,8 @@ Important:
                     );
                   } else {
                     console.warn(
-                      `⚠️ Update affected 0 rows for identification question ${i + 1
+                      `⚠️ Update affected 0 rows for identification question ${
+                        i + 1
                       }`
                     );
                   }
@@ -1433,21 +1744,23 @@ Important:
       if (!gameMode) {
         return res.status(400).json({
           success: false,
-          error: 'Game mode is required'
+          error: "Game mode is required",
         });
       }
 
       // Normalize game mode to lowercase for consistent storage
       const normalizedGameMode = gameMode.toLowerCase().trim();
 
-      console.log(`Clearing questions for study material ${studyMaterialId} in ${normalizedGameMode} mode`);
+      console.log(
+        `Clearing questions for study material ${studyMaterialId} in ${normalizedGameMode} mode`
+      );
 
       // Use direct database connection with the pool
-      const { pool } = await import('../config/db.js');
+      const { pool } = await import("../config/db.js");
 
       // Get count of existing questions first
       const [countResult] = await pool.query(
-        'SELECT COUNT(*) as count FROM generated_material WHERE study_material_id = ? AND game_mode = ?',
+        "SELECT COUNT(*) as count FROM generated_material WHERE study_material_id = ? AND game_mode = ?",
         [studyMaterialId, normalizedGameMode]
       );
 
@@ -1456,23 +1769,25 @@ Important:
 
       // Delete questions for specific study material AND game mode
       const [deleteResult] = await pool.query(
-        'DELETE FROM generated_material WHERE study_material_id = ? AND game_mode = ?',
+        "DELETE FROM generated_material WHERE study_material_id = ? AND game_mode = ?",
         [studyMaterialId, normalizedGameMode]
       );
 
-      console.log(`Cleared ${deleteResult.affectedRows} questions for ${normalizedGameMode} mode`);
+      console.log(
+        `Cleared ${deleteResult.affectedRows} questions for ${normalizedGameMode} mode`
+      );
 
       return res.json({
         success: true,
         message: `Successfully cleared questions for study material ${studyMaterialId}`,
-        count: deleteResult.affectedRows
+        count: deleteResult.affectedRows,
       });
     } catch (error) {
-      console.error('Error clearing questions:', error);
+      console.error("Error clearing questions:", error);
       return res.status(500).json({
         success: false,
-        error: 'Failed to clear questions',
-        details: error.message
+        error: "Failed to clear questions",
+        details: error.message,
       });
     }
   },
