@@ -144,7 +144,7 @@ const Leaderboards = () => {
     return (
       <div
         key={player.firebase_uid}
-        className={`flex items-center justify-between mb-4 w-full ${
+        className={`flex items-center justify-between  w-full ${
           showBackground && player.isCurrentUser
             ? "bg-[#221f2e] rounded-lg px-2 py-3"
             : ""
@@ -170,7 +170,8 @@ const Leaderboards = () => {
             <img
               src={player.display_picture || defaultPicture}
               alt="Avatar"
-              className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-2 ml-4 rounded-[5px]  object-cover"
+              onClick={() => handleViewProfile(player.firebase_uid)}
+              className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-2 ml-4 hover:scale-105 transition-all duration-300 ease-in-out rounded-[5px] object-cover"
             />
           </div>
 
@@ -239,7 +240,7 @@ const Leaderboards = () => {
               {/* Always show current user with separator below top 3 */}
               {currentUser && (
                 <>
-                  <hr className="border-t-2 border-[#3B354D] my-1 sm:my-2 rounded-full" />
+                  <hr className="border-t-2 border-[#3B354D] rounded-full" />
                   {renderPlayerItem(currentUser, true)}
                 </>
               )}

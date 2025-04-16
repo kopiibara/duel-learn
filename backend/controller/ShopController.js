@@ -101,6 +101,9 @@ const shopController = {
                 const item = itemResult[0];
                 const itemPrice = item.item_price;
 
+                // Calculate total price based on quantity
+                const totalPrice = itemPrice * quantity;
+
                 // Check if user has enough coins
                 const [userResult] = await connection.query(
                     "SELECT coins FROM user_info WHERE firebase_uid = ?",

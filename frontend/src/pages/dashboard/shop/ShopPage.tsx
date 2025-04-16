@@ -415,7 +415,7 @@ const Shop = () => {
                 <div className="flex gap-2 mb-2 sm:mb-3 w-full">
                   {(ownedItems[item.item_code] || 0) > 0 && (
                     <button
-                      className="flex-1 border rounded-lg border-[#afafaf] text-white py-1.5 sm:py-2 text-sm sm:text-base hover:bg-[#544483]"
+                      className="flex-1 border rounded-lg border-[#afafaf]  py-1.5 sm:py-2 text-sm sm:text-base hover:bg-[#544483]"
                       onClick={() =>
                         handleUseItem(item.item_code, item.item_name)
                       }

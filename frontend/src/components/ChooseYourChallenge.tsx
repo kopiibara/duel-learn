@@ -42,9 +42,10 @@ const ModeCard = styled(Card)(({ theme }) => {
       transition: "transform 0.5s ease-in-out",
     },
     "&:hover": {
-      transform: "scale(1.03)",
+      transform: "translateY(-4px)",
+      boxShadow: "0 10px 20px rgba(0,0,0,0.12)", // Add shadow for lifting effect
       "& .cardMedia": {
-        transform: "scale(1.07)",
+        transform: "translateY(-4px)", // Scale and translate on hover
       },
     },
   };
@@ -207,12 +208,10 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         sx={{
           display: "grid",
           gridTemplateColumns: "1fr",
-          gap: "0.75rem", // Use rem for gap
-          mt: "1.5rem", // Use rem for margin top
-          paddingX: "0.5rem", // Use rem for horizontal padding
+          gap: "1rem", // Use rem for gap
           "@media (min-width: 768px)": {
             gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "1rem", // Use rem for horizontal gap in desktop
+            gap: "0.5rem", // Use rem for horizontal gap in desktop
           },
         }}
       >

@@ -435,7 +435,7 @@ const MyLibraryPage = () => {
     <PageTransition>
       <Box className="h-full w-full">
         <DocumentHead title="My Library | Duel Learn" />
-        <Stack spacing={2}>
+        <Stack spacing={1}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={{ xs: 1, sm: 1 }}
@@ -496,6 +496,9 @@ const MyLibraryPage = () => {
                         cursor: "pointer",
                         fontSize: { xs: "1rem", sm: "1.2rem" },
                         color: "#6F658D",
+                        "&:hover": {
+                          color: "#E2DDF3",
+                        },
                       }}
                     />
                   </Badge>
@@ -537,6 +540,7 @@ const MyLibraryPage = () => {
                 gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))",
                 gap: 2,
                 width: "100%",
+                mt: 1,
               }}
             >
               {[...Array(previousCardCount)].map((_, index) => (
@@ -584,7 +588,7 @@ const MyLibraryPage = () => {
                       sx={{
                         width: "100%",
                         mb: { xs: 1, sm: 2 },
-                        mt: { xs: 2, sm: 3 },
+                        mt: { xs: 1, sm: 2 },
                       }}
                     >
                       <Typography

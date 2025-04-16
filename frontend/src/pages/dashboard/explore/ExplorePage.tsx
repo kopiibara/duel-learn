@@ -585,7 +585,7 @@ const ExplorePage = () => {
                   xs: "repeat(auto-fill, minmax(250px, 1fr))",
                   sm: "repeat(auto-fill, minmax(290px, 1fr))",
                 },
-                gap: { xs: 1, sm: 2 },
+                gap: { xs: 1, sm: 1 },
               }}
             >
               {[...Array(Math.max(filteredCards.length || 3))].map(

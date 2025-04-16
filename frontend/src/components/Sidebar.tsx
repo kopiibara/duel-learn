@@ -293,7 +293,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       transition: "all 0.3s ease",
                       justifyContent: collapsed ? "center" : "flex-start",
                       alignItems: "center",
-                      padding: collapsed ? "0.75rem" : "0.75rem 1.2rem",
+                      padding: collapsed ? "0.75rem" : "0.5rem 1.2rem",
                       color: "#E2DDF3",
                       borderColor: "#080511",
                       borderWidth: "2px",

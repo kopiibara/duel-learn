@@ -509,7 +509,7 @@ const ProfileModal = ({
                           <img
                             src={friend.display_picture || defaultPicture}
                             alt={friend.username}
-                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
+                            className="w-10 h-10 sm:w-10 sm:h-10 rounded-lg object-cover"
                           />
                           <p className="text-[#E2DDF3] text-[0.7rem] sm:text-xs mt-1 text-center">
                             {friend.username}
@@ -522,7 +522,7 @@ const ProfileModal = ({
 
               {/* User's Study Materials */}
               <Stack spacing={2}>
-                <p className="text-[#9F9BAE] font-semibold text-[1.1rem] sm:text-[2.5vh]">
+                <p className="text-[#9F9BAE] font-semibold  sm:text-[1rem] lg:text-[1.2rem]">
                   Study Materials by {selectedUser.username}
                 </p>
 

@@ -6,21 +6,21 @@ import { useAudio } from "../../../../contexts/AudioContext"; // Import the useA
 import peacefulModeAsset from "/game-mode-selection/peaceful-mode.svg";
 import timePressuredModeAsset from "/game-mode-selection/time-pressured-mode.svg";
 import pvpModeAsset from "/game-mode-selection/pvp-mode.svg";
-import { PvPLobbyUser } from "../../../../services/pvpLobbyService";
+import DocumentHead from "../../../../components/DocumentHead";
 
 const WelcomeGameMode: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { 
-    mode, 
-    material, 
-    preSelectedMaterial, 
-    skipMaterialSelection, 
+  const {
+    mode,
+    material,
+    preSelectedMaterial,
+    skipMaterialSelection,
     lobbyCode,
     isJoining,
     role,
     selectedTypes,
-    friendToInvite
+    friendToInvite,
   } = location.state || {};
   const [fadeOut, setFadeOut] = useState(false);
   const [setupIsReady, setSetupIsReady] = useState(false);
@@ -28,16 +28,16 @@ const WelcomeGameMode: React.FC = () => {
   const [audioInitialized, setAudioInitialized] = useState(false);
 
   // Add console log to debug
-  console.log("WelcomeGameMode received state:", { 
-    mode, 
-    material, 
-    preSelectedMaterial, 
+  console.log("WelcomeGameMode received state:", {
+    mode,
+    material,
+    preSelectedMaterial,
     skipMaterialSelection,
     lobbyCode,
     isJoining,
     role,
     selectedTypes,
-    friendToInvite
+    friendToInvite,
   });
 
   // Use preSelectedMaterial if available, ensure it's never undefined
@@ -114,7 +114,7 @@ const WelcomeGameMode: React.FC = () => {
         setFadeOut(true);
         setTimeout(() => {
           // PVP Mode - Handle different roles
-          if ((mode === "PvP" || mode === "PvP Mode")) {
+          if (mode === "PvP" || mode === "PvP Mode") {
             if (isJoining) {
               // Guest user - Go directly to the lobby
               navigate(`/dashboard/pvp-lobby/${lobbyCode}`, {
@@ -124,8 +124,8 @@ const WelcomeGameMode: React.FC = () => {
                   lobbyCode,
                   isJoining: true,
                   isGuest: true,
-                  role: 'guest',
-                  fromWelcome: true
+                  role: "guest",
+                  fromWelcome: true,
                 },
               });
             } else {
@@ -137,10 +137,10 @@ const WelcomeGameMode: React.FC = () => {
                     mode,
                     material: selectedMaterial,
                     lobbyCode,
-                    role: 'host',
+                    role: "host",
                     fromWelcome: true,
                     isPvpLobbyCreation: true,
-                    friendToInvite
+                    friendToInvite,
                   },
                 });
               } else {
@@ -150,9 +150,9 @@ const WelcomeGameMode: React.FC = () => {
                     mode,
                     material: selectedMaterial,
                     lobbyCode,
-                    role: 'host',
+                    role: "host",
                     fromWelcome: true,
-                    isPvpLobbyCreation: true
+                    isPvpLobbyCreation: true,
                   },
                 });
               }
@@ -164,25 +164,34 @@ const WelcomeGameMode: React.FC = () => {
                 mode,
                 material: selectedMaterial,
                 fromWelcome: true,
-                skipMaterialSelection
+                skipMaterialSelection,
               },
             });
           }
         }, 1000);
       }, 1500); // 1.5 second delay
     }
-  }, [setupIsReady, navigate, mode, selectedMaterial, skipMaterialSelection, isJoining, lobbyCode, selectedTypes, role, friendToInvite]);
+  }, [
+    setupIsReady,
+    navigate,
+    mode,
+    selectedMaterial,
+    skipMaterialSelection,
+    isJoining,
+    lobbyCode,
+    selectedTypes,
+    role,
+    friendToInvite,
+  ]);
 
   // Update the welcome message based on the role
   const getWelcomeMessage = () => {
-    if ((mode === "Peaceful" || mode === "Peaceful Mode")) {
+    if (mode === "Peaceful" || mode === "Peaceful Mode") {
       return "Take your time, master at your own pace! ✨";
-    } 
-    else if ((mode === "Time Pressured" || mode === "Time Pressured Mode")) {
+    } else if (mode === "Time Pressured" || mode === "Time Pressured Mode") {
       return "Beat the clock, unleash your magical prowess! ⚡";
-    }
-    else if ((mode === "PvP" || mode === "PvP Mode")) {
-      if (role === 'guest' || isJoining) {
+    } else if (mode === "PvP" || mode === "PvP Mode") {
+      if (role === "guest" || isJoining) {
         return "Joining the battle arena as a guest! 🏆";
       } else {
         return "Creating a new magical battle arena! 🏆";
@@ -192,49 +201,56 @@ const WelcomeGameMode: React.FC = () => {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 1 }}
-      className="flex flex-col items-center justify-center h-screen text-center px-6 sm:px-8 md:px-12 lg:px-16"
-      style={{ opacity: fadeOut ? 0 : 1, transition: "opacity 1s ease-in-out" }}
-    >
-      {mode && (
-        <>
-          <motion.img
-            src={getModeAsset()}
-            alt={`${mode} Mode`}
-            className="w-60 sm:w-60 md:w-68 lg:w-64 xl:w-[382px] mb-6 sm:mb-8 md:mb-10 lg:mb-12"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 1, ease: "easeOut" }}
-          />
-          <motion.p
-            className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold"
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 1, delay: 0.3 }}
-          >
-            {mode} Mode Activated!
-          </motion.p>
-          <motion.p
-            className="text-sm sm:text-base md:text-lg lg:text-xl mt-16"
-            initial={{ y: 10, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ duration: 1, delay: 0.5 }}
-            style={{
-              color: "#6F658D",
-              maxWidth: "700px",
-              margin: "31px auto",
-              marginTop: "1.7rem",
-            }}
-          >
-            {getWelcomeMessage()}
-          </motion.p>
-        </>
-      )}
-    </motion.div>
+    <>
+      <DocumentHead title={` ${mode}  | Duel Learn`} />
+      {/* Background Animation */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 1 }}
+        className="flex flex-col items-center justify-center h-screen text-center px-6 sm:px-8 md:px-12 lg:px-16"
+        style={{
+          opacity: fadeOut ? 0 : 1,
+          transition: "opacity 1s ease-in-out",
+        }}
+      >
+        {mode && (
+          <>
+            <motion.img
+              src={getModeAsset()}
+              alt={`${mode} Mode`}
+              className="w-60 sm:w-60 md:w-68 lg:w-64 xl:w-[382px] mb-6 sm:mb-8 md:mb-10 lg:mb-12"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 1, ease: "easeOut" }}
+            />
+            <motion.p
+              className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold"
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 1, delay: 0.3 }}
+            >
+              {mode} Mode Activated!
+            </motion.p>
+            <motion.p
+              className="text-sm sm:text-base md:text-lg lg:text-xl mt-16"
+              initial={{ y: 10, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 1, delay: 0.5 }}
+              style={{
+                color: "#6F658D",
+                maxWidth: "700px",
+                margin: "31px auto",
+                marginTop: "1.7rem",
+              }}
+            >
+              {getWelcomeMessage()}
+            </motion.p>
+          </>
+        )}
+      </motion.div>
+    </>
   );
 };
 

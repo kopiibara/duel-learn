@@ -138,7 +138,7 @@ export default function SearchField() {
 
   return (
     <Box
-      className={`w-full max-w-[567px] min-w-[170px] transition-all duration-200 ease-in ${
+      className={`w-full max-w-[567px] transition-all duration-200 ease-in ${
         isMobile && isExpanded
           ? "absolute top-0 left-0 right-0 z-50 p-2 bg-[#080511] transition-all duration-200 ease-in  h-full flex items-center"
           : ""
@@ -156,7 +156,7 @@ export default function SearchField() {
           onFocus={() => setIsFocused(true)}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className="peer w-full h-[48px] pl-10 pr-10 text-[18px] bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#6F658D] placeholder-transparent sm:max-w-full [&::-webkit-search-cancel-button]:appearance-none text-ellipsis"
+          className="peer w-full h-[48px] pl-10 pr-10 text-[16px] bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#6F658D] placeholder-transparent sm:max-w-full [&::-webkit-search-cancel-button]:appearance-none text-ellipsis"
           placeholder="Search input"
           style={{
             width: "100%",
@@ -164,7 +164,7 @@ export default function SearchField() {
               ? "100%"
               : inputValue
               ? `${Math.min(inputValue.length * 10 + 80, 567)}px`
-              : "170px",
+              : "200px",
             transition: isMobile ? "none" : "min-width 0.2s ease",
             overflow: "hidden",
             textOverflow: "ellipsis",

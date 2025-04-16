@@ -19,7 +19,7 @@ const ViewStudyMaterial = () => {
   const { user } = useUser();
   const { studyMaterialId } = useParams();
   const navigate = useNavigate();
-  const [selected, setSelected] = useState("Summary");
+  const [selected, setSelected] = useState("Overview");
   const [studyMaterial, setStudyMaterial] = useState<StudyMaterial | null>(
     null
   );
@@ -471,9 +471,9 @@ const ViewStudyMaterial = () => {
               direction="row"
               spacing={1}
               className="flex items-center"
-              sx={{ overflowX: "auto", pb: 1 }}
+              sx={{ overflowX: "auto", p: 1 }}
             >
-              {["Summary", "Cards"].map((label) => (
+              {["Overview", "Cards"].map((label) => (
                 <Button
                   key={label}
                   variant="text"
@@ -498,7 +498,7 @@ const ViewStudyMaterial = () => {
               ))}
             </Stack>
             <Box sx={{ width: "100%" }}>
-              {selected === "Summary" ? (
+              {selected === "Overview" ? (
                 <SummaryPage studyMaterial={studyMaterial} />
               ) : (
                 <CardPage studyMaterial={studyMaterial} />

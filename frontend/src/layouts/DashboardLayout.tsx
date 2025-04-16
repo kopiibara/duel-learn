@@ -23,7 +23,7 @@ const DashboardLayout = () => {
   };
 
   return (
-    <Box className="custom-scrollbar h-screen px-8 flex flex-col lg:flex-row w-screen overflow-x-hidden ">
+    <Box className="custom-scrollbar h-screen px-8 flex flex-col lg:flex-row w-screen overflow-x-hidden overflow-y-auto ">
       {/* BattleInvitationCenter - will only show in dashboard routes */}
       <BattleInvitationCenter />
 
@@ -40,7 +40,7 @@ const DashboardLayout = () => {
       {/* Main Section */}
       <Box className="flex-1 flex flex-col relative">
         {/* Header - Fixed at the top */}
-        <header className="w-full sticky top-0 md:pr-10 pb-2 z-[100] bg-[#080511]">
+        <header className="w-full sticky top-0 md:pr-2 lg:pr-10 pb-2  z-[100] bg-[#080511]">
           <Header />
         </header>
 

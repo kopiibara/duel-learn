@@ -28,11 +28,13 @@ interface HeaderProps {
 
 const commonDialogStyle = {
   "& .MuiDialog-paper": {
-    backgroundColor: "#080511",
+    backgroundColor: "#120F1B",
     paddingY: "30px",
     paddingX: "20px",
     paddingRight: "20px",
-    borderRadius: "10px",
+    borderRadius: "0.8rem",
+    bgcolor: "#120F1B",
+    border: "2px solid #3B354D",
   },
 };
 
@@ -189,7 +191,7 @@ export default function Header({
           </p>
         </DialogContent>
         <DialogActions
-          className="bg-[#080511] pl-1 justify-center"
+          className="pl-1 justify-center"
           sx={{ padding: "0 24px 32px 24px", gap: 3 }}
         >
           <Button
@@ -233,7 +235,7 @@ export default function Header({
             you wish to proceed.
           </p>
         </DialogContent>
-        <DialogActions className="bg-[#080511]" sx={{ padding: "16px 24px" }}>
+        <DialogActions sx={{ padding: "16px 24px" }}>
           <Button
             onClick={() => setOpenLeaveConfirmDialog(false)}
             sx={commonButtonStyles.cancelButton}
@@ -263,7 +265,7 @@ export default function Header({
             still be recorded. Do you want to continue?
           </p>
         </DialogContent>
-        <DialogActions className="bg-[#080511]" sx={{ padding: "16px 24px" }}>
+        <DialogActions sx={{ padding: "16px 24px" }}>
           <Button
             onClick={() => setOpenEndGameDialog(false)}
             sx={commonButtonStyles.cancelButton}

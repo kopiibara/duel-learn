@@ -119,7 +119,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
               src={friend.display_picture || defaultPicture}
               onClick={() => handleViewProfile(friend.firebase_uid)}
               alt="Avatar"
-              className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-3 rounded-[5px] hover:scale-110 transition-all duration-300"
+              className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-3 rounded-[5px] hover:scale-105 transition-all duration-300 ease-in-out"
             />
             {/* Status indicator positioned to overlap the image corner */}
             <Tooltip title={text} placement="top" arrow>

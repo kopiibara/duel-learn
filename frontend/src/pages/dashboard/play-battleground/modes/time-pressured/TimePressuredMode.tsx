@@ -10,6 +10,7 @@ import { nanoid } from "nanoid";
 import { useUser } from "../../../../../contexts/UserContext";
 import { useNavigate } from "react-router-dom";
 import { GeneralLoadingScreen } from "../../../../../components/LoadingScreen";
+import DocumentHead from "../../../../../components/DocumentHead";
 
 interface TimePressuredModeProps {
   mode: string;
@@ -557,6 +558,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     return (
       <GeneralLoadingScreen
         text="Generating Questions"
+        mode="Time Pressured Mode"
         isLoading={isGeneratingAI}
       />
     );
@@ -564,7 +566,13 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 
   // Show loading screen if we don't have questions yet
   if (aiQuestions.length === 0) {
-    return <GeneralLoadingScreen text="Preparing Challenge" isLoading={true} />;
+    return (
+      <GeneralLoadingScreen
+        text="Preparing Challenge"
+        mode="Time Pressured Mode"
+        isLoading={true}
+      />
+    );
   }
 
   const renderQuestionContent = () => {
@@ -834,60 +842,65 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   };
 
   return (
-    <div className={`min-h-screen relative ${getBorderClass()}`}>
-      {renderVignette()}
-      <div className={`relative ${getLowHealthEffects()}`}>
-        <Header
-          material={material}
-          mode={mode}
-          correct={correctCount}
-          incorrect={incorrectCount}
-          startTime={startTime}
-          highestStreak={highestStreak}
-          masteredCount={masteredCount}
-          unmasteredCount={unmasteredCount}
-          onEndGame={handleEndGame}
-        />
-        <main className="pt-24 px-4">
-          <div className="mx-auto max-w-[1200px] flex flex-col items-center gap-8 h-[calc(100vh-96px)] justify-center">
-            <div
-              className={`w-[1200px] flex flex-col items-center gap-8 ${getHeartbeatClass()}`}
-            >
-              <FlashCard
-                question={currentQuestion?.question || ""}
-                correctAnswer={currentQuestion?.correctAnswer || ""}
-                isFlipped={isFlipped}
-                onFlip={handleFlip}
-                onReveal={handleRevealAnswer}
-                timeRemaining={questionTimer}
-                type={currentQuestion?.type}
-                disabled={cardDisabled}
-                image={currentQuestion?.itemInfo?.image || null}
-                currentQuestion={currentQuestion}
-              />
-            </div>
-            {renderQuestionContent()}
-            {showResult && (
-              <div className="flex justify-center mt-6">
-                <button
-                  onClick={handleNextQuestion}
-                  className="px-6 py-2 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
-                >
-                  Next Question
-                </button>
+    <>
+      <DocumentHead
+        title={`${material.title} - Time Pressured Mode | Duel Learn`}
+      />
+      <div className={`min-h-screen relative ${getBorderClass()}`}>
+        {renderVignette()}
+        <div className={`relative ${getLowHealthEffects()}`}>
+          <Header
+            material={material}
+            mode={mode}
+            correct={correctCount}
+            incorrect={incorrectCount}
+            startTime={startTime}
+            highestStreak={highestStreak}
+            masteredCount={masteredCount}
+            unmasteredCount={unmasteredCount}
+            onEndGame={handleEndGame}
+          />
+          <main className="pt-24 px-4">
+            <div className="mx-auto max-w-[1200px] flex flex-col items-center gap-8 h-[calc(100vh-96px)] justify-center">
+              <div
+                className={`w-[1200px] flex flex-col items-center gap-8 ${getHeartbeatClass()}`}
+              >
+                <FlashCard
+                  question={currentQuestion?.question || ""}
+                  correctAnswer={currentQuestion?.correctAnswer || ""}
+                  isFlipped={isFlipped}
+                  onFlip={handleFlip}
+                  onReveal={handleRevealAnswer}
+                  timeRemaining={questionTimer}
+                  type={currentQuestion?.type}
+                  disabled={cardDisabled}
+                  image={currentQuestion?.itemInfo?.image || null}
+                  currentQuestion={currentQuestion}
+                />
               </div>
-            )}
-          </div>
-        </main>
-        <Timer
-          timeRemaining={questionTimer}
-          progress={timerProgress}
-          timeLimit={timeLimit ?? 30}
-          currentStreak={currentStreak}
-          highestStreak={highestStreak}
-        />
+              {renderQuestionContent()}
+              {showResult && (
+                <div className="flex justify-center mt-6">
+                  <button
+                    onClick={handleNextQuestion}
+                    className="px-6 py-2 bg-[#4D18E8] text-white rounded-lg hover:bg-[#3A12B0] transition-colors"
+                  >
+                    Next Question
+                  </button>
+                </div>
+              )}
+            </div>
+          </main>
+          <Timer
+            timeRemaining={questionTimer}
+            progress={timerProgress}
+            timeLimit={timeLimit ?? 30}
+            currentStreak={currentStreak}
+            highestStreak={highestStreak}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

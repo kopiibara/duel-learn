@@ -9,9 +9,8 @@ import CheckIcon from "@mui/icons-material/Check";
 import CloseIcon from "@mui/icons-material/Close";
 import PageTransition from "../../../../../styles/PageTransition";
 import { useUser } from "../../../../../contexts/UserContext";
-import { generateLobbyCode } from "../../../../../services/pvpLobbyService";
 import { usePvPLobby } from "../../../../../hooks/usePvPLobby";
-import axios from "axios";
+import DocumentHead from "../../../../../components/DocumentHead";
 
 const SetUpQuestionType: React.FC = () => {
   // Move all hooks to the top before any conditional logic
@@ -205,6 +204,9 @@ const SetUpQuestionType: React.FC = () => {
 
   return (
     <PageTransition>
+      <DocumentHead title="Set Up Question Type | Duel Learn" />
+
+      {/* Full-Width Background */}
       <div className="relative h-screen text-white px-6 py-8 overflow-hidden overflow-y-hidden">
         {/* Full-Width Fixed Header */}
         <div className="absolute top-0 left-0 w-full sm:px-8 md:px-16 lg:px-32 px-12 mt-5 py-12 flex justify-between items-center">

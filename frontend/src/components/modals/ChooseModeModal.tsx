@@ -14,7 +14,11 @@ import SelectStudyMaterialModal from "./SelectStudyMaterialModal"; // Assuming i
 import PvPOptionsModal from "./PvPOptionsModal"; // Add this import
 import { useAudio } from "../../contexts/AudioContext";
 import { useNavigate } from "react-router-dom";
-import { createNewLobby, joinExistingLobby, navigateToWelcomeScreen } from "../../services/pvpLobbyService";
+import {
+  createNewLobby,
+  joinExistingLobby,
+  navigateToWelcomeScreen,
+} from "../../services/pvpLobbyService";
 
 // Add modeToTypesMap
 const modeToTypesMap = {
@@ -42,11 +46,11 @@ interface ButtonData {
   textColor: string;
 }
 
-const ChooseModeModal: React.FC<CustomModalProps> = ({ 
-  open, 
+const ChooseModeModal: React.FC<CustomModalProps> = ({
+  open,
   handleClose,
   preSelectedMaterial,
-  onModeSelect 
+  onModeSelect,
 }) => {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [modalOpen, setModalOpen] = useState<boolean>(false);
@@ -151,7 +155,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
   // Back navigation from Study Material modal
   const handleStudyMaterialBack = () => {
     setModalOpen(false);
-    
+
     // If we came from PvP options, go back there
     if (selectedMode === "PvP Mode") {
       setPvpOptionsOpen(true);
@@ -163,17 +167,17 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
 
   const handleMaterialSelect = (material: any) => {
     setModalOpen(false);
-    
+
     if (selectedMode && onModeSelect) {
       onModeSelect(selectedMode);
     }
-    
+
     // If PVP mode, use the lobby service
     if (selectedMode === "PvP Mode" || selectedMode === "PvP") {
       const lobbyState = createNewLobby(selectedMode, material);
       navigateToWelcomeScreen(navigate, lobbyState);
     }
-    
+
     handleClose();
   };
 
@@ -193,7 +197,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
   // Handler for joining an existing lobby
   const handleJoinLobby = (lobbyCode: string) => {
     setPvpOptionsOpen(false);
-    
+
     // Use the lobby service
     const lobbyState = joinExistingLobby(lobbyCode, selectedMode || "PvP Mode");
     navigateToWelcomeScreen(navigate, lobbyState);
@@ -230,8 +234,6 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
               flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              padding: { xs: "20px", sm: "40px" },
-              paddingY: { xs: "60px", sm: "40px" },
             }}
           >
             {/* Close button */}
@@ -287,7 +289,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
             {/* Buttons */}
             <Stack
               direction={{ xs: "column", sm: "row" }}
-              spacing={3}
+              spacing={1.5}
               justifyContent="center"
               alignItems="center"
             >

@@ -115,14 +115,14 @@ const YourPickedTopics = () => {
         alignItems: "center",
         height: "auto",
         overflow: "hidden",
-        paddingY: "1rem",
+        paddingTop: "1rem",
       }}
     >
       {isLoading ? (
         <Box
           sx={{
             display: "flex",
-            gap: 2,
+            gap: 1,
             width: "100%",
             justifyContent: "center",
           }}
@@ -177,7 +177,9 @@ const YourPickedTopics = () => {
               key={index}
               sx={{
                 flex: `0 0 ${cardWidth}%`,
-                padding: "0 0.4vw",
+                paddingRight: "0.5rem", // Add padding around each card
+                display: "flex",
+                justifyContent: "center", // Center the card horizontally
               }}
             >
               <CardComponent

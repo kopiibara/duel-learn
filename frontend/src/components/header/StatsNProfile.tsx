@@ -102,7 +102,7 @@ const StatsNProfile = () => {
             },
           }}
         >
-          <div className="flex items-center space-x-2 mr-4">
+          <div className="flex items-center space-x-2">
             <img src={PremiumLabel} alt="" className="w-5 h-auto" />
           </div>
         </Tooltip>
