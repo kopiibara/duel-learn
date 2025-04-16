@@ -270,7 +270,7 @@ const SearchController = {
                         created_by, created_by_id, total_views, created_at,
                         status, visibility  
                  FROM study_material_info 
-                 WHERE created_by = ? AND status = 'active'
+                 WHERE created_by = ? AND status = 'active' AND visibility = 1
                  ORDER BY created_at DESC`,
                 [username]
             );

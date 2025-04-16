@@ -244,7 +244,11 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
                 position: "absolute",
                 top: 16,
                 right: 16,
-                color: "#FFFFFF",
+                color: "#6F658D",
+                transition: "color 0.3s ease-in-out",
+                "&:hover": {
+                  color: "#E2DDF3",
+                },
               }}
             >
               <CloseIcon />
@@ -319,7 +323,9 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
                     textAlign: "center",
                     cursor: "pointer",
                     transform:
-                      hoveredIndex === index ? "scale(1.03)" : "scale(1)",
+                      hoveredIndex === index
+                        ? "translateY(-4px)"
+                        : "translateY(0)",
                     "&:hover": {
                       backgroundColor: button.hoverBackground,
                     },

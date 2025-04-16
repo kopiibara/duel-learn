@@ -9,6 +9,7 @@ import { useUser } from "../../contexts/UserContext";
 import { UserInfo } from "../../types/userInfoObject";
 import { StudyMaterial } from "../../types/studyMaterialObject";
 import { useNavigate } from "react-router-dom";
+import noFriend from "/images/NoFriend.svg";
 
 // Add types for friendship data (same as in SearchPage)
 interface MutualFriend {
@@ -522,7 +523,7 @@ const ProfileModal = ({
 
               {/* User's Study Materials */}
               <Stack spacing={2}>
-                <p className="text-[#9F9BAE] font-semibold  sm:text-[1rem] lg:text-[1.2rem]">
+                <p className="text-[#E2DDF3] font-semibold  sm:text-[1rem] lg:text-[1.2rem]">
                   Study Materials by {selectedUser.username}
                 </p>
 
@@ -557,9 +558,16 @@ const ProfileModal = ({
                     ))}
                   </div>
                 ) : (
-                  <p className="py-3 text-center text-[#9F9BAE]">
-                    No study materials found for this user
-                  </p>
+                  <div className="flex flex-col items-center justify-center w-full h-full py-4">
+                    <img
+                      src={noFriend}
+                      alt="noFriend"
+                      style={{ width: "10rem", height: "auto", opacity: 0.75 }}
+                    />
+                    <p className="py-3 text-center text-sm text-[#9F9BAE]">
+                      No study materials found for this user
+                    </p>
+                  </div>
                 )}
               </Stack>
             </Stack>

@@ -54,7 +54,7 @@ export const GeneralLoadingScreen: React.FC<LoadingScreenProps> = ({
 
   return (
     <>
-      <DocumentHead title={`${mode} | Duel Learn`} />
+      <DocumentHead title={mode ? `${mode} | Duel Learn` : "Duel Learn"} />
       <PageTransition>
         <main
           className="flex overflow-hidden flex-col justify-center items-center min-h-screen px-10 py-28 max-md:px-2 max-md:py-12"

@@ -8,6 +8,7 @@ import PageTransition from "../../styles/PageTransition";
 import { useAudio } from "../../contexts/AudioContext"; // Import the useAudio hook
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
+import DocumentHead from "../../components/DocumentHead";
 
 export default function TutorialTwo() {
   useWandCursor();
@@ -60,6 +61,7 @@ export default function TutorialTwo() {
 
   return (
     <PageTransition>
+      <DocumentHead title="Tutorial | Duel Learn" />
       <main
         className="relative flex flex-col items-center px-20 py-20 text-white h-screen bg-[#080511] overflow-hidden cursor-none"
         role="main"

@@ -8,6 +8,7 @@ import PageTransition from "../../styles/PageTransition";
 import { useAudio } from "../../contexts/AudioContext"; // Import the useAudio hook
 import VolumeUpIcon from "@mui/icons-material/VolumeUp";
 import VolumeOffIcon from "@mui/icons-material/VolumeOff";
+import DocumentHead from "../../components/DocumentHead";
 
 const WelcomePage = () => {
   const [fadeIn, setFadeIn] = useState(false);
@@ -107,62 +108,65 @@ const WelcomePage = () => {
   }, [handleNavigate]);
 
   return (
-    <PageTransition>
-      <div
-        className="flex flex-col items-center justify-center h-screen bg-[#080511] relative overflow-hidden cursor-none"
-        onClick={handleNavigate}
-      >
-        <div className="absolute top-4 right-4 z-50 pointer-events-none">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleMute();
-            }}
-            className="text-white hover:text-gray-300 transition-colors pointer-events-auto"
-            aria-label={isMuted ? "Unmute" : "Mute"}
-          >
-            {isMuted ? (
-              <VolumeOffIcon style={{ height: 23, width: 23 }} />
-            ) : (
-              <VolumeUpIcon style={{ height: 23, width: 23 }} />
-            )}
-          </button>
-        </div>
-        {/* Animated Background Glow */}
-        <div className="absolute w-[500px] h-[500px] bg-[#6B21A8] blur-[250px] rounded-full opacity-40 animate-pulse"></div>
-
-        {/* Welcome Photo as Background */}
+    <>
+      <DocumentHead title="Welcome | Duel Learn" />
+      <PageTransition>
         <div
-          className="relative mt-30 z-10 w-96 h-96 rounded bg-center"
-          style={{
-            backgroundImage: `url(${WelcomePhoto})`,
-            backgroundSize: "contain", // Ensure the image fits without cropping
-            backgroundRepeat: "no-repeat", // Prevents repeating the image
-            backgroundPosition: "center", // Keeps the image centered
-          }}
-        ></div>
-
-        {/* Welcome Text */}
-        <p
-          className={`text-[24px] mt-14 text-white transition-opacity duration-1000 ${
-            fadeIn ? "opacity-100" : "opacity-0"
-          }`}
+          className="flex flex-col items-center justify-center h-screen bg-[#080511] relative overflow-hidden cursor-none"
+          onClick={handleNavigate}
         >
-          You've finally made it here,{" "}
-          <span className="font-bold">{user?.username}</span>!
-        </p>
+          <div className="absolute top-4 right-4 z-50 pointer-events-none">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleMute();
+              }}
+              className="text-white hover:text-gray-300 transition-colors pointer-events-auto"
+              aria-label={isMuted ? "Unmute" : "Mute"}
+            >
+              {isMuted ? (
+                <VolumeOffIcon style={{ height: 23, width: 23 }} />
+              ) : (
+                <VolumeUpIcon style={{ height: 23, width: 23 }} />
+              )}
+            </button>
+          </div>
+          {/* Animated Background Glow */}
+          <div className="absolute w-[500px] h-[500px] bg-[#6B21A8] blur-[250px] rounded-full opacity-40 animate-pulse"></div>
 
-        {/* Click to Continue Text */}
-        <p
-          className={`text-[18px] mt-20 text-[#3B354D] transition-opacity duration-1000 ${
-            fadeIn ? "opacity-100" : "opacity-0"
-          }`}
-          style={{ animation: "fadeInOut 3s infinite" }}
-        >
-          Tap anywhere on the screen or press any key to continue
-        </p>
-      </div>
-    </PageTransition>
+          {/* Welcome Photo as Background */}
+          <div
+            className="relative mt-30 z-10 w-96 h-96 rounded bg-center"
+            style={{
+              backgroundImage: `url(${WelcomePhoto})`,
+              backgroundSize: "contain", // Ensure the image fits without cropping
+              backgroundRepeat: "no-repeat", // Prevents repeating the image
+              backgroundPosition: "center", // Keeps the image centered
+            }}
+          ></div>
+
+          {/* Welcome Text */}
+          <p
+            className={`text-[24px] mt-14 text-white transition-opacity duration-1000 ${
+              fadeIn ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            You've finally made it here,{" "}
+            <span className="font-bold">{user?.username}</span>!
+          </p>
+
+          {/* Click to Continue Text */}
+          <p
+            className={`text-[18px] mt-20 text-[#3B354D] transition-opacity duration-1000 ${
+              fadeIn ? "opacity-100" : "opacity-0"
+            }`}
+            style={{ animation: "fadeInOut 3s infinite" }}
+          >
+            Tap anywhere on the screen or press any key to continue
+          </p>
+        </div>
+      </PageTransition>
+    </>
   );
 };
 

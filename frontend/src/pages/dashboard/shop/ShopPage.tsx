@@ -405,17 +405,17 @@ const Shop = () => {
                     )}`}
                   />
                 </div>
-                <h2 className="text-base sm:text-lg font-bold mb-1 sm:mb-2">
+                <h2 className="text-base sm:text-lg font-bold mb-1 sm:mb-1">
                   {item.item_name}
                 </h2>
-                <p className="text-xs sm:text-sm text-gray-400 mb-3 sm:mb-4 text-center">
+                <p className=" sm:text-sm text-[#9F9BAE] mb-6  sm:mb-6 text-center">
                   {item.item_description}
                 </p>
                 <div className="flex-grow"></div>
                 <div className="flex gap-2 mb-2 sm:mb-3 w-full">
                   {(ownedItems[item.item_code] || 0) > 0 && (
                     <button
-                      className="flex-1 border rounded-lg border-[#afafaf]  py-1.5 sm:py-2 text-sm sm:text-base hover:bg-[#544483]"
+                      className="flex-1 border-2 rounded-[0.8rem] border-[#afafaf]  py-1.5 sm:py-2 text-sm font-bold sm:text-base hover:bg-[#381898] hover:border-[#381898] transition-all duration-300 ease-in-out"
                       onClick={() =>
                         handleUseItem(item.item_code, item.item_name)
                       }
@@ -425,7 +425,7 @@ const Shop = () => {
                   )}
                   {(ownedItems[item.item_code] || 0) < 5 && (
                     <button
-                      className="flex-1 border rounded-lg border-[#afafaf] text-black py-1.5 sm:py-2 bg-white flex items-center justify-center hover:bg-[#e0e0e0] text-sm sm:text-base"
+                      className="flex-1 border rounded-[0.8rem] border-[#E2DDF3] text-[#3B354D]  py-1.5 sm:py-2 bg-[#E2DDF3] flex items-center justify-center hover:bg-[#381898] hover:border-[#381898] hover:text-[#E2DDF3] text-sm sm:text-base transition-all duration-300 ease-in-out"
                       onClick={() => openModal(item)}
                     >
                       <span>Buy for </span>

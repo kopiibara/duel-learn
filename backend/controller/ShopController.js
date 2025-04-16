@@ -210,7 +210,8 @@ const shopController = {
     },
 
     useUserTechPass: async (req, res) => {
-        const { firebase_uid } = req.params;
+        const { firebase_uid, techPassCount } = req.params;
+        const passesToDeduct = parseInt(techPassCount) || 1; // Default to 1 if not provided
 
         try {
             // First check if user is premium
@@ -233,18 +234,11 @@ const shopController = {
                 });
             }
 
-            // For non-premium users, verify they have tech passes
-            if (userInfo[0].tech_pass < 1) {
-                return res.status(400).json({ message: "You don't have any Tech Passes!" });
-            }
-
-            const [rows2] = await pool.query(
-                "SELECT * FROM user_items WHERE firebase_uid = ? AND item_code = 'ITEM002TP'",
-                [firebase_uid]
-            );
-
-            if (rows2.length === 0) {
-                return res.status(400).json({ message: "You don't have any Tech Passes!" });
+            // For non-premium users, verify they have enough tech passes
+            if (userInfo[0].tech_pass < passesToDeduct) {
+                return res.status(400).json({
+                    message: `You need ${passesToDeduct} Tech Passes but only have ${userInfo[0].tech_pass}!`
+                });
             }
 
             // Process tech pass usage for non-premium users
@@ -252,15 +246,40 @@ const shopController = {
             await connection.beginTransaction();
 
             try {
+                // Always update the tech_pass count in user_info table
                 await connection.query(
-                    "UPDATE user_info SET tech_pass = tech_pass - 1 WHERE firebase_uid = ?",
+                    "UPDATE user_info SET tech_pass = tech_pass - ? WHERE firebase_uid = ?",
+                    [passesToDeduct, firebase_uid]
+                );
+
+                // Check if user has the tech pass item in their inventory
+                const [userItemResult] = await connection.query(
+                    "SELECT quantity FROM user_items WHERE firebase_uid = ? AND item_code = 'ITEM002TP'",
                     [firebase_uid]
                 );
 
-                await connection.query(
-                    "UPDATE user_items SET quantity = quantity - 1 WHERE firebase_uid = ? AND item_code = 'ITEM002TP'",
+                // Only update user_items if the user has the item in their inventory
+                if (userItemResult.length > 0) {
+                    if (userItemResult[0].quantity >= passesToDeduct) {
+                        // If quantity is greater than what we're deducting, update it
+                        await connection.query(
+                            "UPDATE user_items SET quantity = quantity - ? WHERE firebase_uid = ? AND item_code = 'ITEM002TP'",
+                            [passesToDeduct, firebase_uid]
+                        );
+                    } else if (userItemResult[0].quantity > 0) {
+                        // If quantity is less than what we're deducting but greater than 0, set to 0
+                        await connection.query(
+                            "UPDATE user_items SET quantity = 0 WHERE firebase_uid = ? AND item_code = 'ITEM002TP'",
+                            [firebase_uid]
+                        );
+                    }
+                    // If quantity is 0, no need to update
+                }
+                const [updatedUserInfo] = await connection.query(
+                    "SELECT tech_pass FROM user_info WHERE firebase_uid = ?",
                     [firebase_uid]
                 );
+
 
                 await connection.commit();
                 connection.release();
@@ -269,8 +288,11 @@ const shopController = {
                 invalidateShopCaches(firebase_uid);
 
                 res.json({
-                    message: "Tech Pass used successfully!",
-                    isPremium: false
+                    message: `${passesToDeduct} Tech Pass(es) used successfully!`,
+                    isPremium: false,
+                    techPassesUsed: passesToDeduct,
+                    updatedTechPassCount: updatedUserInfo[0].tech_pass  // Add this
+
                 });
             } catch (error) {
                 await connection.rollback();

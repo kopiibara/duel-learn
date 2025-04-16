@@ -49,13 +49,6 @@ import {
 } from "@dnd-kit/sortable";
 import { SortableItem } from "../types/SortableItem";
 import { topics } from "../../../user-onboarding/data/topics";
-import Autocomplete from "@mui/material/Autocomplete";
-
-// Add this interface for term-definition pairs
-interface TermDefinitionPair {
-  term: string;
-  definition: string;
-}
 
 // Add constant for maximum tags
 const MAX_TAGS = 5;
@@ -65,7 +58,7 @@ const MAX_TERM_LENGTH = 50;
 const MAX_DEFINITION_LENGTH = 500;
 const MAX_IMAGE_SIZE_MB = 10;
 const MAX_TOTAL_PAYLOAD_MB = 50;
-const MIN_REQUIRED_ITEMS = 1;
+const MIN_REQUIRED_ITEMS = 10;
 
 // Add this helper function to check file size
 const getFileSizeInMB = (base64String: string): number => {
@@ -358,8 +351,13 @@ const CreateStudyMaterial = () => {
       return;
     }
 
-    if (!title.trim() || items.length === 0) {
-      handleShowSnackbar("Title and at least one item are required.");
+    if (!title.trim()) {
+      handleShowSnackbar("Title is required.");
+      return;
+    }
+
+    if (items.length === 0) {
+      handleShowSnackbar("At least one item is required.");
       return;
     }
 
@@ -619,29 +617,37 @@ const CreateStudyMaterial = () => {
 
     if (newFiles.length > 0) {
       // Check if we're mixing PDFs with images
-      const hasPDF = newFiles.some(file => file.type === "application/pdf");
-      const hasImages = newFiles.some(file => 
-        file.type === "image/jpeg" || 
-        file.type === "image/jpg" || 
-        file.type === "image/png"
+      const hasPDF = newFiles.some((file) => file.type === "application/pdf");
+      const hasImages = newFiles.some(
+        (file) =>
+          file.type === "image/jpeg" ||
+          file.type === "image/jpg" ||
+          file.type === "image/png"
       );
 
       if (hasPDF && hasImages) {
-        handleShowSnackbar("Cannot mix PDF and image files. Please upload either PDFs or images only.");
+        handleShowSnackbar(
+          "Cannot mix PDF and image files. Please upload either PDFs or images only."
+        );
         return;
       }
 
       // Check if we already have files and their types
-      const existingHasPDF = uploadedFiles.some(file => file.type === "application/pdf");
-      const existingHasImages = uploadedFiles.some(file => 
-        file.type === "image/jpeg" || 
-        file.type === "image/jpg" || 
-        file.type === "image/png"
+      const existingHasPDF = uploadedFiles.some(
+        (file) => file.type === "application/pdf"
+      );
+      const existingHasImages = uploadedFiles.some(
+        (file) =>
+          file.type === "image/jpeg" ||
+          file.type === "image/jpg" ||
+          file.type === "image/png"
       );
 
       // Check if we're trying to mix with existing files
       if ((hasPDF && existingHasImages) || (hasImages && existingHasPDF)) {
-        handleShowSnackbar("Cannot mix PDF and image files. Please upload either PDFs or images only.");
+        handleShowSnackbar(
+          "Cannot mix PDF and image files. Please upload either PDFs or images only."
+        );
         return;
       }
 
@@ -682,19 +688,25 @@ const CreateStudyMaterial = () => {
       });
 
       // Count existing files by type
-      const existingPDFCount = uploadedFiles.filter(file => file.type === "application/pdf").length;
-      const existingImageCount = uploadedFiles.filter(file => 
-        file.type === "image/jpeg" || 
-        file.type === "image/jpg" || 
-        file.type === "image/png"
+      const existingPDFCount = uploadedFiles.filter(
+        (file) => file.type === "application/pdf"
+      ).length;
+      const existingImageCount = uploadedFiles.filter(
+        (file) =>
+          file.type === "image/jpeg" ||
+          file.type === "image/jpg" ||
+          file.type === "image/png"
       ).length;
 
       // Count new files by type
-      const newPDFCount = validFiles.filter(file => file.type === "application/pdf").length;
-      const newImageCount = validFiles.filter(file => 
-        file.type === "image/jpeg" || 
-        file.type === "image/jpg" || 
-        file.type === "image/png"
+      const newPDFCount = validFiles.filter(
+        (file) => file.type === "application/pdf"
+      ).length;
+      const newImageCount = validFiles.filter(
+        (file) =>
+          file.type === "image/jpeg" ||
+          file.type === "image/jpg" ||
+          file.type === "image/png"
       ).length;
 
       // Check PDF limit
@@ -736,10 +748,10 @@ const CreateStudyMaterial = () => {
       for (let i = 0; i < uploadedFiles.length; i++) {
         const file = uploadedFiles[i];
         const progressPerFile = 90 / uploadedFiles.length;
-        const startProgress = (i * progressPerFile) + 10;
+        const startProgress = i * progressPerFile + 10;
 
         // Update progress and status
-      handleShowSnackbar(
+        handleShowSnackbar(
           `Processing file ${i + 1} of ${uploadedFiles.length}...`
         );
         setUploadProgress(startProgress);
@@ -749,35 +761,45 @@ const CreateStudyMaterial = () => {
         formData.append("files", file);
 
         // Step 1: Extract text with OCR
-      const ocrResponse = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-multiple`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      if (!ocrResponse.ok) {
-        const errorData = await ocrResponse.json().catch(() => ({}));
-        console.error("OCR error response:", errorData);
-        throw new Error(
-          errorData.details || `OCR service error: ${ocrResponse.status}`
+        const ocrResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-multiple`,
+          {
+            method: "POST",
+            body: formData,
+          }
         );
-      }
 
-      const ocrData = await ocrResponse.json();
-        setUploadProgress(startProgress + (progressPerFile * 0.4));
+        if (!ocrResponse.ok) {
+          const errorData = await ocrResponse.json().catch(() => ({}));
+          console.error("OCR error response:", errorData);
+          throw new Error(
+            errorData.details || `OCR service error: ${ocrResponse.status}`
+          );
+        }
+
+        const ocrData = await ocrResponse.json();
+        setUploadProgress(startProgress + progressPerFile * 0.4);
 
         // Check if this is a PDF with more than 5 pages
         if (file.type === "application/pdf" && ocrData.totalPdfPages > 5) {
           setPdfPageCount(ocrData.totalPdfPages);
-          setPendingPdf(file);
-          setPdfConfirmationOpen(true);
-          setIsProcessing(false);
-          return; // Wait for user confirmation
+
+          // For premium users, continue processing without confirmation
+          if (isPremium) {
+            console.log(
+              "Premium user - processing large PDF without confirmation"
+            );
+            // Continue with processing - no dialog or early return
+          } else {
+            // Non-premium users still need to show dialog and wait for confirmation
+            setPendingPdf(file);
+            setPdfConfirmationOpen(true);
+            setIsProcessing(false);
+            return; // Only return early for non-premium users
+          }
         }
 
-      if (!ocrData.text || ocrData.text.trim() === "") {
+        if (!ocrData.text || ocrData.text.trim() === "") {
           console.log(`No text could be extracted from file ${i + 1}`);
           continue;
         }
@@ -792,7 +814,7 @@ const CreateStudyMaterial = () => {
           }
         );
 
-        setUploadProgress(startProgress + (progressPerFile * 0.8));
+        setUploadProgress(startProgress + progressPerFile * 0.8);
 
         if (!aiResponse.ok) {
           const errorData = await aiResponse.json().catch(() => ({}));
@@ -838,6 +860,13 @@ const CreateStudyMaterial = () => {
         const techPassesToDeduct = Math.ceil(pdfPageCount / 5);
         try {
           if (user?.firebase_uid && !isPremium && user?.tech_pass > 0) {
+            if (user.tech_pass < techPassesToDeduct) {
+              handleShowSnackbar(
+                `You need ${techPassesToDeduct} Tech Passes but only have ${user.tech_pass}!`
+              );
+              return;
+            }
+
             const techPassResponse = await fetch(
               `${import.meta.env.VITE_BACKEND_URL}/api/shop/use-tech-pass/${
                 user.firebase_uid
@@ -851,13 +880,30 @@ const CreateStudyMaterial = () => {
             );
 
             if (techPassResponse.ok) {
+              const responseData = await techPassResponse.json();
               // Update the user context with updated tech pass count
               updateUser({
                 ...user,
-                tech_pass: user.tech_pass - techPassesToDeduct,
+                tech_pass:
+                  responseData.updatedTechPassCount ||
+                  user.tech_pass - techPassesToDeduct,
               });
             } else {
-              console.error("Failed to deduct tech passes, but feature was used");
+              // Try to parse error message from response
+              try {
+                const errorData = await techPassResponse.json();
+                console.error("Failed to deduct tech passes:", errorData);
+                handleShowSnackbar(
+                  errorData.message || "Failed to deduct tech passes"
+                );
+              } catch (e) {
+                console.error(
+                  "Failed to deduct tech passes, but feature was used"
+                );
+                handleShowSnackbar(
+                  "Failed to deduct tech passes, but feature was used"
+                );
+              }
             }
           }
         } catch (passError) {
@@ -886,7 +932,7 @@ const CreateStudyMaterial = () => {
       handleShowSnackbar(errorMessage);
       setUploadProgress(0);
     } finally {
-        setIsProcessing(false);
+      setIsProcessing(false);
     }
   };
 
@@ -927,30 +973,30 @@ const CreateStudyMaterial = () => {
         }
 
         // Step 2: Process text into term-definition pairs with AI
-      const aiResponse = await fetch(
-        `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-pairs`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: ocrData.text }),
-        }
-      );
-
-      setUploadProgress(80);
-
-      if (!aiResponse.ok) {
-        const errorData = await aiResponse.json().catch(() => ({}));
-        console.error("AI error response:", errorData);
-        throw new Error(
-          errorData.details || `AI service error: ${aiResponse.status}`
+        const aiResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/ocr/extract-pairs`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text: ocrData.text }),
+          }
         );
-      }
 
-      const aiData = await aiResponse.json();
+        setUploadProgress(80);
+
+        if (!aiResponse.ok) {
+          const errorData = await aiResponse.json().catch(() => ({}));
+          console.error("AI error response:", errorData);
+          throw new Error(
+            errorData.details || `AI service error: ${aiResponse.status}`
+          );
+        }
+
+        const aiData = await aiResponse.json();
         setUploadProgress(95);
 
-      if (aiData.pairs && aiData.pairs.length > 0) {
-        // Create the new items with temporary item numbers
+        if (aiData.pairs && aiData.pairs.length > 0) {
+          // Create the new items with temporary item numbers
           const newItems = aiData.pairs.map((pair, index) => ({
             id: Date.now() + index,
             term: pair.term || "",
@@ -959,76 +1005,98 @@ const CreateStudyMaterial = () => {
             item_number: items.length + index + 1,
           }));
 
-        // Combine existing and new items, then recalculate all item numbers
-        const combinedItems = [...items, ...newItems];
-        const numberedItems = recalculateItemNumbers(combinedItems);
+          // Combine existing and new items, then recalculate all item numbers
+          const combinedItems = [...items, ...newItems];
+          const numberedItems = recalculateItemNumbers(combinedItems);
 
-        // Update state with properly numbered items
-        setItems(numberedItems);
+          // Update state with properly numbered items
+          setItems(numberedItems);
 
-        handleShowSnackbar(
-          `Added ${newItems.length} new terms and definitions!`
-        );
+          handleShowSnackbar(
+            `Added ${newItems.length} new terms and definitions!`
+          );
 
           // Deduct tech passes based on PDF pages
           const techPassesToDeduct = Math.ceil(pdfPageCount / 5);
-        try {
-          if (user?.firebase_uid && !isPremium && user?.tech_pass > 0) {
-            const techPassResponse = await fetch(
-              `${import.meta.env.VITE_BACKEND_URL}/api/shop/use-tech-pass/${
-                user.firebase_uid
-                }/${techPassesToDeduct}`,
-              {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                },
+          try {
+            if (user?.firebase_uid && !isPremium && user?.tech_pass > 0) {
+              if (user.tech_pass < techPassesToDeduct) {
+                handleShowSnackbar(
+                  `You need ${techPassesToDeduct} Tech Passes but only have ${user.tech_pass}!`
+                );
+                return;
               }
-            );
 
-            if (techPassResponse.ok) {
-              // Update the user context with updated tech pass count
-              updateUser({
-                ...user,
+              const techPassResponse = await fetch(
+                `${import.meta.env.VITE_BACKEND_URL}/api/shop/use-tech-pass/${
+                  user.firebase_uid
+                }/${techPassesToDeduct}`,
+                {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                  },
+                }
+              );
+
+              if (techPassResponse.ok) {
+                const responseData = await techPassResponse.json();
+                // Update the user context with updated tech pass count
+                updateUser({
+                  ...user,
                   tech_pass: user.tech_pass - techPassesToDeduct,
-              });
-            } else {
-                console.error("Failed to deduct tech passes, but feature was used");
+                });
+              } else {
+                // Try to parse error message from response
+                try {
+                  const errorData = await techPassResponse.json();
+                  console.error("Failed to deduct tech passes:", errorData);
+                  handleShowSnackbar(
+                    errorData.message || "Failed to deduct tech passes"
+                  );
+                } catch (e) {
+                  console.error(
+                    "Failed to deduct tech passes, but feature was used"
+                  );
+                  handleShowSnackbar(
+                    "Failed to deduct tech passes, but feature was used"
+                  );
+                }
+              }
             }
-          }
-        } catch (passError) {
+          } catch (passError) {
             console.error("Error deducting tech passes:", passError);
-        }
+          }
 
-        // Close the modal after processing
-        handleCloseScanModal();
-        setUploadProgress(100);
+          // Close the modal after processing
+          handleCloseScanModal();
+          setUploadProgress(100);
 
-        // Resize textareas after new items are added
-        setTimeout(() => {
-          const textareas = document.querySelectorAll("textarea");
-          textareas.forEach((textarea) => {
-            textarea.style.height = "auto";
-            textarea.style.height = textarea.scrollHeight + "px";
-          });
+          // Resize textareas after new items are added
+          setTimeout(() => {
+            const textareas = document.querySelectorAll("textarea");
+            textareas.forEach((textarea) => {
+              textarea.style.height = "auto";
+              textarea.style.height = textarea.scrollHeight + "px";
+            });
           }, 300);
-      } else {
-        handleShowSnackbar("No term-definition pairs could be identified");
-      }
-    } catch (error) {
+        } else {
+          handleShowSnackbar("No term-definition pairs could be identified");
+        }
+      } catch (error) {
         console.error("Error processing PDF:", error);
-      const errorMessage =
+        const errorMessage =
           error instanceof Error ? error.message : "Failed to process the PDF";
-      handleShowSnackbar(errorMessage);
-      setUploadProgress(0);
-    } finally {
-      setIsProcessing(false);
+        handleShowSnackbar(errorMessage);
+        setUploadProgress(0);
+      } finally {
+        setIsProcessing(false);
         setPendingPdf(null);
         setPdfPageCount(0);
       }
     } else {
       // Remove the PDF from the list
-      const newFiles = uploadedFiles.filter(file => file !== pendingPdf);
+      const newFiles = uploadedFiles.filter((file) => file !== pendingPdf);
       setUploadedFiles(newFiles);
       setPendingPdf(null);
       setPdfPageCount(0);
@@ -2031,31 +2099,38 @@ const CreateStudyMaterial = () => {
       </Modal>
       {/* PDF Confirmation Dialog */}
       <Dialog
-        open={pdfConfirmationOpen}
+        open={pdfConfirmationOpen && !isPremium} // Only show for non-premium users
         onClose={() => handlePdfConfirmation(false)}
         PaperProps={{
           sx: {
-            backgroundColor: "#292639",
+            backgroundColor: "#120F1B",
             borderRadius: "0.8rem",
+            border: "2px solid #3B354D",
             maxWidth: "500px",
           },
         }}
       >
-        <DialogTitle sx={{ color: "#E2DDF3", borderBottom: "1px solid #3B354D" }}>
+        <DialogTitle
+          sx={{ color: "#E2DDF3", borderBottom: "1px solid #3B354D" }}
+        >
           PDF Processing Notice
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
           <Typography variant="body1" sx={{ color: "#E2DDF3", mb: 2 }}>
-            The PDF you uploaded has {pdfPageCount} pages. Since it has more than 5 pages, it will require additional Tech Passes to process.
+            The PDF you uploaded has {pdfPageCount} pages. Since it has more
+            than 5 pages, it will require additional Tech Passes to process.
           </Typography>
           <Typography variant="body2" sx={{ color: "#9F9BAE" }}>
-            Tech Passes required: {Math.ceil(pdfPageCount / 5)} (1 Tech Pass per 5 pages)
+            Tech Passes required: {Math.ceil(pdfPageCount / 5)} (1 Tech Pass per
+            5 pages)
           </Typography>
-          {!isPremium && (
-            <Typography variant="body2" sx={{ color: "#E57373", mt: 1 }}>
-              You currently have {user?.tech_pass || 0} Tech Passes available.
-            </Typography>
-          )}
+          <Typography variant="body2" sx={{ color: "#E57373", mt: 1 }}>
+            You currently have {user?.tech_pass || 0} Tech Passes available.
+          </Typography>
+          <Typography variant="body2" sx={{ color: "#A38CE6", mt: 1 }}>
+            Note: Premium users can process PDFs of any size without using Tech
+            Passes.
+          </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 2, borderTop: "1px solid #3B354D" }}>
           <Button
@@ -2069,10 +2144,11 @@ const CreateStudyMaterial = () => {
           </Button>
           <Button
             onClick={() => handlePdfConfirmation(true)}
-            disabled={!isPremium && (!user?.tech_pass || user.tech_pass < Math.ceil(pdfPageCount / 5))}
+            disabled={user?.tech_pass < Math.ceil(pdfPageCount / 5)}
             sx={{
               backgroundColor: "#4D18E8",
               color: "#E2DDF3",
+              borderRadius: "0.8rem",
               "&:hover": { backgroundColor: "#6939FF" },
               "&.Mui-disabled": {
                 backgroundColor: "#3B354D",

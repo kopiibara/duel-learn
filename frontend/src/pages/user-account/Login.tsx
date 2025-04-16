@@ -267,7 +267,6 @@ const Login = () => {
   });
 
   const googleSubmit = async () => {
-    setLoading(true);
     try {
       const account_type = "free";
       const authResult = await handleGoogleAuth(account_type);
@@ -278,19 +277,15 @@ const Login = () => {
       if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
         setTimeout(() => {
-          setLoading(true);
           navigate("/dashboard/welcome");
         }, 1500);
       } else if (userData && !userData.email_verified) {
-        setLoading(true);
         navigate("/verify-email", { state: { token: authResult.token } });
       } else {
-        setLoading(true);
         navigate("/dashboard/home");
       }
     } catch (error) {
       handleError(error);
-      setLoading(false);
     }
   };
 
@@ -352,7 +347,7 @@ const Login = () => {
                 onBlur={formik.handleBlur}
                 placeholder="Enter your username or email"
                 required
-                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                className={`block w-full p-3 rounded-[0.8rem] bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
                   formik.touched.username && formik.errors.username
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
@@ -379,7 +374,7 @@ const Login = () => {
                 onBlur={formik.handleBlur}
                 placeholder="Enter your password"
                 required
-                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
+                className={`block w-full p-3 rounded-[0.8rem] bg-[#3B354D] text-[#9F9BAE] placeholder-gray-500 focus:outline-none focus:ring-2 ${
                   formik.touched.password && formik.errors.password
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
@@ -415,7 +410,7 @@ const Login = () => {
             {/* Login Button */}
             <button
               type="submit"
-              className="w-full py-3 text-white bg-[#4D18E8] rounded-lg hover:bg-[#3814b6] focus:outline-none focus:ring-4 focus:ring-[#4D18E8]"
+              className="w-full py-3 text-white bg-[#4D18E8] rounded-[0.8rem] hover:bg-[#3814b6] focus:outline-none focus:ring-4 focus:ring-[#4D18E8]"
             >
               Login
             </button>
@@ -430,7 +425,7 @@ const Login = () => {
 
           {/* Google Sign-In */}
           <button
-            className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors"
+            className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-[0.8rem] flex items-center justify-center hover:bg-[#1A1426] transition-colors"
             onClick={googleSubmit}
           >
             <img
@@ -445,7 +440,7 @@ const Login = () => {
           <p className="mt-4 text-center text-sm text-[#9F9BAE]">
             Don't have an account?{" "}
             <Link to="/sign-up" className="text-[#4D18E8] hover:underline">
-              Sign up
+              Create an account
             </Link>
           </p>
         </div>

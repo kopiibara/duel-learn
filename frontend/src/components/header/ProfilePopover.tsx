@@ -7,6 +7,14 @@ import { useUser } from "../../contexts/UserContext";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 import CancelSubscription from "../premium/CancelSubscription";
+import SettingsIcon from "@mui/icons-material/SettingsRounded";
+import PersonalizationIcon from "@mui/icons-material/AutoAwesomeRounded";
+import PrivacyIcon from "@mui/icons-material/PrivacyTipRounded";
+import PremiumIcon from "@mui/icons-material/WorkspacePremiumRounded";
+import CancelIcon from "@mui/icons-material/HighlightOffRounded";
+import VerifyIcon from "@mui/icons-material/SecurityRounded";
+import LogoutIcon from "@mui/icons-material/LogoutRounded";
+
 interface ProfilePopoverProps {
   anchorEl: PopoverProps["anchorEl"];
   open: boolean;
@@ -96,6 +104,7 @@ export default function ProfilePopover({
                 },
               }}
             >
+              <SettingsIcon sx={{ mr: 1 }} fontSize="small" />
               Settings
             </Button>
             <Button
@@ -115,6 +124,7 @@ export default function ProfilePopover({
                 },
               }}
             >
+              <PersonalizationIcon sx={{ mr: 1 }} fontSize="small" />
               Personalization
             </Button>
 
@@ -135,26 +145,10 @@ export default function ProfilePopover({
               }}
               onClick={() => window.open("/privacy-policy", "_blank")}
             >
+              <PrivacyIcon sx={{ mr: 1 }} fontSize="small" />
               Privacy Policy
             </Button>
-            <Button
-              variant="text"
-              sx={{
-                justifyContent: "flex-start",
-                textTransform: "none",
-                color: "inherit",
-                fontWeight: 400,
-                borderRadius: "0.8rem",
-                padding: "0.6rem 1rem",
-                transition: "all 0.3s ease-in-out",
-                "&:hover": {
-                  transform: "scale(1.05)",
-                  backgroundColor: "#3B354C",
-                },
-              }}
-            >
-              Help and Feedback
-            </Button>
+
             {/* Divider with more space above */}
             <Divider sx={{ mt: 3, mb: 2, backgroundColor: "#444" }} />
             {!isPremium ? (
@@ -175,6 +169,7 @@ export default function ProfilePopover({
                   },
                 }}
               >
+                <PremiumIcon sx={{ mr: 1 }} fontSize="small" />
                 Go Premium
               </Button>
             ) : (
@@ -194,6 +189,7 @@ export default function ProfilePopover({
                   },
                 }}
               >
+                <CancelIcon sx={{ mr: 1 }} fontSize="small" />
                 Cancel Subscription
               </Button>
             )}
@@ -215,6 +211,7 @@ export default function ProfilePopover({
                 }}
                 onClick={() => navigate("/dashboard/verify-email")}
               >
+                <VerifyIcon sx={{ mr: 1 }} fontSize="small" />
                 Verify Email
               </Button>
             ) : null}
@@ -236,6 +233,7 @@ export default function ProfilePopover({
               }}
               onClick={handleLogout}
             >
+              <LogoutIcon sx={{ mr: 1 }} fontSize="small" />
               Logout
             </Button>
           </Stack>

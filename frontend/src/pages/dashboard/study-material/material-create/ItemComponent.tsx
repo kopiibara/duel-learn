@@ -316,7 +316,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                     <img
                       src={previewSrc}
                       alt="Uploaded"
-                      className="rounded-[0.8rem] max-w-full w-full h-auto max-h-[250px] object-contain"
+                      className=" rounded-[0.8rem] max-w-full w-full h-auto max-h-[250px] object-contain"
                     />
 
                     <Tooltip title="Delete Photo" arrow>
@@ -495,9 +495,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                               mt: 0.5,
                             }}
                           >
-                            Your definition looks good! This tool only checks
-                            for factually incorrect information, not
-                            completeness or depth.
+                            Your definition looks good!
                           </Typography>
                         )}
 
@@ -727,21 +725,16 @@ const ItemComponent: FC<ItemComponentProps> = ({
             </Box>
 
             <Tooltip
-              title={
-                isFactChecking
-                  ? "Checking..."
-                  : "AI Fact Check - Identifies only definitively incorrect parts of your definition"
-              }
+              title={isFactChecking ? "Checking..." : "AI Fact Check"}
               arrow
-              placement="top"
+              placement="bottom"
             >
               <IconButton
-                size="small"
                 onClick={handleFactCheck}
                 disabled={isFactChecking}
                 sx={{
                   color: "#A38CE6",
-                  p: 0.5,
+
                   "&:hover": {
                     backgroundColor: "rgba(163, 140, 230, 0.08)",
                   },
@@ -750,7 +743,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                 {isFactChecking ? (
                   <CircularProgress size={16} sx={{ color: "#A38CE6" }} />
                 ) : (
-                  <FactCheckIcon sx={{ fontSize: 16 }} />
+                  <FactCheckIcon sx={{ fontSize: 20 }} />
                 )}
               </IconButton>
             </Tooltip>

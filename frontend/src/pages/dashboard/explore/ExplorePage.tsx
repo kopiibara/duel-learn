@@ -71,7 +71,7 @@ const ExplorePage = () => {
     const diffMs = now.getTime() - lastUpdated.getTime();
     const diffMins = Math.floor(diffMs / 60000);
 
-    if (diffMins < 1) return "Just now";
+    if (diffMins < 1) return "just now";
     if (diffMins === 1) return "1 min ago";
     if (diffMins < 60) return `${diffMins} mins ago`;
 
@@ -543,7 +543,7 @@ const ExplorePage = () => {
                   >
                     {isBackgroundRefreshing
                       ? "Refreshing..."
-                      : `Updated ${formattedLastUpdated()}`}
+                      : `Refreshed ${formattedLastUpdated()}`}
                   </Typography>
                 )}
 

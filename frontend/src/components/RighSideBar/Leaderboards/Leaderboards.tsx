@@ -146,7 +146,7 @@ const Leaderboards = () => {
         key={player.firebase_uid}
         className={`flex items-center justify-between  w-full ${
           showBackground && player.isCurrentUser
-            ? "bg-[#221f2e] rounded-lg px-2 py-3"
+            ? "bg-[#221f2e] rounded-lg px-4 py-3"
             : ""
         }`}
       >
@@ -171,7 +171,7 @@ const Leaderboards = () => {
               src={player.display_picture || defaultPicture}
               alt="Avatar"
               onClick={() => handleViewProfile(player.firebase_uid)}
-              className="w-11 sm:w-12 md:w-14 cursor-pointer h-auto mr-2 ml-4 hover:scale-105 transition-all duration-300 ease-in-out rounded-[5px] object-cover"
+              className="w-10 sm:w-10 md:w-12 cursor-pointer h-auto mr-2 ml-4 hover:scale-105 transition-all duration-300 ease-in-out rounded-[5px] object-cover"
             />
           </div>
 
@@ -206,7 +206,7 @@ const Leaderboards = () => {
   return (
     <>
       <Box className="rounded-[0.8rem] shadow-md border-[0.2rem] border-[#3B354C] w-full">
-        <div className="px-6 sm:px-6 md:px-8 pt-6 sm:pt-6 md:pt-8 pb-3 sm:pb-4">
+        <div className="px-6 sm:px-6 md:px-8 pt-6 sm:pt-6 md:pt-8 pb-6">
           <div className="flex flex-row items-center mb-4 sm:mb-4 gap-2 sm:gap-4">
             <img
               src="/leaderboard.png"

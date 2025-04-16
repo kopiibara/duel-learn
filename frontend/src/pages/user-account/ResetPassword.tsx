@@ -181,7 +181,7 @@ const ResetPassword = () => {
                 value={formik.values.newpassword}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
+                className={`block w-full p-3 rounded-[0.8rem] bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
                   formik.touched.newpassword && formik.errors.newpassword
                     ? "border border-red-500 focus:ring-red-500"
                     : "focus:ring-[#4D18E8]"
@@ -215,7 +215,7 @@ const ResetPassword = () => {
                 value={formik.values.confirmPassword}
                 onChange={formik.handleChange}
                 onBlur={formik.handleBlur}
-                className={`block w-full p-3 rounded-lg bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
+                className={`block w-full p-3 rounded-[0.8rem] bg-[#3B354D] text-[#E2DDF3] placeholder-[#9F9BAE] focus:outline-none focus:ring-2 pr-12 ${
                   formik.touched.confirmPassword &&
                   formik.errors.confirmPassword
                     ? "border border-red-500 focus:ring-red-500"
@@ -244,7 +244,7 @@ const ResetPassword = () => {
             {/* Submit Button */}
             <button
               type="submit"
-              className="w-full bg-[#4D18E8] text-white py-3 rounded-md hover:bg-[#4D18E8] focus:ring-4 focus:ring-[#4D18E8]"
+              className="w-full bg-[#4D18E8] text-white py-3 rounded-[0.8rem] hover:bg-[#4D18E8] focus:ring-4 focus:ring-[#4D18E8]"
               disabled={loading} // Disable the button when loading
             >
               {loading ? (
@@ -271,13 +271,13 @@ const ResetPassword = () => {
               alt="Profile Avatar"
             />
           </div>
-          <div className="w-full max-w-md rounded-lg p-8 shadow-md bg-black">
+          <div className="w-full max-w-md rounded-[0.8rem] p-8 shadow-md bg-black">
             <p className="text-[18px] text-center text-[#9F9BAE] mb-8 max-w-[340px] mx-auto break-words">
               Invalid or missing reset code.
             </p>
             <button
               type="button"
-              className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-lg hover:bg-[#6931E0] transition-colors"
+              className="w-full mt-2 bg-[#4D18E8] text-white py-3 rounded-[0.8rem] hover:bg-[#6931E0] transition-colors"
               onClick={handleBacktoLoginClick}
             >
               Back to sign in
