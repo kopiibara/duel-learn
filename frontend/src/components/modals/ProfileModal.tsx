@@ -9,6 +9,7 @@ import { useUser } from "../../contexts/UserContext";
 import { UserInfo } from "../../types/userInfoObject";
 import { StudyMaterial } from "../../types/studyMaterialObject";
 import { useNavigate } from "react-router-dom";
+import noFriend from "/images/NoFriend.svg";
 
 // Add types for friendship data (same as in SearchPage)
 interface MutualFriend {
@@ -114,7 +115,8 @@ const ProfileModal = ({
             level: userData.level,
             exp: userData.exp,
             display_picture: userData.display_picture,
-            account_type: userData.account_type || "standard",
+            account_type: userData.account_type || "free",
+            account_type_plan: userData.account_type_plan || "free",
             mana: userData.mana || 0,
             coin: userData.coin || 0,
             tech_pass: userData.tech_pass || 0,
@@ -394,7 +396,7 @@ const ProfileModal = ({
       aria-labelledby="profile-modal-title"
       sx={{
         "& .MuiModal-backdrop": {
-          backgroundColor: "rgba(0, 0, 0, 0.2)",
+          backgroundColor: "rgba(0, 0, 0, 0.3)",
         },
       }}
     >
@@ -410,6 +412,7 @@ const ProfileModal = ({
           overflow: "auto",
           bgcolor: "#120F1B",
           borderRadius: "0.8rem",
+          border: "2px solid #3B354D",
           boxShadow: 24,
           p: { xs: 2, sm: 3, md: 5 },
           "&:focus": { outline: "none" },
@@ -420,7 +423,7 @@ const ProfileModal = ({
             className="self-start flex items-center gap-2 pb-2 text-[#3B354C] hover:text-inherit transition-colors"
             onClick={onClose}
           >
-            <ArrowBackIcon fontSize="small" /> Close
+            <ArrowBackIcon fontSize="small" /> Back
           </button>
 
           {loadingUserData ? (
@@ -457,8 +460,18 @@ const ProfileModal = ({
                     {friendshipStatus &&
                       friendshipStatus.mutual_friends.count > 0 && (
                         <p className="text-[0.75rem] text-[#C6C1D8] mt-1">
-                          {friendshipStatus.mutual_friends.count} mutual friend
-                          {friendshipStatus.mutual_friends.count > 1 ? "s" : ""}
+                          {friendshipStatus.mutual_friends.count}
+                          {isOwnProfile
+                            ? ` friend${
+                                friendshipStatus.mutual_friends.count > 1
+                                  ? "s"
+                                  : ""
+                              }`
+                            : ` mutual friend${
+                                friendshipStatus.mutual_friends.count > 1
+                                  ? "s"
+                                  : ""
+                              }`}
                         </p>
                       )}
                   </div>
@@ -481,11 +494,12 @@ const ProfileModal = ({
               </div>
 
               {/* Mutual Friends (if any) */}
+              {/* Mutual Friends (if any) */}
               {friendshipStatus &&
                 friendshipStatus.mutual_friends.list.length > 0 && (
                   <div className="p-3 sm:p-4 bg-[#3B354D15] rounded-[0.8rem]">
                     <p className="text-[#9F9BAE] font-medium text-[0.9rem] sm:text-base mb-2">
-                      Mutual Friends:
+                      {isOwnProfile ? "Your Friends:" : "Mutual Friends:"}
                     </p>
                     <div className="flex gap-2 sm:gap-3 overflow-x-auto py-1 sm:py-2">
                       {friendshipStatus.mutual_friends.list.map((friend) => (
@@ -496,7 +510,7 @@ const ProfileModal = ({
                           <img
                             src={friend.display_picture || defaultPicture}
                             alt={friend.username}
-                            className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover"
+                            className="w-10 h-10 sm:w-10 sm:h-10 rounded-lg object-cover"
                           />
                           <p className="text-[#E2DDF3] text-[0.7rem] sm:text-xs mt-1 text-center">
                             {friend.username}
@@ -509,7 +523,7 @@ const ProfileModal = ({
 
               {/* User's Study Materials */}
               <Stack spacing={2}>
-                <p className="text-[#9F9BAE] font-semibold text-[1.1rem] sm:text-[2.5vh]">
+                <p className="text-[#E2DDF3] font-semibold  sm:text-[1rem] lg:text-[1.2rem]">
                   Study Materials by {selectedUser.username}
                 </p>
 
@@ -544,9 +558,16 @@ const ProfileModal = ({
                     ))}
                   </div>
                 ) : (
-                  <p className="py-3 text-center text-[#9F9BAE]">
-                    No study materials found for this user
-                  </p>
+                  <div className="flex flex-col items-center justify-center w-full h-full py-4">
+                    <img
+                      src={noFriend}
+                      alt="noFriend"
+                      style={{ width: "10rem", height: "auto", opacity: 0.75 }}
+                    />
+                    <p className="py-3 text-center text-sm text-[#9F9BAE]">
+                      No study materials found for this user
+                    </p>
+                  </div>
                 )}
               </Stack>
             </Stack>

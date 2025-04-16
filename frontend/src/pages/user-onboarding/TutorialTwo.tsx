@@ -6,11 +6,14 @@ import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import CharacterTalking from "/UserOnboarding/NoddingBunny.gif";
 import PageTransition from "../../styles/PageTransition";
 import { useAudio } from "../../contexts/AudioContext"; // Import the useAudio hook
+import VolumeUpIcon from "@mui/icons-material/VolumeUp";
+import VolumeOffIcon from "@mui/icons-material/VolumeOff";
+import DocumentHead from "../../components/DocumentHead";
 
 export default function TutorialTwo() {
   useWandCursor();
   const navigate = useNavigate();
-  const { playUserOnboardingAudio } = useAudio(); // Use the playUserOnboardingAudio function
+  const { playUserOnboardingAudio, isMuted, toggleMute } = useAudio(); // Use the playUserOnboardingAudio function
 
   const dialogues = [
     `First, you'll want to <strong>create study materials</strong>. Think of them as your magical tomes—crafted manually or with the help of our assistive tools such as <strong>OCR and AI</strong>!`,
@@ -28,7 +31,12 @@ export default function TutorialTwo() {
     playUserOnboardingAudio(); // Play user onboarding audio
   }, [playUserOnboardingAudio]);
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    // Check if the click was on the sound button
+    if ((e.target as HTMLElement).closest("button")) {
+      return;
+    }
+
     if (!typingDone) {
       setShowFullText(true);
       setTypingDone(true);
@@ -39,7 +47,7 @@ export default function TutorialTwo() {
       setAnimate(false);
       setTimeout(() => {
         setAnimate(true);
-        setKey((prevKey) => prevKey + 1); // Restart Typewriter
+        setKey((prevKey) => prevKey + 1);
       }, 100);
     } else {
       navigate("/dashboard/tutorial/step-three");
@@ -53,11 +61,28 @@ export default function TutorialTwo() {
 
   return (
     <PageTransition>
+      <DocumentHead title="Tutorial | Duel Learn" />
       <main
         className="relative flex flex-col items-center px-20 py-20 text-white h-screen bg-[#080511] overflow-hidden cursor-none"
         role="main"
         onClick={handleClick}
       >
+        <div className="absolute top-4 right-4 z-50 pointer-events-none">
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleMute();
+            }}
+            className="text-white hover:text-gray-300 transition-colors pointer-events-auto"
+            aria-label={isMuted ? "Unmute" : "Mute"}
+          >
+            {isMuted ? (
+              <VolumeOffIcon style={{ height: 23, width: 23 }} />
+            ) : (
+              <VolumeUpIcon style={{ height: 23, width: 23 }} />
+            )}
+          </button>
+        </div>
         {/* Magic Wand Cursor */}
         <div className="wand-cursor"></div>
 

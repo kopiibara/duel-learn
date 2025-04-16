@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { useUser } from "../../contexts/UserContext";
-import PremiumStar from "/shop-picture/PremiumStar.svg";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 const PaymentSuccess = () => {
@@ -153,7 +152,6 @@ const PaymentSuccess = () => {
   return (
     <div className="h-screen flex justify-center items-center ">
       <div className="max-w-lg p-8 bg-[#1E1A29] rounded-[0.8rem] flex flex-col items-center text-center">
-        <img src={PremiumStar} alt="Premium" className="w-14 h-auto mb-6" />
         <CheckCircleIcon style={{ color: "#4CAF50", fontSize: "4rem" }} />
         <h1 className="text-3xl font-bold mt-4">Payment Successful!</h1>
         <p className="text-[#C4BEDB] mt-4 mb-6">

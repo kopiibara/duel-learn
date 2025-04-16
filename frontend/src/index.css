@@ -59,6 +59,7 @@ input:-webkit-autofill {
   -webkit-box-shadow: 0 0 0 30px #3b354d inset !important; /* Autofill background color */
   -webkit-text-fill-color: #d1c4e9 !important; /* Autofill text color */
   transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
+  border-radius: 0.8rem !important;
 }
 
 /* Revert styles when autofill is removed */
@@ -66,4 +67,5 @@ input:not(:-webkit-autofill) {
   -webkit-box-shadow: none !important;
   -webkit-text-fill-color: initial !important;
   transition: background-color 0.3s ease, color 0.3s ease; /* Smooth transition */
+  border-radius: 0.8rem !important;
 }

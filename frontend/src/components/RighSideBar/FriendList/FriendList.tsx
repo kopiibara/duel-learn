@@ -270,7 +270,7 @@ const FriendList: React.FC = () => {
   return (
     <>
       <Box className="rounded-[0.8rem] border-[0.2rem] border-[#3B354C] h-auto w-full">
-        <div className="px-6 sm:px-6 md:px-8 pt-6 sm:pt-6 md:pt-8 pb-6 sm:pb-4">
+        <div className="px-6 sm:px-6 md:px-8 pt-6 sm:pt-6 md:pt-8 pb-12 sm:pb-4 lg:pb-6">
           <div className="flex flex-row items-center mb-3 sm:mb-4 gap-2 sm:gap-3">
             <img
               src="/bunny.png"
@@ -281,7 +281,7 @@ const FriendList: React.FC = () => {
               Friend List
             </p>
           </div>
-          <hr className="border-t-2 border-[#3B354D] mb-3 sm:mb-3 md:mb-4" />
+          <hr className="border-t-2 border-[#3B354D] mb-3 sm:mb-3 md:mb-4 rounded-full" />
 
           {loading ? (
             <Box

@@ -142,10 +142,11 @@ const signUpUser = async (req, res) => {
           account_type || "free"
         ]
       ),
+
       connection.execute(
-        `INSERT INTO user_info (firebase_uid, username, display_picture, level, exp, coins, mana)
+        `INSERT INTO user_info (firebase_uid, username, display_picture, level, exp, coins, tech_pass, mana)
          VALUES (?, ?, ?, ?, ?, ?, ?);`,
-        [uid, username || "Default Username", null, 1, 0, 500, 200]
+        [uid, username || "Default Username", null, 1, 0, 300, 3, 200]
       ),
       admin.firestore().collection("users").doc(uid).set({
         firebase_uid: uid,
@@ -644,18 +645,21 @@ export default {
 
       // Update display picture if provided
       if (display_picture) {
+        // Handle both formats: paths with /assets/ (production) or /profile-picture/ (dev)
+        const normalizedPath = display_picture.replace(/^\/public/, '');
+
         await connection.execute(
           `UPDATE users SET display_picture = ?, updated_at = ? WHERE firebase_uid = ?;`,
-          [display_picture, moment().format("YYYY-MM-DD HH:mm:ss"), firebase_uid]
+          [normalizedPath, moment().format("YYYY-MM-DD HH:mm:ss"), firebase_uid]
         );
 
         await connection.execute(
           `UPDATE user_info SET display_picture = ? WHERE firebase_uid = ?;`,
-          [display_picture, firebase_uid]
+          [normalizedPath, firebase_uid]
         );
 
         await admin.firestore().collection("users").doc(firebase_uid).update({
-          display_picture: display_picture,
+          display_picture: normalizedPath,
           updated_at: moment().format("YYYY-MM-DD HH:mm:ss"),
         });
       }

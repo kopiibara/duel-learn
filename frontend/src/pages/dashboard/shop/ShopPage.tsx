@@ -10,29 +10,24 @@ import { ShopItem } from "../../../types/shopObject"; // Import the ShopItem int
 import axios from "axios";
 import { useUser } from "../../../contexts/UserContext";
 import AutoHideSnackbar from "../../../components/ErrorsSnackbar";
+import CancelSubscription from "../../../components/premium/CancelSubscription";
 
 const Shop = () => {
   const navigate = useNavigate();
   const { user, updateUser } = useUser();
-
   const isPremium = user?.account_type === "premium"; // Check if the user is premium
-
   const userCoins = user?.coins || 0;
-
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [selectedItem, setSelectedItem] = useState<ShopItem | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [items, setItems] = useState<ShopItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-
-  // Track owned items
   const [ownedItems, setOwnedItems] = useState<Record<string, number>>({});
-
-  // Snackbar state
   const [snackbarOpen, setSnackbarOpen] = useState<boolean>(false);
   const [snackbarMessage, setSnackbarMessage] = useState<string>("");
   const [isSnackbarAction, setIsSnackbarAction] = useState<boolean>(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [refreshCallback, setRefreshCallback] = useState<
     (() => void) | undefined
   >(undefined);
@@ -40,6 +35,10 @@ const Shop = () => {
   // Handle closing the snackbar
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
+  };
+
+  const handleOpenCancelSubsModal = () => {
+    setShowCancelModal(true);
   };
 
   // Show a message in the snackbar
@@ -331,7 +330,7 @@ const Shop = () => {
               learning!
             </p>
             <button
-              className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px]  bg-white text-[#9F87E5] rounded-full font-bold"
+              className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px]  bg-white text-[#9F87E5] rounded-full font-bold hover:scale-105 transition-all duration-300 ease-in-out"
               onClick={() => navigate("/dashboard/buy-premium-account")}
             >
               TRY IT NOW
@@ -364,8 +363,8 @@ const Shop = () => {
                 More Info
               </button>
               <button
-                className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px] sm:text-[15px] bg-white text-[#3e2880] rounded-full font-bold"
-                onClick={() => navigate("/dashboard/buy-premium-account")}
+                className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px] sm:text-[15px] bg-white text-[#3e2880] rounded-full font-bold hover:scale-105 transition-all duration-300 ease-in-out"
+                onClick={handleOpenCancelSubsModal}
               >
                 Cancel Subscription
               </button>
@@ -406,17 +405,17 @@ const Shop = () => {
                     )}`}
                   />
                 </div>
-                <h2 className="text-base sm:text-lg font-bold mb-1 sm:mb-2">
+                <h2 className="text-base sm:text-lg font-bold mb-1 sm:mb-1">
                   {item.item_name}
                 </h2>
-                <p className="text-xs sm:text-sm text-gray-400 mb-3 sm:mb-4 text-center">
+                <p className=" sm:text-sm text-[#9F9BAE] mb-6  sm:mb-6 text-center">
                   {item.item_description}
                 </p>
                 <div className="flex-grow"></div>
                 <div className="flex gap-2 mb-2 sm:mb-3 w-full">
                   {(ownedItems[item.item_code] || 0) > 0 && (
                     <button
-                      className="flex-1 border rounded-lg border-[#afafaf] text-white py-1.5 sm:py-2 text-sm sm:text-base hover:bg-[#544483]"
+                      className="flex-1 border-2 rounded-[0.8rem] border-[#afafaf]  py-1.5 sm:py-2 text-sm font-bold sm:text-base hover:bg-[#381898] hover:border-[#381898] transition-all duration-300 ease-in-out"
                       onClick={() =>
                         handleUseItem(item.item_code, item.item_name)
                       }
@@ -426,7 +425,7 @@ const Shop = () => {
                   )}
                   {(ownedItems[item.item_code] || 0) < 5 && (
                     <button
-                      className="flex-1 border rounded-lg border-[#afafaf] text-black py-1.5 sm:py-2 bg-white flex items-center justify-center hover:bg-[#e0e0e0] text-sm sm:text-base"
+                      className="flex-1 border rounded-[0.8rem] border-[#E2DDF3] text-[#3B354D]  py-1.5 sm:py-2 bg-[#E2DDF3] flex items-center justify-center hover:bg-[#381898] hover:border-[#381898] hover:text-[#E2DDF3] text-sm sm:text-base transition-all duration-300 ease-in-out"
                       onClick={() => openModal(item)}
                     >
                       <span>Buy for </span>
@@ -481,6 +480,10 @@ const Shop = () => {
         onClose={handleSnackbarClose}
         onClick={handleRefresh}
         action={isSnackbarAction}
+      />
+      <CancelSubscription
+        open={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
       />
     </PageTransition>
   );

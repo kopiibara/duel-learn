@@ -24,7 +24,7 @@ export default function Header() {
   return (
     <Box
       className={`w-full shadow flex items-center justify-between bg-[#080511] ${
-        isVerySmall ? "h-20 py-2 px-" : "h-28 pt-10 "
+        isVerySmall ? "h-20 py-2 " : "h-28 pt-10 "
       }`}
       sx={{ zIndex: 1, position: "relative" }}
     >
@@ -37,7 +37,7 @@ export default function Header() {
             color="inherit"
             aria-label="menu"
             onClick={() => toggleDrawer(true)}
-            className={isVerySmall ? "ml-1" : "ml-2"}
+            className={isVerySmall ? "ml-1" : "ml-1"}
             sx={{
               display: "block",
               mr: isVerySmall ? "6px" : "10px",

@@ -13,7 +13,7 @@ import {
   AudioStopper,
   BattleInvitationCenter,
 } from "./components";
-import theme from "../../frontend/src/contexts/ThemeContext";
+import theme from "./contexts/ThemeContext";
 import "./index.css";
 import { GameStatusProvider } from "./contexts/GameStatusContext";
 

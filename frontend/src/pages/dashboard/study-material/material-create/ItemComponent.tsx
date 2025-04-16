@@ -316,7 +316,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                     <img
                       src={previewSrc}
                       alt="Uploaded"
-                      className="rounded-[0.8rem] max-w-full w-full h-auto max-h-[250px] object-contain"
+                      className=" rounded-[0.8rem] max-w-full w-full h-auto max-h-[250px] object-contain"
                     />
 
                     <Tooltip title="Delete Photo" arrow>
@@ -353,14 +353,10 @@ const ItemComponent: FC<ItemComponentProps> = ({
                   id="term"
                   className="border-none outline-none bg-[#3B354D] hover:bg-[#564e70] focus:bg-[#4A4361] text-[#E2DDF3] resize-none w-full content-stretch text-[1rem] py-2 px-4 text-left rounded-[0.8rem] overflow-hidden transition-all ease-in-out duration-200 box-border"
                   rows={1}
-                  placeholder="Enter Term"
-                  onInput={(e) => {
-                    resizeTextarea(e.target as HTMLTextAreaElement);
-                  }}
-                  onFocus={(e) => {
-                    // Reapply resize on focus to ensure correct display when switching between portrait/landscape
-                    resizeTextarea(e.target as HTMLTextAreaElement);
-                  }}
+                  placeholder="Term"
+                  onInput={(e) =>
+                    resizeTextarea(e.target as HTMLTextAreaElement)
+                  }
                   value={item.term}
                   onChange={(e) => {
                     updateItem("term", e.target.value);
@@ -379,8 +375,8 @@ const ItemComponent: FC<ItemComponentProps> = ({
                         : "#6F658D",
                     transition: "color 0.3s ease-in-out",
                     fontSize: "0.75rem",
-                    textAlign: "right",
-                    marginTop: "0.2rem",
+                    textAlign: "left",
+                    marginTop: "0.8rem",
                   }}
                 >
                   {item.term.length}/{MAX_TERM_LENGTH} characters
@@ -397,14 +393,10 @@ const ItemComponent: FC<ItemComponentProps> = ({
                       scanningEffect ? "opacity-80" : ""
                     }`}
                     rows={1}
-                    placeholder="Enter definition"
-                    onInput={(e) => {
-                      resizeTextarea(e.target as HTMLTextAreaElement);
-                    }}
-                    onFocus={(e) => {
-                      // Reapply resize on focus
-                      resizeTextarea(e.target as HTMLTextAreaElement);
-                    }}
+                    placeholder="Definition"
+                    onInput={(e) =>
+                      resizeTextarea(e.target as HTMLTextAreaElement)
+                    }
                     value={item.definition}
                     onChange={(e) => {
                       updateItem("definition", e.target.value);
@@ -503,9 +495,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                               mt: 0.5,
                             }}
                           >
-                            Your definition looks good! This tool only checks
-                            for factually incorrect information, not
-                            completeness or depth.
+                            Your definition looks good!
                           </Typography>
                         )}
 
@@ -735,21 +725,16 @@ const ItemComponent: FC<ItemComponentProps> = ({
             </Box>
 
             <Tooltip
-              title={
-                isFactChecking
-                  ? "Checking..."
-                  : "AI Fact Check - Identifies only definitively incorrect parts of your definition"
-              }
+              title={isFactChecking ? "Checking..." : "AI Fact Check"}
               arrow
-              placement="top"
+              placement="bottom"
             >
               <IconButton
-                size="small"
                 onClick={handleFactCheck}
                 disabled={isFactChecking}
                 sx={{
                   color: "#A38CE6",
-                  p: 0.5,
+
                   "&:hover": {
                     backgroundColor: "rgba(163, 140, 230, 0.08)",
                   },
@@ -758,7 +743,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                 {isFactChecking ? (
                   <CircularProgress size={16} sx={{ color: "#A38CE6" }} />
                 ) : (
-                  <FactCheckIcon sx={{ fontSize: 16 }} />
+                  <FactCheckIcon sx={{ fontSize: 20 }} />
                 )}
               </IconButton>
             </Tooltip>

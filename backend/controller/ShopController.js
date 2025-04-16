@@ -100,6 +100,8 @@ const shopController = {
 
                 const item = itemResult[0];
                 const itemPrice = item.item_price;
+
+                // Calculate total price based on quantity
                 const totalPrice = itemPrice * quantity;
 
                 // Check if user has enough coins
@@ -148,8 +150,8 @@ const shopController = {
                 } else {
                     // Insert with the correct parameter order and all required fields
                     await connection.query(
-                        "INSERT INTO user_items (firebase_uid, username, item_code, item_name, item_price, quantity, total_price) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                        [firebase_uid, username, item_code, item.item_name, itemPrice, quantity, totalPrice]
+                        "INSERT INTO user_items (firebase_uid, username, item_code, item_name, item_price, quantity) VALUES (?, ?, ?, ?, ?, ?)",
+                        [firebase_uid, username, item_code, item.item_name, itemPrice, quantity,]
                     );
                 }
 
@@ -208,29 +210,76 @@ const shopController = {
     },
 
     useUserTechPass: async (req, res) => {
-        const { firebase_uid } = req.params;
+        const { firebase_uid, techPassCount } = req.params;
+        const passesToDeduct = parseInt(techPassCount) || 1; // Default to 1 if not provided
 
         try {
+            // First check if user is premium
+            const [userInfo] = await pool.query(
+                "SELECT tech_pass, account_type FROM user_info WHERE firebase_uid = ?",
+                [firebase_uid]
+            );
 
-            const [rows] = await pool.query("SELECT tech_pass FROM user_info WHERE firebase_uid = ?", [firebase_uid]);
-
-            if (rows[0].tech_pass < 1) {
-                return res.status(400).json({ message: "You don't have any Tech Passes!" });
+            if (!userInfo.length) {
+                return res.status(404).json({ message: "User not found" });
             }
 
-            const [rows2] = await pool.query("SELECT * FROM user_items WHERE firebase_uid = ? AND item_code = 'ITEM002TP'", [firebase_uid]);
+            const isPremium = userInfo[0].account_type === "premium";
 
-            if (rows2.length === 0) {
-                return res.status(400).json({ message: "You don't have any Tech Passes!" });
+            // If user is premium, just return success without checking or decrementing tech passes
+            if (isPremium) {
+                return res.json({
+                    message: "Feature used successfully! (Premium benefit: No Tech Pass consumed)",
+                    isPremium: true
+                });
             }
 
+            // For non-premium users, verify they have enough tech passes
+            if (userInfo[0].tech_pass < passesToDeduct) {
+                return res.status(400).json({
+                    message: `You need ${passesToDeduct} Tech Passes but only have ${userInfo[0].tech_pass}!`
+                });
+            }
+
+            // Process tech pass usage for non-premium users
             const connection = await pool.getConnection();
             await connection.beginTransaction();
 
             try {
-                await connection.query("UPDATE user_info SET tech_pass = tech_pass - 1 WHERE firebase_uid = ?", [firebase_uid]);
+                // Always update the tech_pass count in user_info table
+                await connection.query(
+                    "UPDATE user_info SET tech_pass = tech_pass - ? WHERE firebase_uid = ?",
+                    [passesToDeduct, firebase_uid]
+                );
 
-                await connection.query("UPDATE user_items SET quantity = quantity - 1 WHERE firebase_uid = ? AND item_code = 'ITEM002TP'", [firebase_uid]);
+                // Check if user has the tech pass item in their inventory
+                const [userItemResult] = await connection.query(
+                    "SELECT quantity FROM user_items WHERE firebase_uid = ? AND item_code = 'ITEM002TP'",
+                    [firebase_uid]
+                );
+
+                // Only update user_items if the user has the item in their inventory
+                if (userItemResult.length > 0) {
+                    if (userItemResult[0].quantity >= passesToDeduct) {
+                        // If quantity is greater than what we're deducting, update it
+                        await connection.query(
+                            "UPDATE user_items SET quantity = quantity - ? WHERE firebase_uid = ? AND item_code = 'ITEM002TP'",
+                            [passesToDeduct, firebase_uid]
+                        );
+                    } else if (userItemResult[0].quantity > 0) {
+                        // If quantity is less than what we're deducting but greater than 0, set to 0
+                        await connection.query(
+                            "UPDATE user_items SET quantity = 0 WHERE firebase_uid = ? AND item_code = 'ITEM002TP'",
+                            [firebase_uid]
+                        );
+                    }
+                    // If quantity is 0, no need to update
+                }
+                const [updatedUserInfo] = await connection.query(
+                    "SELECT tech_pass FROM user_info WHERE firebase_uid = ?",
+                    [firebase_uid]
+                );
+
 
                 await connection.commit();
                 connection.release();
@@ -238,7 +287,13 @@ const shopController = {
                 // Invalidate cache
                 invalidateShopCaches(firebase_uid);
 
-                res.json({ message: "Tech Pass used successfully!" });
+                res.json({
+                    message: `${passesToDeduct} Tech Pass(es) used successfully!`,
+                    isPremium: false,
+                    techPassesUsed: passesToDeduct,
+                    updatedTechPassCount: updatedUserInfo[0].tech_pass  // Add this
+
+                });
             } catch (error) {
                 await connection.rollback();
                 connection.release();
@@ -250,7 +305,6 @@ const shopController = {
             res.status(500).json({ message: "Error executing query" });
         }
     },
-
     useItem: async (req, res) => {
         const { firebase_uid, item_code } = req.body;
 

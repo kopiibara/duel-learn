@@ -11,7 +11,8 @@ export const endBattle = async (req, res) => {
             winner_id,
             battle_end_reason,
             session_id,
-            session_uuid
+            session_uuid,
+            early_leaver_id  // Add this to track who left early
         } = req.body;
 
         console.log("endBattle request:", {
@@ -19,7 +20,8 @@ export const endBattle = async (req, res) => {
             winner_id,
             battle_end_reason,
             session_id,
-            session_uuid
+            session_uuid,
+            early_leaver_id
         });
 
         // Validate required fields
@@ -28,6 +30,51 @@ export const endBattle = async (req, res) => {
                 success: false,
                 message: "Missing required fields: lobby_code and battle_end_reason are required"
             });
+        }
+
+        // Handle early leave tracking if applicable
+        if (battle_end_reason === 'Left The Game' && early_leaver_id) {
+            // Start a transaction for early leave handling
+            await connection.beginTransaction();
+
+            try {
+                // Get current early leaves count
+                const [userInfo] = await connection.query(
+                    'SELECT earlyLeaves FROM user_info WHERE firebase_uid = ?',
+                    [early_leaver_id]
+                );
+
+                if (userInfo.length > 0) {
+                    const currentEarlyLeaves = userInfo[0].earlyLeaves || 0;
+                    const newEarlyLeaves = currentEarlyLeaves + 1;
+
+                    // Check if user should be banned (3 early leaves)
+                    if (newEarlyLeaves >= 3) {
+                        // Set ban until 24 hours from now
+                        const banUntil = new Date();
+                        banUntil.setHours(banUntil.getHours() + 24);
+
+                        // Update user with new early leaves count and ban time
+                        await connection.query(
+                            'UPDATE user_info SET earlyLeaves = ?, banUntil = ? WHERE firebase_uid = ?',
+                            [newEarlyLeaves, banUntil, early_leaver_id]
+                        );
+
+                        console.log(`User ${early_leaver_id} banned until ${banUntil} for excessive early leaves`);
+                    } else {
+                        // Just increment early leaves
+                        await connection.query(
+                            'UPDATE user_info SET earlyLeaves = ? WHERE firebase_uid = ?',
+                            [newEarlyLeaves, early_leaver_id]
+                        );
+
+                        console.log(`Incremented early leaves for user ${early_leaver_id} to ${newEarlyLeaves}`);
+                    }
+                }
+            } catch (error) {
+                await connection.rollback();
+                throw error;
+            }
         }
 
         // Determine which identifier to use to find the session
@@ -175,6 +222,11 @@ export const endBattle = async (req, res) => {
             });
         }
 
+        // Commit any pending transactions
+        if (battle_end_reason === 'Left The Game') {
+            await connection.commit();
+        }
+
         // Log the battle end for debugging
         console.log(`Battle ended: Session ${sessionQuery}, Reason: ${battle_end_reason}, Winner: ${winner_id || 'None'}`);
 
@@ -190,6 +242,15 @@ export const endBattle = async (req, res) => {
         });
 
     } catch (error) {
+        // Rollback transaction if there was an error during early leave handling
+        if (connection) {
+            try {
+                await connection.rollback();
+            } catch (rollbackError) {
+                console.error('Error rolling back transaction:', rollbackError);
+            }
+        }
+
         console.error('Error ending battle:', error);
         res.status(500).json({
             success: false,
@@ -1515,6 +1576,347 @@ export const consumeCardEffect = async (req, res) => {
     }
 };
 
+// Add this new function to check user's ban status
+export const checkUserBanStatus = async (req, res) => {
+    let connection;
+    try {
+        const { firebase_uid } = req.params;
+
+        if (!firebase_uid) {
+            return res.status(400).json({
+                success: false,
+                message: "Firebase UID is required"
+            });
+        }
+
+        connection = await pool.getConnection();
+
+        // Get user's ban status
+        const [userInfo] = await connection.query(
+            'SELECT banUntil, earlyLeaves FROM user_info WHERE firebase_uid = ?',
+            [firebase_uid]
+        );
+
+        if (userInfo.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Check if user is currently banned
+        const banUntil = userInfo[0].banUntil;
+        const earlyLeaves = userInfo[0].earlyLeaves || 0;
+        const now = new Date();
+
+        // If banUntil is in the future, user is banned
+        const isBanned = banUntil && new Date(banUntil) > now;
+
+        // If ban has expired, reset early leaves
+        if (banUntil && new Date(banUntil) <= now) {
+            await connection.query(
+                'UPDATE user_info SET banUntil = NULL, earlyLeaves = 0 WHERE firebase_uid = ?',
+                [firebase_uid]
+            );
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                isBanned,
+                banUntil: isBanned ? banUntil : null,
+                earlyLeaves,
+                banExpired: banUntil && new Date(banUntil) <= now
+            }
+        });
+
+    } catch (error) {
+        console.error('Error checking ban status:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to check ban status",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+/**
+ * Save PvP battle session report
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const savePvpSessionReport = async (req, res) => {
+    let connection;
+    try {
+        const {
+            session_uuid,
+            start_time,
+            end_time,
+            material_id,
+            host_id,
+            host_health,
+            host_correct_count,
+            host_incorrect_count,
+            host_highest_streak,
+            host_xp_earned,
+            host_coins_earned,
+            guest_id,
+            guest_health,
+            guest_correct_count,
+            guest_incorrect_count,
+            guest_highest_streak,
+            guest_xp_earned,
+            guest_coins_earned,
+            winner_id,
+            defeated_id,
+            battle_duration,
+            early_end
+        } = req.body;
+
+        console.log(host_xp_earned, host_coins_earned, guest_xp_earned, guest_coins_earned);
+
+        // Validate required fields
+        if (!session_uuid || !material_id || !host_id || !guest_id) {
+            return res.status(400).json({
+                success: false,
+                message: 'Missing required fields'
+            });
+        }
+
+        // Get a connection from the pool
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        // First check if this session report already exists
+        const checkQuery = `
+            SELECT session_uuid FROM pvp_battle_sessions 
+            WHERE session_uuid = ?
+        `;
+        const [existing] = await connection.execute(checkQuery, [session_uuid]);
+
+        if (existing.length > 0) {
+            await connection.rollback();
+            return res.status(200).json({
+                success: true,
+                message: 'PvP session report already exists',
+                data: {
+                    session_uuid
+                }
+            });
+        }
+
+        // Simple insert query for session report
+        const insertQuery = `
+            INSERT INTO pvp_battle_sessions (
+                session_uuid, start_time, end_time, material_id,
+                host_id, host_health, host_correct_count, host_incorrect_count,
+                host_highest_streak, host_xp_earned, host_coins_earned,
+                guest_id, guest_health, guest_correct_count, guest_incorrect_count,
+                guest_highest_streak, guest_xp_earned, guest_coins_earned,
+                winner_id, defeated_id, battle_duration, early_end
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        const values = [
+            session_uuid,
+            start_time,
+            end_time,
+            material_id,
+            host_id,
+            host_health,
+            host_correct_count,
+            host_incorrect_count,
+            host_highest_streak,
+            host_xp_earned,
+            host_coins_earned || 0,
+            guest_id,
+            guest_health,
+            guest_correct_count,
+            guest_incorrect_count,
+            guest_highest_streak,
+            guest_xp_earned,
+            guest_coins_earned || 0,
+            winner_id,
+            defeated_id,
+            battle_duration,
+            early_end
+        ];
+
+        const [result] = await connection.execute(insertQuery, values);
+
+        // Commit the transaction
+        await connection.commit();
+
+        return res.status(200).json({
+            success: true,
+            message: 'PvP session report saved successfully',
+            data: {
+                id: result.insertId
+            }
+        });
+
+    } catch (error) {
+        // Rollback the transaction if there's an error
+        if (connection) {
+            await connection.rollback();
+        }
+
+        console.error('Error saving PvP session report:', error);
+
+        if (error.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                success: false,
+                message: 'Session report already exists',
+                error: error.message
+            });
+        }
+
+        if (error.code === 'ER_BAD_FIELD_ERROR') {
+            return res.status(400).json({
+                success: false,
+                message: 'Database column error',
+                error: error.message
+            });
+        }
+
+        return res.status(500).json({
+            success: false,
+            message: 'Failed to save PvP session report',
+            error: error.message
+        });
+    } finally {
+        // Release the connection back to the pool
+        if (connection) {
+            connection.release();
+        }
+    }
+};
+
+/**
+ * Get user's current win streak
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const getWinStreak = async (req, res) => {
+    let connection;
+    try {
+        const { firebase_uid } = req.params;
+
+        if (!firebase_uid) {
+            return res.status(400).json({
+                success: false,
+                message: "Firebase UID is required"
+            });
+        }
+
+        connection = await pool.getConnection();
+
+        // Get win streak from user_info table
+        const [result] = await connection.execute(
+            'SELECT win_streak FROM user_info WHERE firebase_uid = ?',
+            [firebase_uid]
+        );
+
+        if (result.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                win_streak: result[0].win_streak || 0
+            }
+        });
+
+    } catch (error) {
+        console.error('Error getting win streak:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to get win streak",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+/**
+ * Update user's win streak
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const updateWinStreak = async (req, res) => {
+    let connection;
+    try {
+        const { firebase_uid, is_winner } = req.body;
+
+        if (!firebase_uid || is_winner === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: "Firebase UID and winner status are required"
+            });
+        }
+
+        connection = await pool.getConnection();
+
+        // Get current win streak
+        const [currentStreak] = await connection.execute(
+            'SELECT win_streak FROM user_info WHERE firebase_uid = ?',
+            [firebase_uid]
+        );
+
+        if (currentStreak.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found"
+            });
+        }
+
+        // Calculate new win streak
+        let newStreak;
+        if (is_winner) {
+            // Get current streak value, ensuring it's a number
+            const currentStreakValue = currentStreak[0].win_streak === null ? 0 : parseInt(currentStreak[0].win_streak);
+
+            // Increment streak but cap at 5
+            newStreak = Math.min(currentStreakValue + 1, 5);
+
+            console.log('Current streak:', currentStreakValue, 'New streak:', newStreak); // Debug log
+        } else {
+            // Reset streak to 0 on loss
+            newStreak = 0;
+        }
+
+        // Update win streak in database
+        await connection.execute(
+            'UPDATE user_info SET win_streak = ? WHERE firebase_uid = ?',
+            [newStreak, firebase_uid]
+        );
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                win_streak: newStreak
+            }
+        });
+
+    } catch (error) {
+        console.error('Error updating win streak:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update win streak",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
 // Add this new function to check if a player has any card blocking effects
 export const checkCardBlockingEffects = async (req, res) => {
     let connection;
@@ -1593,81 +1995,7 @@ export const checkCardBlockingEffects = async (req, res) => {
     }
 };
 
-// Add this new function to check if a player has mind control effects
-export const checkMindControlEffects = async (req, res) => {
-    let connection;
-    try {
-        connection = await pool.getConnection();
 
-        const { session_uuid, player_type } = req.params;
-
-        if (!session_uuid || !player_type) {
-            return res.status(400).json({
-                success: false,
-                message: "Missing required fields: session_uuid and player_type"
-            });
-        }
-
-        console.log(`Checking mind control effects for ${player_type} in session ${session_uuid}`);
-
-        // Get the battle session to access active card effects
-        const [sessionResult] = await connection.query(
-            `SELECT active_card_effects FROM battle_sessions 
-            WHERE session_uuid = ? AND is_active = 1`,
-            [session_uuid]
-        );
-
-        if (sessionResult.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "Battle session not found or not active"
-            });
-        }
-
-        // Extract active card effects
-        let activeCardEffects = [];
-        let mindControlEffects = [];
-
-        if (sessionResult[0].active_card_effects) {
-            try {
-                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
-
-                // Filter for mind control effects that target this player and are not used
-                mindControlEffects = activeCardEffects.filter(effect =>
-                    effect.target === player_type &&
-                    effect.effect === "mind_control" &&
-                    !effect.used
-                );
-
-                console.log(`Mind control effects for ${player_type}: ${JSON.stringify(mindControlEffects)}`);
-            } catch (e) {
-                console.error('Error parsing active_card_effects:', e);
-            }
-        }
-
-        const hasMindControlEffect = mindControlEffects.length > 0;
-
-        res.json({
-            success: true,
-            data: {
-                has_mind_control_effect: hasMindControlEffect,
-                effects: mindControlEffects
-            }
-        });
-
-    } catch (error) {
-        console.error('Error checking mind control effects:', error);
-        res.status(500).json({
-            success: false,
-            message: "Failed to check mind control effects",
-            error: error.message
-        });
-    } finally {
-        if (connection) connection.release();
-    }
-};
-
-// Add this new function to apply poison effects
 export const applyPoisonEffects = async (req, res) => {
     let connection;
     try {
@@ -1814,3 +2142,77 @@ export const applyPoisonEffects = async (req, res) => {
         if (connection) connection.release();
     }
 }; 
+
+// Add this new function to check if a player has mind control effects
+export const checkMindControlEffects = async (req, res) => {
+    let connection;
+    try {
+        connection = await pool.getConnection();
+
+        const { session_uuid, player_type } = req.params;
+
+        if (!session_uuid || !player_type) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: session_uuid and player_type"
+            });
+        }
+
+        console.log(`Checking mind control effects for ${player_type} in session ${session_uuid}`);
+
+        // Get the battle session to access active card effects
+        const [sessionResult] = await connection.query(
+            `SELECT active_card_effects FROM battle_sessions 
+            WHERE session_uuid = ? AND is_active = 1`,
+            [session_uuid]
+        );
+
+        if (sessionResult.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle session not found or not active"
+            });
+        }
+
+        // Extract active card effects
+        let activeCardEffects = [];
+        let mindControlEffects = [];
+
+        if (sessionResult[0].active_card_effects) {
+            try {
+                activeCardEffects = JSON.parse(sessionResult[0].active_card_effects);
+
+                // Filter for mind control effects that target this player and are not used
+                mindControlEffects = activeCardEffects.filter(effect =>
+                    effect.target === player_type &&
+                    effect.effect === "mind_control" &&
+                    !effect.used
+                );
+
+                console.log(`Mind control effects for ${player_type}: ${JSON.stringify(mindControlEffects)}`);
+            } catch (e) {
+                console.error('Error parsing active_card_effects:', e);
+            }
+        }
+
+        const hasMindControlEffect = mindControlEffects.length > 0;
+
+        res.json({
+            success: true,
+            data: {
+                has_mind_control_effect: hasMindControlEffect,
+                effects: mindControlEffects
+            }
+        });
+
+    } catch (error) {
+        console.error('Error checking mind control effects:', error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to check mind control effects",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};

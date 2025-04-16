@@ -19,7 +19,7 @@ const ViewStudyMaterial = () => {
   const { user } = useUser();
   const { studyMaterialId } = useParams();
   const navigate = useNavigate();
-  const [selected, setSelected] = useState("Summary");
+  const [selected, setSelected] = useState("Overview");
   const [studyMaterial, setStudyMaterial] = useState<StudyMaterial | null>(
     null
   );
@@ -234,9 +234,10 @@ const ViewStudyMaterial = () => {
 
   return (
     <PageTransition>
-      <Box className="min-h-screen w-full px-4 md:px-8">
+      <Box className="min-h-screen w-full ">
         <DocumentHead title={studyMaterial?.title + " | Duel Learn"} />
-        <Stack spacing={2} sx={{ pt: { xs: 2, md: 3 } }}>
+
+        <Stack spacing={2}>
           <Stack
             direction={{ xs: "column", sm: "row" }}
             spacing={2}
@@ -470,9 +471,9 @@ const ViewStudyMaterial = () => {
               direction="row"
               spacing={1}
               className="flex items-center"
-              sx={{ overflowX: "auto", pb: 1 }}
+              sx={{ overflowX: "auto", p: 1 }}
             >
-              {["Summary", "Cards"].map((label) => (
+              {["Overview", "Cards"].map((label) => (
                 <Button
                   key={label}
                   variant="text"
@@ -497,7 +498,7 @@ const ViewStudyMaterial = () => {
               ))}
             </Stack>
             <Box sx={{ width: "100%" }}>
-              {selected === "Summary" ? (
+              {selected === "Overview" ? (
                 <SummaryPage studyMaterial={studyMaterial} />
               ) : (
                 <CardPage studyMaterial={studyMaterial} />

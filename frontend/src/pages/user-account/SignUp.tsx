@@ -414,23 +414,29 @@ const SignUp = () => {
               )}
             </div>
             <div className="flex items-center mb-4">
-              <input
-                type="checkbox"
-                id="terms"
-                name="terms"
-                className="w-4 h-4 text-[#4D18E8] bg-[#3B354D] border-gray-300 rounded focus:ring-2 focus:ring-[#4D18E8]"
-                checked={formik.values.terms}
-                onChange={formik.handleChange}
-              />
-              <label htmlFor="terms" className="ml-2 text-[#9F9BAE] text-sm">
-                I agree to {""}
-                <Link
-                  to="/terms-and-conditions"
-                  target="_blank"
-                  className="text-[#4D18E8] underline hover:text-[#4D18E8]"
-                >
-                  Terms and Conditions
-                </Link>
+              <label
+                htmlFor="terms"
+                className="flex items-center cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  id="terms"
+                  name="terms"
+                  checked={formik.values.terms}
+                  onChange={formik.handleChange}
+                  className="peer hidden"
+                />
+                <div className="w-4 h-4 rounded-[6px] border border-[#3B354D] bg-[#3B354D] peer-checked:bg-[#4D18E8] flex items-center justify-center transition-all duration-200"></div>
+                <span className="ml-2 text-[#9F9BAE] text-sm">
+                  I agree to{" "}
+                  <Link
+                    to="/terms-and-conditions"
+                    target="_blank"
+                    className="text-[#4D18E8] underline hover:text-[#4D18E8]"
+                  >
+                    Terms and Conditions
+                  </Link>
+                </span>
               </label>
             </div>
             {formik.touched.terms && formik.errors.terms && (
@@ -438,7 +444,7 @@ const SignUp = () => {
             )}
             <button
               type="submit"
-              className="w-full py-3 text-white bg-[#4D18E8] rounded-lg hover:bg-[#3814b6] focus:outline-none focus:ring-4 focus:ring-[#4D18E8]"
+              className="w-full py-3 text-white bg-[#4D18E8] rounded-[0.8rem] hover:bg-[#3814b6] focus:outline-none focus:ring-4 focus:ring-[#4D18E8]"
             >
               Create Account
             </button>
@@ -451,7 +457,7 @@ const SignUp = () => {
           </div>
 
           <button
-            className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-lg flex items-center justify-center hover:bg-[#1A1426] transition-colors"
+            className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-[0.8rem] flex items-center justify-center hover:bg-[#1A1426] transition-colors"
             onClick={handleGoogleSubmit}
           >
             <img

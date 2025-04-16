@@ -31,6 +31,51 @@ import QuestionTimer from "./utils/QuestionTimer";
 // Import shared BattleState interface
 import { BattleState } from "./BattleState";
 
+// Create a shared battle rewards calculation function
+const calculateBattleRewards = (
+  isWinner: boolean,
+  myHealth: number,
+  opponentHealth: number,
+  winStreak: number,
+  isPremium: boolean = false
+) => {
+  // Base rewards
+  const baseXP = 100;
+  const baseCoins = 10;
+
+  // Calculate HP difference for bonus/penalty
+  const hpDifference = Math.abs(myHealth - opponentHealth);
+  const hpModifier = Math.floor(hpDifference * 0.25); // 25% of HP difference
+
+  // Calculate win streak bonus (10 points per win, max 50)
+  const winStreakBonus = Math.min(winStreak * 10, 50);
+
+  // Initialize rewards
+  let xpReward = baseXP;
+  let coinReward = baseCoins;
+
+  if (isWinner) {
+    // Winner gets base + HP bonus + win streak bonus
+    xpReward = baseXP + hpModifier + winStreakBonus;
+    coinReward = baseCoins + hpModifier + winStreakBonus;
+  } else {
+    // Loser gets base - HP penalty
+    xpReward = Math.max(0, baseXP - hpModifier);
+    coinReward = Math.max(0, baseCoins - hpModifier);
+  }
+
+  // Apply premium multiplier if applicable
+  if (isPremium) {
+    xpReward *= 2;
+    coinReward *= 2;
+  }
+
+  return {
+    xp: Math.floor(xpReward),
+    coins: Math.floor(coinReward),
+  };
+};
+
 /**
  * PvpBattle component - Main battle screen for player vs player mode
  */
@@ -92,6 +137,7 @@ export default function PvpBattle() {
   // Add a state to track current turn number for poison effects
   const [currentTurnNumber, setCurrentTurnNumber] = useState(0);
   const [poisonEffectActive, setPoisonEffectActive] = useState(false);
+  const [poisonTurnsRemaining, setPoisonTurnsRemaining] = useState(0);
 
   // Battle statistics tracking
   const [battleStats, setBattleStats] = useState({
@@ -102,9 +148,13 @@ export default function PvpBattle() {
     totalQuestions: 0,
   });
 
+  // Win streak across games
+  const [winStreak, setWinStreak] = useState(0);
+
   // Battle statistics for session report
   const [battleStartTime, setBattleStartTime] = useState<Date | null>(null);
   const [showSessionReport, setShowSessionReport] = useState(false);
+  const [sessionReportSaved, setSessionReportSaved] = useState(false);
 
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
@@ -450,7 +500,7 @@ export default function PvpBattle() {
   };
 
   // Handle viewing session report
-  const handleViewSessionReport = () => {
+  const handleViewSessionReport = async () => {
     // Calculate time spent
     const endTime = new Date();
     const startTime = battleStartTime || new Date();
@@ -462,26 +512,154 @@ export default function PvpBattle() {
     // Determine if player is winner
     const isWinner = playerHealth > 0 && opponentHealth <= 0;
 
-    // Navigate to session report with battle data
-    navigate("/dashboard/pvp-battle/session-report", {
-      state: {
-        timeSpent,
-        correctCount: battleStats.correctAnswers,
-        incorrectCount: battleStats.incorrectAnswers,
-        mode: "pvp",
-        material: { study_material_id: studyMaterialId },
-        earlyEnd: false,
-        startTime: battleStartTime,
-        highestStreak: battleStats.highestStreak,
-        playerHealth,
-        opponentHealth,
-        playerName,
-        opponentName,
-        isWinner,
-        sessionUuid: battleState?.session_uuid,
-        totalQuestions: battleStats.totalQuestions,
-      },
-    });
+    try {
+      // Get current win streak for winner
+      const winnerId = isHost
+        ? isWinner
+          ? hostId
+          : guestId
+        : isWinner
+        ? guestId
+        : hostId;
+      const loserId = isHost
+        ? isWinner
+          ? guestId
+          : hostId
+        : isWinner
+        ? hostId
+        : guestId;
+
+      // First update win streaks in the database
+      const [winnerUpdate, loserUpdate] = await Promise.all([
+        // Update winner's streak
+        axios.put(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/win-streak`,
+          {
+            firebase_uid: winnerId,
+            is_winner: true,
+          }
+        ),
+        // Reset loser's streak
+        axios.put(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/win-streak`,
+          {
+            firebase_uid: loserId,
+            is_winner: false,
+          }
+        ),
+      ]);
+
+      // Get the updated win streak for reward calculation
+      const updatedWinStreak = winnerUpdate.data.success
+        ? winnerUpdate.data.data.win_streak
+        : 0;
+
+      // Calculate rewards using the updated win streak from the database
+      const hostRewards = calculateBattleRewards(
+        isHost ? isWinner : !isWinner,
+        isHost ? playerHealth : opponentHealth,
+        isHost ? opponentHealth : playerHealth,
+        isHost
+          ? isWinner
+            ? updatedWinStreak
+            : 0
+          : !isWinner
+          ? updatedWinStreak
+          : 0,
+        false // TODO: Get premium status from user context
+      );
+
+      const guestRewards = calculateBattleRewards(
+        !isHost ? isWinner : !isWinner,
+        !isHost ? playerHealth : opponentHealth,
+        !isHost ? opponentHealth : playerHealth,
+        !isHost
+          ? isWinner
+            ? updatedWinStreak
+            : 0
+          : !isWinner
+          ? updatedWinStreak
+          : 0,
+        false // TODO: Get premium status from user context
+      );
+
+      // Save session report to database
+      if (battleState?.session_uuid) {
+        try {
+          const sessionReportPayload = {
+            session_uuid: battleState.session_uuid,
+            start_time: startTime.toISOString(),
+            end_time: endTime.toISOString(),
+            material_id: studyMaterialId,
+            host_id: hostId,
+            host_health: playerHealth,
+            host_correct_count: battleStats.correctAnswers,
+            host_incorrect_count: battleStats.incorrectAnswers,
+            host_highest_streak: battleStats.highestStreak,
+            host_xp_earned: hostRewards.xp,
+            host_coins_earned: hostRewards.coins,
+            guest_id: guestId,
+            guest_health: opponentHealth,
+            guest_correct_count: battleStats.correctAnswers,
+            guest_incorrect_count: battleStats.incorrectAnswers,
+            guest_highest_streak: battleStats.highestStreak,
+            guest_xp_earned: guestRewards.xp,
+            guest_coins_earned: guestRewards.coins,
+            winner_id: playerHealth > 0 ? hostId : guestId,
+            defeated_id: playerHealth > 0 ? guestId : hostId,
+            battle_duration: Math.floor(timeDiffMs / 1000),
+            early_end: false,
+          };
+
+          const response = await axios.post(
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/gameplay/battle/save-session-report`,
+            sessionReportPayload
+          );
+
+          if (response.data.success) {
+            console.log("Session report saved successfully");
+          } else {
+            console.error(
+              "Failed to save session report:",
+              response.data.message
+            );
+          }
+        } catch (error) {
+          console.error("Error saving session report:", error);
+        }
+      }
+
+      // Navigate to session report with battle data
+      navigate("/dashboard/pvp-battle/session-report", {
+        state: {
+          timeSpent,
+          correctCount: battleStats.correctAnswers,
+          incorrectCount: battleStats.incorrectAnswers,
+          mode: "pvp",
+          material: { study_material_id: studyMaterialId },
+          earlyEnd: false,
+          startTime: battleStartTime,
+          highestStreak: battleStats.highestStreak,
+          playerHealth,
+          opponentHealth,
+          playerName,
+          opponentName,
+          isWinner,
+          sessionUuid: battleState?.session_uuid,
+          hostId,
+          guestId,
+          isHost,
+          earnedXP: isHost ? hostRewards.xp : guestRewards.xp,
+          earnedCoins: isHost ? hostRewards.coins : guestRewards.coins,
+        },
+      });
+      console.log("Host Rewards:", hostRewards);
+      console.log("Guest Rewards:", guestRewards);
+    } catch (error) {
+      console.error("Error handling session report:", error);
+    }
   };
 
   // Handle settings button click
@@ -491,12 +669,13 @@ export default function PvpBattle() {
 
     // Show confirmation dialog
     const confirmLeave = window.confirm(
-      "Are you sure you want to leave the battle? Your progress will be lost and the battle will end."
+      "Are you sure you want to leave the battle? Your progress will be lost, the battle will end, and you may be penalized for leaving early."
     );
 
     if (confirmLeave) {
       try {
-        await handleLeaveBattle();
+        // Call handleLeaveBattle with the current user's ID
+        await handleLeaveBattle("Left The Game", currentUserId);
       } catch (error) {
         console.error("Error leaving battle:", error);
         // Force navigation anyway on error
@@ -678,8 +857,32 @@ export default function PvpBattle() {
             }
           }
 
+          // Check active poison effects
+          interface PoisonEffect {
+            turns_remaining: number;
+            effect: string;
+            type: string;
+            target: string;
+          }
+
+          const activePoisonEffects =
+            (response.data.data.active_poison_effects as PoisonEffect[]) || [];
+          if (activePoisonEffects.length > 0) {
+            // Get the max turns remaining from all active poison effects
+            const maxTurnsRemaining = Math.max(
+              ...activePoisonEffects.map((effect) => effect.turns_remaining)
+            );
+            setPoisonTurnsRemaining(maxTurnsRemaining);
+
+            // Set poison effect as active if any turns remain
+            setPoisonEffectActive(maxTurnsRemaining > 0);
+          } else {
+            // No more active poison effects
+            setPoisonTurnsRemaining(0);
+            setPoisonEffectActive(false);
+          }
+
           // Show poison damage notification
-          setPoisonEffectActive(true);
           const damage = response.data.data.poison_damage_applied;
 
           const messageElement = document.createElement("div");
@@ -692,11 +895,15 @@ export default function PvpBattle() {
           `;
           document.body.appendChild(messageElement);
 
-          // Remove the message after 2 seconds
+          // Remove only the message after 2 seconds, but keep the poison effect indicator
           setTimeout(() => {
             document.body.removeChild(messageElement);
-            setPoisonEffectActive(false);
           }, 2000);
+        } else {
+          // Check if poison effect has ended
+          if (poisonTurnsRemaining <= 0) {
+            setPoisonEffectActive(false);
+          }
         }
       } catch (error) {
         console.error("Error applying poison effects:", error);
@@ -707,7 +914,13 @@ export default function PvpBattle() {
     if (isMyTurn && currentTurnNumber > 0) {
       checkAndApplyPoisonEffects();
     }
-  }, [isMyTurn, currentTurnNumber, battleState?.session_uuid, isHost]);
+  }, [
+    isMyTurn,
+    currentTurnNumber,
+    battleState?.session_uuid,
+    isHost,
+    poisonTurnsRemaining,
+  ]);
 
   // Set battle start time when game starts
   useEffect(() => {
@@ -715,6 +928,8 @@ export default function PvpBattle() {
       setBattleStartTime(new Date());
     }
   }, [gameStarted, battleStartTime]);
+
+  // Effect to sync battle stats with backend periodically
 
   return (
     <div
@@ -743,6 +958,7 @@ export default function PvpBattle() {
           health={playerHealth}
           maxHealth={maxHealth}
           userId={currentUserId}
+          poisonEffectActive={poisonEffectActive}
         />
 
         <QuestionTimer
@@ -758,6 +974,7 @@ export default function PvpBattle() {
           maxHealth={maxHealth}
           isRightAligned
           userId={opponentId}
+          poisonEffectActive={false}
         />
 
         {/* Settings button */}

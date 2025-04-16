@@ -28,11 +28,13 @@ interface HeaderProps {
 
 const commonDialogStyle = {
   "& .MuiDialog-paper": {
-    backgroundColor: "#080511",
+    backgroundColor: "#120F1B",
     paddingY: "30px",
     paddingX: "20px",
     paddingRight: "20px",
-    borderRadius: "10px",
+    borderRadius: "0.8rem",
+    bgcolor: "#120F1B",
+    border: "2px solid #3B354D",
   },
 };
 
@@ -45,6 +47,7 @@ const commonButtonStyles = {
       backgroundColor: "#080511",
       color: "#FFFFFF",
     },
+    borderRadius: "0.8rem",
   },
   confirmButton: {
     backgroundColor: "#4D1EE3",
@@ -54,6 +57,7 @@ const commonButtonStyles = {
     "&:hover": {
       backgroundColor: "#6A3EEA",
     },
+    borderRadius: "0.8rem",
   },
 };
 
@@ -94,7 +98,7 @@ export default function Header({
 
   const handleConfirmEndGame = async () => {
     setOpenEndGameDialog(false);
-    
+
     if (onEndGame) {
       try {
         await onEndGame();
@@ -148,8 +152,17 @@ export default function Header({
                 {mode} Mode - {material?.title || "No Material Selected"}
               </span>
               <div className="flex items-center gap-4 text-[12px] sm:text-[14px] text-[#6F658D]">
-                <div>Mastered {masteredCount}</div>
-                <div>Unmastered {unmasteredCount}</div>
+                {mode.toLowerCase() === "peaceful" ? (
+                  <>
+                    <div>Mastered {masteredCount}</div>
+                    <div>Unmastered {unmasteredCount}</div>
+                  </>
+                ) : (
+                  <>
+                    <div>Correct {correct}</div>
+                    <div>Incorrect {incorrect}</div>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -178,7 +191,7 @@ export default function Header({
           </p>
         </DialogContent>
         <DialogActions
-          className="bg-[#080511] pl-1 justify-center"
+          className="pl-1 justify-center"
           sx={{ padding: "0 24px 32px 24px", gap: 3 }}
         >
           <Button
@@ -222,7 +235,7 @@ export default function Header({
             you wish to proceed.
           </p>
         </DialogContent>
-        <DialogActions className="bg-[#080511]" sx={{ padding: "16px 24px" }}>
+        <DialogActions sx={{ padding: "16px 24px" }}>
           <Button
             onClick={() => setOpenLeaveConfirmDialog(false)}
             sx={commonButtonStyles.cancelButton}
@@ -252,7 +265,7 @@ export default function Header({
             still be recorded. Do you want to continue?
           </p>
         </DialogContent>
-        <DialogActions className="bg-[#080511]" sx={{ padding: "16px 24px" }}>
+        <DialogActions sx={{ padding: "16px 24px" }}>
           <Button
             onClick={() => setOpenEndGameDialog(false)}
             sx={commonButtonStyles.cancelButton}

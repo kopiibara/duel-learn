@@ -33,21 +33,23 @@ const CardComponent: React.FC<CardComponentProps> = ({
     alignItems: "flex-start",
     borderRadius: "0.8rem",
     height: isXsScreen ? "180px" : isSmScreen ? "180px" : "220px",
-    width: isXsScreen ? "100%" : "100%",
+    width: "100%", // Keep consistent width
     cursor: "pointer",
     maxHeight: "100%",
     background: "#E2DDF3",
     position: "relative",
-    transform: "scale(1)", // Initial transform state
-    transition: "all 0.3s ease-in-out", // Ensure smooth transition between hover and unhover states
+    transform: "translateY(0)", // Start position
+    transition: "all 0.3s", // Match the transition timing with ChooseYourChallenge
+    overflow: "hidden", // Add this to match ChooseYourChallenge
     "& .cardMedia": {
-      transform: "scale(1)", // Initial scale
-      transition: "transform 0.5s ease-in-out", // Always apply transition, not just on hover
+      transform: "scale(1)",
+      transition: "transform 0.5s ease-in-out",
     },
     "&:hover": {
-      transform: "scale(1.03)", // Scales slightly on hover
+      transform: "translateY(-4px)",
+      boxShadow: "0 10px 20px rgba(0,0,0,0.12)", // Add shadow for lifting effect
       "& .cardMedia": {
-        transform: "scale(1.05)", // Scale the image on hover
+        transform: "translateY(-8px)",
       },
     },
   }));

@@ -68,16 +68,20 @@ const PaymentController = {
 
                 try {
                     const [userResult] = await pool.query(
-                        'UPDATE users SET account_type = ? WHERE firebase_uid = ?',
-                        ['premium', firebase_uid]
+                        'UPDATE users SET account_type = ? ,account_type_plan = ? WHERE firebase_uid = ?',
+                        ['premium', planName, firebase_uid]
                     );
-                    console.log(`Updated users table: ${userResult.affectedRows} row(s)`);
-
                     const [userInfoResult] = await pool.query(
-                        'UPDATE user_info SET account_type = ? WHERE firebase_uid = ?',
-                        ['premium', firebase_uid]
+                        'UPDATE user_info SET account_type = ?, account_type_plan = ?, exp = exp + 1000, mana = ? , coins = coins + 500, tech_pass = tech_pass + 5 WHERE firebase_uid = ?',
+                        ['premium', planName, 200, firebase_uid]
                     );
-                    console.log(`Updated user_info table: ${userInfoResult.affectedRows} row(s)`);
+
+                    const [userItemsResult] = await pool.query(
+                        'UPDATE user_items SET quantity = quantity + 5 WHERE firebase_uid = ? AND item_code = ?',
+                        [firebase_uid, 'ITEM002TP']
+                    );
+
+
                 } catch (error) {
                     console.error('Error updating account type:', error);
                 }
@@ -344,13 +348,20 @@ const PaymentController = {
                     'UPDATE user_payment SET status = ?, paid_at = NOW() WHERE id = ?',
                     ['active', paymentId]
                 );
+
                 await pool.query(
-                    'UPDATE users SET account_type = ? WHERE firebase_uid = ?',
-                    ['premium', payment.firebase_uid]
+                    'UPDATE users SET account_type = ?, account_type_plan = ? WHERE firebase_uid = ?',
+                    ['premium', payment.plan, payment.firebase_uid]
                 );
+
                 await pool.query(
-                    'UPDATE user_info SET account_type = ? WHERE firebase_uid = ?',
-                    ['premium', payment.firebase_uid]
+                    'UPDATE user_info SET account_type = ?, account_type_plan = ?, exp = exp + 1000, mana = ? , coins = coins + 500, tech_pass = tech_pass + 5 WHERE firebase_uid = ?',
+                    ['premium', payment.plan, 200, payment.firebase_uid]
+                );
+
+                await pool.query(
+                    'UPDATE user_items SET quantity = quantity + 5 WHERE firebase_uid = ? AND item_code = ?',
+                    [payment.firebase_uid, 'ITEM002TP']
                 );
             }
 
@@ -403,6 +414,39 @@ const PaymentController = {
             return res.status(500).json({
                 success: false,
                 error: 'Failed to get subscription details',
+                message: error.message
+            });
+        }
+    },
+
+    cancelSubscription: async (req, res) => {
+        try {
+            const { firebase_uid } = req.body;
+
+            // Cancel the user's subscription by updating the status to 'cancelled'
+            await pool.query(
+                'UPDATE user_payment SET status = ? WHERE firebase_uid = ? AND status = ?',
+                ['cancelled', firebase_uid, 'active']
+            );
+
+            await pool.query(
+                'UPDATE users SET account_type = ?, account_type_plan = ? WHERE firebase_uid = ?',
+                ['free', 'free', firebase_uid]
+            );
+            await pool.query(
+                'UPDATE user_info SET account_type = ?, account_type_plan = ? WHERE firebase_uid = ?',
+                ['free', 'free', firebase_uid]
+            );
+
+            return res.status(200).json({
+                success: true,
+                message: 'Subscription cancelled successfully'
+            });
+        } catch (error) {
+            console.error('Cancel subscription error:', error);
+            return res.status(500).json({
+                success: false,
+                error: 'Failed to cancel subscription',
                 message: error.message
             });
         }

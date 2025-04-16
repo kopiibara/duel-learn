@@ -16,8 +16,8 @@ import {
 import clsx from "clsx";
 import AddIcon from "@mui/icons-material/Add";
 import PlayIcon from "@mui/icons-material/PlayArrowRounded";
-import ArrowBackIcon from "@mui/icons-material/ArrowBackIosNewRounded";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForwardIosRounded";
+import MenuOpenIcon from "@mui/icons-material/MenuOpenRounded";
+
 import { useNavigate, useLocation } from "react-router-dom";
 import ChooseModeModal from "./modals/ChooseModeModal";
 import { useUser } from "../contexts/UserContext";
@@ -230,22 +230,25 @@ const Sidebar: React.FC<SidebarProps> = ({
               size="small"
               sx={{
                 backgroundColor: "inherit",
-                transition: "all 0.3s ease",
+                transition: "all 0.3s ease-in-out",
                 display: "flex",
                 justifyContent: "center",
                 alignItems: "center",
                 "& .MuiSvgIcon-root": {
                   color: "#3B354D",
-                  fontSize: "1rem", // Change from clamp to rem
                 },
                 "&:hover": {
-                  backgroundColor: "#3B354D",
+                  backgroundColor: "#080511",
                   "& .MuiSvgIcon-root": { color: "#E2DDF3" },
                 },
               }}
               className="absolute z-50 left-0"
             >
-              {collapsed ? <ArrowForwardIcon /> : <ArrowBackIcon />}
+              {collapsed ? (
+                <MenuOpenIcon className=" rotate-180" />
+              ) : (
+                <MenuOpenIcon />
+              )}
             </Fab>
           </Stack>
 
@@ -293,7 +296,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                       transition: "all 0.3s ease",
                       justifyContent: collapsed ? "center" : "flex-start",
                       alignItems: "center",
-                      padding: collapsed ? "0.75rem" : "0.75rem 1.2rem",
+                      padding: collapsed ? "0.75rem" : "0.5rem 1.2rem",
                       color: "#E2DDF3",
                       borderColor: "#080511",
                       borderWidth: "2px",

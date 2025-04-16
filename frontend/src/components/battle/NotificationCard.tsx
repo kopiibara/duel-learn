@@ -152,10 +152,10 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
 
   // Get background color based on notification type
   const getBackgroundColor = () => {
-    if (isOutgoingInvitation) return "bg-[#080511]";
-    if (type === "cancelled") return "bg-[#121212]";
-    if (type === "timeout" || type === "expired") return "bg-[#13131A]";
-    return "bg-gray-950";
+    if (isOutgoingInvitation) return "bg-[#120F1B]";
+    if (type === "cancelled") return "bg-[#120F1B]";
+    if (type === "timeout" || type === "expired") return "bg-[#120F1B]";
+    return "bg-[#120F1B]";
   };
 
   // Get indicator color based on notification type
@@ -170,7 +170,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
   return (
     <article
       className={`
-        flex relative items-center px-5 py-0 rounded-2xl h-[117px] w-[761px] 
+        flex relative items-center px-5 py-0 rounded-[0.8rem] h-[75px] w-[650px] 
         max-md:p-4 max-md:w-full max-md:h-auto max-md:min-w-80 max-sm:p-2.5
         ${getBackgroundColor()}
       `}
@@ -178,25 +178,25 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
       {/* Status indicator for non-pending notifications */}
       {type !== "pending" && (
         <div
-          className={`absolute top-0 left-0 w-4 h-full ${getIndicatorClass()} rounded-tl-2xl rounded-bl-2xl`}
+          className={`absolute top-0 left-0 w-2 h-full ${getIndicatorClass()} rounded-tl-2xl rounded-bl-2xl`}
         />
       )}
 
       {/* Profile picture - positioned exactly as in the mockup for outgoing invitations */}
       <figure
         className={`
-          rounded-md overflow-hidden bg-zinc-300
+        overflow-hidden rounded-[10px]
           ${
             isOutgoingInvitation
-              ? "h-[53px] w-[53px] ml-[52px] mr-[27px]"
-              : "h-[53px] w-[53px] mr-7 max-md:mr-4 max-md:w-10 max-md:h-10 max-sm:mr-2.5 max-sm:h-[30px] max-sm:w-[30px]"
+              ? "h-auto w-12 mr-[24px]"
+              : "h-auto w-12 mr-7 max-md:mr-4 max-md:w-10 max-md:h-10 max-sm:mr-2.5 max-sm:h-[30px] max-sm:w-[30px]"
           }
         `}
       >
         <img
           src={profilePicture || defaultPicture}
           alt="Profile"
-          className="w-full h-full object-cover"
+          className="w-full h-auto object-cover"
         />
       </figure>
 
@@ -205,8 +205,8 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
         className={`
         ${
           isOutgoingInvitation
-            ? "text-2xl text-white font-normal"
-            : "text-2xl text-white max-md:text-lg max-sm:text-base"
+            ? "text-[18px] text-white font-normal"
+            : "text-[18px] text-white "
         }
       `}
       >
@@ -270,8 +270,8 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
           className={`
             ${
               isOutgoingInvitation
-                ? "absolute right-5 top-[38px] p-2.5 text-base font-bold text-white bg-[#A64747] rounded-[10px] border border-solid border-stone-300 border-opacity-0 w-[108px] h-[40px]"
-                : "absolute right-5 p-2.5 text-base text-white bg-pink-800 rounded-xl border border-solid border-stone-300 border-opacity-0"
+                ? "absolute right-5 top-[20px] text-[12px] px-5 h-8 w-fit bg-[#A64747] rounded-[0.8rem] hover:scale-105 transition-all duration-200 ease-in-out"
+                : "absolute right-5  text-md h-8 w-fit bg-pink-800 rounded-[0.8rem] "
             }
           `}
         >
@@ -282,7 +282,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
       {/* Progress indicator (only for outgoing invitations) */}
       {isOutgoingInvitation && (
         <div
-          className="absolute bottom-0 left-0 h-2 bg-[#D9D9D9] origin-left transition-all duration-100"
+          className="absolute bottom-1 left-0 h-1 rounded-bl-full bg-[#D9D9D9] origin-left transition-all duration-100"
           style={{ width: `${progress}%` }}
         ></div>
       )}

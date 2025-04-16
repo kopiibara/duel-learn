@@ -7,10 +7,13 @@ import ProfilePopover from "./ProfilePopover";
 import { Avatar, Box } from "@mui/material";
 import { useUser } from "../../contexts/UserContext";
 import DefaultPicture from "/profile-picture/default-picture.svg";
+import PremiumLabel from "/premium-star.png";
 
 const StatsNProfile = () => {
   const { user } = useUser();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const isPremium = user?.account_type === "premium";
 
   // Handle profile icon click to open/close popover
   const handleProfileClick = (event: React.MouseEvent<HTMLElement>) => {
@@ -23,7 +26,7 @@ const StatsNProfile = () => {
   };
 
   return (
-    <Box className="flex items-center space-x-2 ">
+    <Box className="flex items-center space-x-3 ">
       {/* Coin */}
       <Tooltip
         title="Coin"
@@ -78,13 +81,32 @@ const StatsNProfile = () => {
           },
         }}
       >
-        <div className="flex items-center space-x-2 pr-2">
+        <div className="flex items-center space-x-2">
           <img src={TechPassIcon} alt="Tech Pass" className="w-6 h-auto" />
           <span className="text-[#9F9BAE] text-[0.9rem] hover:text-[#E2DDF3] ">
             {user?.tech_pass || 0}
           </span>
         </div>
       </Tooltip>
+
+      {isPremium && (
+        <Tooltip
+          title="Premium"
+          arrow
+          sx={{
+            "& .MuiTooltip-tooltip": {
+              padding: "8px 12px",
+              fontSize: "16px",
+              fontWeight: "bold",
+              animation: "fadeInOut 0.3s ease-in-out",
+            },
+          }}
+        >
+          <div className="flex items-center space-x-2">
+            <img src={PremiumLabel} alt="" className="w-5 h-auto" />
+          </div>
+        </Tooltip>
+      )}
 
       {/* Profile Avatar */}
       <Tooltip

@@ -231,8 +231,8 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
             transform: "translate(-50%, -50%)",
             width: { xs: "90%", sm: "500px" },
             bgcolor: "#120F1B",
-            borderRadius: "0.8rem",
             border: "2px solid #3B354D",
+            borderRadius: "0.8rem",
             boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.2)",
             display: "flex",
             flexDirection: "column",
@@ -250,31 +250,18 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
               position: "absolute",
               top: 16,
               left: 16,
-              color: "#FFFFFF",
+              color: "#6F658D",
+              transition: "color 0.3s ease-in-out",
+              "&:hover": {
+                color: "#E2DDF3",
+              },
             }}
           >
             <ArrowBackIcon />
           </IconButton>
 
-          {/* Close button */}
-          <IconButton
-            aria-label="close"
-            onClick={handleClose}
-            sx={{
-              position: "absolute",
-              top: 16,
-              right: 16,
-              color: "#FFFFFF",
-            }}
-          >
-            <CloseIcon />
-          </IconButton>
-
           {/* Modal Friend List Image */}
           <Box
-            component="img"
-            src={ModalFriendList}
-            alt="Modal Friend List"
             sx={{
               width: "70px",
               objectFit: "cover",
@@ -290,7 +277,6 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
                 sx={{
                   fontWeight: "bold",
                   fontSize: { xs: "24px", sm: "32px" },
-                  color: "#FFFFFF",
                   textAlign: "center",
                 }}
               >
@@ -313,13 +299,13 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
                 <Button
                   onClick={handleCreateLobby}
                   sx={{
-                    backgroundColor: "#E2DDF3",
-                    color: "#303869",
+                    backgroundColor: "#9F9BAE",
+                    color: "#3B354D",
                     fontWeight: "bold",
                     padding: "12px 24px",
                     borderRadius: "8px",
                     "&:hover": {
-                      backgroundColor: "#9F9BAE",
+                      backgroundColor: "#E2DDF3",
                     },
                   }}
                 >
@@ -328,13 +314,13 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
                 <Button
                   onClick={handleShowJoinForm}
                   sx={{
-                    backgroundColor: "#E2DDF3",
-                    color: "#303869",
+                    backgroundColor: "#9F9BAE",
+                    color: "#3B354D",
                     fontWeight: "bold",
                     padding: "12px 24px",
                     borderRadius: "8px",
                     "&:hover": {
-                      backgroundColor: "#9F9BAE",
+                      backgroundColor: "#E2DDF3",
                     },
                   }}
                 >
