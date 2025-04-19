@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import BattleFlashCard from "./BattleFlashCard";
 import axios from "axios";
-import { Question } from "../../../../../types";
+import { Question } from "../../../../types";
 
 /**
  * TIME MANIPULATION VISUAL INDICATORS:
@@ -177,9 +177,9 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
         correctAnswer = answerParts.slice(1).join(". ").trim();
       }
     }
-
-    if (!correctAnswer && currentQuestion.term) {
-      correctAnswer = currentQuestion.term;
+    // The Question type doesn't have a 'term' property, so we need to handle this differently
+    if (!correctAnswer && 'term' in currentQuestion) {
+      correctAnswer = (currentQuestion as any).term;
     }
 
     const answerString = String(answer || "").toLowerCase().trim();
