@@ -164,6 +164,11 @@ export default function PvpBattle() {
   const [playerPickingIntroComplete, setPlayerPickingIntroComplete] =
     useState(false);
 
+  // Attack animation states
+  const [showAttackAnimation, setShowAttackAnimation] = useState(false);
+  const [isAttacker, setIsAttacker] = useState(false);
+  const [lastHealthUpdate, setLastHealthUpdate] = useState({ player: 100, opponent: 100 });
+
   // Turn randomizer states
   const [showRandomizer, setShowRandomizer] = useState(false);
   const [randomizationDone, setRandomizationDone] = useState(false);
@@ -367,146 +372,195 @@ export default function PvpBattle() {
         };
       });
 
-      // Update the battle round
-      const response = await axios.put(
-        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
-        {
-          session_uuid: battleState?.session_uuid,
-          player_type: playerType,
-          card_id: selectedCardId,
-          is_correct: isCorrect,
-          lobby_code: lobbyCode,
-          battle_stats: battleStats, // Send current stats to backend
-        }
-      );
+      // Show attack animation for 5 seconds if answer is correct
+      if (isCorrect) {
+        setShowAttackAnimation(true);
+        setIsAttacker(true);  // Always the attacker when correct
 
-      if (response.data.success) {
-        console.log(
-          `Card ${selectedCardId} selection and answer submission successful, turn switched`
-        );
+        // Wait 5 seconds before proceeding with the turn switch
+        setTimeout(async () => {
+          setShowAttackAnimation(false);
 
-        // Check if a card effect was applied
-        if (response.data.data.card_effect) {
-          if (response.data.data.card_effect.type === "normal-2" && isCorrect) {
-            // Show notification for Quick Draw card effect
-            const messageElement = document.createElement("div");
-            messageElement.className =
-              "fixed inset-0 flex items-center justify-center z-50";
-            messageElement.innerHTML = `
-              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                Quick Draw Card: You get another turn!
-              </div>
-            `;
-            document.body.appendChild(messageElement);
+          // Continue with updating the battle round after animation
+          try {
+            const response = await axios.put(
+              `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
+              {
+                session_uuid: battleState?.session_uuid,
+                player_type: playerType,
+                card_id: selectedCardId,
+                is_correct: isCorrect,
+                lobby_code: lobbyCode,
+                battle_stats: battleStats, // Send current stats to backend
+              }
+            );
 
-            // Remove the message after 2 seconds
-            setTimeout(() => {
-              document.body.removeChild(messageElement);
-            }, 2000);
-          } else if (
-            response.data.data.card_effect.type === "normal-1" &&
-            isCorrect
-          ) {
-            // Show notification for Time Manipulation card effect
-            const messageElement = document.createElement("div");
-            messageElement.className =
-              "fixed inset-0 flex items-center justify-center z-50";
-            const reductionPercent =
-              response.data.data.card_effect.reduction_percent || 30;
-            messageElement.innerHTML = `
-              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                Time Manipulation Card: Opponent's time will be reduced by ${reductionPercent}%!
-              </div>
-            `;
-            document.body.appendChild(messageElement);
+            if (response.data.success) {
+              console.log(
+                `Card ${selectedCardId} selection and answer submission successful, turn switched`
+              );
 
-            // Remove the message after 2 seconds
-            setTimeout(() => {
-              document.body.removeChild(messageElement);
-            }, 2000);
-          } else if (
-            response.data.data.card_effect.type === "epic-1" &&
-            isCorrect
-          ) {
-            // Show notification for Answer Shield card effect
-            const messageElement = document.createElement("div");
-            messageElement.className =
-              "fixed inset-0 flex items-center justify-center z-50";
-            messageElement.innerHTML = `
-              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                Answer Shield Card: Opponent's next card selection will be blocked!
-              </div>
-            `;
-            document.body.appendChild(messageElement);
+              // Check if a card effect was applied
+              if (response.data.data.card_effect) {
+                if (response.data.data.card_effect.type === "normal-2" && isCorrect) {
+                  // Show notification for Quick Draw card effect
+                  const messageElement = document.createElement("div");
+                  messageElement.className =
+                    "fixed inset-0 flex items-center justify-center z-50";
+                  messageElement.innerHTML = `
+                    <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                      Quick Draw Card: You get another turn!
+                    </div>
+                  `;
+                  document.body.appendChild(messageElement);
 
-            // Remove the message after 2 seconds
-            setTimeout(() => {
-              document.body.removeChild(messageElement);
-            }, 2000);
-          } else if (
-            response.data.data.card_effect.type === "epic-2" &&
-            isCorrect
-          ) {
-            // Show notification for Regeneration card effect
-            const messageElement = document.createElement("div");
-            messageElement.className =
-              "fixed inset-0 flex items-center justify-center z-50";
-            const healthAmount =
-              response.data.data.card_effect.health_amount || 10;
-            messageElement.innerHTML = `
-              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                Regeneration Card: Your health increased by ${healthAmount} HP!
-              </div>
-            `;
-            document.body.appendChild(messageElement);
+                  // Remove the message after 2 seconds
+                  setTimeout(() => {
+                    document.body.removeChild(messageElement);
+                  }, 2000);
+                } else if (
+                  response.data.data.card_effect.type === "normal-1" &&
+                  isCorrect
+                ) {
+                  // Show notification for Time Manipulation card effect
+                  const messageElement = document.createElement("div");
+                  messageElement.className =
+                    "fixed inset-0 flex items-center justify-center z-50";
+                  const reductionPercent =
+                    response.data.data.card_effect.reduction_percent || 30;
+                  messageElement.innerHTML = `
+                    <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                      Time Manipulation Card: Opponent's time will be reduced by ${reductionPercent}%!
+                    </div>
+                  `;
+                  document.body.appendChild(messageElement);
 
-            // Update health locally if we can
-            if (isHost) {
-              setPlayerHealth((prev) => Math.min(prev + healthAmount, 100));
+                  // Remove the message after 2 seconds
+                  setTimeout(() => {
+                    document.body.removeChild(messageElement);
+                  }, 2000);
+                } else if (
+                  response.data.data.card_effect.type === "epic-1" &&
+                  isCorrect
+                ) {
+                  // Show notification for Answer Shield card effect
+                  const messageElement = document.createElement("div");
+                  messageElement.className =
+                    "fixed inset-0 flex items-center justify-center z-50";
+                  messageElement.innerHTML = `
+                    <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                      Answer Shield Card: Opponent's next card selection will be blocked!
+                    </div>
+                  `;
+                  document.body.appendChild(messageElement);
+
+                  // Remove the message after 2 seconds
+                  setTimeout(() => {
+                    document.body.removeChild(messageElement);
+                  }, 2000);
+                } else if (
+                  response.data.data.card_effect.type === "epic-2" &&
+                  isCorrect
+                ) {
+                  // Show notification for Regeneration card effect
+                  const messageElement = document.createElement("div");
+                  messageElement.className =
+                    "fixed inset-0 flex items-center justify-center z-50";
+                  const healthAmount =
+                    response.data.data.card_effect.health_amount || 10;
+                  messageElement.innerHTML = `
+                    <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                      Regeneration Card: Your health increased by ${healthAmount} HP!
+                    </div>
+                  `;
+                  document.body.appendChild(messageElement);
+
+                  // Update health locally if we can
+                  if (isHost) {
+                    setPlayerHealth((prev) => Math.min(prev + healthAmount, 100));
+                  } else {
+                    setPlayerHealth((prev) => Math.min(prev + healthAmount, 100));
+                  }
+
+                  // Remove the message after 2 seconds
+                  setTimeout(() => {
+                    document.body.removeChild(messageElement);
+                  }, 2000);
+                } else if (
+                  response.data.data.card_effect.type === "rare-2" &&
+                  isCorrect
+                ) {
+                  // Show notification for Poison Type card effect
+                  const messageElement = document.createElement("div");
+                  messageElement.className =
+                    "fixed inset-0 flex items-center justify-center z-50";
+                  messageElement.innerHTML = `
+                    <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                      Poison Type Card: Opponent takes 10 initial damage plus 5 damage for 3 turns!
+                    </div>
+                  `;
+                  document.body.appendChild(messageElement);
+
+                  // Remove the message after 2 seconds
+                  setTimeout(() => {
+                    document.body.removeChild(messageElement);
+                  }, 2000);
+                }
+              }
+
+              // Increment turn number when turn changes
+              setCurrentTurnNumber((prev) => prev + 1);
+
+              // Switch turns locally but keep UI visible
+              setIsMyTurn(false);
+
+              // Set enemy animation to picking - they get their turn next
+              setEnemyAnimationState("picking");
+              setEnemyPickingIntroComplete(false);
             } else {
-              setPlayerHealth((prev) => Math.min(prev + healthAmount, 100));
+              console.error(
+                "Failed to update battle round:",
+                response?.data?.message || "Unknown error"
+              );
             }
-
-            // Remove the message after 2 seconds
-            setTimeout(() => {
-              document.body.removeChild(messageElement);
-            }, 2000);
-          } else if (
-            response.data.data.card_effect.type === "rare-2" &&
-            isCorrect
-          ) {
-            // Show notification for Poison Type card effect
-            const messageElement = document.createElement("div");
-            messageElement.className =
-              "fixed inset-0 flex items-center justify-center z-50";
-            messageElement.innerHTML = `
-              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                Poison Type Card: Opponent takes 10 initial damage plus 5 damage for 3 turns!
-              </div>
-            `;
-            document.body.appendChild(messageElement);
-
-            // Remove the message after 2 seconds
-            setTimeout(() => {
-              document.body.removeChild(messageElement);
-            }, 2000);
+          } catch (error) {
+            console.error("Error updating battle round:", error);
           }
-        }
-
-        // Increment turn number when turn changes
-        setCurrentTurnNumber((prev) => prev + 1);
-
-        // Switch turns locally but keep UI visible
-        setIsMyTurn(false);
-
-        // Set enemy animation to picking - they get their turn next
-        setEnemyAnimationState("picking");
-        setEnemyPickingIntroComplete(false);
+        }, 3000); // 5 seconds before proceeding
       } else {
-        console.error(
-          "Failed to update battle round:",
-          response?.data?.message || "Unknown error"
+        // If incorrect, proceed normally without animation
+        const response = await axios.put(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
+          {
+            session_uuid: battleState?.session_uuid,
+            player_type: playerType,
+            card_id: selectedCardId,
+            is_correct: isCorrect,
+            lobby_code: lobbyCode,
+            battle_stats: battleStats, // Send current stats to backend
+          }
         );
+
+        if (response.data.success) {
+          console.log(
+            `Card ${selectedCardId} selection and answer submission successful, turn switched`
+          );
+
+          // Increment turn number when turn changes
+          setCurrentTurnNumber((prev) => prev + 1);
+
+          // Switch turns locally but keep UI visible
+          setIsMyTurn(false);
+
+          // Set enemy animation to picking - they get their turn next
+          setEnemyAnimationState("picking");
+          setEnemyPickingIntroComplete(false);
+        } else {
+          console.error(
+            "Failed to update battle round:",
+            response?.data?.message || "Unknown error"
+          );
+        }
       }
     } catch (error) {
       console.error("Error updating battle round:", error);
@@ -518,6 +572,16 @@ export default function PvpBattle() {
     setShowQuestionModal(false);
     setSelectedCardId(null);
   };
+
+  // Remove the useEffect that shows attack animation for defender when health decreases
+  // and replace with a simpler effect to just track health changes
+  useEffect(() => {
+    // Update last health values without showing an attack animation
+    setLastHealthUpdate({
+      player: playerHealth,
+      opponent: opponentHealth
+    });
+  }, [playerHealth, opponentHealth]);
 
   // Handle poison effects and health updates
   useEffect(() => {
@@ -1081,6 +1145,30 @@ export default function PvpBattle() {
         playerPickingIntroComplete={playerPickingIntroComplete}
         enemyPickingIntroComplete={enemyPickingIntroComplete}
       />
+
+      {/* Attack Animation Overlay */}
+      {showAttackAnimation && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <img
+            src="/GameBattle/AttackAndAttacked.png"
+            alt="Attack Animation"
+            className="max-w-full max-h-full"
+            style={{
+              animation: "fadeInPulse 1s ease-out",
+            }}
+          />
+        </div>
+      )}
+
+      <style>
+        {`
+        @keyframes fadeInPulse {
+          0% { opacity: 0; transform: scale(0.9); }
+          50% { opacity: 1; transform: scale(1.05); }
+          100% { opacity: 1; transform: scale(1); }
+        }
+        `}
+      </style>
 
       {/* Only show the top UI bar when the battle interface should be shown */}
       {shouldShowBattleInterface() && (
