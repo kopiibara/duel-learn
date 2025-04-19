@@ -1,59 +1,69 @@
-import { X } from "lucide-react";
+import { EmojiEvents, CancelOutlined } from '@mui/icons-material';
 
-export interface VictoryModalProps {
-  showVictoryModal: boolean;
-  victoryMessage: string;
-  onConfirm: () => void;
-  onViewSessionReport?: () => void;
+interface VictoryModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onViewReport: () => void;
+  isVictory: boolean;
 }
 
-/**
- * VictoryModal - Displays a victory message when the opponent leaves the battle
- */
-export function VictoryModal({
-  showVictoryModal,
-  victoryMessage,
-  onConfirm,
-  onViewSessionReport,
-}: VictoryModalProps) {
-  if (!showVictoryModal) return null;
+export const VictoryModal: React.FC<VictoryModalProps> = ({
+  isOpen,
+  onClose,
+  onViewReport,
+  isVictory
+}) => {
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center">
-      <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full mx-4 relative">
-        <div className="absolute top-4 right-4">
-          <button
-            onClick={onConfirm}
-            className="text-gray-400 hover:text-white transition-colors"
-          >
-            <X size={24} />
-          </button>
+    <div className="fixed inset-0 flex items-center justify-center z-50">
+      <div className={`w-[400px] rounded-2xl p-8 flex flex-col items-center ${
+        isVictory ? 'bg-[#1a1f2e] border-2 border-purple-500/20' : 'bg-[#1a1f2e] border-2 border-red-500/20'
+      }`}>
+        {/* Icon */}
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+          isVictory ? 'bg-purple-900/50' : 'bg-red-900/50'
+        }`}>
+          {isVictory ? (
+            <EmojiEvents className="w-8 h-8 text-purple-400" />
+          ) : (
+            <CancelOutlined className="w-8 h-8 text-red-400" />
+          )}
         </div>
 
-        <h2 className="text-purple-300 text-3xl font-bold mb-4 text-center">
-          Victory!
+        {/* Title */}
+        <h2 className={`text-3xl font-bold mb-2 ${
+          isVictory ? 'text-purple-400' : 'text-red-400'
+        }`}>
+          {isVictory ? 'Victory!' : 'Defeat!'}
         </h2>
 
-        <p className="text-white text-xl mb-8 text-center">{victoryMessage}</p>
+        {/* Message */}
+        <p className="text-white text-lg mb-8">
+          {isVictory ? 'You Won!' : 'You Lost!'}
+        </p>
 
-        <div className="flex flex-col gap-3">
-          {onViewSessionReport && (
-            <button
-              onClick={onViewSessionReport}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-lg transition-colors"
-            >
-              View Session Report
-            </button>
-          )}
+        {/* Buttons */}
+        <button
+          onClick={onViewReport}
+          className={`w-full py-3 rounded-lg mb-3 flex items-center justify-center gap-2 ${
+            isVictory 
+              ? 'bg-purple-600 hover:bg-purple-700 text-white' 
+              : 'bg-red-600 hover:bg-red-700 text-white'
+          }`}
+        >
+          <span className="material-icons-outlined text-xl">description</span>
+          View Session Report
+        </button>
 
-          <button
-            onClick={onConfirm}
-            className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-bold text-lg transition-colors"
-          >
-            Return to Dashboard
-          </button>
-        </div>
+        <button
+          onClick={onClose}
+          className="w-full py-3 rounded-lg bg-[#2C2C2C] hover:bg-[#3C3C3C] text-white flex items-center justify-center gap-2"
+        >
+          <span className="material-icons-outlined text-xl">home</span>
+          Return to Dashboard
+        </button>
       </div>
     </div>
   );
-}
+};

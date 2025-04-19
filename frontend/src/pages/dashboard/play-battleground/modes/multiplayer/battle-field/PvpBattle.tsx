@@ -1,7 +1,12 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useReducer, useCallback } from "react";
 import { Settings } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { Question } from "../../../types";
+import { BattleRoundResponse, BattleScoresResponse, BattleSessionResponse, BattleStatusResponse } from '../../../types/battle';
+import { socket } from '../../../../../../socket';
 
 // Character animations
 import playerCharacter from "/characterinLobby/playerCharacter.gif"; // Regular idle animation for player
@@ -30,6 +35,71 @@ import QuestionTimer from "./utils/QuestionTimer";
 
 // Import shared BattleState interface
 import { BattleState } from "./BattleState";
+
+// Types
+interface StudyMaterial {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: string;
+  category: string;
+}
+
+interface StudyMaterialResponse {
+  success: boolean;
+  data: StudyMaterial[];
+}
+
+interface StudyMaterialInfoResponse {
+  success: boolean;
+  data: {
+    total_items: number;
+  };
+}
+
+interface WinStreakResponse {
+  success: boolean;
+  data: {
+    win_streak: number;
+  };
+}
+
+// Add interface for session report response
+interface SessionReportResponse {
+  success: boolean;
+  message?: string;
+  data?: any;
+}
+
+// Add reducer type
+interface QuestionGenerationState {
+  isGenerating: boolean;
+  questions: Question[];
+  error: string | null;
+}
+
+// Add reducer action types
+type QuestionGenerationAction =
+  | { type: 'START_GENERATION' }
+  | { type: 'GENERATION_SUCCESS'; questions: Question[] }
+  | { type: 'GENERATION_ERROR'; error: string }
+  | { type: 'RESET' };
+
+// Add reducer function
+function questionGenerationReducer(state: QuestionGenerationState, action: QuestionGenerationAction): QuestionGenerationState {
+  switch (action.type) {
+    case 'START_GENERATION':
+      return { ...state, isGenerating: true, error: null };
+    case 'GENERATION_SUCCESS':
+      return { isGenerating: false, questions: action.questions, error: null };
+    case 'GENERATION_ERROR':
+      return { ...state, isGenerating: false, error: action.error };
+    case 'RESET':
+      return { isGenerating: false, questions: [], error: null };
+    default:
+      return state;
+  }
+}
 
 // Create a shared battle rewards calculation function
 const calculateBattleRewards = (
@@ -76,6 +146,21 @@ const calculateBattleRewards = (
   };
 };
 
+interface GenerateQuestionsResponse {
+  success: boolean;
+  data: Question[];
+}
+
+interface AnswerResponse {
+  is_correct: boolean;
+  message?: string;
+}
+
+interface AnswerResult {
+  isCorrect: boolean;
+  explanation: string;
+}
+
 /**
  * PvpBattle component - Main battle screen for player vs player mode
  */
@@ -87,7 +172,8 @@ export default function PvpBattle() {
 
   // Game state
   const [timeLeft, setTimeLeft] = useState(25);
-  const [currentQuestion, setCurrentQuestion] = useState(1);
+  const [currentQuestionNumber, setCurrentQuestionNumber] = useState(1);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [totalItems, setTotalItems] = useState(30); // Default value, will be updated from study material
   const [waitingForPlayer, setWaitingForPlayer] = useState(true);
   const [battleState, setBattleState] = useState<BattleState | null>(null);
@@ -156,6 +242,17 @@ export default function PvpBattle() {
   const [showSessionReport, setShowSessionReport] = useState(false);
   const [sessionReportSaved, setSessionReportSaved] = useState(false);
 
+  // Replace individual states with reducer
+  const [questionGenState, dispatchQuestionGen] = useReducer(questionGenerationReducer, {
+    isGenerating: false,
+    questions: [],
+    error: null
+  });
+
+  // Update the shownQuestionIds state to store strings instead of numbers
+  const [shownQuestionIds, setShownQuestionIds] = useState<Set<string>>(new Set());
+  const [totalQuestionsShown, setTotalQuestionsShown] = useState(0);
+
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
     lobbyCode,
@@ -185,13 +282,24 @@ export default function PvpBattle() {
     setVictoryMessage,
   });
 
-  // Function to determine if guest is waiting for randomization
-  const isGuestWaitingForRandomization =
-    !isHost &&
+  // Update the isGuestWaitingForRandomization function to be more precise
+  const isGuestWaitingForRandomization = useCallback(() => {
+    return !isHost && 
     !waitingForPlayer &&
     battleState?.battle_started &&
-    !battleState?.current_turn &&
-    !randomizationDone;
+           !randomizationDone && 
+           !showVictoryModal;
+  }, [isHost, waitingForPlayer, battleState?.battle_started, randomizationDone, showVictoryModal]);
+
+  // Add a new function to determine if we should show the main battle interface
+  const shouldShowBattleInterface = useCallback(() => {
+    if (isHost) {
+      return gameStarted && !waitingForPlayer;
+    } else {
+      // For guest, show battle interface when battle has started and randomization is done
+      return battleState?.battle_started && randomizationDone && !waitingForPlayer;
+    }
+  }, [isHost, gameStarted, waitingForPlayer, battleState?.battle_started, randomizationDone]);
 
   // Effect to handle delayed card display after game start
   useEffect(() => {
@@ -216,181 +324,147 @@ export default function PvpBattle() {
     setPlayerPickingIntroComplete(false);
   };
 
-  // Handle answer submission
-  const handleAnswerSubmit = async (isCorrect: boolean) => {
-    if (!selectedCardId) return;
+  // Handle game end based on questions
+  const handleGameEnd = useCallback(() => {
+    console.log("Game ending due to all questions being shown");
+    // Determine winner based on health
+    const isPlayerWinner = playerHealth > opponentHealth;
+    setVictoryMessage(isPlayerWinner ? "You Won!" : "You Lost!");
+    setShowVictoryModal(true);
+    setShowCards(false);
+  }, [playerHealth, opponentHealth]);
+
+  // Update handleAnswerSubmit to use string IDs
+  const [answerResult, setAnswerResult] = useState<AnswerResult | null>(null);
+  const [showAnswerResult, setShowAnswerResult] = useState(false);
+
+  const handleAnswerSubmit = useCallback(async (answer: string | boolean) => {
+    if (!currentQuestion) {
+      console.error('No current question');
+      return;
+    }
 
     try {
-      const playerType = isHost ? "host" : "guest";
+      const response = await axios.post<AnswerResponse>('/api/battle/submit-answer', {
+        session_uuid: battleState?.session_uuid,
+        question_id: currentQuestion.id || '',
+        selected_answer: answer,
+        player_type: isHost ? 'host' : 'guest',
+      });
 
-      // Update battle stats first
+      const explanation = currentQuestion.explanation || 
+                         (currentQuestion.itemInfo && currentQuestion.itemInfo.definition) || 
+                         'No explanation available';
+
+      setAnswerResult({
+        isCorrect: response.data.is_correct,
+        explanation: explanation
+      });
+
+      if (response.data.is_correct) {
       setBattleStats((prev) => {
-        const newStreak = isCorrect ? prev.currentStreak + 1 : 0;
+          const newStreak = prev.currentStreak + 1;
         return {
           ...prev,
-          correctAnswers: isCorrect
-            ? prev.correctAnswers + 1
-            : prev.correctAnswers,
-          incorrectAnswers: !isCorrect
-            ? prev.incorrectAnswers + 1
-            : prev.incorrectAnswers,
+            correctAnswers: prev.correctAnswers + 1,
           currentStreak: newStreak,
           highestStreak: Math.max(prev.highestStreak, newStreak),
           totalQuestions: prev.totalQuestions + 1,
         };
       });
-
-      // Update the battle round
-      const response = await axios.put(
-        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
-        {
-          session_uuid: battleState?.session_uuid,
-          player_type: playerType,
-          card_id: selectedCardId,
-          is_correct: isCorrect,
-          lobby_code: lobbyCode,
-          battle_stats: battleStats, // Send current stats to backend
-        }
-      );
-
-      if (response.data.success) {
-        console.log(
-          `Card ${selectedCardId} selection and answer submission successful, turn switched`
-        );
-
-        // Check if a card effect was applied
-        if (response.data.data.card_effect) {
-          if (response.data.data.card_effect.type === "normal-2" && isCorrect) {
-            // Show notification for Quick Draw card effect
-            const messageElement = document.createElement("div");
-            messageElement.className =
-              "fixed inset-0 flex items-center justify-center z-50";
-            messageElement.innerHTML = `
-              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                Quick Draw Card: You get another turn!
-              </div>
-            `;
-            document.body.appendChild(messageElement);
-
-            // Remove the message after 2 seconds
-            setTimeout(() => {
-              document.body.removeChild(messageElement);
-            }, 2000);
-          } else if (
-            response.data.data.card_effect.type === "normal-1" &&
-            isCorrect
-          ) {
-            // Show notification for Time Manipulation card effect
-            const messageElement = document.createElement("div");
-            messageElement.className =
-              "fixed inset-0 flex items-center justify-center z-50";
-            const reductionPercent =
-              response.data.data.card_effect.reduction_percent || 30;
-            messageElement.innerHTML = `
-              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                Time Manipulation Card: Opponent's time will be reduced by ${reductionPercent}%!
-              </div>
-            `;
-            document.body.appendChild(messageElement);
-
-            // Remove the message after 2 seconds
-            setTimeout(() => {
-              document.body.removeChild(messageElement);
-            }, 2000);
-          } else if (
-            response.data.data.card_effect.type === "epic-1" &&
-            isCorrect
-          ) {
-            // Show notification for Answer Shield card effect
-            const messageElement = document.createElement("div");
-            messageElement.className =
-              "fixed inset-0 flex items-center justify-center z-50";
-            messageElement.innerHTML = `
-              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                Answer Shield Card: Opponent's next card selection will be blocked!
-              </div>
-            `;
-            document.body.appendChild(messageElement);
-
-            // Remove the message after 2 seconds
-            setTimeout(() => {
-              document.body.removeChild(messageElement);
-            }, 2000);
-          } else if (
-            response.data.data.card_effect.type === "epic-2" &&
-            isCorrect
-          ) {
-            // Show notification for Regeneration card effect
-            const messageElement = document.createElement("div");
-            messageElement.className =
-              "fixed inset-0 flex items-center justify-center z-50";
-            const healthAmount =
-              response.data.data.card_effect.health_amount || 10;
-            messageElement.innerHTML = `
-              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                Regeneration Card: Your health increased by ${healthAmount} HP!
-              </div>
-            `;
-            document.body.appendChild(messageElement);
-
-            // Update health locally if we can
-            if (isHost) {
-              setPlayerHealth((prev) => Math.min(prev + healthAmount, 100));
-            } else {
-              setPlayerHealth((prev) => Math.min(prev + healthAmount, 100));
-            }
-
-            // Remove the message after 2 seconds
-            setTimeout(() => {
-              document.body.removeChild(messageElement);
-            }, 2000);
-          } else if (
-            response.data.data.card_effect.type === "rare-2" &&
-            isCorrect
-          ) {
-            // Show notification for Poison Type card effect
-            const messageElement = document.createElement("div");
-            messageElement.className =
-              "fixed inset-0 flex items-center justify-center z-50";
-            messageElement.innerHTML = `
-              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                Poison Type Card: Opponent takes 10 initial damage plus 5 damage for 3 turns!
-              </div>
-            `;
-            document.body.appendChild(messageElement);
-
-            // Remove the message after 2 seconds
-            setTimeout(() => {
-              document.body.removeChild(messageElement);
-            }, 2000);
-          }
-        }
-
-        // Increment turn number when turn changes
-        setCurrentTurnNumber((prev) => prev + 1);
-
-        // Switch turns locally but keep UI visible
-        setIsMyTurn(false);
-
-        // Set enemy animation to picking - they get their turn next
-        setEnemyAnimationState("picking");
-        setEnemyPickingIntroComplete(false);
-      } else {
-        console.error(
-          "Failed to update battle round:",
-          response?.data?.message || "Unknown error"
-        );
       }
+
+      setShowAnswerResult(true);
     } catch (error) {
-      console.error("Error updating battle round:", error);
+      console.error('Error submitting answer:', error);
     }
-  };
+  }, [battleState?.session_uuid, currentQuestion, isHost]);
 
   // Handle question modal close
   const handleQuestionModalClose = () => {
     setShowQuestionModal(false);
     setSelectedCardId(null);
   };
+
+  // Handle poison effects and health updates
+  useEffect(() => {
+    const checkAndApplyPoisonEffects = async () => {
+      if (!battleState?.session_uuid) return;
+
+      try {
+        const { data } = await axios.get<BattleScoresResponse>(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${battleState.session_uuid}`
+        );
+
+        if (data.success && data.data) {
+          const scores = data.data;
+          
+          // Set health based on whether player is host or guest
+          if (isHost) {
+            setPlayerHealth(scores.host_health);
+            setOpponentHealth(scores.guest_health);
+
+            // Check for victory/defeat conditions
+            if (scores.host_health <= 0) {
+              console.log("Host health <= 0, showing defeat modal");
+              setVictoryMessage("You Lost!");
+              setShowVictoryModal(true);
+              setShowCards(false); // Hide cards when game ends
+            } else if (scores.guest_health <= 0) {
+              console.log("Guest health <= 0, showing victory modal for host");
+              setVictoryMessage("You Won!");
+              setShowVictoryModal(true);
+              setShowCards(false); // Hide cards when game ends
+            }
+          } else {
+            setPlayerHealth(scores.guest_health);
+            setOpponentHealth(scores.host_health);
+
+            // Check for victory/defeat conditions
+            if (scores.guest_health <= 0) {
+              console.log("Guest health <= 0, showing defeat modal");
+              setVictoryMessage("You Lost!");
+              setShowVictoryModal(true);
+              setShowCards(false); // Hide cards when game ends
+            } else if (scores.host_health <= 0) {
+              console.log("Host health <= 0, showing victory modal for guest");
+              setVictoryMessage("You Won!");
+              setShowVictoryModal(true);
+              setShowCards(false); // Hide cards when game ends
+            }
+          }
+
+          // Log health status for debugging
+          console.log("Health status update:", {
+            isHost,
+            hostHealth: scores.host_health,
+            guestHealth: scores.guest_health,
+            playerHealth: isHost ? scores.host_health : scores.guest_health,
+            opponentHealth: isHost ? scores.guest_health : scores.host_health,
+            showingVictoryModal: showVictoryModal
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching battle scores:", error);
+      }
+    };
+
+    // Poll for battle scores more frequently
+    const scoresPollInterval = setInterval(checkAndApplyPoisonEffects, 1000);
+    checkAndApplyPoisonEffects(); // Initial fetch
+
+    return () => clearInterval(scoresPollInterval);
+  }, [battleState?.session_uuid, isHost]);
+
+  // Add a separate effect to ensure victory modal stays visible
+  useEffect(() => {
+    if (playerHealth <= 0 || opponentHealth <= 0) {
+      const isPlayerWinner = playerHealth > 0 && opponentHealth <= 0;
+      setVictoryMessage(isPlayerWinner ? "You Won!" : "You Lost!");
+      setShowVictoryModal(true);
+      setShowCards(false);
+    }
+  }, [playerHealth, opponentHealth]);
 
   // Add polling for turn updates
   useEffect(() => {
@@ -401,19 +475,12 @@ export default function PvpBattle() {
     const checkTurn = async () => {
       try {
         // Get the latest session state
-        const response = await axios.get(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/gameplay/battle/session-state/${lobbyCode}`
+        const { data } = await axios.get<BattleSessionResponse>(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-state/${lobbyCode}`
         );
 
-        if (
-          response &&
-          response.data &&
-          response.data.success &&
-          response.data.data
-        ) {
-          const sessionData = response.data.data;
+        if (data.success && data.data) {
+          const sessionData = data.data;
 
           // Update local battle state with proper type safety
           setBattleState((prevState) => {
@@ -434,8 +501,7 @@ export default function PvpBattle() {
           });
 
           // Check if it's this player's turn
-          const isCurrentPlayerTurn =
-            sessionData.current_turn === currentUserId;
+          const isCurrentPlayerTurn = sessionData.current_turn === currentUserId;
 
           // If turn has changed
           if (isCurrentPlayerTurn !== isMyTurn) {
@@ -474,14 +540,7 @@ export default function PvpBattle() {
     checkTurn();
 
     return () => clearInterval(turnCheckInterval);
-  }, [
-    gameStarted,
-    waitingForPlayer,
-    battleState?.session_uuid,
-    lobbyCode,
-    currentUserId,
-    isMyTurn,
-  ]);
+  }, [gameStarted, waitingForPlayer, battleState?.session_uuid, lobbyCode, currentUserId, isMyTurn]);
 
   // Timer effect
   useEffect(() => {
@@ -532,7 +591,7 @@ export default function PvpBattle() {
       // First update win streaks in the database
       const [winnerUpdate, loserUpdate] = await Promise.all([
         // Update winner's streak
-        axios.put(
+        axios.put<WinStreakResponse>(
           `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/win-streak`,
           {
             firebase_uid: winnerId,
@@ -540,7 +599,7 @@ export default function PvpBattle() {
           }
         ),
         // Reset loser's streak
-        axios.put(
+        axios.put<WinStreakResponse>(
           `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/win-streak`,
           {
             firebase_uid: loserId,
@@ -611,20 +670,15 @@ export default function PvpBattle() {
             early_end: false,
           };
 
-          const response = await axios.post(
-            `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/gameplay/battle/save-session-report`,
+          const { data } = await axios.post<SessionReportResponse>(
+            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/save-session-report`,
             sessionReportPayload
           );
 
-          if (response.data.success) {
+          if (data.success) {
             console.log("Session report saved successfully");
           } else {
-            console.error(
-              "Failed to save session report:",
-              response.data.message
-            );
+            console.error("Failed to save session report:", data.message);
           }
         } catch (error) {
           console.error("Error saving session report:", error);
@@ -684,51 +738,36 @@ export default function PvpBattle() {
     }
   };
 
-  // Effect to fetch battle session data to get difficulty mode and study material id
+  // Effect to fetch battle session data
   useEffect(() => {
     const fetchBattleSessionData = async () => {
       if (!lobbyCode) return;
 
       try {
-        const response = await axios.get(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/gameplay/battle/session-with-material/${lobbyCode}`
+        const { data } = await axios.get<BattleSessionResponse>(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-with-material/${lobbyCode}`
         );
 
-        if (
-          response &&
-          response.data &&
-          response.data.success &&
-          response.data.data
-        ) {
-          setDifficultyMode(response.data.data.difficulty_mode);
+        if (data.success && data.data) {
+          setDifficultyMode(data.data.difficulty_mode);
 
           // Set question types from battle session
-          if (response.data.data.question_types) {
-            setQuestionTypes(response.data.data.question_types);
+          if (data.data.question_types) {
+            setQuestionTypes(data.data.question_types);
           }
 
           // Get the study material id
-          if (response.data.data.study_material_id) {
-            setStudyMaterialId(response.data.data.study_material_id);
+          if (data.data.study_material_id) {
+            setStudyMaterialId(data.data.study_material_id);
 
             // Fetch study material info to get total items
             try {
-              const studyMaterialResponse = await axios.get(
-                `${import.meta.env.VITE_BACKEND_URL}/api/study-material/info/${
-                  response.data.data.study_material_id
-                }`
+              const { data: studyMaterialData } = await axios.get<StudyMaterialInfoResponse>(
+                `${import.meta.env.VITE_BACKEND_URL}/api/study-material/info/${data.data.study_material_id}`
               );
 
-              if (
-                studyMaterialResponse &&
-                studyMaterialResponse.data &&
-                studyMaterialResponse.data.success &&
-                studyMaterialResponse.data.data &&
-                studyMaterialResponse.data.data.total_items
-              ) {
-                setTotalItems(studyMaterialResponse.data.data.total_items);
+              if (studyMaterialData.success && studyMaterialData.data.total_items) {
+                setTotalItems(studyMaterialData.data.total_items);
               }
             } catch (error) {
               console.error("Error fetching study material info:", error);
@@ -736,11 +775,8 @@ export default function PvpBattle() {
           }
 
           // Store session UUID and player role in sessionStorage for card effects
-          if (response.data.data.session_uuid) {
-            sessionStorage.setItem(
-              "battle_session_uuid",
-              response.data.data.session_uuid
-            );
+          if (data.data.session_uuid) {
+            sessionStorage.setItem("battle_session_uuid", data.data.session_uuid);
             sessionStorage.setItem("is_host", isHost.toString());
           }
         }
@@ -750,177 +786,7 @@ export default function PvpBattle() {
     };
 
     fetchBattleSessionData();
-
-    // Set up polling for battle session data
-    const pollInterval = setInterval(fetchBattleSessionData, 2000);
-
-    return () => {
-      clearInterval(pollInterval);
-      // Clean up session storage when component unmounts
-      sessionStorage.removeItem("battle_session_uuid");
-      sessionStorage.removeItem("is_host");
-    };
   }, [lobbyCode, isHost]);
-
-  // Effect to fetch battle scores
-  useEffect(() => {
-    const fetchBattleScores = async () => {
-      if (!battleState?.session_uuid) return;
-
-      try {
-        const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${
-            battleState.session_uuid
-          }`
-        );
-
-        if (
-          response &&
-          response.data &&
-          response.data.success &&
-          response.data.data
-        ) {
-          const scores = response.data.data;
-          // Set health based on whether player is host or guest
-          if (isHost) {
-            setPlayerHealth(scores.host_health);
-            setOpponentHealth(scores.guest_health);
-
-            // Check for victory/defeat conditions
-            if (scores.host_health <= 0) {
-              setVictoryMessage("You Lost!");
-              setShowVictoryModal(true);
-            } else if (scores.guest_health <= 0) {
-              setVictoryMessage("You Won!");
-              setShowVictoryModal(true);
-            }
-          } else {
-            setPlayerHealth(scores.guest_health);
-            setOpponentHealth(scores.host_health);
-
-            // Check for victory/defeat conditions
-            if (scores.guest_health <= 0) {
-              setVictoryMessage("You Lost!");
-              setShowVictoryModal(true);
-            } else if (scores.host_health <= 0) {
-              setVictoryMessage("You Won!");
-              setShowVictoryModal(true);
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Error fetching battle scores:", error);
-      }
-    };
-
-    // Poll for battle scores every 1.5 seconds
-    const scoresPollInterval = setInterval(fetchBattleScores, 1500);
-    fetchBattleScores(); // Initial fetch
-
-    return () => clearInterval(scoresPollInterval);
-  }, [battleState?.session_uuid, isHost]);
-
-  // Check for poison effects and apply damage when the turn changes
-  useEffect(() => {
-    const checkAndApplyPoisonEffects = async () => {
-      if (!battleState?.session_uuid) return;
-
-      try {
-        // Apply poison effects to the current player at the start of their turn
-        const playerType = isHost ? "host" : "guest";
-
-        const response = await axios.post(
-          `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/gameplay/battle/apply-poison-effects`,
-          {
-            session_uuid: battleState.session_uuid,
-            player_type: playerType,
-            current_turn_number: currentTurnNumber,
-          }
-        );
-
-        if (
-          response.data.success &&
-          response.data.data.poison_damage_applied > 0
-        ) {
-          console.log(
-            `Applied ${response.data.data.poison_damage_applied} poison damage`
-          );
-
-          // Update local health state from the response data
-          if (response.data.data.updated_scores) {
-            if (isHost) {
-              setPlayerHealth(response.data.data.updated_scores.host_health);
-            } else {
-              setPlayerHealth(response.data.data.updated_scores.guest_health);
-            }
-          }
-
-          // Check active poison effects
-          interface PoisonEffect {
-            turns_remaining: number;
-            effect: string;
-            type: string;
-            target: string;
-          }
-
-          const activePoisonEffects =
-            (response.data.data.active_poison_effects as PoisonEffect[]) || [];
-          if (activePoisonEffects.length > 0) {
-            // Get the max turns remaining from all active poison effects
-            const maxTurnsRemaining = Math.max(
-              ...activePoisonEffects.map((effect) => effect.turns_remaining)
-            );
-            setPoisonTurnsRemaining(maxTurnsRemaining);
-
-            // Set poison effect as active if any turns remain
-            setPoisonEffectActive(maxTurnsRemaining > 0);
-          } else {
-            // No more active poison effects
-            setPoisonTurnsRemaining(0);
-            setPoisonEffectActive(false);
-          }
-
-          // Show poison damage notification
-          const damage = response.data.data.poison_damage_applied;
-
-          const messageElement = document.createElement("div");
-          messageElement.className =
-            "fixed inset-0 flex items-center justify-center z-50";
-          messageElement.innerHTML = `
-            <div class="bg-green-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-green-500/50">
-              Poison Effect: You took ${damage} poison damage!
-            </div>
-          `;
-          document.body.appendChild(messageElement);
-
-          // Remove only the message after 2 seconds, but keep the poison effect indicator
-          setTimeout(() => {
-            document.body.removeChild(messageElement);
-          }, 2000);
-        } else {
-          // Check if poison effect has ended
-          if (poisonTurnsRemaining <= 0) {
-            setPoisonEffectActive(false);
-          }
-        }
-      } catch (error) {
-        console.error("Error applying poison effects:", error);
-      }
-    };
-
-    // Only check when it's this player's turn and the turn has changed
-    if (isMyTurn && currentTurnNumber > 0) {
-      checkAndApplyPoisonEffects();
-    }
-  }, [
-    isMyTurn,
-    currentTurnNumber,
-    battleState?.session_uuid,
-    isHost,
-    poisonTurnsRemaining,
-  ]);
 
   // Set battle start time when game starts
   useEffect(() => {
@@ -929,7 +795,89 @@ export default function PvpBattle() {
     }
   }, [gameStarted, battleStartTime]);
 
-  // Effect to sync battle stats with backend periodically
+  // Update effect to use proper types
+  useEffect(() => {
+    const generateQuestions = async () => {
+      if (battleState?.battle_started && !questionGenState.isGenerating && questionGenState.questions.length === 0) {
+        try {
+          dispatchQuestionGen({ type: 'START_GENERATION' });
+          
+          const { data } = await axios.post<GenerateQuestionsResponse>(
+            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/generate-questions`,
+            {
+              session_uuid: battleState.session_uuid,
+              study_material_id: studyMaterialId,
+              difficulty_mode: difficultyMode,
+              question_types: questionTypes,
+              player_type: isHost ? 'host' : 'guest'
+            }
+          );
+
+          if (data?.success && data.data) {
+            dispatchQuestionGen({ 
+              type: 'GENERATION_SUCCESS', 
+              questions: data.data 
+            });
+          }
+        } catch (error) {
+          console.error('Error generating questions:', error);
+          dispatchQuestionGen({ 
+            type: 'GENERATION_ERROR', 
+            error: 'Failed to generate questions. Please try again.' 
+          });
+          toast.error('Failed to generate questions. Please try again.');
+        }
+      }
+    };
+
+    generateQuestions();
+  }, [battleState?.battle_started, battleState?.session_uuid, studyMaterialId, difficultyMode, questionTypes, isHost, questionGenState.isGenerating, questionGenState.questions.length]);
+
+  // Add useEffect for game state changes
+  useEffect(() => {
+    if (gameStarted && !waitingForPlayer) {
+      // Emit player entered game with inGame field
+      socket.emit('player_entered_game', {
+        playerId: currentUserId,
+        mode: 'pvp-battle',
+        inGame: true
+      });
+
+      // Also emit user game status change
+      socket.emit('userGameStatusChanged', {
+        userId: currentUserId,
+        mode: 'pvp-battle',
+        inGame: true
+      });
+    } else {
+      // When game ends or player is waiting, set inGame to false
+      socket.emit('player_entered_game', {
+        playerId: currentUserId,
+        mode: 'pvp-battle',
+        inGame: false
+      });
+
+      socket.emit('userGameStatusChanged', {
+        userId: currentUserId,
+        mode: 'pvp-battle',
+        inGame: false
+      });
+    }
+
+    // Cleanup function to handle component unmount
+    return () => {
+      socket.emit('player_exited_game', {
+        playerId: currentUserId,
+        inGame: false
+      });
+
+      socket.emit('userGameStatusChanged', {
+        userId: currentUserId,
+        mode: 'pvp-battle',
+        inGame: false
+      });
+    };
+  }, [gameStarted, waitingForPlayer, currentUserId]);
 
   return (
     <div
@@ -951,7 +899,8 @@ export default function PvpBattle() {
         enemyPickingIntroComplete={enemyPickingIntroComplete}
       />
 
-      {/* Top UI Bar */}
+      {/* Only show the top UI bar when the battle interface should be shown */}
+      {shouldShowBattleInterface() && (
       <div className="w-full py-4 px-4 sm:px-8 md:px-16 lg:px-32 xl:px-80 mt-4 lg:mt-12 flex items-center justify-between">
         <PlayerInfo
           name={playerName}
@@ -963,7 +912,7 @@ export default function PvpBattle() {
 
         <QuestionTimer
           timeLeft={timeLeft}
-          currentQuestion={currentQuestion}
+            currentQuestion={currentQuestionNumber}
           totalQuestions={totalItems}
           difficultyMode={difficultyMode}
         />
@@ -985,10 +934,13 @@ export default function PvpBattle() {
           <Settings size={16} className="sm:w-[20px] sm:h-[20px]" />
         </button>
       </div>
+      )}
 
       {/* Main Battle Area */}
       <div className="flex-1 relative">
         {/* Characters */}
+        {shouldShowBattleInterface() && (
+          <>
         <Character
           imageSrc={getCharacterImage(
             playerCharacter,
@@ -1007,8 +959,11 @@ export default function PvpBattle() {
           alt="Enemy Character"
           isRight
         />
+          </>
+        )}
 
         {/* Turn Randomizer (only shown to host) */}
+        {isHost && showRandomizer && (
         <TurnRandomizer
           isHost={isHost}
           lobbyCode={lobbyCode}
@@ -1032,23 +987,26 @@ export default function PvpBattle() {
           setEnemyPickingIntroComplete={setEnemyPickingIntroComplete}
           setShowCards={setShowCards}
         />
+        )}
 
         {/* Waiting for host to randomize (shown to guest) */}
-        <GuestWaitingForRandomization
-          waitingForRandomization={isGuestWaitingForRandomization}
-        />
+        {isGuestWaitingForRandomization() && (
+          <GuestWaitingForRandomization waitingForRandomization={true} />
+        )}
 
         {/* Game Start Animation */}
+        {showGameStart && (
         <GameStartAnimation
           showGameStart={showGameStart}
           gameStartText={gameStartText}
         />
+        )}
 
         {/* Card Selection UI - Show after the waiting screen and delay */}
-        {gameStarted &&
+        {shouldShowBattleInterface() &&
           showCards &&
-          !waitingForPlayer &&
-          showCardsAfterDelay && (
+          showCardsAfterDelay &&
+          !showVictoryModal && (
             <div className="fixed inset-0 bg-black/20 z-10">
               <CardSelection
                 isMyTurn={isMyTurn}
@@ -1061,23 +1019,26 @@ export default function PvpBattle() {
           )}
 
         {/* Waiting overlay - now checks only if either player isn't in battle yet */}
+        {waitingForPlayer && !showVictoryModal && (
         <WaitingOverlay
-          isVisible={waitingForPlayer}
+            isVisible={true}
           message="Waiting for your opponent to connect..."
         />
+        )}
 
         {/* Loading overlay when ending battle */}
         <LoadingOverlay isVisible={isEndingBattle} />
 
         {/* Victory Modal */}
         <VictoryModal
-          showVictoryModal={showVictoryModal}
-          victoryMessage={victoryMessage}
-          onConfirm={handleVictoryConfirm}
-          onViewSessionReport={handleViewSessionReport}
+          isOpen={showVictoryModal}
+          onClose={handleVictoryConfirm}
+          onViewReport={handleViewSessionReport}
+          isVictory={victoryMessage.includes('Won')}
         />
 
         {/* Question Modal */}
+        {!showVictoryModal && shouldShowBattleInterface() && (
         <QuestionModal
           isOpen={showQuestionModal}
           onClose={handleQuestionModalClose}
@@ -1085,13 +1046,20 @@ export default function PvpBattle() {
           difficultyMode={difficultyMode}
           questionTypes={questionTypes}
           selectedCardId={selectedCardId}
+          aiQuestions={questionGenState.questions}
+          isGeneratingAI={questionGenState.isGenerating}
+            currentQuestionNumber={currentQuestionNumber}
+            totalQuestions={totalItems}
+            onGameEnd={handleGameEnd}
+            shownQuestionIds={shownQuestionIds}
         />
+        )}
 
         {/* Session Report */}
         {showSessionReport && <PvpSessionReport />}
 
         {/* Poison effect indicator */}
-        {poisonEffectActive && (
+        {poisonEffectActive && !showVictoryModal && shouldShowBattleInterface() && (
           <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
             <div className="absolute inset-0 bg-green-500/20 animate-pulse"></div>
           </div>

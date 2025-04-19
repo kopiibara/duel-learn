@@ -643,7 +643,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
 
   // Show loading screen while generating questions
   if (isGeneratingAI) {
-    return <GeneralLoadingScreen text="Generating Questions" isLoading={isGeneratingAI} />;
+    return <GeneralLoadingScreen text="Loading Questions" isLoading={isGeneratingAI} />;
   }
 
   // Show loading screen if we don't have questions yet

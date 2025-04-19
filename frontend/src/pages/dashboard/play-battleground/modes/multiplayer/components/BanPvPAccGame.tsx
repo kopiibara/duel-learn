@@ -56,12 +56,12 @@ const BanPvPAccGame: React.FC<BanPvPAccGameProps> = ({
 
     const checkInitialBanStatus = async () => {
       try {
-        console.log("Checking initial ban status for user:", userId);
         const response = await axios.get(
           `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/user/ban-status/${userId}`
         );
         const data = response.data as { success: boolean; data: { banUntil: string } };
 
+    
         if (data.success && data.data.banUntil) {
           const banUntil = new Date(data.data.banUntil);
           if (isNaN(banUntil.getTime())) {

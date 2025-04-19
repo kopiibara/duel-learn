@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { io } from "socket.io-client";
+import { socket } from '../../../../../../../socket';
 
 interface BattleHookProps {
   lobbyCode: string;
@@ -62,118 +64,42 @@ export function useBattle({
   // References for polling intervals
   const pollingIntervalRef = useRef<number | null>(null);
   const battleEndingPollingRef = useRef<number | null>(null);
+  const socketRef = useRef<any>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const maxReconnectAttempts = 3;
 
   // =========== BATTLE LEAVER ============
 
   // Handle leaving the battle and updating the database
   const handleLeaveBattle = async (
-    battle_end_reason: string = "Left The Game",
-    early_leaver_id?: string
-  ) => {
-    // Prevent multiple calls
-    if (isEndingBattle) {
-      console.log("Already ending battle, ignoring duplicate call");
-      return;
-    }
-
+    reason: string,
+    currentUserId: string
+  ): Promise<void> => {
     try {
       setIsEndingBattle(true);
-      console.log("Ending battle due to user leaving");
 
-      // Flag to skip additional confirmation dialogs
-      window.onbeforeunload = null;
-
-      // Debug battle state before sending request
-      console.log("Battle state when leaving:", {
-        lobbyCode,
-        sessionUuid: battleState?.session_uuid,
-        sessionId: battleState?.ID,
-        hostId,
-        guestId,
-        isHost,
-        winnerId: isHost ? guestId : hostId,
-        battle_end_reason,
-        early_leaver_id,
+      // Emit player exited game with inGame field
+      socket.emit('player_exited_game', {
+        playerId: currentUserId,
+        inGame: false
       });
 
-      if (!battleState?.session_uuid && !battleState?.ID) {
-        console.error(
-          "No session identifiers found! Will try using lobby code only."
+      if (battleState?.session_uuid) {
+        await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/end`,
+          {
+            session_uuid: battleState.session_uuid,
+            reason: reason,
+            player_id: currentUserId,
+          }
         );
       }
 
-      // Create the payload with session_uuid and also include session_id as backup
-      const payload = {
-        lobby_code: lobbyCode,
-        winner_id: isHost ? guestId : hostId, // Opponent wins if player leaves
-        battle_end_reason,
-        session_uuid: battleState?.session_uuid,
-        session_id: battleState?.ID, // Include numeric ID as fallback
-        early_leaver_id, // Include the ID of the player who left early
-      };
-
-      console.log("Sending battle end request with payload:", payload);
-
-      // End the battle with appropriate status
-      const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/end`,
-        payload
-      );
-
-      console.log("Battle end response:", response.data);
-
-      // Wait for the request to complete with a longer delay to ensure it propagates
-      console.log("Waiting to ensure request propagates...");
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      console.log("Done waiting, proceeding to navigation");
-
-      // Force navigation to dashboard AFTER the request completes
-      // Use replace instead of href to prevent history entry
+      // Force navigation to dashboard
       window.location.replace("/dashboard/home");
-    } catch (error: any) {
-      // Add type annotation to fix linter error
-      console.error("Error ending battle:", error);
-      console.error(
-        "Error details:",
-        error.response?.data || "No response data"
-      );
-
-      // Remove beforeunload handler to prevent additional confirmation
-      window.onbeforeunload = null;
-
-      // Try alternative approach if first attempt failed
-      try {
-        console.log("First attempt failed, trying alternative approach...");
-
-        // Try direct update with lobby_code only if we have it
-        if (lobbyCode) {
-          console.log("Using lobby_code only approach");
-
-          const fallbackPayload = {
-            lobby_code: lobbyCode,
-            winner_id: isHost ? guestId : hostId,
-            battle_end_reason,
-            early_leaver_id,
-          };
-
-          const fallbackResponse = await axios.post(
-            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/end`,
-            fallbackPayload
-          );
-
-          console.log("Fallback battle end response:", fallbackResponse.data);
-
-          // Wait to ensure request processes
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        }
-      } catch (fallbackError) {
-        console.error("Even fallback approach failed:", fallbackError);
-      }
-
-      // Add a delay even on error to ensure any partial processing completes
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Still redirect even if error occurs - use replace to prevent history entry
+    } catch (error) {
+      console.error("Error in handleLeaveBattle:", error);
+      // Force navigation anyway on error
       window.location.replace("/dashboard/home");
     }
   };
@@ -703,6 +629,62 @@ export function useBattle({
       }
     }
   }, []);
+
+  // Initialize socket connection
+  useEffect(() => {
+    if (!currentUserId || showVictoryModal) return;
+
+    const initializeSocket = () => {
+      socketRef.current = io(import.meta.env.VITE_BACKEND_URL, {
+        transports: ['websocket'],
+        query: {
+          userId: currentUserId,
+          inGame: true,
+          gameType: 'battle',
+          lobbyCode
+        }
+      });
+
+      socketRef.current.on('connect', () => {
+        console.log('Socket connected');
+        reconnectAttemptsRef.current = 0;
+      });
+
+      socketRef.current.on('disconnect', (reason: string) => {
+        console.log('Socket disconnected:', reason);
+        
+        // Only attempt to reconnect if we haven't exceeded max attempts
+        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+          reconnectAttemptsRef.current++;
+          setTimeout(() => {
+            console.log(`Attempting reconnect ${reconnectAttemptsRef.current}/${maxReconnectAttempts}`);
+            socketRef.current.connect();
+          }, 1000);
+        } else {
+          // If we've exceeded max reconnect attempts and the game hasn't ended, handle gracefully
+          if (!showVictoryModal && !isEndingBattle) {
+            console.log('Max reconnection attempts reached, ending battle gracefully');
+            handleLeaveBattle('Connection Lost', currentUserId);
+          }
+        }
+      });
+
+      socketRef.current.on('opponent_left', () => {
+        if (!showVictoryModal && !isEndingBattle) {
+          setVictoryMessage(`${opponentName} left the game. You won!`);
+          setShowVictoryModal(true);
+        }
+      });
+    };
+
+    initializeSocket();
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [currentUserId, showVictoryModal]);
 
   return {
     handleLeaveBattle,

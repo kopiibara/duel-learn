@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import BattleFlashCard from "./BattleFlashCard";
-import { questionsData } from "../../../../data/questions";
 import axios from "axios";
+import { Question } from "../../../../../types";
 
 /**
  * TIME MANIPULATION VISUAL INDICATORS:
@@ -43,10 +43,16 @@ interface CardEffect {
 interface QuestionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAnswerSubmit: (isCorrect: boolean) => void;
+  onAnswerSubmit: (isCorrect: boolean) => Promise<void>;
   difficultyMode: string | null;
   questionTypes: string[];
-  selectedCardId?: string | null;
+  selectedCardId: string | null;
+  aiQuestions: Question[];
+  isGeneratingAI: boolean;
+  onGameEnd?: () => void;
+  shownQuestionIds: Set<string>;
+  currentQuestionNumber: number;
+  totalQuestions: number;
 }
 
 const QuestionModal: React.FC<QuestionModalProps> = ({
@@ -56,254 +62,27 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   difficultyMode,
   questionTypes,
   selectedCardId,
+  aiQuestions,
+  isGeneratingAI,
+  onGameEnd,
+  shownQuestionIds,
+  currentQuestionNumber,
+  totalQuestions
 }) => {
   const [hasAnswered, setHasAnswered] = useState(false);
-  const [currentQuestion, setCurrentQuestion] = useState<any>(null);
+  const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
   const [showResult, setShowResult] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<string>("");
-  const [usedQuestionIndices, setUsedQuestionIndices] = useState<number[]>([]);
-  const [questionHistory, setQuestionHistory] = useState<
-    Array<{
-      question: string;
-      answer: string;
-      wasCorrect: boolean;
-    }>
-  >([]);
-  // Card effect states
-  const [cardEffects, setCardEffects] = useState<CardEffect[]>([]);
-  const [timeReductionEffect, setTimeReductionEffect] =
-    useState<CardEffect | null>(null);
-  // Timer states
+  const [isFlipped, setIsFlipped] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [timerProgress, setTimerProgress] = useState(100);
 
-  // Get time limit based on difficulty and active card effects
-  const getTimeLimit = (): number => {
-    const difficultyNormalized =
-      difficultyMode?.toLowerCase().trim() || "average";
-
-    // Base time limits
-    let timeLimit = 15; // average difficulty default
-    if (difficultyNormalized.includes("easy")) timeLimit = 20;
-    if (difficultyNormalized.includes("hard")) timeLimit = 10;
-
-    // Apply time reduction effect if active
-    if (timeReductionEffect) {
-      // Store original time for logging
-      const originalTime = timeLimit;
-
-      // Get reduction percentage and minimum time from effect
-      const reductionPercent = timeReductionEffect.reduction_percent || 30;
-      const minTime = timeReductionEffect.min_time || 5;
-
-      // Calculate reduced time
-      const reductionFactor = (100 - reductionPercent) / 100;
-      const reducedTime = Math.floor(timeLimit * reductionFactor);
-
-      // Ensure minimum time
-      timeLimit = Math.max(reducedTime, minTime);
-
-      console.log(
-        `Time manipulation effect applied: ${timeLimit}s from original ${originalTime}s`
-      );
-      console.log(`Reduction: ${reductionPercent}%, Minimum: ${minTime}s`);
-
-      // Mark the effect as consumed after applying it
-      consumeCardEffect(timeReductionEffect.type);
-    }
-
-    return timeLimit;
-  };
-
-  // Function to fetch active card effects
-  const fetchCardEffects = async () => {
-    try {
-      // Get the session uuid and player type from URL or session storage
-      const urlParams = new URLSearchParams(window.location.search);
-      const sessionUuid = sessionStorage.getItem("battle_session_uuid");
-      const isHost = sessionStorage.getItem("is_host") === "true";
-
-      // FIXED: Get effects targeting the current player correctly
-      // The player who receives the effect is the current player, not the opponent
-      // So if you're the host, you should check for effects targeting 'host', not 'guest'
-      const playerType = isHost ? "host" : "guest";
-
-      console.log(
-        `Checking for card effects targeting ${playerType} (isHost: ${isHost})`
-      );
-
-      if (!sessionUuid) {
-        console.error("No session UUID found for card effects");
-        return;
-      }
-
-      const response = await axios.get(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/gameplay/battle/card-effects/${sessionUuid}/${playerType}`
-      );
-
-      console.log("Card effects response:", response.data);
-
-      if (response.data.success && response.data.data.effects) {
-        setCardEffects(response.data.data.effects);
-        console.log(
-          `Found ${response.data.data.effects.length} card effects targeting ${playerType}`
-        );
-
-        // Check if there's a time reduction effect
-        const timeEffect = response.data.data.effects.find(
-          (effect: CardEffect) =>
-            effect.type === "normal-1" && effect.effect === "reduce_time"
-        );
-
-        if (timeEffect) {
-          console.log("Time manipulation effect found:", timeEffect);
-          setTimeReductionEffect(timeEffect);
-        } else {
-          console.log("No time manipulation effect found");
-        }
-      } else {
-        console.log(`No card effects found targeting ${playerType}`);
-      }
-    } catch (error) {
-      console.error("Error fetching card effects:", error);
-    }
-  };
-
-  // Function to mark card effect as consumed
-  const consumeCardEffect = async (effectType: string) => {
-    try {
-      const sessionUuid = sessionStorage.getItem("battle_session_uuid");
-      const isHost = sessionStorage.getItem("is_host") === "true";
-
-      // FIXED: Use the correct player type (same as in fetchCardEffects)
-      const playerType = isHost ? "host" : "guest";
-      console.log(`Consuming ${effectType} card effect for ${playerType}`);
-
-      if (!sessionUuid) {
-        console.error("No session UUID found for consuming card effect");
-        return;
-      }
-
-      const response = await axios.post(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/gameplay/battle/consume-card-effect`,
-        {
-          session_uuid: sessionUuid,
-          player_type: playerType,
-          effect_type: effectType,
-        }
-      );
-
-      console.log("Card effect consumption response:", response.data);
-
-      // Clear the effect from local state
-      if (effectType === "normal-1") {
-        setTimeReductionEffect(null);
-      }
-
-      // Update card effects list
-      setCardEffects((prevEffects) =>
-        prevEffects.filter(
-          (effect) => !(effect.type === effectType && !effect.used)
-        )
-      );
-    } catch (error) {
-      console.error("Error consuming card effect:", error);
-    }
-  };
-
-  // Fetch card effects when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchCardEffects();
-    }
-  }, [isOpen]);
-
-  // Initialize timer when question is shown
-  useEffect(() => {
-    if (isOpen && !hasAnswered) {
-      const timeLimit = getTimeLimit();
-      setTimeRemaining(timeLimit);
-
-      // Start the timer countdown
-      const timer = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev === null) return null;
-          if (prev <= 0) return 0;
-          return prev - 0.1;
-        });
-      }, 100);
-
-      return () => clearInterval(timer);
-    }
-  }, [isOpen, hasAnswered, difficultyMode, timeReductionEffect]);
-
-  // Update timer progress
-  useEffect(() => {
-    if (timeRemaining !== null) {
-      const timeLimit = getTimeLimit();
-      setTimerProgress((timeRemaining / timeLimit) * 100);
-
-      // If time runs out and user hasn't answered
-      if (timeRemaining <= 0 && !hasAnswered && currentQuestion) {
-        // Automatically mark as incorrect
-        setHasAnswered(true);
-        setIsCorrect(false);
-        setShowResult(true);
-
-        // Wait for result overlay before closing
-        setTimeout(() => {
-          onAnswerSubmit(false);
-          onClose();
-        }, 1500);
-      }
-    }
-  }, [timeRemaining, hasAnswered, currentQuestion, onAnswerSubmit, onClose]);
-
-  // Filter questions based on difficulty and question types
-  const getFilteredQuestions = () => {
-    return questionsData.filter((q) => {
-      // Check if question type is in allowed types
-      const typeMatches =
-        questionTypes.length === 0 || questionTypes.includes(q.questionType);
-
-      return typeMatches;
-    });
-  };
-
-  // Function to get a random unused question
-  const getRandomUnusedQuestion = () => {
-    const filteredQuestions = getFilteredQuestions();
-
-    if (filteredQuestions.length === 0) {
-      console.error("No questions available for current difficulty and types");
-      return null;
-    }
-
-    if (usedQuestionIndices.length === filteredQuestions.length) {
-      console.log("All questions have been used, resetting...");
-      setUsedQuestionIndices([]);
-      return filteredQuestions[0];
-    }
-
-    const availableIndices = filteredQuestions
-      .map((_, index) => index)
-      .filter((index) => !usedQuestionIndices.includes(index));
-
-    const randomIndex =
-      availableIndices[Math.floor(Math.random() * availableIndices.length)];
-    setUsedQuestionIndices((prev) => [...prev, randomIndex]);
-
-    return filteredQuestions[randomIndex];
-  };
-
   // Reset states when modal closes
   useEffect(() => {
+    console.log('QuestionModal open state changed:', { isOpen });
     if (!isOpen) {
+      console.log('Resetting modal states');
       setHasAnswered(false);
       setShowResult(false);
       setCurrentQuestion(null);
@@ -312,53 +91,134 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     }
   }, [isOpen]);
 
-  // Select a new question when the modal opens
+  // Select a question when the modal opens
   useEffect(() => {
-    if (isOpen && !currentQuestion) {
-      const newQuestion = getRandomUnusedQuestion();
-      if (newQuestion) {
-        setCurrentQuestion(newQuestion);
+    console.log('Question selection effect triggered:', {
+      isOpen,
+      hasCurrentQuestion: !!currentQuestion,
+      isGeneratingAI,
+      aiQuestionsCount: aiQuestions?.length ?? 0
+    });
+
+    if (isOpen && !currentQuestion && !isGeneratingAI && aiQuestions?.length > 0) {
+      // Filter out questions that have already been shown
+      const availableQuestions = aiQuestions.filter(q => !shownQuestionIds.has(q.id));
+      
+      if (availableQuestions.length > 0) {
+        // Select a random question from available questions
+        const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+        const selectedQuestion = availableQuestions[randomIndex];
+        console.log('Selected question:', selectedQuestion);
+        setCurrentQuestion(selectedQuestion);
       } else {
-        console.error("Could not get a valid question");
-        onClose();
+        // If no more questions available, end the game
+        console.log('No more questions available, ending game');
+        onGameEnd?.();
       }
     }
-  }, [isOpen]);
+  }, [isOpen, aiQuestions, isGeneratingAI, currentQuestion, shownQuestionIds]);
 
-  const handleAnswerSubmit = (answer: string) => {
+  // Timer logic
+  useEffect(() => {
+    if (!isOpen || hasAnswered || isGeneratingAI) return;
+
+    const timeLimit = getTimeLimit();
+    setTimeRemaining(timeLimit);
+    console.log('Starting timer with limit:', timeLimit);
+
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev === null) return null;
+        if (prev <= 0) return 0;
+        return prev - 0.1;
+      });
+    }, 100);
+
+    return () => clearInterval(timer);
+  }, [isOpen, hasAnswered, difficultyMode, isGeneratingAI]);
+
+  // Update timer progress
+  useEffect(() => {
+    if (timeRemaining !== null) {
+      const timeLimit = getTimeLimit();
+      setTimerProgress((timeRemaining / timeLimit) * 100);
+
+      if (timeRemaining <= 0 && !hasAnswered && currentQuestion) {
+        console.log('Time ran out - submitting incorrect answer');
+        setHasAnswered(true);
+        setIsCorrect(false);
+        setShowResult(true);
+
+        setTimeout(() => {
+          onAnswerSubmit(false);
+          onClose();
+        }, 1500);
+      }
+    }
+  }, [timeRemaining, hasAnswered, currentQuestion, onAnswerSubmit, onClose]);
+
+  const getTimeLimit = () => {
+    const difficultyNormalized = difficultyMode?.toLowerCase().trim() || "average";
+    let timeLimit = 15;
+    if (difficultyNormalized.includes("easy")) timeLimit = 20;
+    if (difficultyNormalized.includes("hard")) timeLimit = 10;
+    console.log('Calculated time limit:', { difficultyMode, timeLimit });
+    return timeLimit;
+  };
+
+  const handleAnswerSubmit = async (answer: string) => {
+    console.log('Answer submitted:', { answer, hasCurrentQuestion: !!currentQuestion, hasAnswered });
     if (!currentQuestion || hasAnswered) return;
 
-    setSelectedAnswer(answer);
-    const answerCorrect =
-      answer.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
-    setIsCorrect(answerCorrect);
-    setHasAnswered(true);
+    let correctAnswer = currentQuestion.correctAnswer;
+    if (typeof correctAnswer === "string" && correctAnswer.includes(". ")) {
+      const answerParts = correctAnswer.split(". ");
+      if (answerParts.length > 1) {
+        correctAnswer = answerParts.slice(1).join(". ").trim();
+      }
+    }
+
+    if (!correctAnswer && currentQuestion.term) {
+      correctAnswer = currentQuestion.term;
+    }
+
+    const answerString = String(answer || "").toLowerCase().trim();
+    const correctAnswerString = String(correctAnswer).toLowerCase().trim();
+    const isAnswerCorrect = answerString === correctAnswerString;
+
+    console.log('Answer evaluation:', {
+      submitted: answerString,
+      correct: correctAnswerString,
+      isCorrect: isAnswerCorrect
+    });
+
+    setIsCorrect(isAnswerCorrect);
     setShowResult(true);
+    setHasAnswered(true);
+    setSelectedAnswer(answer);
+    setIsFlipped(true);
 
-    setQuestionHistory((prev) => [
-      ...prev,
-      {
-        question: currentQuestion.question,
-        answer: answer,
-        wasCorrect: answerCorrect,
-      },
-    ]);
-
-    // Wait for 1.5 seconds to show the result overlay
-    setTimeout(() => {
-      onAnswerSubmit(answerCorrect);
-      onClose();
-    }, 1500);
+    // Check if this was the last question
+    if (currentQuestionNumber === totalQuestions) {
+      console.log('Last question answered, ending game after delay');
+      setTimeout(() => {
+        onGameEnd?.();
+      }, 1500);
+    } else {
+      setTimeout(() => {
+        onAnswerSubmit(isAnswerCorrect);
+        onClose();
+      }, 1500);
+    }
   };
 
   const getButtonStyle = (option: string) => {
-    if (!hasAnswered) {
+    if (!showResult) {
       return "text-white border-2 border-white-400 hover:border-green-300 transition-colors";
     }
 
     const isSelected = selectedAnswer.toLowerCase() === option.toLowerCase();
-    const isCorrectAnswer =
-      option.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+    const isCorrectAnswer = option.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
 
     if (isCorrectAnswer) {
       return "bg-green-500 text-white border-2 border-green-600";
@@ -369,245 +229,72 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     return "text-white border-2 border-gray-300 opacity-50";
   };
 
-  // Functions for visual effects based on timer
-  const isCriticalTime =
-    timeRemaining !== null && timeRemaining <= getTimeLimit() / 2;
-  const isNearZero = timeRemaining !== null && timeRemaining <= 3;
-  const isZero = timeRemaining !== null && timeRemaining <= 0;
-
-  // Remove all animation effects
-  const getHeartbeatClass = () => {
-    return "";
-  };
-
-  const getBorderClass = () => {
-    return "";
-  };
-
-  const getLowHealthEffects = () => {
-    return "";
-  };
-
-  const getProgressBarWidth = () => {
-    if (isZero) return "2%";
-    return `${timerProgress}%`;
-  };
-
-  const getProgressBarClass = () => {
-    if (isZero) {
-      return "h-full bg-red-600 opacity-80";
-    }
-    if (isNearZero) {
-      return "h-full bg-red-500 opacity-90";
-    }
-    if (isCriticalTime) {
-      return "h-full bg-red-500";
-    }
-    // If time has been reduced by card effect, show purple progress bar
-    if (timeReductionEffect) {
-      return "h-full bg-purple-600";
-    }
-    return "h-full bg-[#fff]";
-  };
-
-  // Add this function to show a prominent animation when time is reduced
-  const showTimeReductionAnimation = () => {
-    if (!timeReductionEffect || !isOpen) return null;
-
-    // Only show this animation once when the modal first opens
-    return (
-      <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
-        <div className="flex flex-col items-center">
-          <div className="text-4xl font-bold text-red-500 animate-bounce mb-2">
-            Time Reduced!
-          </div>
-          <div className="text-2xl font-bold text-white bg-purple-800 px-4 py-2 rounded-lg">
-            -{timeReductionEffect.reduction_percent || 30}% Time
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Add a useEffect to show time reduction animation briefly when modal opens
-  useEffect(() => {
-    if (isOpen && timeReductionEffect) {
-      const reductionElement = document.createElement("div");
-      reductionElement.className =
-        "fixed inset-0 flex items-center justify-center z-[999] bg-black/40";
-
-      const reductionPercent = timeReductionEffect.reduction_percent || 30;
-      const originalTime = difficultyMode?.toLowerCase().includes("easy")
-        ? 20
-        : difficultyMode?.toLowerCase().includes("hard")
-        ? 10
-        : 15;
-
-      // Calculate new time
-      const reducedTime = Math.max(
-        Math.floor(originalTime * (1 - reductionPercent / 100)),
-        5
-      );
-
-      reductionElement.innerHTML = `
-                <div class="flex flex-col items-center justify-center p-8 bg-purple-900/90 rounded-lg shadow-xl border-2 border-purple-500 transform scale-110 animate-pulse">
-                    <div class="text-4xl font-bold text-white mb-4">Time Manipulation!</div>
-                    <div class="text-3xl text-white mb-6">Your time was reduced</div>
-                    <div class="flex items-center space-x-4 text-2xl text-white mb-2">
-                        <span class="font-normal">Original time:</span>
-                        <span class="font-bold line-through">${originalTime}s</span>
-                    </div>
-                    <div class="flex items-center space-x-4 text-2xl text-white">
-                        <span class="font-normal">New time:</span>
-                        <span class="font-bold text-red-400">${reducedTime}s</span>
-                    </div>
-                </div>
-            `;
-
-      document.body.appendChild(reductionElement);
-
-      // Remove the element after 2.5 seconds
-      setTimeout(() => {
-        document.body.removeChild(reductionElement);
-      }, 2500);
-    }
-  }, [isOpen, timeReductionEffect, difficultyMode]);
-
-  // Modify the timer display to make time reduction more obvious
-  const renderTimerDisplay = () => {
-    if (timeRemaining === null) return null;
-
-    return (
-      <div
-        className={`absolute top-4 left-4 px-4 py-2 rounded-md shadow-lg ${
-          timeReductionEffect
-            ? "bg-purple-800 border-2 border-purple-400 animate-pulse"
-            : "bg-gray-800"
-        }`}
-      >
-        <div className="flex items-center">
-          <span className="text-white font-bold mr-2">Time:</span>
-          <span
-            className={`${
-              isNearZero
-                ? "text-red-400 font-bold"
-                : timeReductionEffect
-                ? "text-yellow-300 font-bold"
-                : "text-white"
-            }`}
-          >
-            {Math.ceil(timeRemaining)}s
-          </span>
-          {timeReductionEffect && (
-            <div className="ml-2 flex items-center">
-              <span className="text-purple-300 text-xs animate-pulse mr-1">
-                (reduced
-              </span>
-              <span className="text-red-400 text-xs font-bold">
-                -{timeReductionEffect.reduction_percent || 30}%
-              </span>
-              <span className="text-purple-300 text-xs animate-pulse ml-1">
-                )
-              </span>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  // Update the renderCardEffectNotification function to be more prominent
-  const renderCardEffectNotification = () => {
-    if (timeReductionEffect) {
-      const reductionPercent = timeReductionEffect.reduction_percent || 30;
-
-      return (
-        <div className="absolute top-4 right-4 bg-purple-800 text-white px-4 py-2 rounded-md shadow-lg border-2 border-purple-400">
-          <div className="flex flex-col items-center">
-            <span className="font-bold text-yellow-300 animate-pulse">
-              Time Manipulation Active!
-            </span>
-            <span className="text-sm mt-1">
-              Time reduced by{" "}
-              <span className="font-bold text-red-400">
-                {reductionPercent}%
-              </span>
-            </span>
-          </div>
-        </div>
-      );
-    }
-    return null;
+  // Add a function to format options
+  const formatOptions = (options: string[] | { [key: string]: string } | undefined): string[] => {
+    if (!options) return [];
+    if (Array.isArray(options)) return options;
+    return Object.values(options);
   };
 
   if (!isOpen || !currentQuestion) return null;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div className="p-8 rounded-lg max-w-4xl w-full mx-4 mt-10 relative flex flex-col items-center">
-        {/* Timer display */}
-        {renderTimerDisplay()}
-
-        {/* Card effect notification */}
-        {renderCardEffectNotification()}
-
-        {/* Time reduction animation (only shown briefly) */}
-        {showTimeReductionAnimation()}
-
-        {/* Question Counter */}
-        <div className="mb-4 text-sm text-white">
-          Question {usedQuestionIndices.length} of{" "}
-          {getFilteredQuestions().length}
+      {isGeneratingAI ? (
+        <div className="bg-black/50 p-8 rounded-lg text-white text-center">
+          <div className="animate-spin w-8 h-8 border-4 border-white border-t-transparent rounded-full mx-auto mb-4"></div>
+          <p>Generating questions...</p>
         </div>
+      ) : currentQuestion ? (
+        <div className="p-8 rounded-lg max-w-4xl w-full mx-4 mt-10 relative flex flex-col items-center">
+          {/* Question Counter */}
+          <div className="mb-4 text-sm text-white">
+            Question {currentQuestionNumber} of {totalQuestions}
+          </div>
 
-        <div className="w-full flex justify-center">
-          <BattleFlashCard
-            question={currentQuestion.question}
-            correctAnswer={currentQuestion.correctAnswer}
-            type={currentQuestion.questionType}
-            disabled={hasAnswered}
-          />
-        </div>
+          <div className="w-full flex justify-center">
+            <BattleFlashCard
+              question={currentQuestion.question}
+              correctAnswer={currentQuestion.correctAnswer || currentQuestion.answer}
+              type={currentQuestion.type as 'multiple-choice' | 'true-false' | 'identification'}
+              disabled={hasAnswered}
+            />
+          </div>
 
-        {/* Answer Section */}
-        <div className="mt-9 w-full">
-          {currentQuestion.questionType === "multiple-choice" && (
-            <div className="grid grid-cols-2 gap-4 max-w-3xl mx-auto px-4">
-              {currentQuestion.options.map((option: string, index: number) => (
-                <button
-                  key={index}
-                  onClick={() => handleAnswerSubmit(option)}
-                  disabled={hasAnswered}
-                  className={`h-[100px] px-6 py-4 rounded-lg text-lg font-medium transition-colors whitespace-normal flex items-center justify-center ${getButtonStyle(
-                    option
-                  )}`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Answer Section */}
+          <div className="mt-9 w-full">
+            {currentQuestion.type === "multiple-choice" && (
+              <div className="grid grid-cols-2 gap-4 max-w-3xl mx-auto px-4">
+                {formatOptions(currentQuestion.options).map((option: string, index: number) => (
+                  <button
+                    key={index}
+                    onClick={() => handleAnswerSubmit(option)}
+                    disabled={hasAnswered}
+                    className={`h-[100px] px-6 py-4 rounded-lg text-lg font-medium transition-colors whitespace-normal flex items-center justify-center ${getButtonStyle(option)}`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
 
-          {currentQuestion.questionType === "true-false" && (
-            <div className="flex justify-center gap-6">
-              {["True", "False"].map((option) => (
-                <button
-                  key={option}
-                  onClick={() => handleAnswerSubmit(option)}
-                  disabled={hasAnswered}
-                  className={`w-[200px] h-[93.33px] px-6 py-4 rounded-lg text-lg font-medium transition-colors flex items-center justify-center ${getButtonStyle(
-                    option
-                  )}`}
-                >
-                  {option}
-                </button>
-              ))}
-            </div>
-          )}
+            {currentQuestion.type === "true-false" && (
+              <div className="flex justify-center gap-6">
+                {["True", "False"].map((option) => (
+                  <button
+                    key={option}
+                    onClick={() => handleAnswerSubmit(option)}
+                    disabled={hasAnswered}
+                    className={`w-[200px] h-[93.33px] px-6 py-4 rounded-lg text-lg font-medium transition-colors flex items-center justify-center ${getButtonStyle(option)}`}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            )}
 
-          {currentQuestion.questionType === "identification" && (
-            <div className="max-w-xl mx-auto">
-              <div className="relative">
+            {currentQuestion.type === "identification" && (
+              <div className="max-w-xl mx-auto">
                 <input
                   type="text"
                   placeholder="Type your answer here ..."
@@ -627,38 +314,37 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
                 />
                 {hasAnswered && !isCorrect && (
                   <div className="mt-2 text-green-500 text-center">
-                    Correct answer: {currentQuestion.correctAnswer}
+                    Correct answer: {currentQuestion.correctAnswer || currentQuestion.answer}
                   </div>
                 )}
+                {!hasAnswered && (
+                  <button
+                    onClick={(e) =>
+                      handleAnswerSubmit(
+                        (e.currentTarget.previousElementSibling?.querySelector("input") as HTMLInputElement).value
+                      )
+                    }
+                    className="mt-7 w-full px-6 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors text-lg font-medium"
+                  >
+                    Submit Answer
+                  </button>
+                )}
               </div>
-              {!hasAnswered && (
-                <button
-                  onClick={(e) =>
-                    handleAnswerSubmit(
-                      (
-                        e.currentTarget.previousElementSibling?.querySelector(
-                          "input"
-                        ) as HTMLInputElement
-                      ).value
-                    )
-                  }
-                  className="mt-7 w-full px-6 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors text-lg font-medium"
-                >
-                  Submit Answer
-                </button>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      ) : (
+        <div className="bg-black/50 p-8 rounded-lg text-white text-center">
+          <p>Waiting for questions...</p>
+        </div>
+      )}
 
       {/* Progress Bar */}
       <div className="fixed bottom-0 left-0 right-0 w-full h-1.5 bg-gray-700/50 overflow-hidden z-[9999]">
         <div
-          className={getProgressBarClass()}
+          className={`h-full ${timeRemaining && timeRemaining <= 3 ? "bg-red-500" : "bg-white"}`}
           style={{
-            width: getProgressBarWidth(),
-            height: "100%",
+            width: `${timerProgress}%`,
             transition: "all 0.1s linear",
           }}
         />
@@ -667,12 +353,33 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
       {/* Result Overlay */}
       {showResult && (
         <div className="fixed inset-0 flex items-center justify-center z-[60]">
-          <div
-            className={`text-6xl font-bold ${
-              isCorrect ? "text-green-500" : "text-red-500"
-            } animate-bounce`}
-          >
-            {isCorrect ? "CORRECT!!!" : "WRONG!!!"}
+          <div className={`flex flex-col items-center justify-center ${
+            isCorrect 
+              ? 'text-green-400 animate-result-appear' 
+              : 'text-red-400 animate-result-appear'
+          }`}>
+            <div className={`rounded-full p-6 mb-4 ${
+              isCorrect 
+                ? 'bg-green-500/20' 
+                : 'bg-red-500/20'
+            }`}>
+              {isCorrect ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              )}
+            </div>
+            <div className={`text-6xl font-bold ${
+              isCorrect 
+                ? 'text-green-400' 
+                : 'text-red-400'
+            } animate-bounce-gentle`}>
+              {isCorrect ? "CORRECT!" : "WRONG!"}
+            </div>
           </div>
         </div>
       )}

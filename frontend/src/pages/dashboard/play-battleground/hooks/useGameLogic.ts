@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { questionsData } from "../data/questions";
+import { Question } from "../types";
 
 // Define StudyMaterial interface directly without importing the conflicting one
 interface StudyMaterial {
@@ -76,12 +76,13 @@ export const useGameLogic = ({
 
   const navigate = useNavigate();
 
-  // Filter questions based on mode and selected types
-  const filteredQuestions = questionsData.filter(
-    (question) =>
-      question.mode.toLowerCase() === mode.toLowerCase() &&
-      selectedTypes.includes(question.questionType)
-  );
+  // Remove filteredQuestions since we're using AI questions now
+  // Update isLastQuestion to only use AI questions logic
+  const isLastQuestion = isInRetakeMode
+    ? questionIndex === retakeQuestions.length - 1
+    : aiQuestions
+    ? questionIndex === aiQuestions.length - 1
+    : false;
 
   // Add a debug log when hook first loads with props
   useEffect(() => {
@@ -419,13 +420,6 @@ export const useGameLogic = ({
     masteredCount,
     handleGameComplete,
   ]);
-
-  // Update isLastQuestion to account for retake mode
-  const isLastQuestion = isInRetakeMode
-    ? questionIndex === retakeQuestions.length - 1
-    : aiQuestions
-    ? questionIndex === aiQuestions.length - 1
-    : currentQuestionIndex === filteredQuestions.length - 1;
 
   // Timer logic for Time Pressured mode
   useEffect(() => {
@@ -944,13 +938,3 @@ export const useGameLogic = ({
     cardDisabled: showResult,
   };
 };
-
-export interface Question {
-  id: string;
-  question: string;
-  questionType: string;
-  options?: { [key: string]: string };
-  type: string;
-  answer: string;
-  correctAnswer?: string;
-}

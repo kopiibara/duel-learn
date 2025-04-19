@@ -709,45 +709,47 @@ const setupSocket = (server) => {
     );
 
     // Handle player entering game
-    createEventHandler(
-      socket,
-      "player_entered_game",
-      ["playerId", "mode"],
-      "🎮",
-      (data) => {
-        const { playerId, mode } = data;
-
-        // Store in the map
-        usersInGame.set(playerId, { mode });
-        // Remove from lobby if in game
-        usersInLobby.delete(playerId);
-
-        // Broadcast to all clients
-        socket.broadcast.emit("player_entered_game", {
-          playerId,
-          mode
+    socket.on("player_entered_game", (data) => {
+      try {
+        validateFields(data, ["playerId", "mode", "inGame"], "player_entered_game");
+        console.log("🎮 player_entered_game:", data);
+        
+        // Update user's game status
+        usersInGame.set(data.playerId, {
+          mode: data.mode,
+          inGame: true
         });
+
+        // Broadcast status change to all connected clients
+        io.emit("userGameStatusChanged", {
+          userId: data.playerId,
+          inGame: true,
+          mode: data.mode
+        });
+      } catch (error) {
+        handleSocketError(socket, error, "player_entered_game");
       }
-    );
+    });
 
     // Handle player exiting game
-    createEventHandler(
-      socket,
-      "player_exited_game",
-      ["playerId"],
-      "🎮",
-      (data) => {
-        const { playerId } = data;
+    socket.on("player_exited_game", (data) => {
+      try {
+        validateFields(data, ["playerId"], "player_exited_game");
+        console.log("🎮 player_exited_game:", data);
+        
+        // Remove user from game tracking
+        usersInGame.delete(data.playerId);
 
-        // Remove from the map
-        usersInGame.delete(playerId);
-
-        // Broadcast to all clients
-        socket.broadcast.emit("player_exited_game", {
-          playerId
+        // Broadcast status change to all connected clients
+        io.emit("userGameStatusChanged", {
+          userId: data.playerId,
+          inGame: false,
+          mode: null
         });
+      } catch (error) {
+        handleSocketError(socket, error, "player_exited_game");
       }
-    );
+    });
 
     // Handle direct room join/leave
     createEventHandler(
