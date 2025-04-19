@@ -1,4 +1,4 @@
-import { useState, useEffect, useReducer, useCallback } from "react";
+import { useState, useEffect, useReducer, useCallback, useRef } from "react";
 import { Settings } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
@@ -349,6 +349,9 @@ export default function PvpBattle() {
     }
   }, [battleState?.session_uuid, currentQuestion, isHost]);
 
+  // Add audio ref
+  const attackSoundRef = useRef<HTMLAudioElement | null>(null);
+
   const handleAnswerSubmitRound = async (isCorrect: boolean) => {
     if (!selectedCardId) return;
 
@@ -376,6 +379,13 @@ export default function PvpBattle() {
       if (isCorrect) {
         setShowAttackAnimation(true);
         setIsAttacker(true);  // Always the attacker when correct
+
+        // Play attack sound
+        if (attackSoundRef.current) {
+          attackSoundRef.current.currentTime = 0;
+          attackSoundRef.current.volume = 0.5; // Set volume to 50%
+          attackSoundRef.current.play().catch(err => console.error("Error playing sound:", err));
+        }
 
         // Wait 5 seconds before proceeding with the turn switch
         setTimeout(async () => {
@@ -1136,6 +1146,13 @@ export default function PvpBattle() {
         backgroundRepeat: "no-repeat",
       }}
     >
+      {/* Audio element for attack sound */}
+      <audio
+        ref={attackSoundRef}
+        src="/GameBattle/magical-twinkle-242245.mp3"
+        preload="auto"
+      />
+
       {/* Character animation manager */}
       <CharacterAnimationManager
         playerAnimationState={playerAnimationState}
