@@ -171,17 +171,9 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     if (!currentQuestion || hasAnswered) return;
 
     let correctAnswer = currentQuestion.correctAnswer;
-    if (typeof correctAnswer === "string" && correctAnswer.includes(". ")) {
-      const answerParts = correctAnswer.split(". ");
-      if (answerParts.length > 1) {
-        correctAnswer = answerParts.slice(1).join(". ").trim();
-      }
-    }
-    // The Question type doesn't have a 'term' property, so we need to handle this differently
-    if (!correctAnswer && 'term' in currentQuestion) {
-      correctAnswer = (currentQuestion as any).term;
-    }
-
+    
+    // For identification questions, the correctAnswer is already properly set
+    // from the backend (term is used as correctAnswer)
     const answerString = String(answer || "").toLowerCase().trim();
     const correctAnswerString = String(correctAnswer).toLowerCase().trim();
     const isAnswerCorrect = answerString === correctAnswerString;

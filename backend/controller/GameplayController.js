@@ -2297,22 +2297,34 @@ export const generateBattleQuestions = async (req, res) => {
                     try {
                         let generatedQuestion;
                         if (type === 'multiple-choice') {
-                            generatedQuestion = await OpenAiController.generateMultipleChoiceQuestionHelper(
+                            generatedQuestion = await OpenAiController.generateMultipleChoiceQuestion(
                                 unusedItem.term,
                                 unusedItem.definition,
-                                difficulty_mode
+                                {
+                                    studyMaterialId: study_material_id,
+                                    itemId: unusedItem.item_id,
+                                    itemNumber: unusedItem.item_number,
+                                    gameMode: 'battle',
+                                    difficultyMode: difficulty_mode
+                                }
                             );
                         } else if (type === 'true-false') {
-                            generatedQuestion = await OpenAiController.generateTrueFalseQuestionHelper(
+                            generatedQuestion = await OpenAiController.generateTrueFalseQuestion(
                                 unusedItem.term,
                                 unusedItem.definition,
-                                difficulty_mode
+                                {
+                                    studyMaterialId: study_material_id,
+                                    itemId: unusedItem.item_id,
+                                    itemNumber: unusedItem.item_number,
+                                    gameMode: 'battle',
+                                    difficultyMode: difficulty_mode
+                                }
                             );
                         }
 
-                        if (generatedQuestion) {
+                        if (generatedQuestion && generatedQuestion.success) {
                             questions.push({
-                                ...generatedQuestion,
+                                ...generatedQuestion.data,
                                 id: nanoid(),
                                 itemInfo: {
                                     term: unusedItem.term,
