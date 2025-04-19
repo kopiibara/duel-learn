@@ -23,7 +23,8 @@ import {
     checkCardBlockingEffects,
     checkMindControlEffects,
     applyPoisonEffects,
-    generateBattleQuestions
+    generateBattleQuestions,
+    claimBattleRewards
 } from '../controller/GameplayController.js';
 
 const router = express.Router();
@@ -72,5 +73,8 @@ router.get('/battle/end-status-by-lobby/:lobby_code', getBattleEndStatusByLobby)
 
 // Save PvP session report
 router.post('/battle/save-session-report', savePvpSessionReport);
+
+// Claim rewards from PvP battle
+router.post('/battle/claim-rewards', claimBattleRewards);
 
 export default router; 

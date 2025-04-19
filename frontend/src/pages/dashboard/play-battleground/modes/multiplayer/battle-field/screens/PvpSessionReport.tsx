@@ -92,12 +92,16 @@ const PvpSessionReport = () => {
   } = location.state as PvpSessionReportProps;
 
   const { pauseAudio, playSessionCompleteSound } = useAudio();
+  const currentUserId = isHost ? hostId : guestId;
 
   // Calculate bonus points based on win streak
   const getBonusPoints = (streak: number) => {
     if (streak <= 0) return 0;
-    if (streak >= 6) return 50;
-    return streak * 10;
+    if (streak === 1) return 3;
+    if (streak === 2) return 6;
+    if (streak === 3) return 9;
+    if (streak === 4) return 12;
+    return 15; // Max bonus is 15 for streak of 5 or more
   };
 
   // Keep the sound effects useEffects
@@ -126,8 +130,7 @@ const PvpSessionReport = () => {
         const userId = isHost ? hostId : guestId;
         if (userId) {
           const response = await axios.get(
-            `${
-              import.meta.env.VITE_BACKEND_URL
+            `${import.meta.env.VITE_BACKEND_URL
             }/api/gameplay/battle/win-streak/${userId}`
           );
           if (response.data.success) {

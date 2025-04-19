@@ -2143,7 +2143,7 @@ export const applyPoisonEffects = async (req, res) => {
     } finally {
         if (connection) connection.release();
     }
-}; 
+};
 
 // Add this new function to check if a player has mind control effects
 export const checkMindControlEffects = async (req, res) => {
@@ -2384,6 +2384,107 @@ export const generateBattleQuestions = async (req, res) => {
             success: false,
             error: error.message
         });
+    }
+};
+
+/**
+ * Claim XP and coins rewards from a PvP battle
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const claimBattleRewards = async (req, res) => {
+    let connection;
+    try {
+        const { firebase_uid, xp_earned, coins_earned, session_uuid } = req.body;
+
+        // Validate required fields
+        if (!firebase_uid || xp_earned === undefined || coins_earned === undefined) {
+            return res.status(400).json({
+                success: false,
+                message: "Missing required fields: firebase_uid, xp_earned, and coins_earned are required"
+            });
+        }
+
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+
+        try {
+            // First, get the user's current XP and coins
+            const [userInfo] = await connection.query(
+                'SELECT exp, coins FROM user_info WHERE firebase_uid = ?',
+                [firebase_uid]
+            );
+
+            if (userInfo.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                });
+            }
+
+            // Calculate new values
+            const currentExp = userInfo[0].exp || 0;
+            const currentCoins = userInfo[0].coins || 0;
+            const newExp = currentExp + xp_earned;
+            const newCoins = currentCoins + coins_earned;
+
+            // Update the user's XP and coins
+            await connection.query(
+                'UPDATE user_info SET exp = ?, coins = ? WHERE firebase_uid = ?',
+                [newExp, newCoins, firebase_uid]
+            );
+
+            // If session_uuid is provided, mark rewards as claimed in the PvP session
+            if (session_uuid) {
+                // Check if we need to update host or guest fields
+                const [sessionInfo] = await connection.query(
+                    'SELECT host_id, guest_id FROM pvp_battle_sessions WHERE session_uuid = ?',
+                    [session_uuid]
+                );
+
+                if (sessionInfo.length > 0) {
+                    const isHost = sessionInfo[0].host_id === firebase_uid;
+                    const isGuest = sessionInfo[0].guest_id === firebase_uid;
+
+                    if (isHost || isGuest) {
+                        const rewardsClaimedField = isHost ? 'host_rewards_claimed' : 'guest_rewards_claimed';
+
+                        await connection.query(
+                            `UPDATE pvp_battle_sessions SET ${rewardsClaimedField} = 1 WHERE session_uuid = ?`,
+                            [session_uuid]
+                        );
+                    }
+                }
+            }
+
+            // Commit the transaction
+            await connection.commit();
+
+            return res.status(200).json({
+                success: true,
+                message: "Battle rewards claimed successfully",
+                data: {
+                    firebase_uid,
+                    xp_earned,
+                    coins_earned,
+                    new_exp: newExp,
+                    new_coins: newCoins
+                }
+            });
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        }
+    } catch (error) {
+        console.error('Error claiming battle rewards:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to claim battle rewards",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
     }
 };
 

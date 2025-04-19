@@ -32,6 +32,7 @@ import PvpSessionReport from "./screens/PvpSessionReport";
 import TurnRandomizer from "./utils/TurnRandomizer";
 import { getCharacterImage } from "./utils/getCharacterImage";
 import QuestionTimer from "./utils/QuestionTimer";
+import { calculateBattleRewards } from "./utils/rewardCalculator";
 
 // Import shared BattleState interface
 import { BattleState } from "./BattleState";
@@ -100,51 +101,6 @@ function questionGenerationReducer(state: QuestionGenerationState, action: Quest
       return state;
   }
 }
-
-// Create a shared battle rewards calculation function
-const calculateBattleRewards = (
-  isWinner: boolean,
-  myHealth: number,
-  opponentHealth: number,
-  winStreak: number,
-  isPremium: boolean = false
-) => {
-  // Base rewards
-  const baseXP = 100;
-  const baseCoins = 10;
-
-  // Calculate HP difference for bonus/penalty
-  const hpDifference = Math.abs(myHealth - opponentHealth);
-  const hpModifier = Math.floor(hpDifference * 0.25); // 25% of HP difference
-
-  // Calculate win streak bonus (10 points per win, max 50)
-  const winStreakBonus = Math.min(winStreak * 10, 50);
-
-  // Initialize rewards
-  let xpReward = baseXP;
-  let coinReward = baseCoins;
-
-  if (isWinner) {
-    // Winner gets base + HP bonus + win streak bonus
-    xpReward = baseXP + hpModifier + winStreakBonus;
-    coinReward = baseCoins + hpModifier + winStreakBonus;
-  } else {
-    // Loser gets base - HP penalty
-    xpReward = Math.max(0, baseXP - hpModifier);
-    coinReward = Math.max(0, baseCoins - hpModifier);
-  }
-
-  // Apply premium multiplier if applicable
-  if (isPremium) {
-    xpReward *= 2;
-    coinReward *= 2;
-  }
-
-  return {
-    xp: Math.floor(xpReward),
-    coins: Math.floor(coinReward),
-  };
-};
 
 interface GenerateQuestionsResponse {
   success: boolean;
@@ -1263,6 +1219,10 @@ export default function PvpBattle() {
           onClose={handleVictoryConfirm}
           onViewReport={handleViewSessionReport}
           isVictory={victoryMessage.includes('Won')}
+          currentUserId={currentUserId}
+          sessionUuid={battleState?.session_uuid}
+          playerHealth={playerHealth}
+          opponentHealth={opponentHealth}
         />
 
         {/* Question Modal */}

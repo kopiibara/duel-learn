@@ -1,29 +1,100 @@
 import { EmojiEvents, CancelOutlined } from '@mui/icons-material';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
+
+// Add the import for calculateBattleRewards
+import { calculateBattleRewards } from '../utils/rewardCalculator';
 
 interface VictoryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onViewReport: () => void;
   isVictory: boolean;
+  currentUserId?: string;
+  sessionUuid?: string;
+  playerHealth?: number;
+  opponentHealth?: number;
 }
 
 export const VictoryModal: React.FC<VictoryModalProps> = ({
   isOpen,
   onClose,
   onViewReport,
-  isVictory
+  isVictory,
+  currentUserId,
+  sessionUuid,
+  playerHealth = 0,
+  opponentHealth = 0
 }) => {
+  const [rewardsClaimed, setRewardsClaimed] = useState(false);
+
+  // Add effect to claim rewards when modal opens
+  useEffect(() => {
+    const claimBattleRewards = async () => {
+      // Skip if rewards already claimed or missing data
+      if (rewardsClaimed || !currentUserId || !sessionUuid) {
+        return;
+      }
+
+      try {
+        // Get user's current win streak
+        const { data: winStreakData } = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/win-streak/${currentUserId}`
+        );
+
+        const userWinStreak = winStreakData.success ? winStreakData.data.win_streak : 0;
+
+        // Calculate rewards
+        const rewards = calculateBattleRewards(
+          isVictory,
+          playerHealth,
+          opponentHealth,
+          userWinStreak,
+          false // TODO: Get premium status from user context
+        );
+
+        console.log("Calculated rewards:", {
+          isVictory,
+          playerHealth,
+          opponentHealth,
+          userWinStreak,
+          xp: rewards.xp,
+          coins: rewards.coins
+        });
+
+        // Call the API to claim rewards
+        const response = await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/claim-rewards`,
+          {
+            firebase_uid: currentUserId,
+            xp_earned: rewards.xp,
+            coins_earned: rewards.coins,
+            session_uuid: sessionUuid
+          }
+        );
+
+        console.log('Battle rewards claimed:', response.data);
+        setRewardsClaimed(true);
+      } catch (error) {
+        console.error('Error claiming battle rewards:', error);
+      }
+    };
+
+    // Only try to claim rewards when the modal is open
+    if (isOpen) {
+      claimBattleRewards();
+    }
+  }, [isOpen, currentUserId, sessionUuid, isVictory, playerHealth, opponentHealth, rewardsClaimed]);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div className={`w-[400px] rounded-2xl p-8 flex flex-col items-center ${
-        isVictory ? 'bg-[#1a1f2e] border-2 border-purple-500/20' : 'bg-[#1a1f2e] border-2 border-red-500/20'
-      }`}>
-        {/* Icon */}
-        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
-          isVictory ? 'bg-purple-900/50' : 'bg-red-900/50'
+      <div className={`w-[400px] rounded-2xl p-8 flex flex-col items-center ${isVictory ? 'bg-[#1a1f2e] border-2 border-purple-500/20' : 'bg-[#1a1f2e] border-2 border-red-500/20'
         }`}>
+        {/* Icon */}
+        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${isVictory ? 'bg-purple-900/50' : 'bg-red-900/50'
+          }`}>
           {isVictory ? (
             <EmojiEvents className="w-8 h-8 text-purple-400" />
           ) : (
@@ -32,9 +103,8 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
         </div>
 
         {/* Title */}
-        <h2 className={`text-3xl font-bold mb-2 ${
-          isVictory ? 'text-purple-400' : 'text-red-400'
-        }`}>
+        <h2 className={`text-3xl font-bold mb-2 ${isVictory ? 'text-purple-400' : 'text-red-400'
+          }`}>
           {isVictory ? 'Victory!' : 'Defeat!'}
         </h2>
 
@@ -46,11 +116,10 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
         {/* Buttons */}
         <button
           onClick={onViewReport}
-          className={`w-full py-3 rounded-lg mb-3 flex items-center justify-center gap-2 ${
-            isVictory 
-              ? 'bg-purple-600 hover:bg-purple-700 text-white' 
-              : 'bg-red-600 hover:bg-red-700 text-white'
-          }`}
+          className={`w-full py-3 rounded-lg mb-3 flex items-center justify-center gap-2 ${isVictory
+            ? 'bg-purple-600 hover:bg-purple-700 text-white'
+            : 'bg-red-600 hover:bg-red-700 text-white'
+            }`}
         >
           View Session Report
         </button>
