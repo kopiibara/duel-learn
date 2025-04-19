@@ -44,6 +44,7 @@ interface QuestionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAnswerSubmit: (isCorrect: boolean) => Promise<void>;
+  onAnswerSubmitRound?: (isCorrect: boolean) => Promise<void>;
   difficultyMode: string | null;
   questionTypes: string[];
   selectedCardId: string | null;
@@ -59,6 +60,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   isOpen,
   onClose,
   onAnswerSubmit,
+  onAnswerSubmitRound,
   difficultyMode,
   questionTypes,
   selectedCardId,
@@ -103,7 +105,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     if (isOpen && !currentQuestion && !isGeneratingAI && aiQuestions?.length > 0) {
       // Filter out questions that have already been shown
       const availableQuestions = aiQuestions.filter(q => !shownQuestionIds.has(q.id));
-      
+
       if (availableQuestions.length > 0) {
         // Select a random question from available questions
         const randomIndex = Math.floor(Math.random() * availableQuestions.length);
@@ -150,12 +152,16 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
         setShowResult(true);
 
         setTimeout(() => {
-          onAnswerSubmit(false);
+          if (onAnswerSubmitRound) {
+            onAnswerSubmitRound(false);
+          } else {
+            onAnswerSubmit(false);
+          }
           onClose();
         }, 1500);
       }
     }
-  }, [timeRemaining, hasAnswered, currentQuestion, onAnswerSubmit, onClose]);
+  }, [timeRemaining, hasAnswered, currentQuestion, onAnswerSubmit, onAnswerSubmitRound, onClose]);
 
   const getTimeLimit = () => {
     const difficultyNormalized = difficultyMode?.toLowerCase().trim() || "average";
@@ -171,7 +177,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     if (!currentQuestion || hasAnswered) return;
 
     let correctAnswer = currentQuestion.correctAnswer;
-    
+
     // For identification questions, the correctAnswer is already properly set
     // from the backend (term is used as correctAnswer)
     const answerString = String(answer || "").toLowerCase().trim();
@@ -198,7 +204,11 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
       }, 1500);
     } else {
       setTimeout(() => {
-        onAnswerSubmit(isAnswerCorrect);
+        if (onAnswerSubmitRound) {
+          onAnswerSubmitRound(isAnswerCorrect);
+        } else {
+          onAnswerSubmit(isAnswerCorrect);
+        }
         onClose();
       }, 1500);
     }
@@ -290,13 +300,12 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
                 <input
                   type="text"
                   placeholder="Type your answer here ..."
-                  className={`w-full h-[90px] px-6 text-lg rounded-lg border-2 bg-[#0f0f0f00] text-white placeholder-gray-400 ${
-                    hasAnswered
-                      ? isCorrect
-                        ? "border-green-500 bg-green-500/10"
-                        : "border-red-500 bg-red-500/10"
-                      : "border-[#2C2C2C]"
-                  } outline-none`}
+                  className={`w-full h-[90px] px-6 text-lg rounded-lg border-2 bg-[#0f0f0f00] text-white placeholder-gray-400 ${hasAnswered
+                    ? isCorrect
+                      ? "border-green-500 bg-green-500/10"
+                      : "border-red-500 bg-red-500/10"
+                    : "border-[#2C2C2C]"
+                    } outline-none`}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !hasAnswered) {
                       handleAnswerSubmit((e.target as HTMLInputElement).value);
@@ -345,16 +354,14 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
       {/* Result Overlay */}
       {showResult && (
         <div className="fixed inset-0 flex items-center justify-center z-[60]">
-          <div className={`flex flex-col items-center justify-center ${
-            isCorrect 
-              ? 'text-green-400 animate-result-appear' 
-              : 'text-red-400 animate-result-appear'
-          }`}>
-            <div className={`rounded-full p-6 mb-4 ${
-              isCorrect 
-                ? 'bg-green-500/20' 
-                : 'bg-red-500/20'
+          <div className={`flex flex-col items-center justify-center ${isCorrect
+            ? 'text-green-400 animate-result-appear'
+            : 'text-red-400 animate-result-appear'
             }`}>
+            <div className={`rounded-full p-6 mb-4 ${isCorrect
+              ? 'bg-green-500/20'
+              : 'bg-red-500/20'
+              }`}>
               {isCorrect ? (
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -365,11 +372,10 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
                 </svg>
               )}
             </div>
-            <div className={`text-6xl font-bold ${
-              isCorrect 
-                ? 'text-green-400' 
-                : 'text-red-400'
-            } animate-bounce-gentle`}>
+            <div className={`text-6xl font-bold ${isCorrect
+              ? 'text-green-400'
+              : 'text-red-400'
+              } animate-bounce-gentle`}>
               {isCorrect ? "CORRECT!" : "WRONG!"}
             </div>
           </div>

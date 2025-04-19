@@ -266,6 +266,7 @@ export default function PvpBattle() {
     randomizationDone,
     showVictoryModal,
     showGameStart,
+    isMyTurn,
     setWaitingForPlayer,
     setShowRandomizer,
     setBattleState,
@@ -280,15 +281,16 @@ export default function PvpBattle() {
     setShowCards,
     setShowVictoryModal,
     setVictoryMessage,
+    setRandomizationDone,
   });
 
   // Update the isGuestWaitingForRandomization function to be more precise
   const isGuestWaitingForRandomization = useCallback(() => {
-    return !isHost && 
-    !waitingForPlayer &&
-    battleState?.battle_started &&
-           !randomizationDone && 
-           !showVictoryModal;
+    return !isHost &&
+      !waitingForPlayer &&
+      battleState?.battle_started &&
+      !randomizationDone &&
+      !showVictoryModal;
   }, [isHost, waitingForPlayer, battleState?.battle_started, randomizationDone, showVictoryModal]);
 
   // Add a new function to determine if we should show the main battle interface
@@ -332,6 +334,12 @@ export default function PvpBattle() {
     setVictoryMessage(isPlayerWinner ? "You Won!" : "You Lost!");
     setShowVictoryModal(true);
     setShowCards(false);
+
+    // Clear card selection data from sessionStorage
+    sessionStorage.removeItem("battle_cards");
+    sessionStorage.removeItem("battle_last_selected_index");
+    sessionStorage.removeItem("battle_turn_count");
+    sessionStorage.removeItem("battle_is_first_turn");
   }, [playerHealth, opponentHealth]);
 
   // Update handleAnswerSubmit to use string IDs
@@ -352,9 +360,9 @@ export default function PvpBattle() {
         player_type: isHost ? 'host' : 'guest',
       });
 
-      const explanation = currentQuestion.explanation || 
-                         (currentQuestion.itemInfo && currentQuestion.itemInfo.definition) || 
-                         'No explanation available';
+      const explanation = currentQuestion.explanation ||
+        (currentQuestion.itemInfo && currentQuestion.itemInfo.definition) ||
+        'No explanation available';
 
       setAnswerResult({
         isCorrect: response.data.is_correct,
@@ -362,16 +370,16 @@ export default function PvpBattle() {
       });
 
       if (response.data.is_correct) {
-      setBattleStats((prev) => {
+        setBattleStats((prev) => {
           const newStreak = prev.currentStreak + 1;
-        return {
-          ...prev,
+          return {
+            ...prev,
             correctAnswers: prev.correctAnswers + 1,
-          currentStreak: newStreak,
-          highestStreak: Math.max(prev.highestStreak, newStreak),
-          totalQuestions: prev.totalQuestions + 1,
-        };
-      });
+            currentStreak: newStreak,
+            highestStreak: Math.max(prev.highestStreak, newStreak),
+            totalQuestions: prev.totalQuestions + 1,
+          };
+        });
       }
 
       setShowAnswerResult(true);
@@ -379,6 +387,175 @@ export default function PvpBattle() {
       console.error('Error submitting answer:', error);
     }
   }, [battleState?.session_uuid, currentQuestion, isHost]);
+
+  const handleAnswerSubmitRound = async (isCorrect: boolean) => {
+    if (!selectedCardId) return;
+
+    try {
+      const playerType = isHost ? "host" : "guest";
+
+      // Update battle stats first
+      setBattleStats((prev) => {
+        const newStreak = isCorrect ? prev.currentStreak + 1 : 0;
+        return {
+          ...prev,
+          correctAnswers: isCorrect
+            ? prev.correctAnswers + 1
+            : prev.correctAnswers,
+          incorrectAnswers: !isCorrect
+            ? prev.incorrectAnswers + 1
+            : prev.incorrectAnswers,
+          currentStreak: newStreak,
+          highestStreak: Math.max(prev.highestStreak, newStreak),
+          totalQuestions: prev.totalQuestions + 1,
+        };
+      });
+
+      // Update the battle round
+      const response = await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
+        {
+          session_uuid: battleState?.session_uuid,
+          player_type: playerType,
+          card_id: selectedCardId,
+          is_correct: isCorrect,
+          lobby_code: lobbyCode,
+          battle_stats: battleStats, // Send current stats to backend
+        }
+      );
+
+      if (response.data.success) {
+        console.log(
+          `Card ${selectedCardId} selection and answer submission successful, turn switched`
+        );
+
+        // Check if a card effect was applied
+        if (response.data.data.card_effect) {
+          if (response.data.data.card_effect.type === "normal-2" && isCorrect) {
+            // Show notification for Quick Draw card effect
+            const messageElement = document.createElement("div");
+            messageElement.className =
+              "fixed inset-0 flex items-center justify-center z-50";
+            messageElement.innerHTML = `
+              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                Quick Draw Card: You get another turn!
+              </div>
+            `;
+            document.body.appendChild(messageElement);
+
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+              document.body.removeChild(messageElement);
+            }, 2000);
+          } else if (
+            response.data.data.card_effect.type === "normal-1" &&
+            isCorrect
+          ) {
+            // Show notification for Time Manipulation card effect
+            const messageElement = document.createElement("div");
+            messageElement.className =
+              "fixed inset-0 flex items-center justify-center z-50";
+            const reductionPercent =
+              response.data.data.card_effect.reduction_percent || 30;
+            messageElement.innerHTML = `
+              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                Time Manipulation Card: Opponent's time will be reduced by ${reductionPercent}%!
+              </div>
+            `;
+            document.body.appendChild(messageElement);
+
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+              document.body.removeChild(messageElement);
+            }, 2000);
+          } else if (
+            response.data.data.card_effect.type === "epic-1" &&
+            isCorrect
+          ) {
+            // Show notification for Answer Shield card effect
+            const messageElement = document.createElement("div");
+            messageElement.className =
+              "fixed inset-0 flex items-center justify-center z-50";
+            messageElement.innerHTML = `
+              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                Answer Shield Card: Opponent's next card selection will be blocked!
+              </div>
+            `;
+            document.body.appendChild(messageElement);
+
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+              document.body.removeChild(messageElement);
+            }, 2000);
+          } else if (
+            response.data.data.card_effect.type === "epic-2" &&
+            isCorrect
+          ) {
+            // Show notification for Regeneration card effect
+            const messageElement = document.createElement("div");
+            messageElement.className =
+              "fixed inset-0 flex items-center justify-center z-50";
+            const healthAmount =
+              response.data.data.card_effect.health_amount || 10;
+            messageElement.innerHTML = `
+              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                Regeneration Card: Your health increased by ${healthAmount} HP!
+              </div>
+            `;
+            document.body.appendChild(messageElement);
+
+            // Update health locally if we can
+            if (isHost) {
+              setPlayerHealth((prev) => Math.min(prev + healthAmount, 100));
+            } else {
+              setPlayerHealth((prev) => Math.min(prev + healthAmount, 100));
+            }
+
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+              document.body.removeChild(messageElement);
+            }, 2000);
+          } else if (
+            response.data.data.card_effect.type === "rare-2" &&
+            isCorrect
+          ) {
+            // Show notification for Poison Type card effect
+            const messageElement = document.createElement("div");
+            messageElement.className =
+              "fixed inset-0 flex items-center justify-center z-50";
+            messageElement.innerHTML = `
+              <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                Poison Type Card: Opponent takes 10 initial damage plus 5 damage for 3 turns!
+              </div>
+            `;
+            document.body.appendChild(messageElement);
+
+            // Remove the message after 2 seconds
+            setTimeout(() => {
+              document.body.removeChild(messageElement);
+            }, 2000);
+          }
+        }
+
+        // Increment turn number when turn changes
+        setCurrentTurnNumber((prev) => prev + 1);
+
+        // Switch turns locally but keep UI visible
+        setIsMyTurn(false);
+
+        // Set enemy animation to picking - they get their turn next
+        setEnemyAnimationState("picking");
+        setEnemyPickingIntroComplete(false);
+      } else {
+        console.error(
+          "Failed to update battle round:",
+          response?.data?.message || "Unknown error"
+        );
+      }
+    } catch (error) {
+      console.error("Error updating battle round:", error);
+    }
+  };
 
   // Handle question modal close
   const handleQuestionModalClose = () => {
@@ -398,7 +575,7 @@ export default function PvpBattle() {
 
         if (data.success && data.data) {
           const scores = data.data;
-          
+
           // Set health based on whether player is host or guest
           if (isHost) {
             setPlayerHealth(scores.host_health);
@@ -410,11 +587,21 @@ export default function PvpBattle() {
               setVictoryMessage("You Lost!");
               setShowVictoryModal(true);
               setShowCards(false); // Hide cards when game ends
+              // Clear card selection data from sessionStorage
+              sessionStorage.removeItem("battle_cards");
+              sessionStorage.removeItem("battle_last_selected_index");
+              sessionStorage.removeItem("battle_turn_count");
+              sessionStorage.removeItem("battle_is_first_turn");
             } else if (scores.guest_health <= 0) {
               console.log("Guest health <= 0, showing victory modal for host");
               setVictoryMessage("You Won!");
               setShowVictoryModal(true);
               setShowCards(false); // Hide cards when game ends
+              // Clear card selection data from sessionStorage
+              sessionStorage.removeItem("battle_cards");
+              sessionStorage.removeItem("battle_last_selected_index");
+              sessionStorage.removeItem("battle_turn_count");
+              sessionStorage.removeItem("battle_is_first_turn");
             }
           } else {
             setPlayerHealth(scores.guest_health);
@@ -426,11 +613,21 @@ export default function PvpBattle() {
               setVictoryMessage("You Lost!");
               setShowVictoryModal(true);
               setShowCards(false); // Hide cards when game ends
+              // Clear card selection data from sessionStorage
+              sessionStorage.removeItem("battle_cards");
+              sessionStorage.removeItem("battle_last_selected_index");
+              sessionStorage.removeItem("battle_turn_count");
+              sessionStorage.removeItem("battle_is_first_turn");
             } else if (scores.host_health <= 0) {
               console.log("Host health <= 0, showing victory modal for guest");
               setVictoryMessage("You Won!");
               setShowVictoryModal(true);
               setShowCards(false); // Hide cards when game ends
+              // Clear card selection data from sessionStorage
+              sessionStorage.removeItem("battle_cards");
+              sessionStorage.removeItem("battle_last_selected_index");
+              sessionStorage.removeItem("battle_turn_count");
+              sessionStorage.removeItem("battle_is_first_turn");
             }
           }
 
@@ -463,6 +660,12 @@ export default function PvpBattle() {
       setVictoryMessage(isPlayerWinner ? "You Won!" : "You Lost!");
       setShowVictoryModal(true);
       setShowCards(false);
+
+      // Clear card selection data from sessionStorage
+      sessionStorage.removeItem("battle_cards");
+      sessionStorage.removeItem("battle_last_selected_index");
+      sessionStorage.removeItem("battle_turn_count");
+      sessionStorage.removeItem("battle_is_first_turn");
     }
   }, [playerHealth, opponentHealth]);
 
@@ -554,12 +757,24 @@ export default function PvpBattle() {
     // Remove all event listeners to prevent confirmation dialog
     window.onbeforeunload = null;
 
+    // Clear card selection data from sessionStorage
+    sessionStorage.removeItem("battle_cards");
+    sessionStorage.removeItem("battle_last_selected_index");
+    sessionStorage.removeItem("battle_turn_count");
+    sessionStorage.removeItem("battle_is_first_turn");
+
     // Navigate directly to dashboard without creating a history entry
     window.location.replace("/dashboard/home");
   };
 
   // Handle viewing session report
   const handleViewSessionReport = async () => {
+    // Clear card selection data from sessionStorage
+    sessionStorage.removeItem("battle_cards");
+    sessionStorage.removeItem("battle_last_selected_index");
+    sessionStorage.removeItem("battle_turn_count");
+    sessionStorage.removeItem("battle_is_first_turn");
+
     // Calculate time spent
     const endTime = new Date();
     const startTime = battleStartTime || new Date();
@@ -578,15 +793,15 @@ export default function PvpBattle() {
           ? hostId
           : guestId
         : isWinner
-        ? guestId
-        : hostId;
+          ? guestId
+          : hostId;
       const loserId = isHost
         ? isWinner
           ? guestId
           : hostId
         : isWinner
-        ? hostId
-        : guestId;
+          ? hostId
+          : guestId;
 
       // First update win streaks in the database
       const [winnerUpdate, loserUpdate] = await Promise.all([
@@ -623,8 +838,8 @@ export default function PvpBattle() {
             ? updatedWinStreak
             : 0
           : !isWinner
-          ? updatedWinStreak
-          : 0,
+            ? updatedWinStreak
+            : 0,
         false // TODO: Get premium status from user context
       );
 
@@ -637,8 +852,8 @@ export default function PvpBattle() {
             ? updatedWinStreak
             : 0
           : !isWinner
-          ? updatedWinStreak
-          : 0,
+            ? updatedWinStreak
+            : 0,
         false // TODO: Get premium status from user context
       );
 
@@ -778,6 +993,9 @@ export default function PvpBattle() {
           if (data.data.session_uuid) {
             sessionStorage.setItem("battle_session_uuid", data.data.session_uuid);
             sessionStorage.setItem("is_host", isHost.toString());
+
+            // Clear card stats at the start of a new battle
+            sessionStorage.removeItem("battle_card_stats");
           }
         }
       } catch (error) {
@@ -792,6 +1010,9 @@ export default function PvpBattle() {
   useEffect(() => {
     if (gameStarted && !battleStartTime) {
       setBattleStartTime(new Date());
+
+      // Clear card stats when game starts
+      sessionStorage.removeItem("battle_card_stats");
     }
   }, [gameStarted, battleStartTime]);
 
@@ -801,7 +1022,7 @@ export default function PvpBattle() {
       if (battleState?.battle_started && !questionGenState.isGenerating && questionGenState.questions.length === 0) {
         try {
           dispatchQuestionGen({ type: 'START_GENERATION' });
-          
+
           const { data } = await axios.post<GenerateQuestionsResponse>(
             `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/generate-questions`,
             {
@@ -814,16 +1035,16 @@ export default function PvpBattle() {
           );
 
           if (data?.success && data.data) {
-            dispatchQuestionGen({ 
-              type: 'GENERATION_SUCCESS', 
-              questions: data.data 
+            dispatchQuestionGen({
+              type: 'GENERATION_SUCCESS',
+              questions: data.data
             });
           }
         } catch (error) {
           console.error('Error generating questions:', error);
-          dispatchQuestionGen({ 
-            type: 'GENERATION_ERROR', 
-            error: 'Failed to generate questions. Please try again.' 
+          dispatchQuestionGen({
+            type: 'GENERATION_ERROR',
+            error: 'Failed to generate questions. Please try again.'
           });
           toast.error('Failed to generate questions. Please try again.');
         }
@@ -866,6 +1087,12 @@ export default function PvpBattle() {
 
     // Cleanup function to handle component unmount
     return () => {
+      // Clean up any session storage related to card selection
+      sessionStorage.removeItem("battle_cards");
+      sessionStorage.removeItem("battle_last_selected_index");
+      sessionStorage.removeItem("battle_turn_count");
+      sessionStorage.removeItem("battle_is_first_turn");
+
       socket.emit('player_exited_game', {
         playerId: currentUserId,
         inGame: false
@@ -901,39 +1128,40 @@ export default function PvpBattle() {
 
       {/* Only show the top UI bar when the battle interface should be shown */}
       {shouldShowBattleInterface() && (
-      <div className="w-full py-4 px-4 sm:px-8 md:px-16 lg:px-32 xl:px-80 mt-4 lg:mt-12 flex items-center justify-between">
-        <PlayerInfo
-          name={playerName}
-          health={playerHealth}
-          maxHealth={maxHealth}
-          userId={currentUserId}
-          poisonEffectActive={poisonEffectActive}
-        />
+        <div className="w-full py-4 px-4 sm:px-8 md:px-16 lg:px-32 xl:px-80 mt-4 lg:mt-12 flex items-center justify-between">
+          <PlayerInfo
+            name={playerName}
+            health={playerHealth}
+            maxHealth={maxHealth}
+            userId={currentUserId}
+            poisonEffectActive={poisonEffectActive}
+          />
 
-        <QuestionTimer
-          timeLeft={timeLeft}
+          <QuestionTimer
+            timeLeft={timeLeft}
             currentQuestion={currentQuestionNumber}
-          totalQuestions={totalItems}
-          difficultyMode={difficultyMode}
-        />
+            totalQuestions={totalItems}
+            difficultyMode={difficultyMode}
+            randomizationDone={randomizationDone}
+          />
 
-        <PlayerInfo
-          name={opponentName}
-          health={opponentHealth}
-          maxHealth={maxHealth}
-          isRightAligned
-          userId={opponentId}
-          poisonEffectActive={false}
-        />
+          <PlayerInfo
+            name={opponentName}
+            health={opponentHealth}
+            maxHealth={maxHealth}
+            isRightAligned
+            userId={opponentId}
+            poisonEffectActive={false}
+          />
 
-        {/* Settings button */}
-        <button
-          className="absolute right-2 sm:right-4 top-2 sm:top-4 text-white"
-          onClick={handleSettingsClick}
-        >
-          <Settings size={16} className="sm:w-[20px] sm:h-[20px]" />
-        </button>
-      </div>
+          {/* Settings button */}
+          <button
+            className="absolute right-2 sm:right-4 top-2 sm:top-4 text-white"
+            onClick={handleSettingsClick}
+          >
+            <Settings size={16} className="sm:w-[20px] sm:h-[20px]" />
+          </button>
+        </div>
       )}
 
       {/* Main Battle Area */}
@@ -941,52 +1169,52 @@ export default function PvpBattle() {
         {/* Characters */}
         {shouldShowBattleInterface() && (
           <>
-        <Character
-          imageSrc={getCharacterImage(
-            playerCharacter,
-            playerAnimationState,
-            playerPickingIntroComplete
-          )}
-          alt="Player Character"
-        />
+            <Character
+              imageSrc={getCharacterImage(
+                playerCharacter,
+                playerAnimationState,
+                playerPickingIntroComplete
+              )}
+              alt="Player Character"
+            />
 
-        <Character
-          imageSrc={getCharacterImage(
-            enemyCharacter,
-            enemyAnimationState,
-            enemyPickingIntroComplete
-          )}
-          alt="Enemy Character"
-          isRight
-        />
+            <Character
+              imageSrc={getCharacterImage(
+                enemyCharacter,
+                enemyAnimationState,
+                enemyPickingIntroComplete
+              )}
+              alt="Enemy Character"
+              isRight
+            />
           </>
         )}
 
         {/* Turn Randomizer (only shown to host) */}
         {isHost && showRandomizer && (
-        <TurnRandomizer
-          isHost={isHost}
-          lobbyCode={lobbyCode}
-          hostUsername={hostUsername}
-          guestUsername={guestUsername}
-          hostId={hostId}
-          guestId={guestId}
-          showRandomizer={showRandomizer}
-          playerPickingIntroComplete={playerPickingIntroComplete}
-          enemyPickingIntroComplete={enemyPickingIntroComplete}
-          battleState={battleState}
-          setRandomizationDone={setRandomizationDone}
-          setShowRandomizer={setShowRandomizer}
-          setShowGameStart={setShowGameStart}
-          setGameStartText={setGameStartText}
-          setGameStarted={setGameStarted}
-          setIsMyTurn={setIsMyTurn}
-          setPlayerAnimationState={setPlayerAnimationState}
-          setPlayerPickingIntroComplete={setPlayerPickingIntroComplete}
-          setEnemyAnimationState={setEnemyAnimationState}
-          setEnemyPickingIntroComplete={setEnemyPickingIntroComplete}
-          setShowCards={setShowCards}
-        />
+          <TurnRandomizer
+            isHost={isHost}
+            lobbyCode={lobbyCode}
+            hostUsername={hostUsername}
+            guestUsername={guestUsername}
+            hostId={hostId}
+            guestId={guestId}
+            showRandomizer={showRandomizer}
+            playerPickingIntroComplete={playerPickingIntroComplete}
+            enemyPickingIntroComplete={enemyPickingIntroComplete}
+            battleState={battleState}
+            setRandomizationDone={setRandomizationDone}
+            setShowRandomizer={setShowRandomizer}
+            setShowGameStart={setShowGameStart}
+            setGameStartText={setGameStartText}
+            setGameStarted={setGameStarted}
+            setIsMyTurn={setIsMyTurn}
+            setPlayerAnimationState={setPlayerAnimationState}
+            setPlayerPickingIntroComplete={setPlayerPickingIntroComplete}
+            setEnemyAnimationState={setEnemyAnimationState}
+            setEnemyPickingIntroComplete={setEnemyPickingIntroComplete}
+            setShowCards={setShowCards}
+          />
         )}
 
         {/* Waiting for host to randomize (shown to guest) */}
@@ -996,10 +1224,10 @@ export default function PvpBattle() {
 
         {/* Game Start Animation */}
         {showGameStart && (
-        <GameStartAnimation
-          showGameStart={showGameStart}
-          gameStartText={gameStartText}
-        />
+          <GameStartAnimation
+            showGameStart={showGameStart}
+            gameStartText={gameStartText}
+          />
         )}
 
         {/* Card Selection UI - Show after the waiting screen and delay */}
@@ -1020,10 +1248,10 @@ export default function PvpBattle() {
 
         {/* Waiting overlay - now checks only if either player isn't in battle yet */}
         {waitingForPlayer && !showVictoryModal && (
-        <WaitingOverlay
+          <WaitingOverlay
             isVisible={true}
-          message="Waiting for your opponent to connect..."
-        />
+            message="Waiting for your opponent to connect..."
+          />
         )}
 
         {/* Loading overlay when ending battle */}
@@ -1039,20 +1267,21 @@ export default function PvpBattle() {
 
         {/* Question Modal */}
         {!showVictoryModal && shouldShowBattleInterface() && (
-        <QuestionModal
-          isOpen={showQuestionModal}
-          onClose={handleQuestionModalClose}
-          onAnswerSubmit={handleAnswerSubmit}
-          difficultyMode={difficultyMode}
-          questionTypes={questionTypes}
-          selectedCardId={selectedCardId}
-          aiQuestions={questionGenState.questions}
-          isGeneratingAI={questionGenState.isGenerating}
+          <QuestionModal
+            isOpen={showQuestionModal}
+            onClose={handleQuestionModalClose}
+            onAnswerSubmit={handleAnswerSubmit}
+            onAnswerSubmitRound={handleAnswerSubmitRound}
+            difficultyMode={difficultyMode}
+            questionTypes={questionTypes}
+            selectedCardId={selectedCardId}
+            aiQuestions={questionGenState.questions}
+            isGeneratingAI={questionGenState.isGenerating}
             currentQuestionNumber={currentQuestionNumber}
             totalQuestions={totalItems}
             onGameEnd={handleGameEnd}
             shownQuestionIds={shownQuestionIds}
-        />
+          />
         )}
 
         {/* Session Report */}

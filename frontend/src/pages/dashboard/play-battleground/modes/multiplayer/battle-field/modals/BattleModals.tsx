@@ -52,7 +52,6 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
               : 'bg-red-600 hover:bg-red-700 text-white'
           }`}
         >
-          <span className="material-icons-outlined text-xl">description</span>
           View Session Report
         </button>
 
@@ -60,7 +59,6 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
           onClick={onClose}
           className="w-full py-3 rounded-lg bg-[#2C2C2C] hover:bg-[#3C3C3C] text-white flex items-center justify-center gap-2"
         >
-          <span className="material-icons-outlined text-xl">home</span>
           Return to Dashboard
         </button>
       </div>
