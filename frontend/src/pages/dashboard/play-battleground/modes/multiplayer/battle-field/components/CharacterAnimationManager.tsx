@@ -3,6 +3,8 @@ import { getIntroAnimationDuration } from "../utils/getCharacterImage";
 
 import characterPicking from "/characterinLobby/CharacterPicking.gif"; // Initial picking animation
 import characterPickingLoop from "/characterinLobby/CharacterPickingLoop.gif"; // Loop animation
+import correctAnswerAnimation from "/GameBattle/correctAnswerAnimationCharacter.gif"; // Correct answer animation
+import incorrectAnswerAnimation from "/GameBattle/incorrectAnswerAnimationCharacter.gif"; // Incorrect answer animation
 
 interface CharacterAnimationManagerProps {
   playerAnimationState: string;
@@ -78,6 +80,12 @@ export function getCharacterImage(
   if (animationState === "picking") {
     // If in picking state, show intro animation until it completes, then show loop
     return introComplete ? characterPickingLoop : characterPicking;
+  } else if (animationState === "correct_answer") {
+    // Show correct answer animation
+    return correctAnswerAnimation;
+  } else if (animationState === "incorrect_answer") {
+    // Show incorrect answer animation
+    return incorrectAnswerAnimation;
   }
   return baseImage;
 }

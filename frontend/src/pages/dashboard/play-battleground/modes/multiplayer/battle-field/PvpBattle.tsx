@@ -12,6 +12,8 @@ import { socket } from '../../../../../../socket';
 import playerCharacter from "/characterinLobby/playerCharacter.gif"; // Regular idle animation for player
 import enemyCharacter from "/characterinLobby/playerCharacter.gif"; // Regular idle animation for enemy
 import PvpBattleBG from "/GameBattle/PvpBattleBG.png"; // Battle background image
+import correctAnswerAnimation from "/GameBattle/correctAnswerAnimationCharacter.gif"; // Correct answer animation
+import PvpBattleBGNotOverlayed from "/GameBattle/PvpBattleBGNotOverlayed.png"; // Not overlayed battle background image
 
 // Import components
 import PlayerInfo from "./components/PlayerInfo";
@@ -214,6 +216,12 @@ export default function PvpBattle() {
   const [shownQuestionIds, setShownQuestionIds] = useState<Set<string>>(new Set());
   const [totalQuestionsShown, setTotalQuestionsShown] = useState(0);
 
+  // Add state for correct answer animation
+  const [showCorrectAnswerAnimation, setShowCorrectAnswerAnimation] = useState(false);
+
+  // Add state for background image
+  const [currentBackground, setCurrentBackground] = useState(PvpBattleBG);
+
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
     lobbyCode,
@@ -375,21 +383,40 @@ export default function PvpBattle() {
         };
       });
 
-      // Show attack animation for 5 seconds if answer is correct
+      // Show correct answer animation for 5 seconds if answer is correct
       if (isCorrect) {
-        setShowAttackAnimation(true);
-        setIsAttacker(true);  // Always the attacker when correct
+        // Show the character animation first
+        setShowCorrectAnswerAnimation(true);
 
-        // Play attack sound
-        if (attackSoundRef.current) {
-          attackSoundRef.current.currentTime = 0;
-          attackSoundRef.current.volume = 0.5; // Set volume to 50%
-          attackSoundRef.current.play().catch(err => console.error("Error playing sound:", err));
-        }
+        // Change player animation state to correct_answer
+        setPlayerAnimationState("correct_answer");
 
-        // Wait 5 seconds before proceeding with the turn switch
+        // Change background to non-overlayed version
+        setCurrentBackground(PvpBattleBG);
+
+        // After 1 second, also show the attack animation overlay
+        setTimeout(() => {
+          setShowAttackAnimation(true);
+          setIsAttacker(true);  // Always the attacker when correct
+
+          // Play attack sound
+          if (attackSoundRef.current) {
+            attackSoundRef.current.currentTime = 0;
+            attackSoundRef.current.volume = 0.5; // Set volume to 50%
+            attackSoundRef.current.play().catch(err => console.error("Error playing sound:", err));
+          }
+        }, 1000); // Changed from 2000 to 1000 (1 second)
+
+        // Wait 2.5 seconds before proceeding with the turn switch
         setTimeout(async () => {
           setShowAttackAnimation(false);
+          setShowCorrectAnswerAnimation(false);
+
+          // Reset player animation state to idle
+          setPlayerAnimationState("idle");
+
+          // Reset background to normal overlayed version
+          setCurrentBackground(PvpBattleBG);
 
           // Continue with updating the battle round after animation
           try {
@@ -536,41 +563,54 @@ export default function PvpBattle() {
           } catch (error) {
             console.error("Error updating battle round:", error);
           }
-        }, 3000); // 5 seconds before proceeding
+        }, 2500); // Changed from 5000 to 2500 (2.5 seconds)
       } else {
-        // If incorrect, proceed normally without animation
-        const response = await axios.put(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
-          {
-            session_uuid: battleState?.session_uuid,
-            player_type: playerType,
-            card_id: selectedCardId,
-            is_correct: isCorrect,
-            lobby_code: lobbyCode,
-            battle_stats: battleStats, // Send current stats to backend
+        // If incorrect, display incorrect answer animation for 1.5 seconds
+        setPlayerAnimationState("incorrect_answer");
+
+        // Keep the original background
+        // No need to change background for incorrect answers
+
+        // Wait 1.5 seconds before proceeding normally without attack animation
+        setTimeout(async () => {
+          // Reset player animation state to idle
+          setPlayerAnimationState("idle");
+
+          // No need to reset background as it wasn't changed
+
+          const response = await axios.put(
+            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
+            {
+              session_uuid: battleState?.session_uuid,
+              player_type: playerType,
+              card_id: selectedCardId,
+              is_correct: isCorrect,
+              lobby_code: lobbyCode,
+              battle_stats: battleStats, // Send current stats to backend
+            }
+          );
+
+          if (response.data.success) {
+            console.log(
+              `Card ${selectedCardId} selection and answer submission successful, turn switched`
+            );
+
+            // Increment turn number when turn changes
+            setCurrentTurnNumber((prev) => prev + 1);
+
+            // Switch turns locally but keep UI visible
+            setIsMyTurn(false);
+
+            // Set enemy animation to picking - they get their turn next
+            setEnemyAnimationState("picking");
+            setEnemyPickingIntroComplete(false);
+          } else {
+            console.error(
+              "Failed to update battle round:",
+              response?.data?.message || "Unknown error"
+            );
           }
-        );
-
-        if (response.data.success) {
-          console.log(
-            `Card ${selectedCardId} selection and answer submission successful, turn switched`
-          );
-
-          // Increment turn number when turn changes
-          setCurrentTurnNumber((prev) => prev + 1);
-
-          // Switch turns locally but keep UI visible
-          setIsMyTurn(false);
-
-          // Set enemy animation to picking - they get their turn next
-          setEnemyAnimationState("picking");
-          setEnemyPickingIntroComplete(false);
-        } else {
-          console.error(
-            "Failed to update battle round:",
-            response?.data?.message || "Unknown error"
-          );
-        }
+        }, 1500); // Changed from 2500 to 1500 (1.5 seconds)
       }
     } catch (error) {
       console.error("Error updating battle round:", error);
@@ -1140,7 +1180,7 @@ export default function PvpBattle() {
     <div
       className="w-full h-screen flex flex-col relative"
       style={{
-        backgroundImage: `url(${PvpBattleBG})`,
+        backgroundImage: `url(${currentBackground})`,
         backgroundSize: "cover",
         backgroundPosition: "center",
         backgroundRepeat: "no-repeat",
