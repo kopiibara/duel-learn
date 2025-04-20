@@ -19,6 +19,8 @@ import sessionReportRoutes from './routes/sessionReport.js';
 import { initSessionReportTable } from './models/SessionReport.js';
 import lobbyRoutes from "./routes/LobbyRoutes.js";
 import battleRoutes from './routes/battle.routes.js';
+import manaRoutes from './routes/ManaRoutes.js'; // Import mana routes
+
 
 // Load environment variables
 dotenv.config();
@@ -63,12 +65,13 @@ app.use("/api/search", searchRoutes);
 app.use("/api/battle", battleRoutes);
 app.use("/api/gameplay", gameplayRoutes);
 app.use("/api/openai", openAiRoutes);
-app.use("/api/admin", adminRoutes); // Mount admin routes under /api/admin
-app.use("/api/ocr", ocrRoutes); // Mount OCR routes under /api/ocr
+app.use("/api/admin", adminRoutes);
+app.use("/api/ocr", ocrRoutes);
 app.use('/api/session-report', sessionReportRoutes);
-app.use("/api/shop", shopRoutes); // Mount shop routes under /api/shop
-app.use("/api/achievement", achivementRoutes); // Mount achievement routes under /api/achievement
-app.use("/api/payment", paymentRoutes); // Mount payment routes under /api/payment
+app.use("/api/shop", shopRoutes);
+app.use("/api/achievement", achivementRoutes);
+app.use("/api/payment", paymentRoutes);
+app.use('/api/mana', manaRoutes);
 
 // Add global error handler for uncaught exceptions
 app.use((err, req, res, next) => {
