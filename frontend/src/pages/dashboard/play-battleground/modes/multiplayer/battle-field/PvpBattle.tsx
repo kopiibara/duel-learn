@@ -14,6 +14,7 @@ import enemyCharacter from "/characterinLobby/playerCharacter.gif"; // Regular i
 import PvpBattleBG from "/GameBattle/PvpBattleBG.png"; // Battle background image
 import correctAnswerAnimation from "/GameBattle/correctAnswerAnimationCharacter.gif"; // Correct answer animation
 import PvpBattleBGNotOverlayed from "/GameBattle/PvpBattleBGNotOverlayed.png"; // Not overlayed battle background image
+import beenAttackedAnimation from "/GameBattle/BeenAttacked.gif"; // Been attacked animation
 
 // Import components
 import PlayerInfo from "./components/PlayerInfo";
@@ -383,7 +384,7 @@ export default function PvpBattle() {
         };
       });
 
-      // Show correct answer animation for 5 seconds if answer is correct
+      // Show correct answer animation if answer is correct
       if (isCorrect) {
         // Show the character animation first
         setShowCorrectAnswerAnimation(true);
@@ -394,10 +395,13 @@ export default function PvpBattle() {
         // Change background to non-overlayed version
         setCurrentBackground(PvpBattleBG);
 
-        // After 1 second, also show the attack animation overlay
+        // After 1 second, also show the attack animation overlay and update enemy animation
         setTimeout(() => {
           setShowAttackAnimation(true);
           setIsAttacker(true);  // Always the attacker when correct
+
+          // Set enemy to "been attacked" animation state
+          setEnemyAnimationState("been_attacked");
 
           // Play attack sound
           if (attackSoundRef.current) {
@@ -405,15 +409,18 @@ export default function PvpBattle() {
             attackSoundRef.current.volume = 0.5; // Set volume to 50%
             attackSoundRef.current.play().catch(err => console.error("Error playing sound:", err));
           }
-        }, 1000); // Changed from 2000 to 1000 (1 second)
+        }, 1000);
 
-        // Wait 2.5 seconds before proceeding with the turn switch
+        // Wait 3 seconds total before proceeding with the turn switch
         setTimeout(async () => {
           setShowAttackAnimation(false);
           setShowCorrectAnswerAnimation(false);
 
           // Reset player animation state to idle
           setPlayerAnimationState("idle");
+
+          // Reset enemy animation state to idle as well
+          setEnemyAnimationState("idle");
 
           // Reset background to normal overlayed version
           setCurrentBackground(PvpBattleBG);
@@ -563,7 +570,7 @@ export default function PvpBattle() {
           } catch (error) {
             console.error("Error updating battle round:", error);
           }
-        }, 2500); // Changed from 5000 to 2500 (2.5 seconds)
+        }, 3000); // Changed from 2500 to 3000 (3 seconds total duration)
       } else {
         // If incorrect, display incorrect answer animation for 1.5 seconds
         setPlayerAnimationState("incorrect_answer");

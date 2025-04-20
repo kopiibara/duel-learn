@@ -3,6 +3,7 @@ import characterPicking from "/characterinLobby/CharacterPicking.gif"; // Initia
 import characterPickingLoop from "/characterinLobby/CharacterPickingLoop.gif"; // Loop animation
 import correctAnswerAnimation from "/GameBattle/correctAnswerAnimationCharacter.gif"; // Correct answer animation
 import incorrectAnswerAnimation from "/GameBattle/incorrectAnswerAnimationCharacter.gif"; // Incorrect answer animation
+import beenAttackedAnimation from "/GameBattle/BeenAttacked.gif"; // Been attacked animation
 
 /**
  * Get the appropriate character image based on animation state and intro status
@@ -31,6 +32,9 @@ export function getCharacterImage(
   } else if (animationState === "incorrect_answer") {
     // Show incorrect answer animation
     return incorrectAnswerAnimation;
+  } else if (animationState === "been_attacked") {
+    // Show been attacked animation
+    return beenAttackedAnimation;
   }
 
   // Default fallback
