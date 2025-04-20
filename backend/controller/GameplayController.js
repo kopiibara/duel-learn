@@ -264,6 +264,7 @@ export const endBattle = async (req, res) => {
     }
 };
 
+
 export const initializeBattleSession = async (req, res) => {
     let connection;
     try {
