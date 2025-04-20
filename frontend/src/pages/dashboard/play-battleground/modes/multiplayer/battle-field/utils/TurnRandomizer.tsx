@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import { BattleState } from "../BattleState";
 
@@ -54,6 +54,102 @@ export default function TurnRandomizer({
   const [randomizing, setRandomizing] = useState(false);
   // Local state to track current displayed name during randomization
   const [currentDisplayName, setCurrentDisplayName] = useState("");
+
+  // Start guest randomization immediately when component mounts
+  useEffect(() => {
+    if (!isHost && !randomizing && showRandomizer) {
+      pollForTurnSelection();
+    }
+  }, [isHost, randomizing, showRandomizer]);
+
+  // Function to poll for turn selection when guest is waiting
+  const pollForTurnSelection = async () => {
+    if (!isHost && !randomizing) {
+      setRandomizing(true);
+
+      // Start the randomization animation for the guest
+      let toggleInterval = 100; // Start fast (100ms)
+
+      // Start with a random player
+      let currentTurn = Math.random() < 0.5 ? hostUsername : guestUsername;
+
+      // Set initial game start text and local display state
+      setCurrentDisplayName(`${currentTurn} will go first!`);
+
+      // Create an interval to show the alternating names
+      const turnInterval = setInterval(() => {
+        // Toggle between host and guest
+        currentTurn = currentTurn === hostUsername ? guestUsername : hostUsername;
+
+        // Update UI to show current selection
+        const text = `${currentTurn} will go first!`;
+        setCurrentDisplayName(text);
+
+        // Check for the actual turn selection from the database
+        checkForTurnSelection(turnInterval);
+      }, toggleInterval);
+    }
+  };
+
+  // Function to check the database for the actual turn selection
+  const checkForTurnSelection = async (intervalToClear: NodeJS.Timeout): Promise<boolean> => {
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-state/${lobbyCode}`
+      );
+
+      if (response.data.success && response.data.data) {
+        const sessionData = response.data.data;
+
+        // Check if a turn has been set (randomization done by host)
+        if (sessionData.current_turn) {
+          clearInterval(intervalToClear);
+
+          // Determine who goes first based on the ID
+          const selectedPlayer = sessionData.current_turn === hostId ? hostUsername : guestUsername;
+          const finalText = `${selectedPlayer} will go first!`;
+
+          // Update UI
+          setCurrentDisplayName(finalText);
+          setGameStartText(finalText);
+
+          // Update game state
+          setRandomizationDone(true);
+          setShowRandomizer(false);
+          setShowGameStart(true);
+
+          // Update turn state for guest
+          const isPlayerFirst = sessionData.current_turn === (isHost ? hostId : guestId);
+          setGameStarted(true);
+          setIsMyTurn(isPlayerFirst);
+
+          // Set initial animations
+          if (isPlayerFirst) {
+            setPlayerAnimationState("picking");
+            setPlayerPickingIntroComplete(true);
+            setEnemyAnimationState("idle");
+          } else {
+            setEnemyAnimationState("picking");
+            setEnemyPickingIntroComplete(true);
+            setPlayerAnimationState("idle");
+          }
+
+          // Show battle start animation for exactly 2 seconds
+          setTimeout(() => {
+            setShowGameStart(false);
+            setShowCards(true);
+          }, 2000);
+
+          setRandomizing(false);
+          return true;
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error("Error checking turn selection:", error);
+      return false;
+    }
+  };
 
   // Function to handle the randomizer button click
   const handleRandomizeTurn = async () => {
@@ -130,8 +226,7 @@ export default function TurnRandomizer({
 
       // Update turn with player ID in battle_sessions
       const sessionResponse = await axios.put(
-        `${
-          import.meta.env.VITE_BACKEND_URL
+        `${import.meta.env.VITE_BACKEND_URL
         }/api/gameplay/battle/update-session`,
         {
           lobby_code: lobbyCode,
@@ -142,8 +237,7 @@ export default function TurnRandomizer({
       // Get study material info and initialize rounds
       try {
         const battleSessionResponse = await axios.get(
-          `${
-            import.meta.env.VITE_BACKEND_URL
+          `${import.meta.env.VITE_BACKEND_URL
           }/api/gameplay/battle/session-with-material/${lobbyCode}`
         );
 
@@ -156,8 +250,7 @@ export default function TurnRandomizer({
             battleSessionResponse.data.data.study_material_id;
 
           const studyMaterialResponse = await axios.get(
-            `${
-              import.meta.env.VITE_BACKEND_URL
+            `${import.meta.env.VITE_BACKEND_URL
             }/api/study-material/info/${studyMaterialId}`
           );
 
@@ -171,8 +264,7 @@ export default function TurnRandomizer({
 
             // Initialize entry in battle_rounds table with session UUID from battleState
             await axios.post(
-              `${
-                import.meta.env.VITE_BACKEND_URL
+              `${import.meta.env.VITE_BACKEND_URL
               }/api/gameplay/battle/initialize-rounds`,
               {
                 session_uuid: battleState.session_uuid,
@@ -186,8 +278,7 @@ export default function TurnRandomizer({
 
             // Initialize battle scores with session UUID from battleState
             await axios.post(
-              `${
-                import.meta.env.VITE_BACKEND_URL
+              `${import.meta.env.VITE_BACKEND_URL
               }/api/gameplay/battle/initialize-scores`,
               {
                 session_uuid: battleState.session_uuid,
@@ -240,8 +331,8 @@ export default function TurnRandomizer({
     }
   };
 
-  // Render the randomizer UI if showRandomizer is true and user is host
-  if (!showRandomizer || !isHost) return null;
+  // If not showing the randomizer, return null
+  if (!showRandomizer) return null;
 
   return (
     <div className="fixed inset-0 bg-black/80 z-40 flex flex-col items-center justify-center">
@@ -249,9 +340,16 @@ export default function TurnRandomizer({
         <h2 className="text-purple-300 text-4xl font-bold mb-8">
           Ready to Battle!
         </h2>
-        <p className="text-white text-xl mb-12">
-          Both players have joined. Who will go first?
-        </p>
+
+        {isHost ? (
+          <p className="text-white text-xl mb-12">
+            Both players have joined. Who will go first?
+          </p>
+        ) : (
+          <p className="text-white text-xl mb-12">
+            Host is determining who goes first...
+          </p>
+        )}
 
         {randomizing ? (
           <div className="mb-8">
@@ -263,13 +361,19 @@ export default function TurnRandomizer({
               {currentDisplayName}
             </div>
           </div>
-        ) : (
+        ) : isHost ? (
           <button
             onClick={handleRandomizeTurn}
             className="px-8 py-4 bg-purple-700 hover:bg-purple-600 text-white text-xl font-bold rounded-lg transition-colors"
           >
             Randomize First Turn
           </button>
+        ) : (
+          <div className="flex space-x-4 justify-center">
+            <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+            <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+            <div className="w-3 h-3 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+          </div>
         )}
       </div>
     </div>

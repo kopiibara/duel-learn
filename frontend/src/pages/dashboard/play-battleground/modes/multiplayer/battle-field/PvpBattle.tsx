@@ -254,13 +254,31 @@ export default function PvpBattle() {
     setRandomizationDone,
   });
 
-  // Update the isGuestWaitingForRandomization function to be more precise
+  // Update the isGuestWaitingForRandomization function to show waiting message for guest
   const isGuestWaitingForRandomization = useCallback(() => {
     return !isHost &&
       !waitingForPlayer &&
       battleState?.battle_started &&
       !randomizationDone &&
-      !showVictoryModal;
+      !showVictoryModal &&
+      !showRandomizer;
+  }, [isHost, waitingForPlayer, battleState?.battle_started, randomizationDone, showVictoryModal, showRandomizer]);
+
+  // Show randomizer for both host and guest after delay for guest
+  useEffect(() => {
+    if (isHost && !waitingForPlayer && battleState?.battle_started && !randomizationDone && !showVictoryModal) {
+      // Host sees randomizer immediately
+      setShowRandomizer(true);
+    } else if (!isHost && !waitingForPlayer && battleState?.battle_started && !randomizationDone && !showVictoryModal) {
+      // Guest sees waiting message first, then randomizer after 2 seconds
+      const timer = setTimeout(() => {
+        setShowRandomizer(true);
+      }, 2000);
+
+      return () => clearTimeout(timer);
+    } else {
+      setShowRandomizer(false);
+    }
   }, [isHost, waitingForPlayer, battleState?.battle_started, randomizationDone, showVictoryModal]);
 
   // Add a new function to determine if we should show the main battle interface
@@ -1302,8 +1320,8 @@ export default function PvpBattle() {
           </>
         )}
 
-        {/* Turn Randomizer (only shown to host) */}
-        {isHost && showRandomizer && (
+        {/* Turn Randomizer (shown to both host and guest) */}
+        {showRandomizer && (
           <TurnRandomizer
             isHost={isHost}
             lobbyCode={lobbyCode}
@@ -1329,7 +1347,7 @@ export default function PvpBattle() {
           />
         )}
 
-        {/* Waiting for host to randomize (shown to guest) */}
+        {/* Waiting for host to randomize (shown to guest for 2 seconds) */}
         {isGuestWaitingForRandomization() && (
           <GuestWaitingForRandomization waitingForRandomization={true} />
         )}
