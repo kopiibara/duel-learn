@@ -1007,6 +1007,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120">
       {/* Enhanced debug panel - shows more detailed probability info */}
+      {/* Debug panel commented out for production
       {process.env.NODE_ENV === 'development' && (
         <div className="absolute top-0 right-0 bg-gray-800/90 p-2 text-white text-xs max-w-md opacity-90 overflow-y-auto max-h-[400px]">
           <div className="flex justify-between items-center mb-1">
@@ -1095,6 +1096,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
           </button>
         </div>
       )}
+      */}
 
       {/* Only show turn indicator when it's NOT the player's turn */}
       {!isMyTurn && (

@@ -291,8 +291,8 @@ export default function PvpBattle() {
     // Show the question modal
     setShowQuestionModal(true);
 
-    // Reset player animations to idle
-    setPlayerAnimationState("idle");
+    // Change player animation state to card_selected instead of idle
+    setPlayerAnimationState("card_selected");
     setPlayerPickingIntroComplete(false);
   };
 
@@ -626,8 +626,12 @@ export default function PvpBattle() {
 
   // Handle question modal close
   const handleQuestionModalClose = () => {
+    // Close the question modal and clear selected card ID
     setShowQuestionModal(false);
     setSelectedCardId(null);
+    // Note: We don't reset the animation state here
+    // The animation state (card_selected) will remain until handleAnswerSubmitRound
+    // changes it based on whether the answer was correct or incorrect
   };
 
   // Remove the useEffect that shows attack animation for defender when health decreases
