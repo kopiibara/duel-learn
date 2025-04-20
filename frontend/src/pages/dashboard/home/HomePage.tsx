@@ -38,7 +38,6 @@ const HomePage = ({
                 alt="icon"
               />
               <Typography
-                variant="h6"
                 sx={{
                   color: "#E2DDF3",
                   fontSize: {
@@ -68,7 +67,6 @@ const HomePage = ({
                   alt="icon"
                 />
                 <Typography
-                  variant="h6"
                   sx={{
                     color: "#E2DDF3",
                     fontSize: {
@@ -102,7 +100,7 @@ const HomePage = ({
                   transition: "all 0.3s ease",
                   "&:hover": {
                     color: "#E2DDF3",
-                    transform: "scale(1.05)",
+                    backgroundColor: "#3B354D",
                   },
                 }}
               >

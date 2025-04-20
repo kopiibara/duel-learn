@@ -1517,7 +1517,7 @@ const PVPLobby: React.FC = () => {
 
   return (
     <>
-      <DocumentHead title={`${material.title} PvP Mode | Duel Learn`} />
+      <DocumentHead title={`${material.title} - PvP Mode | Duel Learn`} />
       <div className="relative min-h-screen flex flex-col items-center justify-center text-white px-6 py-8 overflow-hidden">
         {/* Full-Width Fixed Header */}
         <PvPHeader

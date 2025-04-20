@@ -270,11 +270,11 @@ const FriendList: React.FC = () => {
   return (
     <>
       <Box className="rounded-[0.8rem] border-[0.2rem] border-[#3B354C] h-auto w-full">
-        <div className="px-6 sm:px-6 md:px-8 pt-6 sm:pt-6 md:pt-8 pb-12 sm:pb-4 lg:pb-6">
+        <div className="px-6 sm:px-6 md:px-8 pt-6 sm:pt-6 md:pt-8 pb-6 sm:pb-2 lg:pb-6">
           <div className="flex flex-row items-center mb-3 sm:mb-4 gap-2 sm:gap-3">
             <img
               src="/bunny.png"
-              className="w-4 sm:w-8 md:w-10 h-auto"
+              className="w-8 sm:w-10 md:w-10 h-auto"
               alt="icon"
             />
             <p className="text-sm sm:text-base md:text-xl font-semibold">
