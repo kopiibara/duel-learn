@@ -1,6 +1,9 @@
 // Character animations
 import characterPicking from "/characterinLobby/CharacterPicking.gif"; // Initial picking animation
 import characterPickingLoop from "/characterinLobby/CharacterPickingLoop.gif"; // Loop animation
+import correctAnswerAnimation from "/GameBattle/correctAnswerAnimationCharacter.gif"; // Correct answer animation
+import incorrectAnswerAnimation from "/GameBattle/incorrectAnswerAnimationCharacter.gif"; // Incorrect answer animation
+import beenAttackedAnimation from "/GameBattle/BeenAttacked.gif"; // Been attacked animation
 
 /**
  * Get the appropriate character image based on animation state and intro status
@@ -23,6 +26,15 @@ export function getCharacterImage(
   } else if (animationState === "picking" && introComplete) {
     // Then continue with the looping "pickingLoop" animation
     return characterPickingLoop;
+  } else if (animationState === "correct_answer") {
+    // Show correct answer animation
+    return correctAnswerAnimation;
+  } else if (animationState === "incorrect_answer") {
+    // Show incorrect answer animation
+    return incorrectAnswerAnimation;
+  } else if (animationState === "been_attacked") {
+    // Show been attacked animation
+    return beenAttackedAnimation;
   }
 
   // Default fallback

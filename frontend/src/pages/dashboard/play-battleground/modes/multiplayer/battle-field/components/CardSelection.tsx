@@ -88,6 +88,37 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     };
   });
 
+  // Clear all card stats on new game
+  useEffect(() => {
+    if (isMyTurn && isFirstTurn && turnCount === 1) {
+      // Clear card stats when starting a new game
+      setCardStats({
+        basic: 0,
+        normal: 0,
+        epic: 0,
+        rare: 0,
+        total: 0,
+        selections: []
+      });
+      sessionStorage.removeItem('battle_card_stats');
+      setDebugInfo("New game started - stats reset");
+    }
+  }, [isMyTurn, isFirstTurn, turnCount]);
+
+  // Function to clear all card stats
+  const clearAllCardStats = () => {
+    setCardStats({
+      basic: 0,
+      normal: 0,
+      epic: 0,
+      rare: 0,
+      total: 0,
+      selections: []
+    });
+    sessionStorage.removeItem('battle_card_stats');
+    setDebugInfo("Stats cleared manually");
+  };
+
   // State for card blocking effect
   const [hasCardBlocking, setHasCardBlocking] = useState(false);
   const [blockedCardCount, setBlockedCardCount] = useState(0);
@@ -462,9 +493,9 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     const safeFirstCard = firstCard.image
       ? firstCard
       : {
-          ...firstCard,
-          image: cardBackImage, // Fallback image
-        };
+        ...firstCard,
+        image: cardBackImage, // Fallback image
+      };
 
     // For the second card, try up to 3 times to get a different card
     let secondCard: Card;
@@ -484,9 +515,9 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     const safeSecondCard = secondCard.image
       ? secondCard
       : {
-          ...secondCard,
-          image: cardBackImage, // Fallback image
-        };
+        ...secondCard,
+        image: cardBackImage, // Fallback image
+      };
 
     // For the third card, try up to 3 times to get a different card from both previous cards
     let thirdCard: Card;
@@ -510,9 +541,9 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     const safeThirdCard = thirdCard.image
       ? thirdCard
       : {
-          ...thirdCard,
-          image: cardBackImage, // Fallback image
-        };
+        ...thirdCard,
+        image: cardBackImage, // Fallback image
+      };
 
     const generatedCards = [safeFirstCard, safeSecondCard, safeThirdCard];
     console.log("All generated cards:", generatedCards);
@@ -805,8 +836,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
           // Check if this player has any card blocking effects active
           const response = await axios.get(
-            `${
-              import.meta.env.VITE_BACKEND_URL
+            `${import.meta.env.VITE_BACKEND_URL
             }/api/gameplay/battle/card-blocking-effects/${sessionUuid}/${playerType}`
           );
 
@@ -859,8 +889,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
                 // Consume the effect
                 await axios.post(
-                  `${
-                    import.meta.env.VITE_BACKEND_URL
+                  `${import.meta.env.VITE_BACKEND_URL
                   }/api/gameplay/battle/consume-card-effect`,
                   {
                     session_uuid: sessionUuid,
@@ -906,8 +935,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
           // Check if this player has any mind control effects active
           const response = await axios.get(
-            `${
-              import.meta.env.VITE_BACKEND_URL
+            `${import.meta.env.VITE_BACKEND_URL
             }/api/gameplay/battle/mind-control-effects/${sessionUuid}/${playerType}`
           );
 
@@ -943,8 +971,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
                 // Consume the effect
                 await axios.post(
-                  `${
-                    import.meta.env.VITE_BACKEND_URL
+                  `${import.meta.env.VITE_BACKEND_URL
                   }/api/gameplay/battle/consume-card-effect`,
                   {
                     session_uuid: sessionUuid,
@@ -980,105 +1007,94 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120">
       {/* Enhanced debug panel - shows more detailed probability info */}
-      {/* {process.env.NODE_ENV === 'development' && (
-                <div className="absolute top-0 right-0 bg-gray-800/90 p-2 text-white text-xs max-w-md opacity-90 overflow-y-auto max-h-[400px]">
-                    <div className="flex justify-between items-center mb-1">
-                        <h3 className="font-bold">Card Selection Debug</h3>
-                        <div className="flex gap-2">
-                            <span>Difficulty: <span className="font-semibold">{difficultyMode}</span></span>
-                        </div>
-                    </div>
+      {process.env.NODE_ENV === 'development' && (
+        <div className="absolute top-0 right-0 bg-gray-800/90 p-2 text-white text-xs max-w-md opacity-90 overflow-y-auto max-h-[400px]">
+          <div className="flex justify-between items-center mb-1">
+            <h3 className="font-bold">Card Selection Debug</h3>
+            <div className="flex gap-2">
+              <span>Difficulty: <span className="font-semibold">{difficultyMode}</span></span>
+            </div>
+          </div>
 
-                    <div className="grid grid-cols-5 gap-1 mb-2 text-center text-[10px]">
-                        <div className="bg-gray-700 p-1 rounded">
-                            <p className="font-bold">Basic</p>
-                            <p>{cardStats.basic}</p>
-                            <p>{cardStats.total > 0 ? ((cardStats.basic / cardStats.total) * 100).toFixed(1) + '%' : '0%'}</p>
-                            <p className="text-gray-300 text-[8px]">
-                                {difficultyMode?.toLowerCase().includes("easy") ? "70%" :
-                                    difficultyMode?.toLowerCase().includes("hard") ? "70%" : "70%"}
-                            </p>
-                        </div>
-                        <div className="bg-blue-700 p-1 rounded">
-                            <p className="font-bold">Normal</p>
-                            <p>{cardStats.normal}</p>
-                            <p>{cardStats.total > 0 ? ((cardStats.normal / cardStats.total) * 100).toFixed(1) + '%' : '0%'}</p>
-                            <p className="text-gray-300 text-[8px]">
-                                {difficultyMode?.toLowerCase().includes("easy") ? "30%" :
-                                    difficultyMode?.toLowerCase().includes("hard") ? "15%" : "20%"}
-                            </p>
-                        </div>
-                        <div className="bg-purple-700 p-1 rounded">
-                            <p className="font-bold">Epic</p>
-                            <p>{cardStats.epic}</p>
-                            <p>{cardStats.total > 0 ? ((cardStats.epic / cardStats.total) * 100).toFixed(1) + '%' : '0%'}</p>
-                            <p className="text-gray-300 text-[8px]">
-                                {difficultyMode?.toLowerCase().includes("easy") ? "0%" :
-                                    difficultyMode?.toLowerCase().includes("hard") ? "10%" : "10%"}
-                            </p>
-                        </div>
-                        <div className="bg-yellow-700 p-1 rounded">
-                            <p className="font-bold">Rare</p>
-                            <p>{cardStats.rare}</p>
-                            <p>{cardStats.total > 0 ? ((cardStats.rare / cardStats.total) * 100).toFixed(1) + '%' : '0%'}</p>
-                            <p className="text-gray-300 text-[8px]">
-                                {difficultyMode?.toLowerCase().includes("easy") ? "0%" :
-                                    difficultyMode?.toLowerCase().includes("hard") ? "5%" : "0%"}
-                            </p>
-                        </div>
-                        <div className="bg-gray-600 p-1 rounded">
-                            <p className="font-bold">Total</p>
-                            <p>{cardStats.total}</p>
-                            <p>100%</p>
-                        </div>
-                    </div>
+          <div className="grid grid-cols-5 gap-1 mb-2 text-center text-[10px]">
+            <div className="bg-gray-700 p-1 rounded">
+              <p className="font-bold">Basic</p>
+              <p>{cardStats.basic}</p>
+              <p>{cardStats.total > 0 ? ((cardStats.basic / cardStats.total) * 100).toFixed(1) + '%' : '0%'}</p>
+              <p className="text-gray-300 text-[8px]">
+                {difficultyMode?.toLowerCase().includes("easy") ? "70%" :
+                  difficultyMode?.toLowerCase().includes("hard") ? "70%" : "70%"}
+              </p>
+            </div>
+            <div className="bg-blue-700 p-1 rounded">
+              <p className="font-bold">Normal</p>
+              <p>{cardStats.normal}</p>
+              <p>{cardStats.total > 0 ? ((cardStats.normal / cardStats.total) * 100).toFixed(1) + '%' : '0%'}</p>
+              <p className="text-gray-300 text-[8px]">
+                {difficultyMode?.toLowerCase().includes("easy") ? "30%" :
+                  difficultyMode?.toLowerCase().includes("hard") ? "15%" : "20%"}
+              </p>
+            </div>
+            <div className="bg-purple-700 p-1 rounded">
+              <p className="font-bold">Epic</p>
+              <p>{cardStats.epic}</p>
+              <p>{cardStats.total > 0 ? ((cardStats.epic / cardStats.total) * 100).toFixed(1) + '%' : '0%'}</p>
+              <p className="text-gray-300 text-[8px]">
+                {difficultyMode?.toLowerCase().includes("easy") ? "0%" :
+                  difficultyMode?.toLowerCase().includes("hard") ? "10%" : "10%"}
+              </p>
+            </div>
+            <div className="bg-yellow-700 p-1 rounded">
+              <p className="font-bold">Rare</p>
+              <p>{cardStats.rare}</p>
+              <p>{cardStats.total > 0 ? ((cardStats.rare / cardStats.total) * 100).toFixed(1) + '%' : '0%'}</p>
+              <p className="text-gray-300 text-[8px]">
+                {difficultyMode?.toLowerCase().includes("easy") ? "0%" :
+                  difficultyMode?.toLowerCase().includes("hard") ? "5%" : "0%"}
+              </p>
+            </div>
+            <div className="bg-gray-600 p-1 rounded">
+              <p className="font-bold">Total</p>
+              <p>{cardStats.total}</p>
+              <p>100%</p>
+            </div>
+          </div>
 
-                    <div className="mb-1">
-                        <p>Turn: {turnCount}</p>
-                        <p>Last Selected: {lastSelectedIndex !== null ? lastSelectedIndex : 'None'}</p>
-                        <p>First Turn: {isFirstTurn ? 'Yes' : 'No'}</p>
-                    </div>
+          <div className="mb-1">
+            <p>Turn: {turnCount}</p>
+            <p>Last Selected: {lastSelectedIndex !== null ? lastSelectedIndex : 'None'}</p>
+            <p>First Turn: {isFirstTurn ? 'Yes' : 'No'}</p>
+          </div>
 
-                    {cardStats.selections.length > 0 && (
-                        <div className="mb-2">
-                            <p className="font-bold text-[9px]">Recent Card Selections:</p>
-                            <div className="bg-gray-900/60 p-1 rounded text-[8px] grid grid-cols-2 gap-x-2">
-                                {cardStats.selections.slice(-10).map((card, i) => (
-                                    <div key={i} className={`${card.type.toLowerCase().includes("basic") ? "text-gray-300" :
-                                        card.type.toLowerCase().includes("normal") ? "text-blue-300" :
-                                            card.type.toLowerCase().includes("epic") ? "text-purple-300" :
-                                                "text-yellow-300"
-                                        }`}>
-                                        {card.name} ({card.type.split(' ')[0]})
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+          {cardStats.selections.length > 0 && (
+            <div className="mb-2">
+              <p className="font-bold text-[9px]">Recent Card Selections:</p>
+              <div className="bg-gray-900/60 p-1 rounded text-[8px] grid grid-cols-2 gap-x-2">
+                {cardStats.selections.slice(-10).map((card, i) => (
+                  <div key={i} className={`${card.type.toLowerCase().includes("basic") ? "text-gray-300" :
+                    card.type.toLowerCase().includes("normal") ? "text-blue-300" :
+                      card.type.toLowerCase().includes("epic") ? "text-purple-300" :
+                        "text-yellow-300"
+                    }`}>
+                    {card.name} ({card.type.split(' ')[0]})
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-                    <div className="bg-gray-900 p-1 rounded text-[9px] font-mono max-h-[120px] overflow-y-auto">
-                        <pre className="whitespace-pre-wrap">{debugInfo}</pre>
-                    </div>
+          <div className="bg-gray-900 p-1 rounded text-[9px] font-mono max-h-[120px] overflow-y-auto">
+            <pre className="whitespace-pre-wrap">{debugInfo}</pre>
+          </div>
 
-                    <button
-                        className="mt-1 bg-red-600 text-white text-[10px] px-2 py-1 rounded"
-                        onClick={() => {
-                            setCardStats({
-                                basic: 0,
-                                normal: 0,
-                                epic: 0,
-                                rare: 0,
-                                total: 0,
-                                selections: []
-                            });
-                            sessionStorage.removeItem('battle_card_stats');
-                            setDebugInfo("Stats cleared");
-                        }}
-                    >
-                        Clear Stats
-                    </button>
-                </div>
-            )} */}
+          <button
+            className="mt-2 w-full bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1 rounded font-bold"
+            onClick={clearAllCardStats}
+          >
+            CLEAR STATS
+          </button>
+        </div>
+      )}
 
       {/* Only show turn indicator when it's NOT the player's turn */}
       {!isMyTurn && (
@@ -1146,9 +1162,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                   return (
                     <motion.div
                       key={`card-${index}`}
-                      className={`w-[280px] h-[380px] rounded-xl overflow-hidden cursor-pointer shadow-lg relative ${
-                        safeCard.image ? "" : getCardBackground(safeCard.type)
-                      }`}
+                      className={`w-[280px] h-[380px] rounded-xl overflow-hidden cursor-pointer shadow-lg relative ${safeCard.image ? "" : getCardBackground(safeCard.type)
+                        }`}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{

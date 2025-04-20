@@ -1400,7 +1400,7 @@ const CreateStudyMaterial = () => {
                             : "14ch",
                           color: "#E2DDF3",
                           fontSize: "1rem",
-                          padding: "6px 3px",
+                          padding: "4px",
                           margin: 0,
                           textAlign: "left",
                           cursor: "text",
@@ -1470,42 +1470,46 @@ const CreateStudyMaterial = () => {
                   )}
                 </Box>
                 {/* Tag counters */}
-                <Box
-                  sx={{
-                    position: "relative",
-                    zIndex: 0,
-                    marginTop: "0.5rem",
-                    clear: "both",
-                  }}
-                >
-                  <Stack direction="row" spacing={2}>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: tags.length >= MAX_TAGS ? "#E57373" : "#6F658D",
-                        transition: "color 0.3s ease-in-out",
-                        fontSize: "0.75rem",
-                        textAlign: "left",
-                      }}
-                    >
-                      {tags.length}/{MAX_TAGS} total tags
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color:
-                          customTagsCount >= MAX_CUSTOM_TAGS
-                            ? "#E57373"
-                            : "#6F658D",
-                        transition: "color 0.3s ease-in-out",
-                        fontSize: "0.75rem",
-                        textAlign: "left",
-                      }}
-                    >
-                      {customTagsCount}/{MAX_CUSTOM_TAGS} custom tags
-                    </Typography>
-                  </Stack>
-                </Box>
+
+                {tags.length > 0 && (
+                  <Box
+                    sx={{
+                      position: "relative",
+                      zIndex: 0,
+                      marginTop: "0.5rem",
+                      clear: "both",
+                    }}
+                  >
+                    <Stack direction="row" spacing={2}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color:
+                            tags.length >= MAX_TAGS ? "#E57373" : "#6F658D",
+                          transition: "color 0.3s ease-in-out",
+                          fontSize: "0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        {tags.length}/{MAX_TAGS} total tags
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color:
+                            customTagsCount >= MAX_CUSTOM_TAGS
+                              ? "#E57373"
+                              : "#6F658D",
+                          transition: "color 0.3s ease-in-out",
+                          fontSize: "0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        {customTagsCount}/{MAX_CUSTOM_TAGS} custom tags
+                      </Typography>
+                    </Stack>
+                  </Box>
+                )}
               </Stack>
             </Box>
 

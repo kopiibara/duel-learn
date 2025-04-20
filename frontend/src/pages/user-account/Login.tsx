@@ -301,7 +301,7 @@ const Login = () => {
     <PageTransition>
       <div className="font-aribau min-h-screen flex items-center justify-center">
         {/* Simple Header */}
-        <header className="absolute top-20 left-20 flex items-center">
+        <header className="absolute top-10 left-20 flex items-center">
           <Link to="/" className="flex items-center space-x-4">
             <img src="/duel-learn-logo.svg" className="w-10 h-10" alt="icon" />
             <p className="text-white text-xl font-semibold">Duel Learn</p>

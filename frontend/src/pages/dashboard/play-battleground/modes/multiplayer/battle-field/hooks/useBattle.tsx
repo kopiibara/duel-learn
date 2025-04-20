@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
+import { io } from "socket.io-client";
+import { socket } from '../../../../../../../socket';
 
 interface BattleHookProps {
   lobbyCode: string;
@@ -13,6 +15,7 @@ interface BattleHookProps {
   randomizationDone: boolean;
   showVictoryModal: boolean;
   showGameStart: boolean;
+  isMyTurn: boolean;
   setWaitingForPlayer: (value: boolean) => void;
   setShowRandomizer: (value: boolean) => void;
   setBattleState: (state: any) => void;
@@ -27,6 +30,7 @@ interface BattleHookProps {
   setShowCards: (value: boolean) => void;
   setShowVictoryModal: (value: boolean) => void;
   setVictoryMessage: (message: string) => void;
+  setRandomizationDone: (value: boolean) => void;
 }
 
 export function useBattle({
@@ -41,6 +45,7 @@ export function useBattle({
   randomizationDone,
   showVictoryModal,
   showGameStart,
+  isMyTurn,
   setWaitingForPlayer,
   setShowRandomizer,
   setBattleState,
@@ -55,6 +60,7 @@ export function useBattle({
   setShowCards,
   setShowVictoryModal,
   setVictoryMessage,
+  setRandomizationDone,
 }: BattleHookProps) {
   // State to track if we're in the process of ending the battle
   const [isEndingBattle, setIsEndingBattle] = useState<boolean>(false);
@@ -62,118 +68,42 @@ export function useBattle({
   // References for polling intervals
   const pollingIntervalRef = useRef<number | null>(null);
   const battleEndingPollingRef = useRef<number | null>(null);
+  const socketRef = useRef<any>(null);
+  const reconnectAttemptsRef = useRef(0);
+  const maxReconnectAttempts = 3;
 
   // =========== BATTLE LEAVER ============
 
   // Handle leaving the battle and updating the database
   const handleLeaveBattle = async (
-    battle_end_reason: string = "Left The Game",
-    early_leaver_id?: string
-  ) => {
-    // Prevent multiple calls
-    if (isEndingBattle) {
-      console.log("Already ending battle, ignoring duplicate call");
-      return;
-    }
-
+    reason: string,
+    currentUserId: string
+  ): Promise<void> => {
     try {
       setIsEndingBattle(true);
-      console.log("Ending battle due to user leaving");
 
-      // Flag to skip additional confirmation dialogs
-      window.onbeforeunload = null;
-
-      // Debug battle state before sending request
-      console.log("Battle state when leaving:", {
-        lobbyCode,
-        sessionUuid: battleState?.session_uuid,
-        sessionId: battleState?.ID,
-        hostId,
-        guestId,
-        isHost,
-        winnerId: isHost ? guestId : hostId,
-        battle_end_reason,
-        early_leaver_id,
+      // Emit player exited game with inGame field
+      socket.emit('player_exited_game', {
+        playerId: currentUserId,
+        inGame: false
       });
 
-      if (!battleState?.session_uuid && !battleState?.ID) {
-        console.error(
-          "No session identifiers found! Will try using lobby code only."
+      if (battleState?.session_uuid) {
+        await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/end`,
+          {
+            session_uuid: battleState.session_uuid,
+            reason: reason,
+            player_id: currentUserId,
+          }
         );
       }
 
-      // Create the payload with session_uuid and also include session_id as backup
-      const payload = {
-        lobby_code: lobbyCode,
-        winner_id: isHost ? guestId : hostId, // Opponent wins if player leaves
-        battle_end_reason,
-        session_uuid: battleState?.session_uuid,
-        session_id: battleState?.ID, // Include numeric ID as fallback
-        early_leaver_id, // Include the ID of the player who left early
-      };
-
-      console.log("Sending battle end request with payload:", payload);
-
-      // End the battle with appropriate status
-      const response = await axios.post(
-        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/end`,
-        payload
-      );
-
-      console.log("Battle end response:", response.data);
-
-      // Wait for the request to complete with a longer delay to ensure it propagates
-      console.log("Waiting to ensure request propagates...");
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      console.log("Done waiting, proceeding to navigation");
-
-      // Force navigation to dashboard AFTER the request completes
-      // Use replace instead of href to prevent history entry
+      // Force navigation to dashboard
       window.location.replace("/dashboard/home");
-    } catch (error: any) {
-      // Add type annotation to fix linter error
-      console.error("Error ending battle:", error);
-      console.error(
-        "Error details:",
-        error.response?.data || "No response data"
-      );
-
-      // Remove beforeunload handler to prevent additional confirmation
-      window.onbeforeunload = null;
-
-      // Try alternative approach if first attempt failed
-      try {
-        console.log("First attempt failed, trying alternative approach...");
-
-        // Try direct update with lobby_code only if we have it
-        if (lobbyCode) {
-          console.log("Using lobby_code only approach");
-
-          const fallbackPayload = {
-            lobby_code: lobbyCode,
-            winner_id: isHost ? guestId : hostId,
-            battle_end_reason,
-            early_leaver_id,
-          };
-
-          const fallbackResponse = await axios.post(
-            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/end`,
-            fallbackPayload
-          );
-
-          console.log("Fallback battle end response:", fallbackResponse.data);
-
-          // Wait to ensure request processes
-          await new Promise((resolve) => setTimeout(resolve, 2000));
-        }
-      } catch (fallbackError) {
-        console.error("Even fallback approach failed:", fallbackError);
-      }
-
-      // Add a delay even on error to ensure any partial processing completes
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Still redirect even if error occurs - use replace to prevent history entry
+    } catch (error) {
+      console.error("Error in handleLeaveBattle:", error);
+      // Force navigation anyway on error
       window.location.replace("/dashboard/home");
     }
   };
@@ -401,23 +331,20 @@ export function useBattle({
 
         // Determine which endpoint to use based on available identifiers
         if (battleState.session_uuid) {
-          endpoint = `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/gameplay/battle/end-status/${battleState.session_uuid}`;
+          endpoint = `${import.meta.env.VITE_BACKEND_URL
+            }/api/gameplay/battle/end-status/${battleState.session_uuid}`;
           console.log(
             `Checking battle end status using UUID: ${battleState.session_uuid}`
           );
         } else if (battleState.ID) {
           // If no UUID but we have ID, use that
-          endpoint = `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/gameplay/battle/end-status-by-id/${battleState.ID}`;
+          endpoint = `${import.meta.env.VITE_BACKEND_URL
+            }/api/gameplay/battle/end-status-by-id/${battleState.ID}`;
           console.log(`Checking battle end status using ID: ${battleState.ID}`);
         } else if (lobbyCode) {
           // Last resort - use lobby code
-          endpoint = `${
-            import.meta.env.VITE_BACKEND_URL
-          }/api/gameplay/battle/end-status-by-lobby/${lobbyCode}`;
+          endpoint = `${import.meta.env.VITE_BACKEND_URL
+            }/api/gameplay/battle/end-status-by-lobby/${lobbyCode}`;
           console.log(
             `Checking battle end status using lobby code: ${lobbyCode}`
           );
@@ -490,8 +417,7 @@ export function useBattle({
           console.log(`Polling battle session state for lobby: ${lobbyCode}`);
 
           const response = await axios.get(
-            `${
-              import.meta.env.VITE_BACKEND_URL
+            `${import.meta.env.VITE_BACKEND_URL
             }/api/gameplay/battle/session-state/${lobbyCode}`
           );
 
@@ -552,58 +478,96 @@ export function useBattle({
               ) {
                 // Guest just waits for host to randomize
                 console.log("Waiting for host to determine who goes first...");
-              } else if (
-                sessionState.battle_started === 1 &&
-                sessionState.current_turn
-              ) {
-                // Battle has started and turns are established - fetch battle round data
+              }
+
+              // CRITICAL FIX: If current_turn is set, update randomizationDone for BOTH host and guest
+              if (sessionState.current_turn && !randomizationDone) {
+                console.log("Turn has been set, marking randomization as done");
+
+                // Mark randomization as done
+                setRandomizationDone(true);
+
+                // For guest player, we need to initialize the game state
+                if (!isHost) {
+                  console.log("Guest - setting up game state");
+                  setGameStarted(true);
+
+                  // Determine if it's the guest's turn
+                  const isGuestTurn = sessionState.current_turn === currentUserId;
+                  setIsMyTurn(isGuestTurn);
+
+                  // Show game start animation
+                  const startText = isGuestTurn
+                    ? "You will go first!"
+                    : `${sessionState.host_username || "Host"} will go first!`;
+                  setGameStartText(startText);
+                  setShowGameStart(true);
+
+                  // Setup animations based on turn
+                  if (isGuestTurn) {
+                    setPlayerAnimationState("picking");
+                    setPlayerPickingIntroComplete(true);
+                    setEnemyAnimationState("idle");
+                  } else {
+                    setEnemyAnimationState("picking");
+                    setEnemyPickingIntroComplete(true);
+                    setPlayerAnimationState("idle");
+                  }
+
+                  // Show battle start animation for exactly 2 seconds
+                  setTimeout(() => {
+                    setShowGameStart(false);
+                    setShowCards(isGuestTurn); // Only show cards if it's the guest's turn
+                  }, 2000);
+                }
+              }
+
+              // Check for battle round if battle has already started and turn has been set
+              if (sessionState.battle_started && sessionState.current_turn) {
                 try {
-                  const roundResponse = await axios.get(
-                    `${
-                      import.meta.env.VITE_BACKEND_URL
-                    }/api/gameplay/battle/round/${sessionState.session_uuid}`
-                  );
+                  // If we have a session UUID, we can check for battle round data
+                  if (sessionState.session_uuid) {
+                    // Fetch battle round data
+                    const { data } = await axios.get(
+                      `${import.meta.env.VITE_BACKEND_URL
+                      }/api/gameplay/battle/round/${sessionState.session_uuid}`
+                    );
 
-                  if (roundResponse.data.success && roundResponse.data.data) {
-                    const roundData = roundResponse.data.data;
+                    if (data.success && data.data) {
+                      const roundData = data.data;
 
-                    // Update the battleState with round data
-                    setBattleState((prevState: any) => {
-                      if (!prevState) return null;
+                      // Update the current turn information in UI
+                      console.log("Round data:", roundData);
+                      console.log(
+                        "Current player ID:",
+                        currentUserId,
+                        "Current turn:",
+                        sessionState.current_turn
+                      );
 
-                      return {
-                        ...prevState,
-                        host_card: roundData.host_card,
-                        guest_card: roundData.guest_card,
-                        round_number: roundData.round_number,
-                      };
-                    });
+                      // Check if it's this player's turn
+                      const isCurrentPlayerTurn =
+                        sessionState.current_turn === currentUserId;
 
-                    // Determine if it's the current player's turn
-                    const isCurrentPlayerTurn =
-                      sessionState.current_turn === currentUserId;
+                      // Only update if the turn has changed
+                      if (isCurrentPlayerTurn !== isMyTurn) {
+                        console.log(
+                          `Turn changed: ${isMyTurn} → ${isCurrentPlayerTurn}`
+                        );
+                        setIsMyTurn(isCurrentPlayerTurn);
+                      }
 
-                    // Enable game UI
-                    if (!gameStarted) {
-                      setGameStarted(true);
-                    }
+                      // Update the battleState with round data
+                      setBattleState((prevState: any) => {
+                        if (!prevState) return null;
 
-                    // Set turn state
-                    setIsMyTurn(isCurrentPlayerTurn);
-
-                    // Update UI based on turn
-                    if (isCurrentPlayerTurn) {
-                      setShowCards(true);
-                      setPlayerAnimationState("picking");
-                      setPlayerPickingIntroComplete(true);
-                      setEnemyAnimationState("idle");
-                      setEnemyPickingIntroComplete(false);
-                    } else {
-                      setShowCards(false);
-                      setPlayerAnimationState("idle");
-                      setPlayerPickingIntroComplete(false);
-                      setEnemyAnimationState("picking");
-                      setEnemyPickingIntroComplete(true);
+                        return {
+                          ...prevState,
+                          host_card: roundData.host_card,
+                          guest_card: roundData.guest_card,
+                          round_number: roundData.round_number,
+                        };
+                      });
                     }
                   }
                 } catch (error) {
@@ -646,7 +610,7 @@ export function useBattle({
         clearInterval(pollingIntervalRef.current);
       }
     };
-  }, [lobbyCode, hostId, guestId, isHost, gameStarted, randomizationDone]);
+  }, [lobbyCode, hostId, guestId, isHost, gameStarted, randomizationDone, isMyTurn, currentUserId]);
 
   // Check for battle reload flag when component mounts
   useEffect(() => {
@@ -703,6 +667,62 @@ export function useBattle({
       }
     }
   }, []);
+
+  // Initialize socket connection
+  useEffect(() => {
+    if (!currentUserId || showVictoryModal) return;
+
+    const initializeSocket = () => {
+      socketRef.current = io(import.meta.env.VITE_BACKEND_URL, {
+        transports: ['websocket'],
+        query: {
+          userId: currentUserId,
+          inGame: true,
+          gameType: 'battle',
+          lobbyCode
+        }
+      });
+
+      socketRef.current.on('connect', () => {
+        console.log('Socket connected');
+        reconnectAttemptsRef.current = 0;
+      });
+
+      socketRef.current.on('disconnect', (reason: string) => {
+        console.log('Socket disconnected:', reason);
+
+        // Only attempt to reconnect if we haven't exceeded max attempts
+        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
+          reconnectAttemptsRef.current++;
+          setTimeout(() => {
+            console.log(`Attempting reconnect ${reconnectAttemptsRef.current}/${maxReconnectAttempts}`);
+            socketRef.current.connect();
+          }, 1000);
+        } else {
+          // If we've exceeded max reconnect attempts and the game hasn't ended, handle gracefully
+          if (!showVictoryModal && !isEndingBattle) {
+            console.log('Max reconnection attempts reached, ending battle gracefully');
+            handleLeaveBattle('Connection Lost', currentUserId);
+          }
+        }
+      });
+
+      socketRef.current.on('opponent_left', () => {
+        if (!showVictoryModal && !isEndingBattle) {
+          setVictoryMessage(`${opponentName} left the game. You won!`);
+          setShowVictoryModal(true);
+        }
+      });
+    };
+
+    initializeSocket();
+
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+    };
+  }, [currentUserId, showVictoryModal]);
 
   return {
     handleLeaveBattle,
