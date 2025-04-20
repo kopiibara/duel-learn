@@ -164,17 +164,17 @@ export const useGameLogic = ({
     const seconds = Math.floor((timeDiff % 60000) / 1000);
     const timeSpent = `${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
 
-    // Navigate directly to summary
+    // Navigate directly to summary with actual counts
     navigate("/dashboard/study/session-summary", {
       state: {
         timeSpent,
-        correctCount: totalItems,
-        incorrectCount: 0,
+        correctCount,
+        incorrectCount,
         mode,
         material,
         highestStreak,
-        masteredCount: totalItems,
-        unmasteredCount: 0,
+        masteredCount,
+        unmasteredCount,
         totalQuestions: totalItems,
         aiQuestions: aiQuestions || [],
       },
@@ -192,7 +192,7 @@ export const useGameLogic = ({
     }
 
     // Skip processing if showing results
-    if (showResult) {
+      if (showResult) {
       console.log("Not updating current question - showing results");
       return;
     }
@@ -378,6 +378,7 @@ export const useGameLogic = ({
     if (mode === "Time Pressured" && timeLimit && !showResult && isGameReady) {
       setQuestionTimer(timeLimit);
       setTimerProgress(100);
+      setRetakeQuestions([]); // Clear retake questions for Time Pressured mode
 
       timer = setInterval(() => {
         setQuestionTimer((prev) => {
@@ -488,7 +489,7 @@ export const useGameLogic = ({
       setIncorrectCount((prev) => prev + 1);
       setCurrentStreak(0);
       setShowNextButton(true);
-
+      
       // Automatically mark incorrect answers as unmastered
       const questionId = `${currentQuestion.question}-${currentQuestion.correctAnswer}`;
       
@@ -558,7 +559,7 @@ export const useGameLogic = ({
     setShowResult(false);
     setIsFlipped(false);
     setInputAnswer("");
-    
+
     if (isInRetakeMode) {
       // In retake mode
       if (retakeQuestions.length === 0) {
@@ -596,7 +597,7 @@ export const useGameLogic = ({
         } else if (masteredCount >= totalItems) {
           // All questions mastered, complete the game
           console.log("All questions mastered in normal mode, completing game");
-          handleGameComplete();
+        handleGameComplete();
           return;
         } else {
           // Otherwise, cycle back to the beginning of normal mode
@@ -684,7 +685,7 @@ export const useGameLogic = ({
     } else {
       console.log("Question already marked as mastered:", questionId);
     }
-
+    
     // Only proceed to next question if we didn't complete the game
     handleNextQuestion();
   };
@@ -697,8 +698,8 @@ export const useGameLogic = ({
       questionId,
       currentUnmasteredCount: unmasteredCount,
       isAlreadyInRetakeList: retakeQuestions.some(q => 
-        q.question === currentQuestion.question && 
-        q.correctAnswer === currentQuestion.correctAnswer
+      q.question === currentQuestion.question && 
+      q.correctAnswer === currentQuestion.correctAnswer
       )
     });
 
@@ -735,7 +736,7 @@ export const useGameLogic = ({
     if (isLastNormalQuestion && retakeQuestions.length > 0) {
       console.log("Last normal question marked as unmastered. Will transition to retake mode.");
     }
-
+    
     handleNextQuestion();
   };
 
@@ -765,6 +766,39 @@ export const useGameLogic = ({
   // Add a computed value for retake questions count that includes both initial and new retakes
   const retakeQuestionsCount = retakeQuestions.length;
 
+  console.log("Current question index:", questionIndex);
+  console.log("Current question ID:", currentQuestionId);
+  console.log("Processed question IDs:", Array.from(processedQuestionIds));
+  console.log("Unique question IDs:", Array.from(uniqueQuestionIds));
+
+  if (mode === "Time Pressured" && (correctCount + incorrectCount) >= (aiQuestions?.length || 0)) {
+    console.log("All questions answered in Time Pressured mode, ending game.");
+    handleGameComplete();
+    return;
+  }
+
+  const handleFlip = () => {
+    if (showResult) return;
+    
+    console.log("User flipped card to reveal answer");
+    
+    // First, reveal the current question's answer
+    setIsCorrect(false);
+    setIncorrectCount(prev => prev + 1);
+    setCurrentStreak(0);
+    setShowResult(true);
+    setShowNextButton(true);
+    setIsFlipped(true);
+    
+    // Add revealed question to retake list if not already in it
+    if (!retakeQuestions.some(q => 
+      q.question === currentQuestion.question && 
+      q.correctAnswer === currentQuestion.correctAnswer
+    )) {
+      setRetakeQuestions(prev => [...prev, currentQuestion]);
+    }
+  };
+
   return {
     currentQuestion,
     isFlipped,
@@ -786,7 +820,7 @@ export const useGameLogic = ({
     retakeQuestionsCount,
     retakePhase,
     isTransitioning,
-    handleFlip: () => setIsFlipped(!isFlipped),
+    handleFlip,
     handleAnswerSubmit,
     handleNextQuestion,
     getButtonStyle,

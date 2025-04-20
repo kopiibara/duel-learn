@@ -148,8 +148,17 @@ export default function Header({
                 {mode} Mode - {material?.title || "No Material Selected"}
               </span>
               <div className="flex items-center gap-4 text-[12px] sm:text-[14px] text-[#6F658D]">
-                <div>Mastered {masteredCount}</div>
-                <div>Unmastered {unmasteredCount}</div>
+                {mode.toLowerCase() === "peaceful" ? (
+                  <>
+                    <div>Mastered {masteredCount}</div>
+                    <div>Unmastered {unmasteredCount}</div>
+                  </>
+                ) : (
+                  <>
+                    <div>Correct {correct}</div>
+                    <div>Incorrect {incorrect}</div>
+                  </>
+                )}
               </div>
             </div>
           </div>
