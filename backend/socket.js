@@ -511,7 +511,7 @@ const setupSocket = (server) => {
       (data) => {
         const { userIds } = data;
         const lobbyStatuses = {};
-        
+
         userIds.forEach(userId => {
           const lobbyCode = usersInLobby.get(userId);
           lobbyStatuses[userId] = {
@@ -519,7 +519,7 @@ const setupSocket = (server) => {
             lobbyCode: lobbyCode || null
           };
         });
-        
+
         socket.emit('lobbyStatusResponse', lobbyStatuses);
       }
     );
@@ -532,13 +532,13 @@ const setupSocket = (server) => {
       "🎮",
       (data) => {
         const { userId, inLobby, lobbyCode } = data;
-        
+
         if (inLobby && lobbyCode) {
           usersInLobby.set(userId, lobbyCode);
         } else {
           usersInLobby.delete(userId);
         }
-        
+
         // Broadcast to all clients
         socket.broadcast.emit('userLobbyStatusChanged', {
           userId,
@@ -556,10 +556,10 @@ const setupSocket = (server) => {
       "🎮",
       (data) => {
         const { playerId, lobbyCode } = data;
-        
+
         // Store in the map
         usersInLobby.set(playerId, lobbyCode);
-        
+
         // Broadcast to all clients
         socket.broadcast.emit('player_joined_lobby', {
           playerId,
@@ -576,10 +576,10 @@ const setupSocket = (server) => {
       "🎮",
       (data) => {
         const { playerId } = data;
-        
+
         // Remove from the map
         usersInLobby.delete(playerId);
-        
+
         // Broadcast to all clients
         socket.broadcast.emit('player_left_lobby', {
           playerId
@@ -670,7 +670,7 @@ const setupSocket = (server) => {
       (data) => {
         const { userIds } = data;
         const gameStatuses = {};
-        
+
         userIds.forEach(userId => {
           const userGame = usersInGame.get(userId);
           gameStatuses[userId] = {
@@ -678,7 +678,7 @@ const setupSocket = (server) => {
             mode: userGame ? userGame.mode : null
           };
         });
-        
+
         socket.emit('gameStatusResponse', gameStatuses);
       }
     );
@@ -691,14 +691,14 @@ const setupSocket = (server) => {
       "🎮",
       (data) => {
         const { userId, inGame, mode } = data;
-        
+
         if (inGame && mode) {
           usersInGame.set(userId, { mode });
           usersInLobby.delete(userId);
         } else {
           usersInGame.delete(userId);
         }
-        
+
         // Broadcast to all clients
         socket.broadcast.emit('userGameStatusChanged', {
           userId,
@@ -709,45 +709,47 @@ const setupSocket = (server) => {
     );
 
     // Handle player entering game
-    createEventHandler(
-      socket,
-      "player_entered_game",
-      ["playerId", "mode"],
-      "🎮",
-      (data) => {
-        const { playerId, mode } = data;
+    socket.on("player_entered_game", (data) => {
+      try {
+        validateFields(data, ["playerId", "mode", "inGame"], "player_entered_game");
+        console.log("🎮 player_entered_game:", data);
 
-        // Store in the map
-        usersInGame.set(playerId, { mode });
-        // Remove from lobby if in game
-        usersInLobby.delete(playerId);
-
-        // Broadcast to all clients
-        socket.broadcast.emit("player_entered_game", {
-          playerId,
-          mode
+        // Update user's game status
+        usersInGame.set(data.playerId, {
+          mode: data.mode,
+          inGame: true
         });
+
+        // Broadcast status change to all connected clients
+        io.emit("userGameStatusChanged", {
+          userId: data.playerId,
+          inGame: true,
+          mode: data.mode
+        });
+      } catch (error) {
+        handleSocketError(socket, error, "player_entered_game");
       }
-    );
+    });
 
     // Handle player exiting game
-    createEventHandler(
-      socket,
-      "player_exited_game",
-      ["playerId"],
-      "🎮",
-      (data) => {
-        const { playerId } = data;
+    socket.on("player_exited_game", (data) => {
+      try {
+        validateFields(data, ["playerId"], "player_exited_game");
+        console.log("🎮 player_exited_game:", data);
 
-        // Remove from the map
-        usersInGame.delete(playerId);
+        // Remove user from game tracking
+        usersInGame.delete(data.playerId);
 
-        // Broadcast to all clients
-        socket.broadcast.emit("player_exited_game", {
-          playerId
+        // Broadcast status change to all connected clients
+        io.emit("userGameStatusChanged", {
+          userId: data.playerId,
+          inGame: false,
+          mode: null
         });
+      } catch (error) {
+        handleSocketError(socket, error, "player_exited_game");
       }
-    );
+    });
 
     // Handle direct room join/leave
     createEventHandler(

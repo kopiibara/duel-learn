@@ -22,7 +22,9 @@ import {
     checkUserBanStatus,
     checkCardBlockingEffects,
     checkMindControlEffects,
-    applyPoisonEffects
+    applyPoisonEffects,
+    generateBattleQuestions,
+    claimBattleRewards
 } from '../controller/GameplayController.js';
 
 const router = express.Router();
@@ -33,6 +35,8 @@ router.put('/battle/update-session', updateBattleSession);
 router.get('/battle/session-state/:lobby_code', getBattleSessionState);
 router.get('/battle/session-with-material/:lobby_code', getBattleSessionWithMaterial);
 
+// Question generation
+router.post('/battle/generate-questions', generateBattleQuestions);
 
 // Battle rounds
 router.post('/battle/initialize-rounds', initializeBattleRounds);
@@ -69,5 +73,8 @@ router.get('/battle/end-status-by-lobby/:lobby_code', getBattleEndStatusByLobby)
 
 // Save PvP session report
 router.post('/battle/save-session-report', savePvpSessionReport);
+
+// Claim rewards from PvP battle
+router.post('/battle/claim-rewards', claimBattleRewards);
 
 export default router; 

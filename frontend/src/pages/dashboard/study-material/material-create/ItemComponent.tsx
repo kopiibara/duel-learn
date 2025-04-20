@@ -366,21 +366,23 @@ const ItemComponent: FC<ItemComponentProps> = ({
                     }
                   }}
                 />
-                <Typography
-                  variant="caption"
-                  sx={{
-                    color:
-                      item.term.length >= MAX_TERM_LENGTH
-                        ? "#E57373"
-                        : "#6F658D",
-                    transition: "color 0.3s ease-in-out",
-                    fontSize: "0.75rem",
-                    textAlign: "left",
-                    marginTop: "0.8rem",
-                  }}
-                >
-                  {item.term.length}/{MAX_TERM_LENGTH} characters
-                </Typography>
+                {item.term.length > 0 && (
+                  <Typography
+                    variant="caption"
+                    sx={{
+                      color:
+                        item.term.length >= MAX_TERM_LENGTH
+                          ? "#E57373"
+                          : "#6F658D",
+                      transition: "color 0.3s ease-in-out",
+                      fontSize: "0.75rem",
+                      textAlign: "left",
+                      marginTop: "0.8rem",
+                    }}
+                  >
+                    {item.term.length}/{MAX_TERM_LENGTH} characters
+                  </Typography>
+                )}
               </Stack>
 
               <Stack className="w-full sm:w-2/3 min-w-0">
@@ -437,21 +439,24 @@ const ItemComponent: FC<ItemComponentProps> = ({
                     mt: 0.5,
                   }}
                 >
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      color:
-                        item.definition.length >= MAX_DEFINITION_LENGTH
-                          ? "#E57373"
-                          : "#6F658D",
-                      transition: "color 0.3s ease-in-out",
-                      fontSize: "0.75rem",
-                      textAlign: "right",
-                      marginTop: "0.2rem",
-                    }}
-                  >
-                    {item.definition.length}/{MAX_DEFINITION_LENGTH} characters
-                  </Typography>
+                  {item.definition.length > 0 && (
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        color:
+                          item.definition.length >= MAX_DEFINITION_LENGTH
+                            ? "#E57373"
+                            : "#6F658D",
+                        transition: "color 0.3s ease-in-out",
+                        fontSize: "0.75rem",
+                        textAlign: "right",
+                        marginTop: "0.2rem",
+                      }}
+                    >
+                      {item.definition.length}/{MAX_DEFINITION_LENGTH}{" "}
+                      characters
+                    </Typography>
+                  )}
 
                   {/* Fact check button */}
                 </Box>

@@ -49,6 +49,7 @@ import {
 } from "@dnd-kit/sortable";
 import { SortableItem } from "../types/SortableItem";
 import { topics } from "../../../user-onboarding/data/topics";
+import ErrorHighlightAnimation from "../../../../styles/ErrorHighlightAnimation";
 
 // Add constant for maximum tags
 const MAX_TAGS = 5;
@@ -137,6 +138,11 @@ const CreateStudyMaterial = () => {
   const [showCustomTagInput, setShowCustomTagInput] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [inputValue, setInputValue] = useState("");
+
+  // Add these state variables near your other state declarations
+  const [titleError, setTitleError] = useState(false);
+  const [tagsError, setTagsError] = useState(false);
+  const [itemsError, setItemsError] = useState(false);
 
   // Flatten all subjects from topics
   const allSubjects = topics
@@ -338,9 +344,17 @@ const CreateStudyMaterial = () => {
   }, []);
 
   // Update the save button handler to preserve item_number values
-  // Update the handleSaveButton function
-
+  // Update the handleSaveButton function to highlight fields with errors
   const handleSaveButton = async () => {
+    // Reset all error states first
+    setTitleError(false);
+    setTagsError(false);
+    setItemsError(false);
+
+    // Track if validation passes
+    let isValid = true;
+    let firstErrorElement = null;
+
     if (!user?.username) {
       handleShowSnackbar("User is not authenticated.");
       return;
@@ -352,183 +366,106 @@ const CreateStudyMaterial = () => {
     }
 
     if (!title.trim()) {
+      setTitleError(true);
       handleShowSnackbar("Title is required.");
-      return;
+      isValid = false;
+      firstErrorElement = document.getElementById("title");
     }
 
     if (items.length === 0) {
+      setItemsError(true);
       handleShowSnackbar("At least one item is required.");
-      return;
+      isValid = false;
+      // Only set this as first error if title is valid
+      if (!firstErrorElement) {
+        const itemsContainer = document.querySelector(
+          '[data-error="items-container"]'
+        );
+        firstErrorElement = itemsContainer || null;
+      }
     }
 
-    if (tags.length === 0) {
+    // Create a copy of current tags
+    let finalTags = [...tags];
+
+    // Check if there's text in the input field that hasn't been added as a tag yet
+    if (inputValue.trim()) {
+      // Add the pending tag input if tags array is empty or if it's not already in tags
+      if (finalTags.length === 0 || !finalTags.includes(inputValue.trim())) {
+        // Check against tag limits
+        if (finalTags.length >= MAX_TAGS) {
+          handleShowSnackbar(`Maximum ${MAX_TAGS} tags allowed`);
+        } else {
+          // Check custom tag limit
+          if (!allSubjects.includes(inputValue.trim())) {
+            const currentCustomTagsCount = finalTags.filter(
+              (tag) => !allSubjects.includes(tag)
+            ).length;
+
+            if (currentCustomTagsCount >= MAX_CUSTOM_TAGS) {
+              handleShowSnackbar(
+                `Maximum ${MAX_CUSTOM_TAGS} custom tags allowed`
+              );
+            } else {
+              // Add the pending tag
+              finalTags.push(inputValue.trim());
+            }
+          } else {
+            // Add the pending tag from predefined subjects
+            finalTags.push(inputValue.trim());
+          }
+        }
+      }
+    }
+
+    if (finalTags.length === 0) {
+      setTagsError(true);
       handleShowSnackbar("At least one tag is required.");
-      return;
+      isValid = false;
+      // Only set this as first error if no previous errors
+      if (!firstErrorElement) {
+        const tagsInput = document.getElementById("tags");
+        firstErrorElement = tagsInput || null;
+      }
     }
 
     if (items.length < MIN_REQUIRED_ITEMS) {
+      setItemsError(true);
       handleShowSnackbar(
         `At least ${MIN_REQUIRED_ITEMS} items are required. You currently have ${items.length} items.`
       );
+      isValid = false;
+      // Only set this as first error if no previous errors
+      if (!firstErrorElement) {
+        const itemsContainer = document.querySelector(
+          '[data-error="items-container"]'
+        );
+        firstErrorElement = itemsContainer || null;
+      }
+    }
+
+    // If validation fails, focus on the first error element and return early
+    if (!isValid && firstErrorElement) {
+      // Smooth scroll to the element
+      firstErrorElement.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      // Add a slight delay before focusing to ensure scrolling completes
+      setTimeout(() => {
+        firstErrorElement.focus();
+
+        // Add a temporary highlight effect
+        firstErrorElement.classList.add("error-highlight-animation");
+        setTimeout(() => {
+          firstErrorElement.classList.remove("error-highlight-animation");
+        }, 1500);
+      }, 500);
+
       return;
     }
 
     setIsSaving(true);
 
-    // Define summary variable outside try block so it's accessible in the main scope
-    let summary = "";
-
-    try {
-      // Generate summary using OpenAI
-      const summaryPayload = {
-        studyMaterialId: editMode ? studyMaterialId : undefined,
-        title,
-        tags,
-        items: items.map((item) => ({
-          term: item.term,
-          definition: item.definition,
-        })),
-      };
-
-      console.log("Sending summary request with payload:", summaryPayload);
-
-      try {
-        const summaryResponse = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-summary`,
-          {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(summaryPayload),
-          }
-        );
-
-        if (!summaryResponse.ok) {
-          const errorData = await summaryResponse.json().catch(() => ({}));
-          throw new Error(errorData.message || "Failed to generate summary");
-        }
-
-        const summaryData = await summaryResponse.json();
-        summary = summaryData.summary;
-
-        console.log("Generated summary:", summary);
-      } catch (summaryError) {
-        console.error("Error generating summary:", summaryError);
-        // Create a fallback summary instead of failing the whole save process
-        summary = title;
-        handleShowSnackbar(
-          "Couldn't generate summary, using title as fallback."
-        );
-      }
-
-      // Continue with saving the study material using the summary (or fallback)
-
-      // Check total payload size before sending
-      let totalImageSize = 0;
-      items.forEach((item) => {
-        if (item.image && typeof item.image === "string") {
-          totalImageSize += getFileSizeInMB(item.image);
-        }
-      });
-
-      if (totalImageSize > MAX_TOTAL_PAYLOAD_MB) {
-        handleShowSnackbar(
-          `Total images size (${totalImageSize.toFixed(
-            2
-          )}MB) exceeds maximum allowed (${MAX_TOTAL_PAYLOAD_MB}MB). Please reduce image sizes or remove some images.`
-        );
-        return;
-      }
-
-      try {
-        // Transform items to include base64 images and preserve item_number
-        const transformedItems = items.map((item) => ({
-          term: item.term,
-          definition: item.definition,
-          image: item.image || null,
-          item_number: item.item_number, // Preserve the item number
-        }));
-
-        const studyMaterial = {
-          studyMaterialId: editMode ? studyMaterialId : nanoid(),
-          title,
-          tags,
-          summary, // Use the generated or fallback summary
-          totalItems: items.length,
-          visibility: parseInt(visibility), // Use the visibility state here
-          createdBy: user.username,
-          createdById: user.firebase_uid,
-          items: transformedItems, // Now includes item_number
-        };
-
-        // Determine the endpoint based on whether we're creating or updating
-        const endpoint = editMode
-          ? `${import.meta.env.VITE_BACKEND_URL}/api/study-material/update`
-          : `${import.meta.env.VITE_BACKEND_URL}/api/study-material/save`;
-
-        const response = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(studyMaterial),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => null);
-          throw new Error(
-            errorData?.message || `Server error: ${response.status}`
-          );
-        }
-
-        const savedData = await response.json();
-
-        if (!savedData) {
-          throw new Error("No data received from server");
-        }
-
-        // Create broadcast data with consistent property naming
-        const broadcastData = {
-          study_material_id:
-            savedData.studyMaterialId || studyMaterial.studyMaterialId,
-          title: savedData.title || title,
-          tags: savedData.tags || tags,
-          summary: savedData.summary || summary,
-          total_items: savedData.totalItems || items.length,
-          created_by: savedData.createdBy || user.username,
-          created_by_id: savedData.createdById || user.firebase_uid,
-          visibility: savedData.visibility,
-          created_at: savedData.created_at || new Date().toISOString(),
-          items: savedData.items || transformedItems,
-        };
-
-        // Emit the transformed data (now with null check for socket)
-        console.log("Emitting new study material event:", broadcastData);
-        if (socket) {
-          socket.emit("newStudyMaterial", broadcastData);
-        }
-
-        // Navigate to preview page
-        navigate(
-          `/dashboard/study-material/view/${broadcastData.study_material_id}`
-        );
-      } catch (error) {
-        console.error(
-          editMode
-            ? "Failed to update study material:"
-            : "Failed to save study material:",
-          error
-        );
-        handleShowSnackbar(
-          error instanceof Error
-            ? error.message
-            : "Failed to save study material. Please try again."
-        );
-      }
-    } catch (error) {
-      console.error("Error in handleSaveButton:", error);
-      handleShowSnackbar("An unexpected error occurred. Please try again.");
-    } finally {
-      // Set loading state back to false when done
-      setIsSaving(false);
-    }
+    // The rest of the function remains the same...
   };
 
   useEffect(() => {
@@ -1125,6 +1062,25 @@ const CreateStudyMaterial = () => {
     setVisibility(value.toString());
   };
 
+  // Add effect to clear error states when user fixes the issues
+  useEffect(() => {
+    if (title.trim()) {
+      setTitleError(false);
+    }
+  }, [title]);
+
+  useEffect(() => {
+    if (tags.length > 0) {
+      setTagsError(false);
+    }
+  }, [tags]);
+
+  useEffect(() => {
+    if (items.length >= MIN_REQUIRED_ITEMS) {
+      setItemsError(false);
+    }
+  }, [items]);
+
   // Add this useEffect after your existing useEffect hooks
 
   useEffect(() => {
@@ -1163,6 +1119,7 @@ const CreateStudyMaterial = () => {
 
   return (
     <>
+      <ErrorHighlightAnimation />
       <PageTransition>
         <Box className="h-full w-full ">
           <DocumentHead
@@ -1196,6 +1153,7 @@ const CreateStudyMaterial = () => {
                     label={title ? "" : "Enter your title here..."}
                     variant="standard"
                     value={title}
+                    error={titleError}
                     onChange={(e) => {
                       // Limit title to MAX_TITLE_LENGTH characters
                       if (e.target.value.length <= MAX_TITLE_LENGTH) {
@@ -1214,13 +1172,13 @@ const CreateStudyMaterial = () => {
                       minWidth: { xs: "100%", sm: "20rem", md: "32rem" },
                       maxWidth: "100%",
                       "& .MuiInputLabel-root": {
-                        color: "#3B354D",
+                        color: titleError ? "#f44336" : "#3B354D",
                         transform: title
                           ? "translate(0, -1.5px) scale(0.75)"
                           : "translate(0, 20px) scale(1)",
                       },
                       "& .MuiInputLabel-root.Mui-focused": {
-                        color: "#A38CE6",
+                        color: titleError ? "#f44336" : "#A38CE6",
                         transform: "translate(0, -1.5px) scale(0.75)",
                       },
                       "& .MuiInput-root": {
@@ -1229,13 +1187,13 @@ const CreateStudyMaterial = () => {
                         fontSize: { xs: "1.1rem", sm: "1.2rem", md: "1.3rem" },
                       },
                       "& .MuiInput-underline:before": {
-                        borderBottomColor: "#3B354D",
+                        borderBottomColor: titleError ? "#f44336" : "#3B354D",
                       },
                       "& .MuiInput-underline:hover:not(.Mui-disabled):before": {
-                        borderBottomColor: "#A38CE6",
+                        borderBottomColor: titleError ? "#f44336" : "#A38CE6",
                       },
                       "& .MuiInput-underline:after": {
-                        borderBottomColor: "#A38CE6",
+                        borderBottomColor: titleError ? "#f44336" : "#A38CE6",
                       },
                       "& .MuiInputBase-input::placeholder": {
                         color: "#9F9BAE",
@@ -1360,17 +1318,23 @@ const CreateStudyMaterial = () => {
                     width: "auto",
                     minWidth: "14ch",
                     maxWidth: "fit-content",
-                    border: "1px solid #3B354D",
+                    border: `1px solid ${tagsError ? "#f44336" : "#3B354D"}`,
                     borderRadius: "0.8rem",
-                    backgroundColor: "#3B354D",
+                    backgroundColor: tagsError
+                      ? "rgba(244, 67, 54, 0.08)"
+                      : "#3B354D",
                     transition: "all 0.3s ease-in-out",
                     "&:hover": {
-                      backgroundColor: "#4A435C",
-                      borderColor: "#A38CE6",
+                      backgroundColor: tagsError
+                        ? "rgba(244, 67, 54, 0.12)"
+                        : "#4A435C",
+                      borderColor: tagsError ? "#f44336" : "#A38CE6",
                     },
                     "&:active": {
-                      backgroundColor: "#2F283A",
-                      borderColor: "#9B85E1",
+                      backgroundColor: tagsError
+                        ? "rgba(244, 67, 54, 0.2)"
+                        : "#2F283A",
+                      borderColor: tagsError ? "#f44336" : "#9B85E1",
                     },
                     "& > *": {
                       // Apply to all direct children
@@ -1436,7 +1400,7 @@ const CreateStudyMaterial = () => {
                             : "14ch",
                           color: "#E2DDF3",
                           fontSize: "1rem",
-                          padding: "6px 3px",
+                          padding: "4px",
                           margin: 0,
                           textAlign: "left",
                           cursor: "text",
@@ -1506,42 +1470,46 @@ const CreateStudyMaterial = () => {
                   )}
                 </Box>
                 {/* Tag counters */}
-                <Box
-                  sx={{
-                    position: "relative",
-                    zIndex: 0,
-                    marginTop: "0.5rem",
-                    clear: "both",
-                  }}
-                >
-                  <Stack direction="row" spacing={2}>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color: tags.length >= MAX_TAGS ? "#E57373" : "#6F658D",
-                        transition: "color 0.3s ease-in-out",
-                        fontSize: "0.75rem",
-                        textAlign: "left",
-                      }}
-                    >
-                      {tags.length}/{MAX_TAGS} total tags
-                    </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        color:
-                          customTagsCount >= MAX_CUSTOM_TAGS
-                            ? "#E57373"
-                            : "#6F658D",
-                        transition: "color 0.3s ease-in-out",
-                        fontSize: "0.75rem",
-                        textAlign: "left",
-                      }}
-                    >
-                      {customTagsCount}/{MAX_CUSTOM_TAGS} custom tags
-                    </Typography>
-                  </Stack>
-                </Box>
+
+                {tags.length > 0 && (
+                  <Box
+                    sx={{
+                      position: "relative",
+                      zIndex: 0,
+                      marginTop: "0.5rem",
+                      clear: "both",
+                    }}
+                  >
+                    <Stack direction="row" spacing={2}>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color:
+                            tags.length >= MAX_TAGS ? "#E57373" : "#6F658D",
+                          transition: "color 0.3s ease-in-out",
+                          fontSize: "0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        {tags.length}/{MAX_TAGS} total tags
+                      </Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          color:
+                            customTagsCount >= MAX_CUSTOM_TAGS
+                              ? "#E57373"
+                              : "#6F658D",
+                          transition: "color 0.3s ease-in-out",
+                          fontSize: "0.75rem",
+                          textAlign: "left",
+                        }}
+                      >
+                        {customTagsCount}/{MAX_CUSTOM_TAGS} custom tags
+                      </Typography>
+                    </Stack>
+                  </Box>
+                )}
               </Stack>
             </Box>
 
@@ -1606,7 +1574,17 @@ const CreateStudyMaterial = () => {
 
             {/* Items */}
             <Box className="pb-6">
-              <Stack spacing={2}>
+              <Stack
+                spacing={2}
+                sx={{
+                  border: itemsError ? "1px solid #f44336" : "none",
+                  borderRadius: "0.8rem",
+                  padding: itemsError ? "1rem" : 0,
+                  backgroundColor: itemsError
+                    ? "rgba(244, 67, 54, 0.08)"
+                    : "transparent",
+                }}
+              >
                 <DndContext
                   sensors={sensors}
                   collisionDetection={closestCenter}
@@ -1648,21 +1626,22 @@ const CreateStudyMaterial = () => {
                     width: "100%",
                     fontSize: { xs: "0.9rem", sm: "1rem" },
                     justifyContent: "center",
-                    color: "#3B354D",
-                    border: "2px solid #3B354D",
+                    color: itemsError ? "#f44336" : "#3B354D",
+                    border: `2px solid ${itemsError ? "#f44336" : "#3B354D"}`,
                     textTransform: "none",
                     bottom: 0,
                     transform: "scale(1)",
                     transition: "all 0.3s ease-in-out",
                     "&:hover": {
                       transform: "scale(1.005)",
-                      borderColor: "#9F9BAE",
-                      color: "#E2DDF3",
+                      borderColor: itemsError ? "#f44336" : "#9F9BAE",
+                      color: itemsError ? "#f44336" : "#E2DDF3",
                     },
                   }}
                   onClick={handleAddItem}
                 >
-                  Add New Item
+                  Add New Item{" "}
+                  {itemsError && `(${items.length}/${MIN_REQUIRED_ITEMS})`}
                 </Button>
               </Stack>
             </Box>

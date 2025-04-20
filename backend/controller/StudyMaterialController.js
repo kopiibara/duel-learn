@@ -50,6 +50,11 @@ const studyMaterialController = {
         items,
       } = req.body;
 
+      // Add validation for tags
+      if (!tags || !Array.isArray(tags) || tags.length === 0) {
+        return res.status(400).json({ error: "At least one tag is required." });
+      }
+
       const currentTimestamp = manilacurrentTimestamp;
 
       await connection.beginTransaction();
@@ -136,6 +141,10 @@ const studyMaterialController = {
 
       if (!studyMaterialId || !title || !items || !items.length) {
         return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      if (!tags || !Array.isArray(tags) || tags.length === 0) {
+        return res.status(400).json({ error: "At least one tag is required." });
       }
 
       await connection.beginTransaction();
@@ -683,7 +692,7 @@ const studyMaterialController = {
       i.study_material_id, i.title, i.tags, i.total_items,
         i.created_by, i.total_views, i.created_at
         FROM study_material_info i
-        WHERE i.status = 'active' AND i.visibility = 1
+        WHERE i.status = 'active' AND i.visibility = 1 and i.total_views > 5
         ORDER BY i.total_views DESC
         LIMIT 9; `
       );

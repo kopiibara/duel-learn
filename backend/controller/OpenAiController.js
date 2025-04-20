@@ -318,214 +318,305 @@ const getBalancedTrueFalseAnswer = (currentDistribution, totalQuestions) => {
   return availableOptions[Math.floor(Math.random() * availableOptions.length)];
 };
 
-const generateTrueFalseQuestion = async (term, definition, context) => {
-  const prompt = `
-    Create a true/false question about the following term and its definition:
-    Term: ${term}
-    Definition: ${definition}
-
-    Requirements:
-    1. The question must incorporate both the term AND its definition
-    2. If creating a false statement, modify the relationship between the term and definition
-    3. Make the question challenging but clear
-    4. Ensure the question tests understanding of both the term and its meaning
-    5. Avoid overly simple questions that only test the term without its definition
-
-    Format:
-    Return a JSON object with:
-    {
-      "question": "your question here",
-      "answer": "True" or "False",
-      "explanation": "brief explanation of why the answer is true or false"
-    }
-  `;
-
-  // Your OpenAI API call here
-};
-
-const generateMultipleChoiceQuestion = async (term, definition, context) => {
-  const prompt = `
-    Create a multiple-choice question about the following term and its definition:
-    Term: ${term}
-    Definition: ${definition}
-
-    Requirements:
-    1. The question must test understanding of both the term AND its definition
-    2. Create 4 options where:
-       - One is correct
-       - Three are plausible but incorrect
-       - All options should relate to both the term and definition
-    3. Make distractors that test common misconceptions
-    4. Ensure the question requires understanding both the term and its meaning
-
-    Format:
-    Return a JSON object with:
-    {
-      "question": "your question here",
-      "options": ["option1", "option2", "option3", "option4"],
-      "correctAnswer": "the correct option",
-      "explanation": "brief explanation of why this is the correct answer"
-    }
-  `;
-
-  // Your OpenAI API call here
-};
-
-// Helper function to compare material content and determine if a new summary is needed
-const shouldGenerateNewSummary = async (studyMaterialId, newContent) => {
+// Helper functions for question generation
+const generateTrueFalseQuestionHelper = async (term, definition, context) => {
   try {
-    const { pool } = await import("../config/db.js");
+    const prompt = `
+      Create a true/false question about the following term and its definition:
+      Term: ${term}
+      Definition: ${definition}
 
-    // Get the current material's content and summary
-    const [currentMaterial] = await pool.query(
-      `SELECT title, tags, summary, content_hash 
-       FROM study_material_info 
-       WHERE study_material_id = ?`,
-      [studyMaterialId]
-    );
+      Requirements:
+      1. The question must incorporate both the term AND its definition
+      2. If creating a false statement, modify the relationship between the term and definition
+      3. Make the question challenging but clear
+      4. Ensure the question tests understanding of both the term and its meaning
+      5. Avoid overly simple questions that only test the term without its definition
 
-    if (!currentMaterial || currentMaterial.length === 0) {
-      console.log("No existing material found, generating new summary");
-      return true;
-    }
+      Format:
+      Return a JSON object with:
+      {
+        "question": "your question here",
+        "answer": "True" or "False",
+        "explanation": "brief explanation of why the answer is true or false"
+      }
+    `;
 
-    const existingMaterial = currentMaterial[0];
-
-    // Rule 1: If title or tags have changed, always generate new summary
-    const existingTags = JSON.parse(existingMaterial.tags || "[]").sort();
-    const newTags = newContent.tags.sort();
-    const titleChanged = existingMaterial.title !== newContent.title;
-    const tagsChanged =
-      JSON.stringify(existingTags) !== JSON.stringify(newTags);
-
-    if (titleChanged || tagsChanged) {
-      console.log("Title or tags changed, generating new summary");
-      return true;
-    }
-
-    // Rule 2: For term and definition changes, check if they impact the current summary
-    const [currentContent] = await pool.query(
-      `SELECT term, definition 
-       FROM study_material_content 
-       WHERE study_material_id = ? 
-       ORDER BY term`,
-      [studyMaterialId]
-    );
-
-    // If number of items changed significantly (more than 20%), generate new summary
-    const itemCountChange = Math.abs(
-      currentContent.length - newContent.items.length
-    );
-    const significantItemChange = itemCountChange > currentContent.length * 0.2;
-
-    if (significantItemChange) {
-      console.log(
-        "Significant change in number of items, generating new summary"
-      );
-      return true;
-    }
-
-    // Calculate content hash for the new content
-    const newContentHash = calculateContentHash(newContent.items);
-
-    // If content hash matches, no need for new summary
-    if (existingMaterial.content_hash === newContentHash) {
-      console.log("Content hash matches, reusing existing summary");
-      return false;
-    }
-
-    // If we have an existing summary, check if it still applies to the content changes
-    if (existingMaterial.summary) {
-      const prompt = `
-        Analyze if this summary still accurately represents the updated study material.
-        Only recommend a new summary if the changes significantly alter the core concepts or themes.
-        Minor wording changes or clarifications should not trigger a new summary.
-        
-        Current Summary: "${existingMaterial.summary}"
-        
-        Updated Material:
-        Title: "${newContent.title}"
-        Tags: ${JSON.stringify(newTags)}
-        Items: ${JSON.stringify(
-          newContent.items.map((item) => ({
-            term: item.term,
-            definition: item.definition,
-          }))
-        )}
-        
-        Return a JSON object with:
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
         {
-          "stillApplies": boolean,
-          "reason": "brief explanation"
-        }
-      `;
+          role: "system",
+          content: "You are an AI that generates educational true/false questions. Always return valid JSON."
+        },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 300
+    });
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an expert at analyzing if summaries still accurately represent updated content. Be lenient with minor changes and only recommend new summaries when core concepts or themes are significantly altered.",
-          },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.2,
-      });
+    const response = completion.choices[0].message.content;
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(response);
+    } catch (parseError) {
+      console.error("Failed to parse OpenAI response:", parseError);
+      throw new Error("Invalid response format from OpenAI");
+    }
 
-      const response = JSON.parse(completion.choices[0].message.content);
+    // Validate the response has required fields
+    if (!parsedResponse.question || !parsedResponse.answer) {
+      throw new Error("Missing required fields in OpenAI response");
+    }
 
-      if (response.stillApplies) {
-        console.log("Existing summary still applies:", response.reason);
-        return false;
+    return {
+      success: true,
+      data: {
+        type: "true-false",
+        questionType: "true-false",
+        question: parsedResponse.question,
+        answer: parsedResponse.answer,
+        correctAnswer: parsedResponse.answer,
+        explanation: parsedResponse.explanation || ""
+      }
+    };
+  } catch (error) {
+    console.error("Error generating true/false question:", error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+const generateMultipleChoiceQuestionHelper = async (term, definition, context) => {
+  try {
+    const prompt = `
+      Create a multiple-choice question about the following term and its definition:
+      Term: ${term}
+      Definition: ${definition}
+
+      Requirements:
+      1. The question must test understanding of the definition by asking which term it defines
+      2. The question should be in the format: "Which term is defined as [definition]?"
+      3. Generate EXACTLY 3 plausible but incorrect terms that are similar to "${term}" in length and style
+      4. The term "${term}" MUST be one of the choices and MUST be the correct answer
+      5. The incorrect options should be similar enough to create doubt but clearly wrong
+      6. Do not create new terms that aren't related to the subject matter
+
+      Format:
+      Return a JSON object with:
+      {
+        "question": "Which term is defined as [definition]?",
+        "options": ["${term}", "incorrect1", "incorrect2", "incorrect3"],
+        "correctAnswer": "${term}",
+        "explanation": "brief explanation of why this is the correct answer"
       }
 
-      console.log("Existing summary no longer applies:", response.reason);
-      return true;
+      Note: The options array MUST include "${term}" as one of the choices, and it MUST be the correct answer.
+      The other options should be similar to "${term}" in style and length to make them plausible distractors.
+    `;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are an AI that generates educational multiple-choice questions. Always return valid JSON. Always include the exact term as one of the options and as the correct answer."
+        },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 500
+    });
+
+    const response = completion.choices[0].message.content;
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(response);
+    } catch (parseError) {
+      console.error("Failed to parse OpenAI response:", parseError);
+      throw new Error("Invalid response format from OpenAI");
     }
 
-    // If we get here, content is identical or changes are minor
-    console.log(
-      "Content unchanged or changes are minor, reusing existing summary"
-    );
-    return false;
+    // Validate the response has required fields
+    if (!parsedResponse.question || !parsedResponse.options || !parsedResponse.correctAnswer) {
+      throw new Error("Missing required fields in OpenAI response");
+    }
+
+    // Validate options array
+    if (!Array.isArray(parsedResponse.options) || parsedResponse.options.length !== 4) {
+      throw new Error("Invalid options format in OpenAI response");
+    }
+
+    // Validate that the term is included in the options and is the correct answer
+    if (!parsedResponse.options.includes(term)) {
+      console.log("Term not found in options, fixing the options array");
+      // Replace a random option with the term if it's not included
+      const randomIndex = Math.floor(Math.random() * 4);
+      parsedResponse.options[randomIndex] = term;
+    }
+
+    // Ensure the correct answer is the term
+    parsedResponse.correctAnswer = term;
+
+    // Shuffle the options to randomize the position of the correct answer
+    const shuffledOptions = [...parsedResponse.options];
+    for (let i = shuffledOptions.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffledOptions[i], shuffledOptions[j]] = [shuffledOptions[j], shuffledOptions[i]];
+    }
+
+    return {
+      success: true,
+      data: {
+        type: "multiple-choice",
+        questionType: "multiple-choice",
+        question: parsedResponse.question,
+        options: shuffledOptions,
+        answer: term,
+        correctAnswer: term,
+        explanation: parsedResponse.explanation || ""
+      }
+    };
   } catch (error) {
-    console.error("Error in shouldGenerateNewSummary:", error);
-    // On error, generate new summary to be safe
-    return true;
+    console.error("Error generating multiple-choice question:", error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 };
 
-// Helper function to calculate content hash
-const calculateContentHash = (items) => {
-  // Sort items by term to ensure consistent hashing
-  const sortedItems = [...items].sort((a, b) => a.term.localeCompare(b.term));
+const generateIdentificationQuestionHelper = async (term, definition, context) => {
+  try {
+    const prompt = `
+      Create an identification question about the following term and its definition:
+      Term: ${term}
+      Definition: ${definition}
 
-  // Create a string representation of the content
-  const contentString = sortedItems
-    .map((item) => `${item.term}:${item.definition}`)
-    .join("|");
+      Requirements:
+      1. The question must test understanding of both the term AND its definition
+      2. Make the question clear and specific
+      3. Ensure the answer can be derived from understanding the term and definition
+      4. The answer should be the term itself
 
-  // Simple hash function
-  let hash = 0;
-  for (let i = 0; i < contentString.length; i++) {
-    const char = contentString.charCodeAt(i);
-    hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32bit integer
+      Format:
+      Return a JSON object with:
+      {
+        "question": "your question here",
+        "answer": "${term}",
+        "explanation": "brief explanation of why this is the correct answer"
+      }
+    `;
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-3.5-turbo",
+      messages: [
+        {
+          role: "system",
+          content: "You are an AI that generates educational identification questions. Always return valid JSON."
+        },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 300
+    });
+
+    const response = completion.choices[0].message.content;
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(response);
+    } catch (parseError) {
+      console.error("Failed to parse OpenAI response:", parseError);
+      throw new Error("Invalid response format from OpenAI");
+    }
+
+    // Validate the response has required fields
+    if (!parsedResponse.question || !parsedResponse.answer) {
+      throw new Error("Missing required fields in OpenAI response");
+    }
+
+    return {
+      success: true,
+      data: {
+        type: "identification",
+        questionType: "identification",
+        question: parsedResponse.question,
+        answer: parsedResponse.answer,
+        correctAnswer: parsedResponse.answer,
+        explanation: parsedResponse.explanation || ""
+      }
+    };
+  } catch (error) {
+    console.error("Error generating identification question:", error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
+};
 
-  return hash.toString(16);
+// Route handlers that use the helper functions
+const generateTrueFalse = async (req, res) => {
+  try {
+    const { term, definition } = req.body;
+    const result = await generateTrueFalseQuestionHelper(term, definition, req.body);
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(500).json(result);
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+const generateMultipleChoice = async (req, res) => {
+  try {
+    const { term, definition } = req.body;
+    const result = await generateMultipleChoiceQuestionHelper(term, definition, req.body);
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(500).json(result);
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+};
+
+const generateIdentification = async (req, res) => {
+  try {
+    const { term, definition } = req.body;
+    const result = await generateIdentificationQuestionHelper(term, definition, req.body);
+    if (result.success) {
+      res.json(result);
+    } else {
+      res.status(500).json(result);
+    }
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
 };
 
 export const OpenAiController = {
   generateSummary: async (req, res) => {
     try {
-      const { tags, items, studyMaterialId } = req.body;
+      const { tags, items } = req.body;
 
       console.log("Received summary generation request with data:", {
         tagCount: tags?.length || 0,
         itemCount: items?.length || 0,
-        studyMaterialId,
       });
 
       if (!items || !Array.isArray(items) || items.length === 0) {
@@ -536,68 +627,18 @@ export const OpenAiController = {
         });
       }
 
-      // Check if we need to generate a new summary
-      const needsNewSummary = await shouldGenerateNewSummary(studyMaterialId, {
-        title: req.body.title || "",
-        tags: tags || [],
-        items: items,
-      });
-
-      if (!needsNewSummary) {
-        // Get the existing summary
-        const { pool } = await import("../config/db.js");
-        const [currentMaterial] = await pool.query(
-          `SELECT summary FROM study_material_info WHERE study_material_id = ?`,
-          [studyMaterialId]
-        );
-
-        if (
-          currentMaterial &&
-          currentMaterial.length > 0 &&
-          currentMaterial[0].summary
-        ) {
-          console.log("Reusing existing summary");
-          return res.json({ summary: currentMaterial[0].summary });
-        }
-      }
-
-      const prompt = `Generate a concise overview-style summary (maximum 500 characters) for the following study material. Focus on describing the content that is actually present in the material:
-
-      Tags: ${tags ? tags.join(", ") : "No tags"}  
-      Items: ${items
-        .map((item) => `${item.term}: ${item.definition}`)
-        .join("\n")}  
-
-      Rules:
-      1. CRITICAL: Keep the entire summary not more than 500 characters (including spaces and line breaks)
-      2. Write in a clear, concise style that maximizes information in limited space
-      3. Create a focused overview that:
-        - Introduces the core subject matter
-        - Highlights 2-3 key themes or concepts
-        - Gives a quick preview of what to expect based on the terms and definitions provided
-        - Don't include terminologies or sentences that are not explicitly defined in the material
-        - No need to include application if not necessary
-        - Focus on what the material includes, not what it can teach you because it will be too out of scope
-      4. Format efficiently:
-        - Use 1-2 short paragraphs maximum
-        - Double line breaks ("\\n\\n") between paragraphs
-        - Keep sentences brief but informative
-      5. Prioritize content:
-        - Focus on the most important themes
-        - Mention only the most representative terms
-        - Skip minor details
-      6. Make every character count while maintaining readability
-      7. Avoid making assumptions about what the material can teach you
-      8. Avoid overgeneralizing the material, and strictly use the definitions and terms provided
-      9. Use a "In this material, ..." kind of sentence to start the summary
-
-      Example for reference:
-      
-      Java is a programming language that is used to create applications for the web.
-      
-      Then, summary should not include terms that are out of the scope of the material. Like, "Users will learn how to code in Java" or "Users will learn how to create applications for the web".
-
-      IMPORTANT: The 500-character limit is strict - responses exceeding this will be truncated.`;
+      const prompt = `Generate an overview that will cater the topic of the following details of the study material:  
+            Tags: ${tags ? tags.join(", ") : "No tags"}  
+            Items: ${items
+          .map((item) => `${item.term}: ${item.definition}`)
+          .join("\n")}  
+            
+            Make it so that it will gather the attention of the user that will read this overview and will make them interested to read the full study material.
+            
+            Rules:  
+            1. Make it concise, clear, and professional.  
+            2. Highlight the main idea in a cool way.  
+            3. Use simple and engaging language`;
 
       console.log("Calling OpenAI API...");
 
@@ -612,22 +653,11 @@ export const OpenAiController = {
             },
             { role: "user", content: prompt },
           ],
-          max_tokens: 100, // Increased from 50 to 200 to allow for longer summaries
+          max_tokens: 50, // Limit response length
         });
 
         const summary = completion.choices[0].message.content.trim();
         console.log("Generated summary:", summary);
-
-        // Update the material with the new summary
-        if (studyMaterialId) {
-          const { pool } = await import("../config/db.js");
-          await pool.query(
-            `UPDATE study_material_info 
-             SET summary = ? 
-             WHERE study_material_id = ?`,
-            [summary, studyMaterialId]
-          );
-        }
 
         res.json({ summary });
       } catch (openaiError) {
@@ -659,556 +689,9 @@ export const OpenAiController = {
     }
   },
 
-  generateIdentification: async (req, res) => {
-    try {
-      console.log(
-        "Received identification question request with body:",
-        req.body
-      );
-      const {
-        term,
-        definition,
-        numberOfItems = 1,
-        studyMaterialId,
-        itemId: requestedItemId,
-        itemNumber,
-        gameMode = "peaceful",
-      } = req.body;
-
-      // Log detailed information about the received IDs
-      console.log("Identification question item details:", {
-        studyMaterialId,
-        requestedItemId,
-        itemNumber,
-        term,
-        gameMode,
-      });
-
-      // Try to get the actual itemId from the database
-      let actualItemId = requestedItemId;
-      let actualItemNumber = itemNumber;
-
-      // Only try to look up the ID if it seems to be a number (not a UUID)
-      if (
-        !requestedItemId ||
-        !isNaN(requestedItemId) ||
-        parseInt(requestedItemId) == requestedItemId
-      ) {
-        console.log("Looking up actual item ID from database...");
-        const itemResult = await getItemIdFromStudyMaterial(
-          studyMaterialId,
-          term,
-          itemNumber
-        );
-        if (itemResult) {
-          actualItemId = itemResult.itemId;
-          actualItemNumber = itemResult.itemNumber;
-          console.log(
-            `Using actual item ID: ${actualItemId} (from database lookup)`
-          );
-        } else {
-          console.log(
-            `Using requested item ID: ${requestedItemId} (database lookup failed)`
-          );
-        }
-      } else {
-        console.log(
-          `Using requested item ID: ${requestedItemId} (appears to be a valid UUID)`
-        );
-      }
-
-      const cleanedTerm = term.replace(/^[A-D]\.\s+/, "").trim();
-
-      // Create the question object
-      const question = {
-        type: "identification",
-        questionType: "identification",
-        question: definition,
-        correctAnswer: cleanedTerm,
-        answer: cleanedTerm,
-        itemInfo: {
-          term: cleanedTerm,
-          definition: definition,
-          itemId: actualItemId,
-          itemNumber: actualItemNumber,
-        },
-      };
-
-      console.log("Generated identification question:", question);
-
-      // Store the question directly with REPLACE INTO
-      try {
-        const { pool } = await import("../config/db.js");
-
-        // Use REPLACE INTO to overwrite any existing question with the same key
-        const replaceQuery = `
-          REPLACE INTO generated_material 
-          (study_material_id, item_id, item_number, term, definition, 
-           question_type, question, answer, choices, game_mode) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-
-        const values = [
-          studyMaterialId,
-          actualItemId, // Use the actual itemId from database lookup
-          actualItemNumber,
-          cleanedTerm,
-          definition,
-          "identification",
-          question.question,
-          cleanedTerm, // answer
-          null, // choices
-          gameMode,
-        ];
-
-        console.log("Replacing identification question with values:", values);
-
-        const [result] = await pool.query(replaceQuery, values);
-        console.log(`✅ Question stored successfully, ID: ${result.insertId}`);
-      } catch (storageError) {
-        console.error("Error storing identification question:", storageError);
-      }
-
-      res.json([question]);
-    } catch (error) {
-      console.error("Error in generate-identification route:", error);
-      res.status(500).json({
-        error: "Failed to generate identification question",
-        details: error.message,
-      });
-    }
-  },
-
-  generateTrueFalse: async (req, res) => {
-    try {
-      console.log("Received true-false question request with body:", req.body);
-      const {
-        term,
-        definition,
-        numberOfItems = 1,
-        studyMaterialId,
-        itemId: requestedItemId,
-        itemNumber,
-        gameMode = "peaceful",
-      } = req.body;
-
-      // Log detailed information about the received IDs
-      console.log("True-false question item details:", {
-        studyMaterialId,
-        requestedItemId,
-        itemNumber,
-        term,
-        gameMode,
-      });
-
-      // Try to get the actual itemId from the database
-      let actualItemId = requestedItemId;
-      let actualItemNumber = itemNumber;
-
-      // Only try to look up the ID if it seems to be a number (not a UUID)
-      if (
-        !requestedItemId ||
-        !isNaN(requestedItemId) ||
-        parseInt(requestedItemId) == requestedItemId
-      ) {
-        console.log("Looking up actual item ID from database...");
-        const itemResult = await getItemIdFromStudyMaterial(
-          studyMaterialId,
-          term,
-          itemNumber
-        );
-        if (itemResult) {
-          actualItemId = itemResult.itemId;
-          actualItemNumber = itemResult.itemNumber;
-          console.log(
-            `Using actual item ID: ${actualItemId} (from database lookup)`
-          );
-        } else {
-          console.log(
-            `Using requested item ID: ${requestedItemId} (database lookup failed)`
-          );
-        }
-      } else {
-        console.log(
-          `Using requested item ID: ${requestedItemId} (appears to be a valid UUID)`
-        );
-      }
-
-      // Clean the term
-      const cleanedTerm = term.replace(/^[A-D]\.\s+/, "").trim();
-
-      // Get balanced true/false answer
-      const correctAnswer = getBalancedTrueFalseAnswer(
-        trueFalseDistribution,
-        10
-      );
-
-      // Update distribution
-      trueFalseDistribution[correctAnswer]++;
-
-      const prompt = `
-        Create a true/false question about the following term and its definition:
-        Term: ${cleanedTerm}
-        Definition: ${definition}
-
-        Requirements:
-        1. The question must incorporate both the term AND its definition
-        2. CRITICAL: The statement must be genuinely "${correctAnswer}" based on the relationship between the term and its definition
-        3. If creating a false statement, modify the relationship between the term and definition in a meaningful way
-        4. Make the question challenging but clear
-        5. Ensure the question tests understanding of both the term and its meaning
-        6. Avoid overly simple questions that only test the term without its definition
-        7. If possible, avoid phrasing where the term is directly followed by "is defined as" or similar obvious constructions
-        8. Create a statement that requires understanding of the concept, not just memorization
-        9. IMPORTANT: Double-check that your statement is actually "${correctAnswer}" as requested - this is non-negotiable
-
-        Format:
-        Return a JSON object with:
-        {
-          "question": "your question here",
-          "answer": "${correctAnswer}",
-          "explanation": "brief explanation of why the answer is true or false"
-        }
-      `;
-
-      const completion = await openai.chat.completions.create({
-        model: "gpt-3.5-turbo",
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are an expert at creating engaging true/false questions that test understanding rather than just memorization. Your statements are clear, unambiguous, and require careful thought to answer correctly. CRITICAL RULE: You MUST ensure the statement you create is genuinely TRUE or FALSE as requested in the prompt - this is non-negotiable and the most important rule.",
-          },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.7,
-      });
-
-      const text = completion.choices[0].message.content;
-      console.log("AI response for true/false received");
-
-      // Parse and validate the response
-      const cleanedText = text.replace(/```json|```/g, "").trim();
-      let question = JSON.parse(cleanedText);
-
-      // Validate the response has the correct answer format
-      if (question.answer !== correctAnswer) {
-        console.error(
-          `CRITICAL: AI generated wrong answer format "${question.answer}" instead of "${correctAnswer}". Forcing correct answer.`
-        );
-        question.answer = correctAnswer;
-      }
-
-      // Format for response
-      const formattedQuestion = {
-        type: "true-false",
-        questionType: "true-false",
-        question: question.question,
-        correctAnswer: question.answer,
-        answer: question.answer,
-        itemInfo: {
-          term: cleanedTerm,
-          definition: definition,
-          itemId: actualItemId,
-          itemNumber: actualItemNumber,
-        },
-      };
-
-      console.log("Generated true/false question:", formattedQuestion);
-      console.log("Current true/false distribution:", trueFalseDistribution);
-
-      // Store the true-false question directly with REPLACE INTO
-      try {
-        const { pool } = await import("../config/db.js");
-
-        // Use REPLACE INTO to overwrite any existing question with the same key
-        const replaceQuery = `
-          REPLACE INTO generated_material 
-          (study_material_id, item_id, item_number, term, definition, 
-           question_type, question, answer, choices, game_mode) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-
-        const values = [
-          studyMaterialId,
-          actualItemId,
-          actualItemNumber,
-          cleanedTerm,
-          definition,
-          "true-false",
-          formattedQuestion.question,
-          formattedQuestion.answer, // answer
-          null, // choices
-          gameMode,
-        ];
-
-        console.log("Replacing true-false question with values:", values);
-
-        const [result] = await pool.query(replaceQuery, values);
-        console.log(
-          `✅ True-false question stored successfully, ID: ${result.insertId}`
-        );
-      } catch (storageError) {
-        console.error("Error storing true-false question:", storageError);
-      }
-
-      res.json([formattedQuestion]);
-    } catch (error) {
-      console.error("Error in generate-true-false route:", error);
-      res.status(500).json({
-        error: "Failed to generate true/false question",
-        details: error.message,
-      });
-    }
-  },
-
-  generateMultipleChoice: async (req, res) => {
-    try {
-      console.log(
-        "Received multiple-choice question request with body:",
-        req.body
-      );
-      const {
-        term,
-        definition,
-        numberOfItems = 1,
-        studyMaterialId,
-        itemId: requestedItemId,
-        itemNumber,
-        gameMode = "peaceful",
-      } = req.body;
-
-      // Log detailed information about the received IDs
-      console.log("Multiple-choice question item details:", {
-        studyMaterialId,
-        requestedItemId,
-        itemNumber,
-        term,
-        gameMode,
-      });
-
-      // Try to get the actual itemId from the database
-      let actualItemId = requestedItemId;
-      let actualItemNumber = itemNumber;
-
-      // Only try to look up the ID if it seems to be a number (not a UUID)
-      if (
-        !requestedItemId ||
-        !isNaN(requestedItemId) ||
-        parseInt(requestedItemId) == requestedItemId
-      ) {
-        console.log("Looking up actual item ID from database...");
-        const itemResult = await getItemIdFromStudyMaterial(
-          studyMaterialId,
-          term,
-          itemNumber
-        );
-        if (itemResult) {
-          actualItemId = itemResult.itemId;
-          actualItemNumber = itemResult.itemNumber;
-          console.log(
-            `Using actual item ID: ${actualItemId} (from database lookup)`
-          );
-        } else {
-          console.log(
-            `Using requested item ID: ${requestedItemId} (database lookup failed)`
-          );
-        }
-      } else {
-        console.log(
-          `Using requested item ID: ${requestedItemId} (appears to be a valid UUID)`
-        );
-      }
-
-      // Clean the term
-      const cleanedTerm = term.replace(/^[A-D]\.\s+/, "").trim();
-
-      // Get balanced position for the correct answer
-      const correctPosition = getBalancedAnswerPosition(answerDistribution, 10);
-
-      // Update the distribution
-      answerDistribution[correctPosition]++;
-
-      const prompt = `Generate a multiple-choice question based on this term and definition:
-Term: "${cleanedTerm}"
-Definition: "${definition}"
-
-STRICT RULES FOR QUESTION GENERATION:
-1. Generate 3 plausible but incorrect options that are similar to "${cleanedTerm}"
-2. CRITICAL: The term "${cleanedTerm}" MUST be one of the options (non-negotiable)
-3. Options must be complete words or phrases, NEVER single letters
-4. Each option should be similar in nature to "${cleanedTerm}"
-5. CRITICAL: All options MUST be of similar length and style to "${cleanedTerm}"
-6. IMPORTANT: The incorrect options should be terms that someone might confuse with "${cleanedTerm}", NOT terms related to the definition
-7. The options should be in the same category or domain as "${cleanedTerm}"
-8. DO NOT include phrases like "similar to..." in the options
-9. Create an engaging question that tests understanding of the concept
-10. DO NOT use the format "Which term is defined as..." or directly mention the term in the question
-11. CRITICAL: Keep questions short and concise - maximum 15 words
-12. CRITICAL: NEVER include the term "${cleanedTerm}" in the question itself
-13. The question should test the concept but NEVER give away the answer
-14. NO paragraphs or lengthy explanations in questions
-15. FAILSAFE REQUIREMENT: Double-check that the term "${cleanedTerm}" appears exactly once in your options
-
-Format the response exactly as:
-{
-  "question": "(your engaging question here)",
-  "options": {
-    "A": "(first option)",
-    "B": "(second option)",
-    "C": "(third option)",
-    "D": "(fourth option)"
-  },
-  "answer": "${correctPosition}. ${cleanedTerm}"
-}`;
-
-      try {
-        const completion = await openai.chat.completions.create({
-          model: "gpt-3.5-turbo",
-          messages: [
-            {
-              role: "system",
-              content:
-                "You are an expert at creating multiple-choice questions where all options are similar terms that could be easily confused with each other. Focus on generating options that are of similar length, style, and from the same domain as the correct answer. CRITICAL RULE: You MUST include the exact correct term as one of the options - this is non-negotiable and the most important rule. Double-check your output to ensure this requirement is met.",
-            },
-            { role: "user", content: prompt },
-          ],
-          temperature: 0.7,
-        });
-
-        // Parse the response
-        const responseText = completion.choices[0].message.content;
-        console.log("Raw OpenAI response:", responseText);
-
-        try {
-          const parsedResponse = JSON.parse(responseText);
-
-          // Extract the correct answer from the format: "A. term"
-          let correctAnswer = cleanedTerm; // default fallback
-
-          if (parsedResponse.answer) {
-            // The answer should be in format: "A. term" where A is the letter and term is the answer
-            const answerParts = parsedResponse.answer.split(". ");
-            if (answerParts.length > 1) {
-              correctAnswer = answerParts.slice(1).join(". ").trim();
-            }
-            console.log(
-              `Extracted correct answer: "${correctAnswer}" from "${parsedResponse.answer}"`
-            );
-          } else {
-            console.warn(
-              "No answer found in parsed response, using the cleaned term as fallback"
-            );
-          }
-
-          // CRITICAL: Verify that the correct answer is actually present in one of the options
-          const optionsValues = Object.values(parsedResponse.options).map(
-            (opt) => (typeof opt === "string" ? opt.toLowerCase().trim() : "")
-          );
-          const normalizedCorrectAnswer = correctAnswer.toLowerCase().trim();
-
-          if (!optionsValues.some((opt) => opt === normalizedCorrectAnswer)) {
-            console.error(
-              "CRITICAL: Correct answer not found in options. Enforcing correct answer placement."
-            );
-
-            // Force the correct answer to be placed in one of the options (option A as fallback)
-            const position = correctPosition || "A";
-            parsedResponse.options[position] = correctAnswer;
-
-            console.log(
-              "Modified options to ensure correct answer is present:",
-              parsedResponse.options
-            );
-          }
-
-          // Format the final response
-          const formattedQuestion = {
-            type: "multiple-choice",
-            questionType: "multiple-choice",
-            question: parsedResponse.question,
-            correctAnswer: correctAnswer,
-            answer: correctAnswer,
-            options: parsedResponse.options,
-            itemInfo: {
-              term: cleanedTerm,
-              definition: definition,
-              itemId: actualItemId,
-              itemNumber: actualItemNumber,
-            },
-          };
-
-          console.log("Formatted question:", formattedQuestion);
-          console.log("Current answer distribution:", answerDistribution);
-
-          // Store the multiple-choice question directly with REPLACE INTO
-          try {
-            const { pool } = await import("../config/db.js");
-
-            // Convert options to JSON string
-            const choicesJSON = JSON.stringify(formattedQuestion.options);
-
-            // Use REPLACE INTO to overwrite any existing question with the same key
-            const replaceQuery = `
-              REPLACE INTO generated_material 
-              (study_material_id, item_id, item_number, term, definition, 
-               question_type, question, answer, choices, game_mode) 
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            `;
-
-            const values = [
-              studyMaterialId,
-              actualItemId,
-              actualItemNumber,
-              cleanedTerm,
-              definition,
-              "multiple-choice",
-              formattedQuestion.question,
-              correctAnswer, // Now using the extracted correct answer
-              choicesJSON, // choices
-              gameMode,
-            ];
-
-            console.log(
-              "Replacing multiple-choice question with values:",
-              values
-            );
-
-            const [result] = await pool.query(replaceQuery, values);
-            console.log(
-              `✅ Multiple-choice question stored successfully, ID: ${result.insertId}`
-            );
-          } catch (storageError) {
-            console.error(
-              "Error storing multiple-choice question:",
-              storageError
-            );
-          }
-
-          return res.json([formattedQuestion]);
-        } catch (parseError) {
-          console.error("Error parsing OpenAI response:", parseError);
-          console.log("Raw response that failed to parse:", responseText);
-          return res.status(500).json({
-            error: "Failed to parse OpenAI response",
-            details: parseError.message,
-          });
-        }
-      } catch (openaiError) {
-        console.error("OpenAI API error:", openaiError);
-        return res.status(500).json({
-          error: "OpenAI API error",
-          details: openaiError.message,
-        });
-      }
-    } catch (error) {
-      console.error("Error in generateMultipleChoice:", error);
-      return res.status(500).json({
-        error: "Internal server error",
-        details: error.message,
-      });
-    }
-  },
+  generateTrueFalse,
+  generateMultipleChoice,
+  generateIdentification,
 
   // New method for cross-referencing definitions
   crossReferenceDefinition: async (req, res) => {
@@ -1427,28 +910,28 @@ Important:
           providedItems.length > 0
             ? providedItems
             : questions.map((q, index) => {
-                // First try to get item from itemInfo
-                if (q.itemInfo && q.itemInfo.term && q.itemInfo.definition) {
-                  console.log(
-                    `Creating item from question ${index + 1} itemInfo:`,
-                    q.itemInfo
-                  );
-                  return {
-                    id: q.itemInfo.itemId || index + 1,
-                    term: q.itemInfo.term,
-                    definition: q.itemInfo.definition,
-                  };
-                } else {
-                  // Fall back to creating from question fields
-                  const item = {
-                    id: index + 1,
-                    term: q.correctAnswer || q.answer || `Item ${index + 1}`,
-                    definition: q.question || `Definition ${index + 1}`,
-                  };
-                  console.log(`Created dummy item ${index + 1}:`, item);
-                  return item;
-                }
-              });
+              // First try to get item from itemInfo
+              if (q.itemInfo && q.itemInfo.term && q.itemInfo.definition) {
+                console.log(
+                  `Creating item from question ${index + 1} itemInfo:`,
+                  q.itemInfo
+                );
+                return {
+                  id: q.itemInfo.itemId || index + 1,
+                  term: q.itemInfo.term,
+                  definition: q.itemInfo.definition,
+                };
+              } else {
+                // Fall back to creating from question fields
+                const item = {
+                  id: index + 1,
+                  term: q.correctAnswer || q.answer || `Item ${index + 1}`,
+                  definition: q.question || `Definition ${index + 1}`,
+                };
+                console.log(`Created dummy item ${index + 1}:`, item);
+                return item;
+              }
+            });
 
         console.log(`Processed ${processedItems.length} items for storage`);
 
@@ -1560,8 +1043,7 @@ Important:
 
               // Fetch the actual item_id from study_material_content with enhanced debugging
               console.log(
-                `Looking up content for identification question ${
-                  i + 1
+                `Looking up content for identification question ${i + 1
                 } with term "${term}"`
               );
               const contentItem = await getItemIdFromStudyMaterial(
@@ -1594,8 +1076,7 @@ Important:
               }
 
               console.log(
-                `Using item_id ${actualItemId} and item_number ${actualItemNumber} for identification question ${
-                  i + 1
+                `Using item_id ${actualItemId} and item_number ${actualItemNumber} for identification question ${i + 1
                 }`
               );
 
@@ -1618,8 +1099,7 @@ Important:
               ];
 
               console.log(
-                `Executing direct insert for identification question ${
-                  i + 1
+                `Executing direct insert for identification question ${i + 1
                 }...`
               );
               console.log(`Direct insert values:`, directInsertValues);
@@ -1633,14 +1113,12 @@ Important:
 
                 if (directResult.affectedRows > 0) {
                   console.log(
-                    `✅ Successfully inserted identification question ${
-                      i + 1
+                    `✅ Successfully inserted identification question ${i + 1
                     } directly`
                   );
                 } else {
                   console.warn(
-                    `⚠️ Direct insertion affected 0 rows for identification question ${
-                      i + 1
+                    `⚠️ Direct insertion affected 0 rows for identification question ${i + 1
                     }`
                   );
                 }
@@ -1675,8 +1153,7 @@ Important:
                     );
                   } else {
                     console.warn(
-                      `⚠️ Update affected 0 rows for identification question ${
-                        i + 1
+                      `⚠️ Update affected 0 rows for identification question ${i + 1
                       }`
                     );
                   }
@@ -1841,4 +1318,9 @@ Important:
       throw error;
     }
   },
+
+  // Helper functions for direct calls
+  generateTrueFalseQuestion: generateTrueFalseQuestionHelper,
+  generateMultipleChoiceQuestion: generateMultipleChoiceQuestionHelper,
+  generateIdentificationQuestion: generateIdentificationQuestionHelper
 };

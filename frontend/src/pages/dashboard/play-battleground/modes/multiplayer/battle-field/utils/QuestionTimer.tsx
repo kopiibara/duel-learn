@@ -3,11 +3,15 @@
  * @param seconds - Number of seconds to format
  * @returns Formatted time string in MM:SS format
  */
+import { useState, useEffect } from "react";
+
 export const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60)
     .toString()
     .padStart(2, "0");
-  const secs = (seconds % 60).toString().padStart(2, "0");
+  const secs = Math.floor(seconds % 60)
+    .toString()
+    .padStart(2, "0");
   return `${mins}:${secs}`;
 };
 
@@ -16,6 +20,7 @@ interface QuestionTimerProps {
   currentQuestion: number;
   totalQuestions: number;
   difficultyMode?: string | null;
+  randomizationDone?: boolean;
 }
 
 export default function QuestionTimer({
@@ -23,18 +28,48 @@ export default function QuestionTimer({
   currentQuestion,
   totalQuestions,
   difficultyMode,
+  randomizationDone = false,
 }: QuestionTimerProps) {
-  // Format the time as MM:SS
-  const formattedTime = formatTime(timeLeft);
+  const [matchStartTime, setMatchStartTime] = useState<Date | null>(null);
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  const [timerStarted, setTimerStarted] = useState(false);
+
+  // Start the match timer when randomization is done
+  useEffect(() => {
+    if (randomizationDone && !timerStarted) {
+      setMatchStartTime(new Date());
+      setTimerStarted(true);
+    }
+  }, [randomizationDone, timerStarted]);
+
+  // Update the current time every second using real clock time
+  useEffect(() => {
+    if (!timerStarted) return;
+
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [timerStarted]);
+
+  // Calculate elapsed time in seconds
+  const getElapsedSeconds = (): number => {
+    if (!matchStartTime) return 0;
+    return Math.floor((currentTime.getTime() - matchStartTime.getTime()) / 1000);
+  };
+
+  // Format times
+  const formattedTimeLeft = formatTime(timeLeft);
+  const formattedMatchTime = formatTime(getElapsedSeconds());
 
   return (
     <div className="flex flex-col items-center">
       <div
-        className={`text-white text-xl sm:text-2xl font-bold ${
-          timeLeft <= 10 ? "text-red-500" : ""
-        }`}
+        className={`text-white text-xl sm:text-2xl font-bold ${timeLeft <= 10 ? "text-red-500" : ""
+          }`}
       >
-        {formattedTime}
+        {timerStarted ? formattedMatchTime : formattedTimeLeft}
       </div>
 
       <div className="flex flex-col items-center">

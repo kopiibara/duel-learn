@@ -116,7 +116,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           width: "100%",
           justifyContent: "center",
           alignItems: "center",
-          transition: "all 0.3s ease",
+          transition: "all 0.3s ease-in-out",
           ...(variant === "contained" && {
             backgroundColor: "#4D18E8",
             borderWidth: "2px",
@@ -293,7 +293,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         color: "#4D18E8",
                         fontWeight: "bold",
                       },
-                      transition: "all 0.3s ease",
+                      transition: "all 0.3s ease-in-out",
                       justifyContent: collapsed ? "center" : "flex-start",
                       alignItems: "center",
                       padding: collapsed ? "0.75rem" : "0.5rem 1.2rem",

@@ -8,11 +8,12 @@ import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import { Slider } from "@mui/material";
 import { useUser } from "../../../../../contexts/UserContext";
 import DocumentHead from "../../../../../components/DocumentHead";
+import axios from "axios"; // Make sure axios is imported
 
 const SetUpTimeQuestion: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useUser();
+  const { user, updateUser } = useUser();
   const manaPoints = user?.mana || 0; // Default to 0 if undefined
   const { mode, material, selectedTypes } = location.state || {};
   console.log(
@@ -46,19 +47,54 @@ const SetUpTimeQuestion: React.FC = () => {
   };
 
   // Handle Start Learning button click
-  const handleStartLearning = () => {
+  const handleStartLearning = async () => {
     if (manaPoints < manaCost) {
       setOpenManaAlert(true);
     } else {
-      console.log("Starting learning with time limit:", timeLimit, "seconds.");
-      navigate("/dashboard/study/time-pressured-mode", {
-        state: {
-          mode: "Time Pressured",
-          material,
-          selectedTypes,
-          timeLimit: timeLimit,
-        },
-      });
+      try {
+        // Call the API to reduce mana
+        const response = await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/api/mana/reduce`,
+          {
+            firebase_uid: user?.firebase_uid,
+          }
+        );
+
+        if (response.status === 200) {
+          // Properly update user data using the context method
+          updateUser({ mana: response.data.mana });
+
+          console.log(
+            "Starting learning with time limit:",
+            timeLimit,
+            "seconds."
+          );
+          console.log("Mana reduced to:", response.data.mana);
+
+          navigate("/dashboard/study/time-pressured-mode", {
+            state: {
+              mode: "Time Pressured",
+              material,
+              selectedTypes,
+              timeLimit: timeLimit,
+            },
+          });
+
+          // Trigger mana replenishment in the background
+          // This isn't strictly necessary as getUserMana will handle this automatically next time
+          // But it ensures the replenishment timer starts right away
+          axios
+            .post(`${import.meta.env.VITE_BACKEND_URL}/api/mana/replenish`, {
+              firebase_uid: user?.firebase_uid,
+            })
+            .catch((error) => {
+              console.error("Error starting mana replenishment:", error);
+            });
+        }
+      } catch (error) {
+        console.error("Error reducing mana:", error);
+        setOpenManaAlert(true);
+      }
     }
   };
 

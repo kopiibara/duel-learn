@@ -46,6 +46,7 @@ export default function Player2ModeSelection() {
   const [hostLeft, setHostLeft] = useState(false);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
   const [isNavigating, setIsNavigating] = useState(false);
+  const [isJoiningBattle, setIsJoiningBattle] = useState(false);
 
   // Add debug info
   const addDebugInfo = (info: string) => {
@@ -58,9 +59,8 @@ export default function Player2ModeSelection() {
   // Add socket event tracking
   const [socketEvents, setSocketEvents] = useState<string[]>([]);
   const trackSocketEvent = (event: string, data?: any) => {
-    const eventInfo = `${event}: ${
-      data ? JSON.stringify(data).substring(0, 100) : "no data"
-    }`;
+    const eventInfo = `${event}: ${data ? JSON.stringify(data).substring(0, 100) : "no data"
+      }`;
     console.log(`[SOCKET EVENT] ${eventInfo}`);
     setSocketEvents((prev) =>
       [...prev, `${new Date().toLocaleTimeString()}: ${eventInfo}`].slice(-5)
@@ -195,8 +195,7 @@ export default function Player2ModeSelection() {
       try {
         // First check if the host has selected a difficulty
         const difficultyResponse = await axios.get(
-          `${
-            import.meta.env.VITE_BACKEND_URL
+          `${import.meta.env.VITE_BACKEND_URL
           }/api/battle/invitations-lobby/difficulty/${lobbyCode}`
         );
 
@@ -204,13 +203,13 @@ export default function Player2ModeSelection() {
           difficultyResponse.data.success &&
           difficultyResponse.data.data.difficulty
         ) {
+          // Show difficulty immediately
           setHostSelectedDifficulty(difficultyResponse.data.data.difficulty);
           setSelectedDifficulty(difficultyResponse.data.data.difficulty);
 
           // Then check if the host has actually created a battle session and entered
           const sessionResponse = await axios.get(
-            `${
-              import.meta.env.VITE_BACKEND_URL
+            `${import.meta.env.VITE_BACKEND_URL
             }/api/gameplay/battle/session-state/${lobbyCode}`
           );
 
@@ -223,12 +222,16 @@ export default function Player2ModeSelection() {
 
             // Set navigating state to prevent multiple attempts
             setIsNavigating(true);
+            // Show joining UI immediately
+            setIsJoiningBattle(true);
+
+            // Clear the interval before doing anything else
+            clearInterval(interval);
 
             try {
               // When host has selected and entered, update battle_sessions to mark guest as ready
               await axios.put(
-                `${
-                  import.meta.env.VITE_BACKEND_URL
+                `${import.meta.env.VITE_BACKEND_URL
                 }/api/gameplay/battle/update-session`,
                 {
                   lobby_code: lobbyCode,
@@ -236,10 +239,7 @@ export default function Player2ModeSelection() {
                 }
               );
 
-              // Clear the interval before navigation
-              clearInterval(interval);
-
-              // Add slight delay before navigation to ensure state updates properly
+              // Add slightly longer delay before navigation to ensure UI shows properly and data is synchronized
               setTimeout(() => {
                 // Navigate to battle
                 navigate(`/dashboard/pvp-battle/${lobbyCode}`, {
@@ -254,10 +254,11 @@ export default function Player2ModeSelection() {
                   },
                   replace: true, // Use replace instead of push to prevent back navigation
                 });
-              }, 300);
+              }, 1500);
             } catch (err) {
               console.error("Error updating session:", err);
               setIsNavigating(false); // Reset if there's an error
+              setIsJoiningBattle(false); // Hide the joining UI
             }
           } else {
             console.log(
@@ -270,11 +271,11 @@ export default function Player2ModeSelection() {
       }
     };
 
-    // Check immediately
+    // Check immediately 
     checkDifficulty();
 
-    // Then check every 1.2 seconds
-    const interval = setInterval(checkDifficulty, 1200);
+    // Then check every 3 seconds (was 3000)
+    const interval = setInterval(checkDifficulty, 3000);
 
     return () => {
       clearInterval(interval);
@@ -483,6 +484,15 @@ export default function Player2ModeSelection() {
         </div>
       )}
 
+      {/* Joining Battle Overlay */}
+      {isJoiningBattle && (
+        <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center">
+          <div className="w-16 h-16 border-t-4 border-purple-600 border-solid rounded-full animate-spin mb-4"></div>
+          <h2 className="text-2xl font-bold text-white mb-2">Joining Battle</h2>
+          <p className="text-gray-300">Connecting with {hostUsername}...</p>
+        </div>
+      )}
+
       <div className="w-full max-w-5xl mt-10 md:mt-20 flex flex-col items-center">
         {/* Header */}
         <div className="text-center mb-8 md:mb-12">
@@ -504,39 +514,33 @@ export default function Player2ModeSelection() {
             <button
               onClick={() => handleManualSelection("Easy Mode")}
               disabled={hostLeft}
-              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-base transition-all ${
-                hostLeft ? "opacity-50 cursor-not-allowed " : "cursor-pointer "
-              }${
-                selectedDifficulty === "Easy Mode"
+              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-base transition-all ${hostLeft ? "opacity-50 cursor-not-allowed " : "cursor-pointer "
+                }${selectedDifficulty === "Easy Mode"
                   ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
                   : "text-gray-400 hover:text-gray-300"
-              }`}
+                }`}
             >
               EASY MODE
             </button>
             <button
               onClick={() => handleManualSelection("Average Mode")}
               disabled={hostLeft}
-              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg transition-all ${
-                hostLeft ? "opacity-50 cursor-not-allowed " : "cursor-pointer "
-              }${
-                selectedDifficulty === "Average Mode"
+              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg transition-all ${hostLeft ? "opacity-50 cursor-not-allowed " : "cursor-pointer "
+                }${selectedDifficulty === "Average Mode"
                   ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
                   : "text-gray-400 hover:text-gray-300"
-              }`}
+                }`}
             >
               AVERAGE MODE
             </button>
             <button
               onClick={() => handleManualSelection("Hard Mode")}
               disabled={hostLeft}
-              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg transition-all ${
-                hostLeft ? "opacity-50 cursor-not-allowed " : "cursor-pointer "
-              }${
-                selectedDifficulty === "Hard Mode"
+              className={`px-4 md:px-8 py-2 md:py-3 text-sm md:text-lg transition-all ${hostLeft ? "opacity-50 cursor-not-allowed " : "cursor-pointer "
+                }${selectedDifficulty === "Hard Mode"
                   ? "text-[#6B21A8] font-bold border-b-2 border-[#6B21A8]"
                   : "text-gray-400 hover:text-gray-300"
-              }`}
+                }`}
             >
               HARD MODE
             </button>

@@ -1,7 +1,7 @@
 // src/components/DrawerRightSideBar.tsx
 
 import React, { useState } from "react";
-import { Drawer, Box, IconButton } from "@mui/material";
+import { Drawer, Box } from "@mui/material";
 import { useLocation } from "react-router";
 import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
@@ -17,7 +17,10 @@ type RoutePath =
   | "/dashboard/explore"
   | "/dashboard/my-library"
   | "/dashboard/profile"
-  | "/dashboard/shop";
+  | "/dashboard/study-material/create"
+  | "/dashboard/shop"
+  | "/dashboard/account-settings"
+  | "/dashboard/search";
 
 interface DrawerProps {
   open: boolean;
@@ -36,7 +39,8 @@ const DrawerRightSideBar: React.FC<DrawerProps> = ({ open, toggleDrawer }) => {
     friendCount >= 1 ? <FriendList /> : <EmptyFriendList />;
 
   // Mapping route paths to content components
-  const contentMap: Record<RoutePath, JSX.Element> = {
+  const contentMap: Partial<Record<RoutePath, JSX.Element>> &
+    Record<string, JSX.Element> = {
     "/dashboard/home": (
       <>
         {friendListContent}
@@ -52,6 +56,13 @@ const DrawerRightSideBar: React.FC<DrawerProps> = ({ open, toggleDrawer }) => {
         {leaderboardContent}
       </>
     ),
+    "/dashboard/study-material/create": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
     "/dashboard/profile": friendListContent,
     "/dashboard/shop": (
       <>
@@ -60,7 +71,27 @@ const DrawerRightSideBar: React.FC<DrawerProps> = ({ open, toggleDrawer }) => {
         {leaderboardContent}
       </>
     ),
+    "/dashboard/search": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
+    // Return empty div for account-settings route
+    "/dashboard/account-settings": <div></div>,
+    "/dashboard/verify-email": <div></div>,
   };
+
+  // Handle dynamic route `/dashboard/study-material/preview/:studyMaterialId`
+  const isPreviewRoute = location.pathname.startsWith(
+    "/dashboard/study-material/preview/"
+  );
+
+  // Check if we should hide the sidebar completely
+  const shouldHideSidebar = location.pathname.includes(
+    "/dashboard/account-settings"
+  );
 
   // Get the content based on the current route
   const content = contentMap[location.pathname as RoutePath] || (
@@ -73,15 +104,18 @@ const DrawerRightSideBar: React.FC<DrawerProps> = ({ open, toggleDrawer }) => {
       open={open}
       onClose={() => toggleDrawer(false)}
       sx={{
-        width: "100%", // Full width
-        height: "200px", // Set the height to 200px
+        width: "auto", // Full width
+        height: "300px", // Set the height to 200px
         transition: "all 0.3s ease-in",
+        overflowX: "hidden",
+        borderRadius: "0.8rem 0.8rem 0 0",
         "& .MuiDrawer-paper": {
-          height: "430px", // Set the drawer height
-          width: "100%", // Full width
-          borderRadius: "16px 16px 0 0", // Optional: rounded top corners for the drawer
+          height: "400px", // Full height
+          width: "auto", // Full width
+          borderRadius: "0.8rem 0.8rem 0 0", // Optional: rounded top corners for the drawer
           backgroundColor: "#120F1B",
           overflowX: "hidden",
+          paddingBottom: "1rem",
         },
       }}
     >
@@ -96,11 +130,9 @@ const DrawerRightSideBar: React.FC<DrawerProps> = ({ open, toggleDrawer }) => {
         </button>
       </div>
 
-      <Box className="p-4 flex justify-center overflow-y-auto mt-2">
+      <Box className=" py-4 flex justify-center  overflow-y-auto overflow-x-hidden ">
         {/* Render the content based on route */}
-        <div className="side-list-navi pr-8 mb-10 p-4 flex-shrink-0">
-          {content}
-        </div>
+        <div className="side-list-navi pb-4 flex-shrink-0">{content}</div>
       </Box>
     </Drawer>
   );

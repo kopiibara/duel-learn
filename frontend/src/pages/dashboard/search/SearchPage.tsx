@@ -244,7 +244,10 @@ const SearchPage = () => {
   };
 
   // Update handleAddFriend to use Snackbar instead of alert
-  const handleAddFriend = async (userId: string) => {
+  const handleAddFriend = async (
+    userId: string,
+    usernameFromSearch?: string
+  ) => {
     if (!user?.firebase_uid) {
       // Use snackbar instead of alert
       setSnackbar({
@@ -255,9 +258,11 @@ const SearchPage = () => {
       return;
     }
 
-    // Verify the selected user has a username
-    if (!selectedUser?.username) {
-      // Use snackbar instead of alert
+    // Get the username either from selectedUser or passed directly from search results
+    const targetUsername = selectedUser?.username || usernameFromSearch;
+
+    // Verify we have a username one way or another
+    if (!targetUsername) {
       setSnackbar({
         open: true,
         message: "Cannot add user: missing username information",
@@ -297,7 +302,7 @@ const SearchPage = () => {
         sender_id: user.firebase_uid,
         receiver_id: userId,
         sender_username: userData.username,
-        receiver_username: selectedUser.username,
+        receiver_username: targetUsername, // Use targetUsername instead of selectedUser.username
       });
 
       // Try direct API call to the friend request endpoint
@@ -307,7 +312,7 @@ const SearchPage = () => {
           sender_id: user.firebase_uid,
           sender_username: userData.username,
           receiver_id: userId,
-          receiver_username: selectedUser.username,
+          receiver_username: targetUsername,
         },
         { headers: { "Content-Type": "application/json" } }
       );
@@ -320,7 +325,7 @@ const SearchPage = () => {
           sender_id: user.firebase_uid,
           sender_username: userData.username,
           receiver_id: userId,
-          receiver_username: selectedUser.username,
+          receiver_username: targetUsername,
         });
       }
 
@@ -763,7 +768,10 @@ const SearchPage = () => {
                           className={`w-full sm:w-auto rounded-[0.8rem] px-4 sm:px-6 py-[0.4rem] text-[0.85rem] hover:scale-105 transition-all duration-300 ease-in-out ${friendButtonClass}`}
                           onClick={(e) => {
                             e.stopPropagation(); // Prevent triggering the parent onClick
-                            handleAddFriend(searchedUser.firebase_uid);
+                            handleAddFriend(
+                              searchedUser.firebase_uid,
+                              searchedUser.username
+                            );
                           }}
                           disabled={friendButtonDisabled}
                         >
