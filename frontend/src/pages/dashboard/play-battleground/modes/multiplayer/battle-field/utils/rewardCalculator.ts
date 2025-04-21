@@ -52,4 +52,25 @@ export const calculateBattleRewards = (
     xp: Math.floor(xpReward),
     coins: Math.floor(coinReward),
   };
+};
+
+/**
+ * Calculates a minimal reward when opponent leaves early
+ * The player who stayed in the battle gets a small victory bonus
+ */
+export const earlyEndRewards = (isPremium: boolean = false) => {
+  // Fixed minimal rewards
+  let xpReward = 20;
+  let coinReward = 1;
+  
+  // Apply premium multiplier if applicable
+  if (isPremium) {
+    xpReward *= 2;
+    coinReward *= 2;
+  }
+  
+  return {
+    xp: xpReward,
+    coins: coinReward,
+  };
 }; 

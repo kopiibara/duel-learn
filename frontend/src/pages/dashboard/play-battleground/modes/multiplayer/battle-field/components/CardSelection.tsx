@@ -27,6 +27,7 @@ export interface CardSelectionProps {
   playerName: string;
   onCardSelected: (cardId: string) => void;
   difficultyMode?: string | null;
+  soundEffectsVolume?: number; // Add sound effect volume prop
 }
 
 /**
@@ -39,6 +40,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   playerName,
   onCardSelected,
   difficultyMode = "average",
+  soundEffectsVolume = 0.7, // Default to 0.7 if not provided
 }) => {
   const [showBackCard, setShowBackCard] = useState(true);
   const [showCardOptions, setShowCardOptions] = useState(false);
@@ -742,6 +744,16 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     }
   }, [isMyTurn, difficultyMode]);
 
+  // Update sound effects when volume changes
+  useEffect(() => {
+    if (flipCardSoundRef.current) {
+      flipCardSoundRef.current.volume = soundEffectsVolume;
+    }
+    if (shuffleCardsSoundRef.current) {
+      shuffleCardsSoundRef.current.volume = soundEffectsVolume;
+    }
+  }, [soundEffectsVolume]);
+
   // Handle turn transitions - this is the key improvement that ensures proper card persistence
   useEffect(() => {
     if (isMyTurn) {
@@ -757,7 +769,6 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       setTimeout(() => {
         // Play flip card sound 1 second before the card flips
         if (flipCardSoundRef.current) {
-          flipCardSoundRef.current.volume = 0.7;
           flipCardSoundRef.current.currentTime = 0;
           flipCardSoundRef.current.play().catch(err =>
             console.error("Error playing flip card sound:", err)
@@ -793,7 +804,6 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
       // Play shuffle cards sound immediately when showing the 3 cards
       if (shuffleCardsSoundRef.current) {
-        shuffleCardsSoundRef.current.volume = 0.7;
         shuffleCardsSoundRef.current.currentTime = 0;
         shuffleCardsSoundRef.current.play().catch(err =>
           console.error("Error playing shuffle cards sound:", err)

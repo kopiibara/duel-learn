@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { io } from "socket.io-client";
-import { socket } from '../../../../../../../socket';
 
 interface BattleHookProps {
   lobbyCode: string;
@@ -31,6 +29,8 @@ interface BattleHookProps {
   setShowVictoryModal: (value: boolean) => void;
   setVictoryMessage: (message: string) => void;
   setRandomizationDone: (value: boolean) => void;
+  setEarlyEnd: (value: boolean) => void;
+  setShowEarlyLeaveModal: (value: boolean) => void;
 }
 
 export function useBattle({
@@ -61,6 +61,8 @@ export function useBattle({
   setShowVictoryModal,
   setVictoryMessage,
   setRandomizationDone,
+  setEarlyEnd,
+  setShowEarlyLeaveModal,
 }: BattleHookProps) {
   // State to track if we're in the process of ending the battle
   const [isEndingBattle, setIsEndingBattle] = useState<boolean>(false);
@@ -68,9 +70,6 @@ export function useBattle({
   // References for polling intervals
   const pollingIntervalRef = useRef<number | null>(null);
   const battleEndingPollingRef = useRef<number | null>(null);
-  const socketRef = useRef<any>(null);
-  const reconnectAttemptsRef = useRef(0);
-  const maxReconnectAttempts = 3;
 
   // =========== BATTLE LEAVER ============
 
@@ -81,12 +80,6 @@ export function useBattle({
   ): Promise<void> => {
     try {
       setIsEndingBattle(true);
-
-      // Emit player exited game with inGame field
-      socket.emit('player_exited_game', {
-        playerId: currentUserId,
-        inGame: false
-      });
 
       if (battleState?.session_uuid) {
         await axios.post(
@@ -368,10 +361,14 @@ export function useBattle({
             endingData.winner_id === currentUserId
           ) {
             console.log(
-              `Opponent left the game. Showing victory modal. Winner ID: ${endingData.winner_id}, Current user ID: ${currentUserId}`
+              `Opponent left the game. Showing early leave modal. Winner ID: ${endingData.winner_id}, Current user ID: ${currentUserId}`
             );
-            setVictoryMessage(`${opponentName} left the game. You won!`);
-            setShowVictoryModal(true);
+
+            // Instead of showing the normal victory modal, show the early leave modal
+            setShowEarlyLeaveModal(true);
+
+            // Set earlyEnd flag for the session report
+            setEarlyEnd(true);
 
             // Clear polling intervals
             if (battleEndingPollingRef.current) {
@@ -406,6 +403,8 @@ export function useBattle({
     opponentName,
     lobbyCode,
     battleState,
+    setEarlyEnd,
+    setShowEarlyLeaveModal,
   ]);
 
   // =========== BATTLE STATE POLL ============
@@ -669,62 +668,6 @@ export function useBattle({
       }
     }
   }, []);
-
-  // Initialize socket connection
-  useEffect(() => {
-    if (!currentUserId || showVictoryModal) return;
-
-    const initializeSocket = () => {
-      socketRef.current = io(import.meta.env.VITE_BACKEND_URL, {
-        transports: ['websocket'],
-        query: {
-          userId: currentUserId,
-          inGame: true,
-          gameType: 'battle',
-          lobbyCode
-        }
-      });
-
-      socketRef.current.on('connect', () => {
-        console.log('Socket connected');
-        reconnectAttemptsRef.current = 0;
-      });
-
-      socketRef.current.on('disconnect', (reason: string) => {
-        console.log('Socket disconnected:', reason);
-
-        // Only attempt to reconnect if we haven't exceeded max attempts
-        if (reconnectAttemptsRef.current < maxReconnectAttempts) {
-          reconnectAttemptsRef.current++;
-          setTimeout(() => {
-            console.log(`Attempting reconnect ${reconnectAttemptsRef.current}/${maxReconnectAttempts}`);
-            socketRef.current.connect();
-          }, 1000);
-        } else {
-          // If we've exceeded max reconnect attempts and the game hasn't ended, handle gracefully
-          if (!showVictoryModal && !isEndingBattle) {
-            console.log('Max reconnection attempts reached, ending battle gracefully');
-            handleLeaveBattle('Connection Lost', currentUserId);
-          }
-        }
-      });
-
-      socketRef.current.on('opponent_left', () => {
-        if (!showVictoryModal && !isEndingBattle) {
-          setVictoryMessage(`${opponentName} left the game. You won!`);
-          setShowVictoryModal(true);
-        }
-      });
-    };
-
-    initializeSocket();
-
-    return () => {
-      if (socketRef.current) {
-        socketRef.current.disconnect();
-      }
-    };
-  }, [currentUserId, showVictoryModal]);
 
   return {
     handleLeaveBattle,

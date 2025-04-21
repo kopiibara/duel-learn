@@ -24,7 +24,7 @@ import CardSelection from "./components/CardSelection";
 // Import consolidated components
 import { useBattle } from "./hooks/useBattle";
 import { WaitingOverlay, LoadingOverlay } from "./overlays/BattleOverlays";
-import { VictoryModal } from "./modals/BattleModals";
+import { VictoryModal, EarlyLeaveModal } from "./modals/BattleModals";
 import CharacterAnimationManager from "./components/CharacterAnimationManager";
 import GameStartAnimation from "./components/GameStartAnimation";
 import GuestWaitingForRandomization from "./components/GuestWaitingForRandomization";
@@ -35,10 +35,13 @@ import PvpSessionReport from "./screens/PvpSessionReport";
 import TurnRandomizer from "./utils/TurnRandomizer";
 import { getCharacterImage } from "./utils/getCharacterImage";
 import QuestionTimer from "./utils/QuestionTimer";
-import { calculateBattleRewards } from "./utils/rewardCalculator";
+import { calculateBattleRewards, earlyEndRewards } from "./utils/rewardCalculator";
 
 // Import shared BattleState interface
 import { BattleState } from "./BattleState";
+
+// Import the sound settings modal
+import SoundSettingsModal from "./components/SoundSettingsModal";
 
 // Types
 interface StudyMaterial {
@@ -231,6 +234,21 @@ export default function PvpBattle() {
   // Add state for background image
   const [currentBackground, setCurrentBackground] = useState(PvpBattleBG);
 
+  // Add state for the sound settings modal
+  const [showSoundSettings, setShowSoundSettings] = useState(false);
+
+  // Add sound volume states near other state definitions
+  const [masterVolume, setMasterVolume] = useState(100);
+  const [musicVolume, setMusicVolume] = useState(100);
+  const [soundEffectsVolume, setSoundEffectsVolume] = useState(100);
+  const [actualSoundEffectsVolume, setActualSoundEffectsVolume] = useState(0.7); // For actual volume level 0-1
+
+  // Add the useState for earlyEnd near the other state declarations
+  const [earlyEnd, setEarlyEnd] = useState<boolean>(false);
+
+  // Add a new state for early leave modal near other modal states
+  const [showEarlyLeaveModal, setShowEarlyLeaveModal] = useState<boolean>(false);
+
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
     lobbyCode,
@@ -239,7 +257,7 @@ export default function PvpBattle() {
     isHost,
     battleState,
     currentUserId,
-    opponentName,
+    opponentName: opponentName,
     gameStarted,
     randomizationDone,
     showVictoryModal,
@@ -260,6 +278,8 @@ export default function PvpBattle() {
     setShowVictoryModal,
     setVictoryMessage,
     setRandomizationDone,
+    setEarlyEnd,
+    setShowEarlyLeaveModal,
   });
 
   // Update the isGuestWaitingForRandomization function to show waiting message for guest
@@ -530,7 +550,8 @@ export default function PvpBattle() {
           // Play attack sound
           if (attackSoundRef.current) {
             attackSoundRef.current.currentTime = 0;
-            attackSoundRef.current.volume = 0.5; // Set volume to 50%
+            // Log current volume for debugging
+            console.log("Playing attack sound with volume:", attackSoundRef.current.volume);
             attackSoundRef.current.play().catch(err => console.error("Error playing sound:", err));
           }
         }, 1000);
@@ -986,7 +1007,7 @@ export default function PvpBattle() {
     const timeDiffMs = endTime.getTime() - startTime.getTime();
     const minutes = Math.floor(timeDiffMs / 60000);
     const seconds = Math.floor((timeDiffMs % 60000) / 1000);
-    const timeSpent = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+    const timeSpent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
     // Determine if player is winner
     const isWinner = playerHealth > 0 && opponentHealth <= 0;
@@ -1087,7 +1108,7 @@ export default function PvpBattle() {
             winner_id: playerHealth > 0 ? hostId : guestId,
             defeated_id: playerHealth > 0 ? guestId : hostId,
             battle_duration: Math.floor(timeDiffMs / 1000),
-            early_end: false,
+            early_end: earlyEnd,
           };
 
           const { data } = await axios.post<SessionReportResponse>(
@@ -1113,7 +1134,7 @@ export default function PvpBattle() {
           incorrectCount: battleStats.incorrectAnswers,
           mode: "pvp",
           material: { study_material_id: studyMaterialId },
-          earlyEnd: false,
+          earlyEnd: earlyEnd,
           startTime: battleStartTime,
           highestStreak: battleStats.highestStreak,
           playerHealth,
@@ -1136,25 +1157,28 @@ export default function PvpBattle() {
     }
   };
 
-  // Handle settings button click
+  // Update the settings button click handler to open the modal
+  const handleSettingsButtonClick = () => {
+    setShowSoundSettings(true);
+  };
+
+  // Handle leave game functionality
   const handleSettingsClick = async () => {
     // Prevent multiple calls
     if (isEndingBattle) return;
 
-    // Show confirmation dialog
-    const confirmLeave = window.confirm(
-      "Are you sure you want to leave the battle? Your progress will be lost, the battle will end, and you may be penalized for leaving early."
-    );
+    // Show confirmation dialog - moved to SoundSettingsModal
 
-    if (confirmLeave) {
-      try {
-        // Call handleLeaveBattle with the current user's ID
-        await handleLeaveBattle("Left The Game", currentUserId);
-      } catch (error) {
-        console.error("Error leaving battle:", error);
-        // Force navigation anyway on error
-        window.location.replace("/dashboard/home");
-      }
+    try {
+      // Set earlyEnd flag to true to indicate this is an early battle end
+      setEarlyEnd(true);
+
+      // Call handleLeaveBattle with the current user's ID
+      await handleLeaveBattle("Left The Game", currentUserId);
+    } catch (error) {
+      console.error("Error leaving battle:", error);
+      // Force navigation anyway on error
+      window.location.replace("/dashboard/home");
     }
   };
 
@@ -1319,7 +1343,9 @@ export default function PvpBattle() {
 
       // Set the correct sound file
       correctAnswerSoundRef.current.src = `/GameBattle/correctSound/correct${randomSoundNumber}.mp3`;
-      correctAnswerSoundRef.current.volume = 0.7; // Set volume to 70%
+
+      // Log current volume for debugging
+      console.log("Playing correct answer sound with volume:", correctAnswerSoundRef.current.volume);
 
       // Play the sound
       correctAnswerSoundRef.current.play().catch(err =>
@@ -1336,7 +1362,9 @@ export default function PvpBattle() {
 
           // Set the correct sound effect file
           correctSfxRef.current.src = `/GameBattle/correctSfx/correctSfx${randomSfxNumber}.mp3`;
-          correctSfxRef.current.volume = 0.7; // Set volume to 70%
+
+          // Log current volume for debugging
+          console.log("Playing correct SFX with volume:", correctSfxRef.current.volume);
 
           // Play the sound effect
           correctSfxRef.current.play().catch(err =>
@@ -1357,7 +1385,9 @@ export default function PvpBattle() {
 
       // Set the incorrect sound file
       incorrectAnswerSoundRef.current.src = `/GameBattle/incorrectSound/incorrect${randomSoundNumber}.mp3`;
-      incorrectAnswerSoundRef.current.volume = 0.7; // Set volume to 70%
+
+      // Log current volume for debugging
+      console.log("Playing incorrect answer sound with volume:", incorrectAnswerSoundRef.current.volume);
 
       // Play the sound
       incorrectAnswerSoundRef.current.play().catch(err =>
@@ -1374,7 +1404,9 @@ export default function PvpBattle() {
 
           // Set the incorrect sound effect file
           incorrectSfxRef.current.src = `/GameBattle/incorrectSfx/incorrectSfx${randomSfxNumber}.mp3`;
-          incorrectSfxRef.current.volume = 0.7; // Set volume to 70%
+
+          // Log current volume for debugging
+          console.log("Playing incorrect SFX with volume:", incorrectSfxRef.current.volume);
 
           // Play the sound effect
           incorrectSfxRef.current.play().catch(err =>
@@ -1385,6 +1417,88 @@ export default function PvpBattle() {
         }
       }, 500); // 0.5 seconds delay
     }
+  };
+
+  // Add a useEffect to calculate actual volume values based on sliders
+  useEffect(() => {
+    // Calculate actual sound effect volume (0-1 scale) based on master and sfx volume percentages
+    const calculatedVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
+    setActualSoundEffectsVolume(calculatedVolume);
+
+    // Log the calculated volume
+    console.log(`Calculated sound effects volume: ${calculatedVolume.toFixed(2)} (from ${soundEffectsVolume}% SFX and ${masterVolume}% master)`);
+  }, [masterVolume, soundEffectsVolume]);
+
+  // Initialize volume states from localStorage
+  useEffect(() => {
+    const loadSavedSettings = () => {
+      try {
+        const savedSettings = localStorage.getItem('duel-learn-audio-settings');
+        if (savedSettings) {
+          const { master, music, effects } = JSON.parse(savedSettings);
+          setMasterVolume(master);
+          setMusicVolume(music);
+          setSoundEffectsVolume(effects);
+          console.log("Loaded saved audio settings on mount:", { master, music, effects });
+        }
+      } catch (error) {
+        console.error("Error loading saved audio settings:", error);
+      }
+    };
+
+    loadSavedSettings();
+  }, []);
+
+  // Add a handler for the early leave modal
+  const handleEarlyLeaveConfirm = () => {
+    setShowEarlyLeaveModal(false);
+    navigate("/dashboard/home");
+  };
+
+  // Add a handler for viewing the early leave session report
+  const handleViewEarlyLeaveReport = async () => {
+    setShowEarlyLeaveModal(false);
+
+    // Calculate time spent
+    const endTime = new Date();
+    let startTime = battleStartTime || new Date(Date.now() - 60000); // Fallback to 1 minute ago
+    const timeDiffMs = endTime.getTime() - startTime.getTime();
+    const timeSpent = formatTime(timeDiffMs);
+
+    // Get rewards from earlyEndRewards function
+    const earlyRewards = earlyEndRewards(false); // TODO: Get premium status
+
+    navigate("/dashboard/pvp-battle/session-report", {
+      state: {
+        timeSpent,
+        correctCount: battleStats.correctAnswers,
+        incorrectCount: battleStats.incorrectAnswers,
+        mode: "pvp",
+        material: { study_material_id: studyMaterialId },
+        earlyEnd: true,
+        startTime: startTime,
+        highestStreak: battleStats.highestStreak,
+        playerHealth: isHost ? playerHealth : opponentHealth,
+        opponentHealth: isHost ? opponentHealth : playerHealth,
+        playerName: playerName,
+        opponentName: opponentName,
+        isWinner: true, // Always a winner in early leave case
+        sessionUuid: battleState?.session_uuid,
+        hostId,
+        guestId,
+        isHost,
+        earnedXP: earlyRewards.xp,
+        earnedCoins: earlyRewards.coins,
+      },
+    });
+  };
+
+  // Add a utility function to format time for session report (milliseconds to mm:ss)
+  const formatTime = (milliseconds: number): string => {
+    const totalSeconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -1502,10 +1616,10 @@ export default function PvpBattle() {
             poisonEffectActive={false}
           />
 
-          {/* Settings button */}
+          {/* Settings button - updated to open modal */}
           <button
-            className="absolute right-2 sm:right-4 top-2 sm:top-4 text-white"
-            onClick={handleSettingsClick}
+            className="absolute right-2 sm:right-4 top-2 sm:top-4 text-white z-50"
+            onClick={handleSettingsButtonClick}
           >
             <Settings size={16} className="sm:w-[20px] sm:h-[20px]" />
           </button>
@@ -1590,6 +1704,7 @@ export default function PvpBattle() {
                 playerName={playerName}
                 onCardSelected={handleCardSelected}
                 difficultyMode={difficultyMode}
+                soundEffectsVolume={actualSoundEffectsVolume}
               />
             </div>
           )}
@@ -1615,6 +1730,17 @@ export default function PvpBattle() {
           sessionUuid={battleState?.session_uuid}
           playerHealth={playerHealth}
           opponentHealth={opponentHealth}
+          earlyEnd={earlyEnd}
+        />
+
+        {/* Early Leave Modal */}
+        <EarlyLeaveModal
+          isOpen={showEarlyLeaveModal}
+          onClose={handleEarlyLeaveConfirm}
+          onViewReport={handleViewEarlyLeaveReport}
+          currentUserId={currentUserId}
+          sessionUuid={battleState?.session_uuid}
+          opponentName={opponentName}
         />
 
         {/* Question Modal */}
@@ -1635,6 +1761,7 @@ export default function PvpBattle() {
             shownQuestionIds={shownQuestionIds}
             playCorrectSound={playRandomCorrectAnswerSound}
             playIncorrectSound={playRandomIncorrectAnswerSound}
+            soundEffectsVolume={actualSoundEffectsVolume}
           />
         )}
 
@@ -1647,6 +1774,25 @@ export default function PvpBattle() {
             <div className="absolute inset-0 bg-green-500/20 animate-pulse"></div>
           </div>
         )}
+
+        {/* Sound Settings Modal */}
+        <SoundSettingsModal
+          isOpen={showSoundSettings}
+          onClose={() => setShowSoundSettings(false)}
+          onLeaveGame={handleSettingsClick}
+          backgroundMusicRef={backgroundMusicRef}
+          attackSoundRef={attackSoundRef}
+          correctAnswerSoundRef={correctAnswerSoundRef}
+          incorrectAnswerSoundRef={incorrectAnswerSoundRef}
+          correctSfxRef={correctSfxRef}
+          incorrectSfxRef={incorrectSfxRef}
+          masterVolume={masterVolume}
+          musicVolume={musicVolume}
+          soundEffectsVolume={soundEffectsVolume}
+          setMasterVolume={setMasterVolume}
+          setMusicVolume={setMusicVolume}
+          setSoundEffectsVolume={setSoundEffectsVolume}
+        />
       </div>
     </div>
   );

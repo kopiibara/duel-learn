@@ -56,6 +56,7 @@ interface QuestionModalProps {
   totalQuestions: number;
   playCorrectSound?: () => void;
   playIncorrectSound?: () => void;
+  soundEffectsVolume?: number;
 }
 
 const QuestionModal: React.FC<QuestionModalProps> = ({
@@ -73,7 +74,8 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   currentQuestionNumber,
   totalQuestions,
   playCorrectSound,
-  playIncorrectSound
+  playIncorrectSound,
+  soundEffectsVolume
 }) => {
   const [hasAnswered, setHasAnswered] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
