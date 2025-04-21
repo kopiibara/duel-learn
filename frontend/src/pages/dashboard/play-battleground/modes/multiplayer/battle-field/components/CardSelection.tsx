@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 
@@ -46,6 +46,10 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   const [animationComplete, setAnimationComplete] = useState(false);
   const [selectionTimer, setSelectionTimer] = useState(8); // 8 second timer
   const [timerActive, setTimerActive] = useState(false);
+
+  // Audio refs for card sounds
+  const flipCardSoundRef = useRef<HTMLAudioElement | null>(null);
+  const shuffleCardsSoundRef = useRef<HTMLAudioElement | null>(null);
 
   // Card state management
   const [currentCards, setCurrentCards] = useState<Card[]>([]);
@@ -751,6 +755,15 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
       // Start the card animation sequence with a delay for smoother transitions
       setTimeout(() => {
+        // Play flip card sound 1 second before the card flips
+        if (flipCardSoundRef.current) {
+          flipCardSoundRef.current.volume = 0.7;
+          flipCardSoundRef.current.currentTime = 0;
+          flipCardSoundRef.current.play().catch(err =>
+            console.error("Error playing flip card sound:", err)
+          );
+        }
+
         const flipTimer = setTimeout(() => {
           setShowBackCard(false);
           setTimeout(() => {
@@ -777,6 +790,15 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       setBackCardExitComplete(true);
       setShowCardOptions(true);
       setTimerActive(true); // Start the selection timer
+
+      // Play shuffle cards sound immediately when showing the 3 cards
+      if (shuffleCardsSoundRef.current) {
+        shuffleCardsSoundRef.current.volume = 0.7;
+        shuffleCardsSoundRef.current.currentTime = 0;
+        shuffleCardsSoundRef.current.play().catch(err =>
+          console.error("Error playing shuffle cards sound:", err)
+        );
+      }
     }, 100); // Small delay to prevent animation conflicts
   };
 
@@ -1006,6 +1028,18 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120">
+      {/* Audio elements for card animations */}
+      <audio
+        ref={flipCardSoundRef}
+        src="/GameBattle/flipcard.mp3"
+        preload="auto"
+      />
+      <audio
+        ref={shuffleCardsSoundRef}
+        src="/GameBattle/shuffle-cards.mp3"
+        preload="auto"
+      />
+
       {/* Enhanced debug panel - shows more detailed probability info */}
       {/* Debug panel commented out for production
       {process.env.NODE_ENV === 'development' && (

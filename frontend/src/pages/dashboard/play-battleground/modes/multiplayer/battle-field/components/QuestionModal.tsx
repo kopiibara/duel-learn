@@ -54,6 +54,8 @@ interface QuestionModalProps {
   shownQuestionIds: Set<string>;
   currentQuestionNumber: number;
   totalQuestions: number;
+  playCorrectSound?: () => void;
+  playIncorrectSound?: () => void;
 }
 
 const QuestionModal: React.FC<QuestionModalProps> = ({
@@ -69,7 +71,9 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   onGameEnd,
   shownQuestionIds,
   currentQuestionNumber,
-  totalQuestions
+  totalQuestions,
+  playCorrectSound,
+  playIncorrectSound
 }) => {
   const [hasAnswered, setHasAnswered] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -195,6 +199,13 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     setHasAnswered(true);
     setSelectedAnswer(answer);
     setIsFlipped(true);
+
+    // Play the appropriate sound effect based on the answer correctness
+    if (isAnswerCorrect && playCorrectSound) {
+      playCorrectSound();
+    } else if (!isAnswerCorrect && playIncorrectSound) {
+      playIncorrectSound();
+    }
 
     // Check if this was the last question
     if (currentQuestionNumber === totalQuestions) {

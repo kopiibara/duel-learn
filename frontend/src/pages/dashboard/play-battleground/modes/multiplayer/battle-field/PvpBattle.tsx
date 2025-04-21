@@ -129,6 +129,14 @@ export default function PvpBattle() {
   const { hostUsername, guestUsername, isHost, lobbyCode, hostId, guestId } =
     location.state || {};
 
+  // Audio refs
+  const backgroundMusicRef = useRef<HTMLAudioElement | null>(null);
+  const attackSoundRef = useRef<HTMLAudioElement | null>(null);
+  const correctAnswerSoundRef = useRef<HTMLAudioElement | null>(null);
+  const correctSfxRef = useRef<HTMLAudioElement | null>(null);
+  const incorrectAnswerSoundRef = useRef<HTMLAudioElement | null>(null);
+  const incorrectSfxRef = useRef<HTMLAudioElement | null>(null);
+
   // Game state
   const [timeLeft, setTimeLeft] = useState(25);
   const [currentQuestionNumber, setCurrentQuestionNumber] = useState(1);
@@ -334,6 +342,107 @@ export default function PvpBattle() {
   const [answerResult, setAnswerResult] = useState<AnswerResult | null>(null);
   const [showAnswerResult, setShowAnswerResult] = useState(false);
 
+  // Add useEffect for background music
+  useEffect(() => {
+    // Function to determine the appropriate music file based on difficulty
+    const getMusicFileByDifficulty = () => {
+      if (!difficultyMode) return "/GameBattle/PVPBATTLEBGMUSICAVERAGE.mp3"; // Default
+
+      if (difficultyMode.toLowerCase().includes("easy")) {
+        return "/GameBattle/PVPBATTLEBGMUSICEASY.mp3";
+      } else if (difficultyMode.toLowerCase().includes("hard")) {
+        return "/GameBattle/PVPBATTLEBGMUSICHARD.mp3";
+      } else {
+        return "/GameBattle/PVPBATTLEBGMUSICAVERAGE.mp3"; // Average/default
+      }
+    };
+
+    // Function to start the background music
+    const startBackgroundMusic = () => {
+      if (backgroundMusicRef.current) {
+        // Set the appropriate music file
+        const musicFile = getMusicFileByDifficulty();
+        console.log(`Starting background music: ${musicFile} for difficulty: ${difficultyMode || 'unknown'}`);
+
+        backgroundMusicRef.current.src = musicFile;
+        backgroundMusicRef.current.volume = 0.22; // Volume at 25%
+        backgroundMusicRef.current.loop = true;
+        backgroundMusicRef.current.play().catch(err =>
+          console.error("Error playing background music:", err)
+        );
+      }
+    };
+
+    // Play background music when component mounts
+    startBackgroundMusic();
+
+    // Add event listener to restart music if it gets stopped
+    const handleMusicEnded = () => {
+      console.log("Background music ended or was paused, restarting...");
+      startBackgroundMusic();
+    };
+
+    // Listen for pause events
+    if (backgroundMusicRef.current) {
+      backgroundMusicRef.current.addEventListener('pause', handleMusicEnded);
+      backgroundMusicRef.current.addEventListener('ended', handleMusicEnded);
+    }
+
+    // Check every few seconds if music is playing and restart if needed
+    const musicCheckInterval = setInterval(() => {
+      if (backgroundMusicRef.current && backgroundMusicRef.current.paused) {
+        console.log("Background music is paused, attempting to restart...");
+        startBackgroundMusic();
+      }
+    }, 3000); // Check every 3 seconds
+
+    // Clean up function to pause music when component unmounts
+    return () => {
+      clearInterval(musicCheckInterval);
+      if (backgroundMusicRef.current) {
+        backgroundMusicRef.current.removeEventListener('pause', handleMusicEnded);
+        backgroundMusicRef.current.removeEventListener('ended', handleMusicEnded);
+        backgroundMusicRef.current.pause();
+        backgroundMusicRef.current.currentTime = 0;
+      }
+    };
+  }, [difficultyMode]);
+
+  // Add a separate effect to change music when difficulty changes after fetching session data
+  useEffect(() => {
+    // Only run this effect if difficultyMode changes and we have an audio reference
+    if (backgroundMusicRef.current && difficultyMode) {
+      console.log(`Difficulty changed to ${difficultyMode}, updating background music`);
+
+      // Function to determine the appropriate music file based on difficulty
+      const getMusicFile = () => {
+        if (difficultyMode.toLowerCase().includes("easy")) {
+          return "/GameBattle/PVPBATTLEBGMUSICEASY.mp3";
+        } else if (difficultyMode.toLowerCase().includes("hard")) {
+          return "/GameBattle/PVPBATTLEBGMUSICHARD.mp3";
+        } else {
+          return "/GameBattle/PVPBATTLEBGMUSICAVERAGE.mp3"; // Average/default
+        }
+      };
+
+      // Only change the music if the source needs to change
+      const newMusicFile = getMusicFile();
+      if (backgroundMusicRef.current.src !== newMusicFile) {
+        // Save current playback position and playing state
+        const wasPlaying = !backgroundMusicRef.current.paused;
+
+        // Update the src and restart playback if it was playing
+        backgroundMusicRef.current.src = newMusicFile;
+
+        if (wasPlaying) {
+          backgroundMusicRef.current.play().catch(err =>
+            console.error("Error playing updated background music:", err)
+          );
+        }
+      }
+    }
+  }, [difficultyMode]);
+
   const handleAnswerSubmit = useCallback(async (answer: string | boolean) => {
     if (!currentQuestion) {
       console.error('No current question');
@@ -375,9 +484,6 @@ export default function PvpBattle() {
       console.error('Error submitting answer:', error);
     }
   }, [battleState?.session_uuid, currentQuestion, isHost]);
-
-  // Add audio ref
-  const attackSoundRef = useRef<HTMLAudioElement | null>(null);
 
   const handleAnswerSubmitRound = async (isCorrect: boolean) => {
     if (!selectedCardId) return;
@@ -1205,6 +1311,82 @@ export default function PvpBattle() {
     };
   }, [gameStarted, waitingForPlayer, currentUserId]);
 
+  // Function to play a random correct answer sound
+  const playRandomCorrectAnswerSound = () => {
+    if (correctAnswerSoundRef.current) {
+      // Generate a random number 1-4
+      const randomSoundNumber = Math.floor(Math.random() * 4) + 1;
+
+      // Set the correct sound file
+      correctAnswerSoundRef.current.src = `/GameBattle/correctSound/correct${randomSoundNumber}.mp3`;
+      correctAnswerSoundRef.current.volume = 0.7; // Set volume to 70%
+
+      // Play the sound
+      correctAnswerSoundRef.current.play().catch(err =>
+        console.error(`Error playing correct answer sound ${randomSoundNumber}:`, err)
+      );
+
+      console.log(`Playing correct answer sound ${randomSoundNumber}`);
+
+      // Play a second random sound effect after 0.5 seconds
+      setTimeout(() => {
+        if (correctSfxRef.current) {
+          // Generate a different random number 1-4
+          const randomSfxNumber = Math.floor(Math.random() * 4) + 1;
+
+          // Set the correct sound effect file
+          correctSfxRef.current.src = `/GameBattle/correctSfx/correctSfx${randomSfxNumber}.mp3`;
+          correctSfxRef.current.volume = 0.7; // Set volume to 70%
+
+          // Play the sound effect
+          correctSfxRef.current.play().catch(err =>
+            console.error(`Error playing correct sfx sound ${randomSfxNumber}:`, err)
+          );
+
+          console.log(`Playing correctsfx${randomSfxNumber}.mp3 after delay`);
+        }
+      }, 500); // 0.5 seconds delay
+    }
+  };
+
+  // Function to play a random incorrect answer sound
+  const playRandomIncorrectAnswerSound = () => {
+    if (incorrectAnswerSoundRef.current) {
+      // Generate a random number 1-4
+      const randomSoundNumber = Math.floor(Math.random() * 4) + 1;
+
+      // Set the incorrect sound file
+      incorrectAnswerSoundRef.current.src = `/GameBattle/incorrectSound/incorrect${randomSoundNumber}.mp3`;
+      incorrectAnswerSoundRef.current.volume = 0.7; // Set volume to 70%
+
+      // Play the sound
+      incorrectAnswerSoundRef.current.play().catch(err =>
+        console.error(`Error playing incorrect answer sound ${randomSoundNumber}:`, err)
+      );
+
+      console.log(`Playing incorrect answer sound ${randomSoundNumber}`);
+
+      // Play a second random sound effect after 0.5 seconds
+      setTimeout(() => {
+        if (incorrectSfxRef.current) {
+          // Generate a different random number 1-4
+          const randomSfxNumber = Math.floor(Math.random() * 4) + 1;
+
+          // Set the incorrect sound effect file
+          incorrectSfxRef.current.src = `/GameBattle/incorrectSfx/incorrectSfx${randomSfxNumber}.mp3`;
+          incorrectSfxRef.current.volume = 0.7; // Set volume to 70%
+
+          // Play the sound effect
+          incorrectSfxRef.current.play().catch(err =>
+            console.error(`Error playing incorrect sfx sound ${randomSfxNumber}:`, err)
+          );
+
+          console.log(`Playing incorrectSfx${randomSfxNumber}.mp3 after delay`);
+        }
+      }, 500); // 0.5 seconds delay
+    }
+  };
+
   return (
     <div
       className="w-full h-screen flex flex-col relative"
@@ -1219,6 +1401,42 @@ export default function PvpBattle() {
       <audio
         ref={attackSoundRef}
         src="/GameBattle/magical-twinkle-242245.mp3"
+        preload="auto"
+      />
+
+      {/* Audio element for background music */}
+      <audio
+        ref={backgroundMusicRef}
+        src="/GameBattle/PVPBATTLEBGMUSICAVERAGE.mp3"
+        preload="auto"
+        id="pvp-background-music"
+      />
+
+      {/* Audio element for correct answer sounds */}
+      <audio
+        ref={correctAnswerSoundRef}
+        src="/GameBattle/correct1.mp3"
+        preload="auto"
+      />
+
+      {/* Audio element for correct sound effects */}
+      <audio
+        ref={correctSfxRef}
+        src="/GameBattle/correctSfx.mp3"
+        preload="auto"
+      />
+
+      {/* Audio element for incorrect answer sounds */}
+      <audio
+        ref={incorrectAnswerSoundRef}
+        src="/GameBattle/incorrectAnswerSound.mp3"
+        preload="auto"
+      />
+
+      {/* Audio element for incorrect sound effects */}
+      <audio
+        ref={incorrectSfxRef}
+        src="/GameBattle/incorrectSfx.mp3"
         preload="auto"
       />
 
@@ -1415,6 +1633,8 @@ export default function PvpBattle() {
             totalQuestions={totalItems}
             onGameEnd={handleGameEnd}
             shownQuestionIds={shownQuestionIds}
+            playCorrectSound={playRandomCorrectAnswerSound}
+            playIncorrectSound={playRandomIncorrectAnswerSound}
           />
         )}
 

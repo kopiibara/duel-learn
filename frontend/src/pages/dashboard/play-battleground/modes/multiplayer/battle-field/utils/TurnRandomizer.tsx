@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { BattleState } from "../BattleState";
 
@@ -54,6 +54,29 @@ export default function TurnRandomizer({
   const [randomizing, setRandomizing] = useState(false);
   // Local state to track current displayed name during randomization
   const [currentDisplayName, setCurrentDisplayName] = useState("");
+  // Add ref for randomizing sound
+  const randomizingSoundRef = useRef<HTMLAudioElement | null>(null);
+
+  // Effect to play/stop the randomizing sound
+  useEffect(() => {
+    if (randomizing && randomizingSoundRef.current) {
+      randomizingSoundRef.current.volume = 0.6;
+      randomizingSoundRef.current.play().catch(err =>
+        console.error("Error playing randomizing sound:", err)
+      );
+    } else if (!randomizing && randomizingSoundRef.current) {
+      randomizingSoundRef.current.pause();
+      randomizingSoundRef.current.currentTime = 0;
+    }
+
+    // Cleanup function
+    return () => {
+      if (randomizingSoundRef.current) {
+        randomizingSoundRef.current.pause();
+        randomizingSoundRef.current.currentTime = 0;
+      }
+    };
+  }, [randomizing]);
 
   // Start guest randomization immediately when component mounts
   useEffect(() => {
@@ -336,6 +359,14 @@ export default function TurnRandomizer({
 
   return (
     <div className="fixed inset-0 bg-black/80 z-40 flex flex-col items-center justify-center">
+      {/* Audio for randomization sound */}
+      <audio
+        ref={randomizingSoundRef}
+        src="/GameBattle/randomizing.mp3"
+        preload="auto"
+        loop
+      />
+
       <div className="text-center">
         <h2 className="text-purple-300 text-4xl font-bold mb-8">
           Ready to Battle!
