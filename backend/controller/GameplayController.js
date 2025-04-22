@@ -968,55 +968,53 @@ export const updateBattleRound = async (req, res) => {
             }
 
             // Check if the card_effect columns exist
-            let updateRoundQuery;
-            let updateRoundParams;
 
+            // Check for necessary columns
             const [columns] = await connection.query(`
                 SHOW COLUMNS FROM battle_rounds 
-                WHERE Field IN ('host_card_effect', 'guest_card_effect')
+                WHERE Field IN ('host_card_effect', 'guest_card_effect', 'question_count_total')
             `);
 
-            if (columns.length >= 2) {
-                // Columns exist, include them in the update
-                updateRoundQuery = `
-                    UPDATE battle_rounds 
-                    SET ${updateField} = ?,
-                        ${answerField} = ?,
-                        ${cardEffectField} = ?
-                    WHERE session_uuid = ?
-                `;
-                updateRoundParams = [
-                    finalCardId,
-                    is_correct,
-                    cardEffect ? JSON.stringify(cardEffect) : null,
-                    session_uuid
-                ];
-            } else {
-                // Add the columns first
+            // Add missing columns if needed
+            const existingFields = columns.map(col => col.Field);
+
+            if (!existingFields.includes('host_card_effect') || !existingFields.includes('guest_card_effect')) {
                 console.log("Adding card effect columns to battle_rounds table");
                 await connection.query(`
                     ALTER TABLE battle_rounds 
-                    ADD COLUMN host_card_effect JSON NULL,
-                    ADD COLUMN guest_card_effect JSON NULL
+                    ADD COLUMN IF NOT EXISTS host_card_effect JSON NULL,
+                    ADD COLUMN IF NOT EXISTS guest_card_effect JSON NULL
                 `);
-
-                // Then perform the update
-                updateRoundQuery = `
-                    UPDATE battle_rounds 
-                    SET ${updateField} = ?,
-                        ${answerField} = ?,
-                        ${cardEffectField} = ?
-                    WHERE session_uuid = ?
-                `;
-                updateRoundParams = [
-                    finalCardId,
-                    is_correct,
-                    cardEffect ? JSON.stringify(cardEffect) : null,
-                    session_uuid
-                ];
             }
 
+            if (!existingFields.includes('question_count_total')) {
+                console.log("Adding question_count_total column to battle_rounds table");
+                await connection.query(`
+                    ALTER TABLE battle_rounds 
+                    ADD COLUMN IF NOT EXISTS question_count_total INT DEFAULT 0
+                `);
+            }
+
+            // Prepare update query
+            const updateRoundQuery = `
+                UPDATE battle_rounds 
+                SET ${updateField} = ?,
+                    ${answerField} = ?,
+                    ${cardEffectField} = ?,
+                    question_count_total = COALESCE(question_count_total, 0) + 1
+                WHERE session_uuid = ?
+            `;
+
+            const updateRoundParams = [
+                finalCardId,
+                is_correct,
+                cardEffect ? JSON.stringify(cardEffect) : null,
+                session_uuid
+            ];
+
+            // Execute update
             await connection.query(updateRoundQuery, updateRoundParams);
+
 
             // Update battle_sessions to store active card effects
             // First check if the active_card_effects column exists
@@ -2482,6 +2480,117 @@ export const claimBattleRewards = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Failed to claim battle rewards",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+/**
+ * Update question IDs done for a battle session
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const updateQuestionIdsDone = async (req, res) => {
+    let connection;
+    try {
+        const { session_uuid, question_ids } = req.body;
+
+        if (!session_uuid || !question_ids) {
+            return res.status(400).json({
+                success: false,
+                message: "Session UUID and question IDs are required"
+            });
+        }
+
+        connection = await pool.getConnection();
+
+        // Check if the round exists
+        const [existingRound] = await connection.execute(
+            'SELECT question_ids_done FROM battle_rounds WHERE session_uuid = ?',
+            [session_uuid]
+        );
+
+        if (existingRound.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle round not found for this session"
+            });
+        }
+
+        // Get the current question IDs array
+        let currentQuestionIds = [];
+        if (existingRound[0].question_ids_done) {
+            try {
+                currentQuestionIds = JSON.parse(existingRound[0].question_ids_done);
+                // Ensure it's an array
+                if (!Array.isArray(currentQuestionIds)) {
+                    currentQuestionIds = [];
+                }
+            } catch (e) {
+                // If parsing fails, start with an empty array
+                console.error('Error parsing existing question_ids_done:', e);
+                currentQuestionIds = [];
+            }
+        }
+
+        // Parse the incoming question IDs
+        let newQuestionIds = [];
+        try {
+            newQuestionIds = typeof question_ids === 'string'
+                ? JSON.parse(question_ids)
+                : question_ids;
+
+            // Ensure it's an array
+            if (!Array.isArray(newQuestionIds)) {
+                newQuestionIds = [newQuestionIds];
+            }
+        } catch (e) {
+            // If it's a single ID that's not JSON
+            newQuestionIds = [question_ids];
+        }
+
+        // Merge the arrays and remove duplicates
+        for (const id of newQuestionIds) {
+            if (!currentQuestionIds.includes(id)) {
+                currentQuestionIds.push(id);
+            }
+        }
+
+        // Convert back to JSON string
+        const questionIdsString = JSON.stringify(currentQuestionIds);
+
+        // Update question_ids_done in the database
+        await connection.execute(
+            'UPDATE battle_rounds SET question_ids_done = ? WHERE session_uuid = ?',
+            [questionIdsString, session_uuid]
+        );
+
+        // Increment question count if needed
+        const increment = req.body.increment_count === true;
+        if (increment) {
+            await connection.execute(
+                'UPDATE battle_rounds SET question_count_total = COALESCE(question_count_total, 0) + 1 WHERE session_uuid = ?',
+                [session_uuid]
+            );
+        }
+
+        return res.json({
+            success: true,
+            message: "Question IDs updated successfully",
+            data: {
+                session_uuid,
+                question_ids: currentQuestionIds,
+                total_count: currentQuestionIds.length
+            }
+        });
+
+    } catch (error) {
+        console.error('Error updating question IDs:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update question IDs",
             error: error.message
         });
     } finally {

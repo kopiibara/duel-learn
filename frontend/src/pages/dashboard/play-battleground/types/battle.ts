@@ -13,6 +13,8 @@ export interface BattleRoundResponse {
       reduction_percent?: number;
       health_amount?: number;
     };
+    question_count_total?: number;
+    question_ids_done?: string | string[] | null;
   };
   message?: string;
 }
@@ -23,6 +25,7 @@ export interface BattleScoresResponse {
     session_uuid: string;
     host_health: number;
     guest_health: number;
+    question_count_total?: number;
   };
   message?: string;
 }

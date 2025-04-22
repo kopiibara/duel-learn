@@ -123,6 +123,20 @@ interface AnswerResult {
   explanation: string;
 }
 
+// Add this interface near the top of the file with other interfaces
+export interface BattleRoundData {
+  question_ids_done?: string | string[] | null;
+  question_count_total?: number;
+  [key: string]: any;
+}
+
+interface UpdateRoundResponse {
+  success: boolean;
+  message: string;
+  data?: any;
+}
+
+
 /**
  * PvpBattle component - Main battle screen for player vs player mode
  */
@@ -131,6 +145,9 @@ export default function PvpBattle() {
   const navigate = useNavigate();
   const { hostUsername, guestUsername, isHost, lobbyCode, hostId, guestId } =
     location.state || {};
+
+  // Add a force update reducer
+  const [, forceUpdate] = useReducer(x => x + 1, 0);
 
   // Audio refs
   const backgroundMusicRef = useRef<HTMLAudioElement | null>(null);
@@ -344,12 +361,19 @@ export default function PvpBattle() {
 
   // Handle game end based on questions
   const handleGameEnd = useCallback(() => {
-    console.log("Game ending due to all questions being shown");
+    console.log("Game ending due to all questions being shown", {
+      playerHealth,
+      opponentHealth,
+      currentQuestionNumber,
+      totalItems
+    });
+
     // Determine winner based on health
     const isPlayerWinner = playerHealth > opponentHealth;
     setVictoryMessage(isPlayerWinner ? "You Won!" : "You Lost!");
     setShowVictoryModal(true);
     setShowCards(false);
+    setGameStarted(false);
 
     // Clear card selection data from sessionStorage
     sessionStorage.removeItem("battle_cards");
@@ -505,8 +529,20 @@ export default function PvpBattle() {
     }
   }, [battleState?.session_uuid, currentQuestion, isHost]);
 
-  const handleAnswerSubmitRound = async (isCorrect: boolean) => {
+  const handleAnswerSubmitRound = async (isCorrect: boolean, questionId: string) => {
     if (!selectedCardId) return;
+
+    console.log('handleAnswerSubmitRound called:', {
+      isCorrect,
+      selectedCardId,
+      questionId,
+      timestamp: new Date().toISOString()
+    });
+
+    // First, update question IDs using the dedicated endpoint if we have a valid question ID
+    if (questionId && battleState?.session_uuid) {
+      await updateQuestionIdsDone(questionId);
+    }
 
     try {
       const playerType = isHost ? "host" : "guest";
@@ -514,7 +550,7 @@ export default function PvpBattle() {
       // Update battle stats first
       setBattleStats((prev) => {
         const newStreak = isCorrect ? prev.currentStreak + 1 : 0;
-        return {
+        const newStats = {
           ...prev,
           correctAnswers: isCorrect
             ? prev.correctAnswers + 1
@@ -526,15 +562,21 @@ export default function PvpBattle() {
           highestStreak: Math.max(prev.highestStreak, newStreak),
           totalQuestions: prev.totalQuestions + 1,
         };
+        // Debug logging for question count update
+        console.log("Updating battle stats:", {
+          oldQuestionCount: prev.totalQuestions,
+          newQuestionCount: newStats.totalQuestions,
+          currentQuestionNumber,
+          totalItems
+        });
+
+        return newStats;
       });
 
       // Show correct answer animation if answer is correct
       if (isCorrect) {
         // Show the character animation first
         setShowCorrectAnswerAnimation(true);
-
-        // Change player animation state to correct_answer
-        setPlayerAnimationState("correct_answer");
 
         // Change background to non-overlayed version
         setCurrentBackground(PvpBattleBG);
@@ -580,9 +622,27 @@ export default function PvpBattle() {
                 card_id: selectedCardId,
                 is_correct: isCorrect,
                 lobby_code: lobbyCode,
-                battle_stats: battleStats, // Send current stats to backend
+                battle_stats: battleStats // Send current stats to backend
+                // No longer include question_ids_done here - using dedicated endpoint
               }
             );
+
+            // Then update the session to switch turns
+            const turnResponse = await axios.put(
+              `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-session`,
+              {
+                lobby_code: lobbyCode,
+                current_turn: isHost ? guestId : hostId, // Switch to the other player
+              }
+            );
+
+            if (turnResponse.data.success) {
+              console.log('Turn successfully switched to opponent');
+            } else {
+              console.error('Failed to switch turn:', turnResponse.data.message);
+            }
+
+
 
             if (response.data.success) {
               console.log(
@@ -715,57 +775,119 @@ export default function PvpBattle() {
           } catch (error) {
             console.error("Error updating battle round:", error);
           }
-        }, 3000); // Changed from 2500 to 3000 (3 seconds total duration)
+        }, 3000); // 3 seconds total duration
       } else {
         // If incorrect, display incorrect answer animation for 1.5 seconds
         setPlayerAnimationState("incorrect_answer");
-
-        // Keep the original background
-        // No need to change background for incorrect answers
 
         // Wait 1.5 seconds before proceeding normally without attack animation
         setTimeout(async () => {
           // Reset player animation state to idle
           setPlayerAnimationState("idle");
 
-          // No need to reset background as it wasn't changed
+          try {
+            // First update the round data
+            const response = await axios.put(
+              `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
+              {
+                session_uuid: battleState?.session_uuid,
+                player_type: playerType,
+                card_id: selectedCardId,
+                is_correct: isCorrect,
+                lobby_code: lobbyCode,
+                battle_stats: battleStats // Send current stats to backend
+                // No longer include question_ids_done here - using dedicated endpoint
+              }
+            );
 
-          const response = await axios.put(
-            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
-            {
-              session_uuid: battleState?.session_uuid,
-              player_type: playerType,
-              card_id: selectedCardId,
-              is_correct: isCorrect,
-              lobby_code: lobbyCode,
-              battle_stats: battleStats, // Send current stats to backend
+            if (response.data.success) {
+              console.log(
+                `Card ${selectedCardId} selection and answer submission successful, turn switched`
+              );
+
+              // Increment turn number when turn changes
+              setCurrentTurnNumber((prev) => prev + 1);
+
+              // Switch turns locally but keep UI visible
+              setIsMyTurn(false);
+
+              // Set enemy animation to picking - they get their turn next
+              setEnemyAnimationState("picking");
+              setEnemyPickingIntroComplete(false);
+
+              // Then update the session to switch turns
+              const turnResponse = await axios.put(
+                `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-session`,
+                {
+                  lobby_code: lobbyCode,
+                  current_turn: isHost ? guestId : hostId, // Switch to the other player
+                }
+              );
+
+              if (turnResponse.data.success) {
+                console.log('Turn successfully switched to opponent');
+              } else {
+                console.error('Failed to switch turn:', turnResponse.data.message);
+              }
+
+            } else {
+              console.error(
+                "Failed to update battle round:",
+                response?.data?.message || "Unknown error"
+              );
             }
-          );
-
-          if (response.data.success) {
-            console.log(
-              `Card ${selectedCardId} selection and answer submission successful, turn switched`
-            );
-
-            // Increment turn number when turn changes
-            setCurrentTurnNumber((prev) => prev + 1);
-
-            // Switch turns locally but keep UI visible
-            setIsMyTurn(false);
-
-            // Set enemy animation to picking - they get their turn next
-            setEnemyAnimationState("picking");
-            setEnemyPickingIntroComplete(false);
-          } else {
-            console.error(
-              "Failed to update battle round:",
-              response?.data?.message || "Unknown error"
-            );
+          } catch (error) {
+            console.error("Error updating battle round:", error);
           }
-        }, 1500); // Changed from 2500 to 1500 (1.5 seconds)
+        }, 1500);
       }
     } catch (error) {
       console.error("Error updating battle round:", error);
+    }
+  };
+
+  const updateQuestionIdsDone = async (questionId: string) => {
+    if (!battleState?.session_uuid) return;
+
+    console.log('Updating question IDs:', {
+      questionId,
+      sessionUuid: battleState.session_uuid,
+      timestamp: new Date().toISOString()
+    });
+
+    try {
+      // Get current question IDs from localStorage
+      const storedIds = localStorage.getItem(`question_ids_${battleState.session_uuid}`);
+      let currentQuestionIds: string[] = storedIds ? JSON.parse(storedIds) : [];
+
+      // Add the new question ID if it's not already in the array
+      if (!currentQuestionIds.includes(questionId)) {
+        currentQuestionIds.push(questionId);
+
+        // Update localStorage
+        localStorage.setItem(`question_ids_${battleState.session_uuid}`, JSON.stringify(currentQuestionIds));
+        console.log('Updated question IDs in localStorage:', currentQuestionIds);
+
+        // Send to the dedicated endpoint
+        const response = await axios.put(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-question-ids`,
+          {
+            session_uuid: battleState.session_uuid,
+            question_ids: currentQuestionIds,
+            increment_count: true
+          }
+        );
+
+        if (response.data.success) {
+          console.log('Successfully updated question IDs in database:', response.data);
+        } else {
+          console.error('Failed to update question IDs:', response.data.message);
+        }
+      } else {
+        console.log('Question ID already exists:', questionId);
+      }
+    } catch (error) {
+      console.error('Error updating question IDs:', error);
     }
   };
 
@@ -795,15 +917,86 @@ export default function PvpBattle() {
       if (!battleState?.session_uuid) return;
 
       try {
-        const { data } = await axios.get<BattleScoresResponse>(
+        // Get battle scores
+        const scoresResponse = await axios.get<BattleScoresResponse>(
           `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${battleState.session_uuid}`
         );
 
-        if (data.success && data.data) {
-          const scores = data.data;
+        // Get round data
+        const roundResponse = await axios.get<BattleRoundResponse>(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${battleState.session_uuid}`
+        );
+
+        // Add debugging for health data
+        console.log("HEALTH DATA:", {
+          battleScores: scoresResponse.data,
+          timestamp: new Date().toISOString()
+        });
+
+        const battleScores = scoresResponse.data;
+        const roundData = roundResponse.data.data;
+
+        // Debug logging for question IDs
+        console.log("Question IDs state:", {
+          localStorage: localStorage.getItem(`question_ids_${battleState.session_uuid}`),
+          roundData: roundData.question_ids_done,
+          timestamp: new Date().toISOString(),
+        });
+
+        // Check and initialize question_ids_done in localStorage if needed
+        const storedIds = localStorage.getItem(`question_ids_${battleState.session_uuid}`);
+        if (!storedIds) {
+          console.log("Initializing question_ids_done array in localStorage");
+          localStorage.setItem(`question_ids_${battleState.session_uuid}`, JSON.stringify([]));
+        }
+
+        // If round data has question IDs but localStorage doesn't, sync them
+        if (roundData.question_ids_done && !storedIds) {
+          try {
+            const parsedIds =
+              typeof roundData.question_ids_done === "string"
+                ? JSON.parse(roundData.question_ids_done)
+                : roundData.question_ids_done;
+            localStorage.setItem(`question_ids_${battleState.session_uuid}`, JSON.stringify(parsedIds));
+            console.log("Synced question IDs from round data to localStorage:", parsedIds);
+          } catch (e) {
+            console.error("Error syncing question IDs from round data:", e);
+          }
+        }
+
+        if (battleScores.success && battleScores.data) {
+          const scores = battleScores.data;
+
+          // Debug logging for question count and IDs
+          console.log("Battle scores and round data update:", {
+            scores_question_count: scores.question_count_total,
+            round_question_count: roundData.question_count_total,
+            question_ids_done: roundData.question_ids_done,
+            current_state: {
+              currentQuestionNumber,
+              totalItems,
+            },
+          });
+
+          // Update question count from round data if available
+          if (roundData.question_count_total !== undefined) {
+            // Use the value from database, treating null as 0
+            setCurrentQuestionNumber(roundData.question_count_total ?? 0);
+          }
+          // Fallback to scores data if round data is not available
+          else if (scores.question_count_total !== undefined) {
+            setCurrentQuestionNumber(scores.question_count_total ?? 0);
+          }
 
           // Set health based on whether player is host or guest
           if (isHost) {
+            // Debug health updates
+            console.log("Setting host health:", {
+              playerHealth: scores.host_health,
+              opponentHealth: scores.guest_health,
+              current: { playerHealth, opponentHealth }
+            });
+
             setPlayerHealth(scores.host_health);
             setOpponentHealth(scores.guest_health);
 
@@ -830,6 +1023,13 @@ export default function PvpBattle() {
               sessionStorage.removeItem("battle_is_first_turn");
             }
           } else {
+            // Debug health updates
+            console.log("Setting guest health:", {
+              playerHealth: scores.guest_health,
+              opponentHealth: scores.host_health,
+              current: { playerHealth, opponentHealth }
+            });
+
             setPlayerHealth(scores.guest_health);
             setOpponentHealth(scores.host_health);
 
@@ -866,14 +1066,17 @@ export default function PvpBattle() {
             opponentHealth: isHost ? scores.guest_health : scores.host_health,
             showingVictoryModal: showVictoryModal
           });
+
+          // Force a re-render after health updates
+          forceUpdate();
         }
       } catch (error) {
         console.error("Error fetching battle scores:", error);
       }
     };
 
-    // Poll for battle scores more frequently
-    const scoresPollInterval = setInterval(checkAndApplyPoisonEffects, 1000);
+    // Poll for battle scores less frequently
+    const scoresPollInterval = setInterval(checkAndApplyPoisonEffects, 2000);
     checkAndApplyPoisonEffects(); // Initial fetch
 
     return () => clearInterval(scoresPollInterval);
@@ -1211,6 +1414,10 @@ export default function PvpBattle() {
               );
 
               if (studyMaterialData.success && studyMaterialData.data.total_items) {
+                console.log('Setting totalItems from study material:', {
+                  total_items: studyMaterialData.data.total_items,
+                  study_material_id: data.data.study_material_id
+                });
                 setTotalItems(studyMaterialData.data.total_items);
               }
             } catch (error) {
@@ -1334,6 +1541,61 @@ export default function PvpBattle() {
       });
     };
   }, [gameStarted, waitingForPlayer, currentUserId]);
+
+  // Monitor question count changes
+  useEffect(() => {
+    console.log('Question count state changed:', {
+      currentQuestionNumber,
+      totalItems,
+      timestamp: new Date().toISOString()
+    });
+  }, [currentQuestionNumber, totalItems]);
+
+  // Monitor battle round data for question count updates
+  useEffect(() => {
+    if (battleState?.session_uuid) {
+      const fetchRoundData = async () => {
+        try {
+          const response = await axios.get<BattleRoundResponse>(
+            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${battleState.session_uuid}`
+          );
+
+          // Handle null case - if question_count_total is null, treat it as 0
+          const questionCountFromDB = response.data.data?.question_count_total ?? 0;
+
+          console.log('Question count update from round data:', {
+            new_count: questionCountFromDB,
+            current_count: currentQuestionNumber,
+            total_questions: totalItems,
+            timestamp: new Date().toISOString()
+          });
+
+          // Check if we've reached or exceeded the total questions
+          if (questionCountFromDB >= totalItems) {
+            console.log('Question limit reached, ending game');
+            // Determine winner based on health
+            const isPlayerWinner = playerHealth > opponentHealth;
+            setVictoryMessage(isPlayerWinner ? "You Won!" : "You Lost!");
+            setShowVictoryModal(true);
+            setShowCards(false);
+            setGameStarted(false);
+            return;
+          }
+
+          // Always update with the database value, which could be 0 if null
+          setCurrentQuestionNumber(questionCountFromDB);
+        } catch (error) {
+          console.error('Error fetching round data:', error);
+        }
+      };
+
+      // Poll for round data every 2 seconds instead of every 1 second
+      const interval = setInterval(fetchRoundData, 2000);
+      fetchRoundData(); // Initial fetch
+
+      return () => clearInterval(interval);
+    }
+  }, [battleState?.session_uuid, totalItems, playerHealth, opponentHealth]);
 
   // Function to play a random correct answer sound
   const playRandomCorrectAnswerSound = () => {
@@ -1605,6 +1867,7 @@ export default function PvpBattle() {
             totalQuestions={totalItems}
             difficultyMode={difficultyMode}
             randomizationDone={randomizationDone}
+            sessionUuid={battleState?.session_uuid}
           />
 
           <PlayerInfo
@@ -1614,6 +1877,7 @@ export default function PvpBattle() {
             isRightAligned
             userId={opponentId}
             poisonEffectActive={false}
+            battleState={battleState}
           />
 
           {/* Settings button - updated to open modal */}
