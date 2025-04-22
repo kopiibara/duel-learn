@@ -175,6 +175,9 @@ const PVPLobby: React.FC = () => {
   const [showBanModal, setShowBanModal] = useState(false);
   const [isBanActive, setIsBanActive] = useState(false);
 
+  // Add this state after other state declarations (around line 130)
+  const [navigatingToSelection, setNavigatingToSelection] = useState(false);
+
   // Set the state variables
   useEffect(() => {
     if (mode) {
@@ -363,7 +366,7 @@ const PVPLobby: React.FC = () => {
   // Update the useEffect for battle started status for guest
   useEffect(() => {
     // Only run this for guests, not for hosts
-    if (!isCurrentUserGuest || !lobbyCode) return;
+    if (!isCurrentUserGuest || !lobbyCode || navigatingToSelection) return;
 
     const checkBattleStarted = async () => {
       try {
@@ -382,6 +385,9 @@ const PVPLobby: React.FC = () => {
             "Battle has started! Navigating to difficulty selection..."
           );
           setBattleStarted(true);
+          
+          // Set navigating flag to prevent further checks
+          setNavigatingToSelection(true);
 
           // Get host and guest IDs
           const hostId = players[0]?.firebase_uid;
@@ -420,8 +426,8 @@ const PVPLobby: React.FC = () => {
     selectedMaterial,
     selectedTypesFinal,
     players,
-    user?.username,
-    user?.firebase_uid,
+    user,
+    navigatingToSelection,
   ]);
 
   // Update the handleBattleStart function
