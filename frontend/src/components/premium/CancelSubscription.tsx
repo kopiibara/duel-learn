@@ -143,9 +143,13 @@ const CancelSubscription = ({ open, onClose }: CancelSubscriptionProps) => {
         <IconButton
           sx={{
             position: "absolute",
-            right: 8,
-            top: 8,
+            right: 16,
+            top: 16,
             color: "#C4BEDB",
+            transition: "all 0.3s ease-in-out",
+            "&:hover": {
+              scale: 1.05,
+            },
           }}
           onClick={handleClose}
         >
@@ -192,12 +196,7 @@ const CancelSubscription = ({ open, onClose }: CancelSubscriptionProps) => {
           ) : (
             // Subscription details and cancel button
             <>
-              <Box
-                component="img"
-                src={PremiumStar}
-                alt="Premium"
-                sx={{ width: 56, height: "auto", mb: 2 }}
-              />
+              <Box sx={{ width: 56, height: "auto", mb: 2 }} />
               <Typography variant="h5" sx={{ fontWeight: "bold", mb: 2 }}>
                 Cancel Subscription
               </Typography>
@@ -243,6 +242,11 @@ const CancelSubscription = ({ open, onClose }: CancelSubscriptionProps) => {
                       py: 1.5,
                       px: 4,
                       borderRadius: 2,
+                      transition: "all 0.3s ease-in-out",
+                      "&:hover": {
+                        bgcolor: "#f44336",
+                        scale: 1.01,
+                      },
                     }}
                   >
                     Cancel Subscription
@@ -293,6 +297,13 @@ const CancelSubscription = ({ open, onClose }: CancelSubscriptionProps) => {
               variant="contained"
               color="error"
               disabled={cancelLoading}
+              sx={{
+                "&:hover": { bgcolor: "#f44336", scale: 1.01 },
+                py: 1,
+                px: 4,
+                borderRadius: ["0.8rem"],
+                transition: "all 0.3s ease-in-out",
+              }}
               startIcon={
                 cancelLoading ? (
                   <CircularProgress size={20} sx={{ color: "white" }} />

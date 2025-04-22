@@ -2,11 +2,16 @@ import { useState, useEffect, useReducer, useCallback, useRef } from "react";
 import { Settings } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { Question } from "../../../types";
-import { BattleRoundResponse, BattleScoresResponse, BattleSessionResponse, BattleStatusResponse } from '../../../types/battle';
-import { socket } from '../../../../../../socket';
+import {
+  BattleRoundResponse,
+  BattleScoresResponse,
+  BattleSessionResponse,
+  BattleStatusResponse,
+} from "../../../types/battle";
+import { socket } from "../../../../../../socket";
 
 // Character animations
 import playerCharacter from "/characterinLobby/playerCharacter.gif"; // Regular idle animation for player
@@ -84,21 +89,24 @@ interface QuestionGenerationState {
 
 // Add reducer action types
 type QuestionGenerationAction =
-  | { type: 'START_GENERATION' }
-  | { type: 'GENERATION_SUCCESS'; questions: Question[] }
-  | { type: 'GENERATION_ERROR'; error: string }
-  | { type: 'RESET' };
+  | { type: "START_GENERATION" }
+  | { type: "GENERATION_SUCCESS"; questions: Question[] }
+  | { type: "GENERATION_ERROR"; error: string }
+  | { type: "RESET" };
 
 // Add reducer function
-function questionGenerationReducer(state: QuestionGenerationState, action: QuestionGenerationAction): QuestionGenerationState {
+function questionGenerationReducer(
+  state: QuestionGenerationState,
+  action: QuestionGenerationAction
+): QuestionGenerationState {
   switch (action.type) {
-    case 'START_GENERATION':
+    case "START_GENERATION":
       return { ...state, isGenerating: true, error: null };
-    case 'GENERATION_SUCCESS':
+    case "GENERATION_SUCCESS":
       return { isGenerating: false, questions: action.questions, error: null };
-    case 'GENERATION_ERROR':
+    case "GENERATION_ERROR":
       return { ...state, isGenerating: false, error: action.error };
-    case 'RESET':
+    case "RESET":
       return { isGenerating: false, questions: [], error: null };
     default:
       return state;
@@ -170,7 +178,10 @@ export default function PvpBattle() {
   // Attack animation states
   const [showAttackAnimation, setShowAttackAnimation] = useState(false);
   const [isAttacker, setIsAttacker] = useState(false);
-  const [lastHealthUpdate, setLastHealthUpdate] = useState({ player: 100, opponent: 100 });
+  const [lastHealthUpdate, setLastHealthUpdate] = useState({
+    player: 100,
+    opponent: 100,
+  });
 
   // Turn randomizer states
   const [showRandomizer, setShowRandomizer] = useState(false);
@@ -207,21 +218,33 @@ export default function PvpBattle() {
   const [sessionReportSaved, setSessionReportSaved] = useState(false);
 
   // Replace individual states with reducer
-  const [questionGenState, dispatchQuestionGen] = useReducer(questionGenerationReducer, {
-    isGenerating: false,
-    questions: [],
-    error: null
-  });
+  const [questionGenState, dispatchQuestionGen] = useReducer(
+    questionGenerationReducer,
+    {
+      isGenerating: false,
+      questions: [],
+      error: null,
+    }
+  );
 
   // Update the shownQuestionIds state to store strings instead of numbers
-  const [shownQuestionIds, setShownQuestionIds] = useState<Set<string>>(new Set());
+  const [shownQuestionIds, setShownQuestionIds] = useState<Set<string>>(
+    new Set()
+  );
   const [totalQuestionsShown, setTotalQuestionsShown] = useState(0);
 
   // Add state for correct answer animation
-  const [showCorrectAnswerAnimation, setShowCorrectAnswerAnimation] = useState(false);
+  const [showCorrectAnswerAnimation, setShowCorrectAnswerAnimation] =
+    useState(false);
 
   // Add state for background image
   const [currentBackground, setCurrentBackground] = useState(PvpBattleBG);
+
+  // Add a new state for reward multipliers
+  const [rewardMultipliers, setRewardMultipliers] = useState({
+    hostMultiplier: 1,
+    guestMultiplier: 1,
+  });
 
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
@@ -256,12 +279,20 @@ export default function PvpBattle() {
 
   // Update the isGuestWaitingForRandomization function to be more precise
   const isGuestWaitingForRandomization = useCallback(() => {
-    return !isHost &&
+    return (
+      !isHost &&
       !waitingForPlayer &&
       battleState?.battle_started &&
       !randomizationDone &&
-      !showVictoryModal;
-  }, [isHost, waitingForPlayer, battleState?.battle_started, randomizationDone, showVictoryModal]);
+      !showVictoryModal
+    );
+  }, [
+    isHost,
+    waitingForPlayer,
+    battleState?.battle_started,
+    randomizationDone,
+    showVictoryModal,
+  ]);
 
   // Add a new function to determine if we should show the main battle interface
   const shouldShowBattleInterface = useCallback(() => {
@@ -269,9 +300,17 @@ export default function PvpBattle() {
       return gameStarted && !waitingForPlayer;
     } else {
       // For guest, show battle interface when battle has started and randomization is done
-      return battleState?.battle_started && randomizationDone && !waitingForPlayer;
+      return (
+        battleState?.battle_started && randomizationDone && !waitingForPlayer
+      );
     }
-  }, [isHost, gameStarted, waitingForPlayer, battleState?.battle_started, randomizationDone]);
+  }, [
+    isHost,
+    gameStarted,
+    waitingForPlayer,
+    battleState?.battle_started,
+    randomizationDone,
+  ]);
 
   // Effect to handle delayed card display after game start
   useEffect(() => {
@@ -316,47 +355,54 @@ export default function PvpBattle() {
   const [answerResult, setAnswerResult] = useState<AnswerResult | null>(null);
   const [showAnswerResult, setShowAnswerResult] = useState(false);
 
-  const handleAnswerSubmit = useCallback(async (answer: string | boolean) => {
-    if (!currentQuestion) {
-      console.error('No current question');
-      return;
-    }
-
-    try {
-      const response = await axios.post<AnswerResponse>('/api/battle/submit-answer', {
-        session_uuid: battleState?.session_uuid,
-        question_id: currentQuestion.id || '',
-        selected_answer: answer,
-        player_type: isHost ? 'host' : 'guest',
-      });
-
-      const explanation = currentQuestion.explanation ||
-        (currentQuestion.itemInfo && currentQuestion.itemInfo.definition) ||
-        'No explanation available';
-
-      setAnswerResult({
-        isCorrect: response.data.is_correct,
-        explanation: explanation
-      });
-
-      if (response.data.is_correct) {
-        setBattleStats((prev) => {
-          const newStreak = prev.currentStreak + 1;
-          return {
-            ...prev,
-            correctAnswers: prev.correctAnswers + 1,
-            currentStreak: newStreak,
-            highestStreak: Math.max(prev.highestStreak, newStreak),
-            totalQuestions: prev.totalQuestions + 1,
-          };
-        });
+  const handleAnswerSubmit = useCallback(
+    async (answer: string | boolean) => {
+      if (!currentQuestion) {
+        console.error("No current question");
+        return;
       }
 
-      setShowAnswerResult(true);
-    } catch (error) {
-      console.error('Error submitting answer:', error);
-    }
-  }, [battleState?.session_uuid, currentQuestion, isHost]);
+      try {
+        const response = await axios.post<AnswerResponse>(
+          "/api/battle/submit-answer",
+          {
+            session_uuid: battleState?.session_uuid,
+            question_id: currentQuestion.id || "",
+            selected_answer: answer,
+            player_type: isHost ? "host" : "guest",
+          }
+        );
+
+        const explanation =
+          currentQuestion.explanation ||
+          (currentQuestion.itemInfo && currentQuestion.itemInfo.definition) ||
+          "No explanation available";
+
+        setAnswerResult({
+          isCorrect: response.data.is_correct,
+          explanation: explanation,
+        });
+
+        if (response.data.is_correct) {
+          setBattleStats((prev) => {
+            const newStreak = prev.currentStreak + 1;
+            return {
+              ...prev,
+              correctAnswers: prev.correctAnswers + 1,
+              currentStreak: newStreak,
+              highestStreak: Math.max(prev.highestStreak, newStreak),
+              totalQuestions: prev.totalQuestions + 1,
+            };
+          });
+        }
+
+        setShowAnswerResult(true);
+      } catch (error) {
+        console.error("Error submitting answer:", error);
+      }
+    },
+    [battleState?.session_uuid, currentQuestion, isHost]
+  );
 
   // Add audio ref
   const attackSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -398,7 +444,7 @@ export default function PvpBattle() {
         // After 1 second, also show the attack animation overlay and update enemy animation
         setTimeout(() => {
           setShowAttackAnimation(true);
-          setIsAttacker(true);  // Always the attacker when correct
+          setIsAttacker(true); // Always the attacker when correct
 
           // Set enemy to "been attacked" animation state
           setEnemyAnimationState("been_attacked");
@@ -407,7 +453,9 @@ export default function PvpBattle() {
           if (attackSoundRef.current) {
             attackSoundRef.current.currentTime = 0;
             attackSoundRef.current.volume = 0.5; // Set volume to 50%
-            attackSoundRef.current.play().catch(err => console.error("Error playing sound:", err));
+            attackSoundRef.current
+              .play()
+              .catch((err) => console.error("Error playing sound:", err));
           }
         }, 1000);
 
@@ -428,7 +476,9 @@ export default function PvpBattle() {
           // Continue with updating the battle round after animation
           try {
             const response = await axios.put(
-              `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
+              `${
+                import.meta.env.VITE_BACKEND_URL
+              }/api/gameplay/battle/update-round`,
               {
                 session_uuid: battleState?.session_uuid,
                 player_type: playerType,
@@ -446,7 +496,10 @@ export default function PvpBattle() {
 
               // Check if a card effect was applied
               if (response.data.data.card_effect) {
-                if (response.data.data.card_effect.type === "normal-2" && isCorrect) {
+                if (
+                  response.data.data.card_effect.type === "normal-2" &&
+                  isCorrect
+                ) {
                   // Show notification for Quick Draw card effect
                   const messageElement = document.createElement("div");
                   messageElement.className =
@@ -521,9 +574,13 @@ export default function PvpBattle() {
 
                   // Update health locally if we can
                   if (isHost) {
-                    setPlayerHealth((prev) => Math.min(prev + healthAmount, 100));
+                    setPlayerHealth((prev) =>
+                      Math.min(prev + healthAmount, 100)
+                    );
                   } else {
-                    setPlayerHealth((prev) => Math.min(prev + healthAmount, 100));
+                    setPlayerHealth((prev) =>
+                      Math.min(prev + healthAmount, 100)
+                    );
                   }
 
                   // Remove the message after 2 seconds
@@ -586,7 +643,9 @@ export default function PvpBattle() {
           // No need to reset background as it wasn't changed
 
           const response = await axios.put(
-            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-round`,
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/gameplay/battle/update-round`,
             {
               session_uuid: battleState?.session_uuid,
               player_type: playerType,
@@ -636,7 +695,7 @@ export default function PvpBattle() {
     // Update last health values without showing an attack animation
     setLastHealthUpdate({
       player: playerHealth,
-      opponent: opponentHealth
+      opponent: opponentHealth,
     });
   }, [playerHealth, opponentHealth]);
 
@@ -647,7 +706,9 @@ export default function PvpBattle() {
 
       try {
         const { data } = await axios.get<BattleScoresResponse>(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${battleState.session_uuid}`
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${
+            battleState.session_uuid
+          }`
         );
 
         if (data.success && data.data) {
@@ -715,7 +776,7 @@ export default function PvpBattle() {
             guestHealth: scores.guest_health,
             playerHealth: isHost ? scores.host_health : scores.guest_health,
             opponentHealth: isHost ? scores.guest_health : scores.host_health,
-            showingVictoryModal: showVictoryModal
+            showingVictoryModal: showVictoryModal,
           });
         }
       } catch (error) {
@@ -756,7 +817,9 @@ export default function PvpBattle() {
       try {
         // Get the latest session state
         const { data } = await axios.get<BattleSessionResponse>(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-state/${lobbyCode}`
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/battle/session-state/${lobbyCode}`
         );
 
         if (data.success && data.data) {
@@ -781,7 +844,8 @@ export default function PvpBattle() {
           });
 
           // Check if it's this player's turn
-          const isCurrentPlayerTurn = sessionData.current_turn === currentUserId;
+          const isCurrentPlayerTurn =
+            sessionData.current_turn === currentUserId;
 
           // If turn has changed
           if (isCurrentPlayerTurn !== isMyTurn) {
@@ -820,7 +884,14 @@ export default function PvpBattle() {
     checkTurn();
 
     return () => clearInterval(turnCheckInterval);
-  }, [gameStarted, waitingForPlayer, battleState?.session_uuid, lobbyCode, currentUserId, isMyTurn]);
+  }, [
+    gameStarted,
+    waitingForPlayer,
+    battleState?.session_uuid,
+    lobbyCode,
+    currentUserId,
+    isMyTurn,
+  ]);
 
   // Timer effect
   useEffect(() => {
@@ -844,6 +915,31 @@ export default function PvpBattle() {
     window.location.replace("/dashboard/home");
   };
 
+  // Add a function to fetch the user's reward multiplier
+  const fetchUserRewardMultiplier = async (userId: string) => {
+    try {
+      const { data } = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/api/user/${userId}/stats`
+      );
+
+      // Check if user has an active reward multiplier
+      if (
+        data.reward_multiplier > 1 &&
+        new Date(data.reward_multiplier_expiry) > new Date()
+      ) {
+        console.log(
+          `User ${userId} has an active reward multiplier: ${data.reward_multiplier}x`
+        );
+        return data.reward_multiplier;
+      }
+
+      return 1; // Default multiplier if not active
+    } catch (error) {
+      console.error("Error fetching reward multiplier:", error);
+      return 1; // Default value on error
+    }
+  };
+
   // Handle viewing session report
   const handleViewSessionReport = async () => {
     // Clear card selection data from sessionStorage
@@ -864,21 +960,38 @@ export default function PvpBattle() {
     const isWinner = playerHealth > 0 && opponentHealth <= 0;
 
     try {
+      // Fetch reward multipliers for both players
+      const [hostMultiplier, guestMultiplier] = await Promise.all([
+        fetchUserRewardMultiplier(hostId),
+        fetchUserRewardMultiplier(guestId),
+      ]);
+
+      // Update state with multipliers (for debugging)
+      setRewardMultipliers({
+        hostMultiplier,
+        guestMultiplier,
+      });
+
+      console.log("Reward multipliers:", {
+        hostMultiplier,
+        guestMultiplier,
+      });
+
       // Get current win streak for winner
       const winnerId = isHost
         ? isWinner
           ? hostId
           : guestId
         : isWinner
-          ? guestId
-          : hostId;
+        ? guestId
+        : hostId;
       const loserId = isHost
         ? isWinner
           ? guestId
           : hostId
         : isWinner
-          ? hostId
-          : guestId;
+        ? hostId
+        : guestId;
 
       // First update win streaks in the database
       const [winnerUpdate, loserUpdate] = await Promise.all([
@@ -905,7 +1018,7 @@ export default function PvpBattle() {
         ? winnerUpdate.data.data.win_streak
         : 0;
 
-      // Calculate rewards using the updated win streak from the database
+      // Calculate rewards using the updated win streak AND reward multipliers
       const hostRewards = calculateBattleRewards(
         isHost ? isWinner : !isWinner,
         isHost ? playerHealth : opponentHealth,
@@ -915,9 +1028,10 @@ export default function PvpBattle() {
             ? updatedWinStreak
             : 0
           : !isWinner
-            ? updatedWinStreak
-            : 0,
-        false // TODO: Get premium status from user context
+          ? updatedWinStreak
+          : 0,
+        false, // Premium status
+        hostMultiplier // Apply host's reward multiplier
       );
 
       const guestRewards = calculateBattleRewards(
@@ -929,10 +1043,21 @@ export default function PvpBattle() {
             ? updatedWinStreak
             : 0
           : !isWinner
-            ? updatedWinStreak
-            : 0,
-        false // TODO: Get premium status from user context
+          ? updatedWinStreak
+          : 0,
+        false, // Premium status
+        guestMultiplier // Apply guest's reward multiplier
       );
+
+      // Log rewards calculation with multipliers for debugging
+      console.log("Host Rewards (with multiplier):", {
+        multiplier: hostMultiplier,
+        rewards: hostRewards,
+      });
+      console.log("Guest Rewards (with multiplier):", {
+        multiplier: guestMultiplier,
+        rewards: guestRewards,
+      });
 
       // Save session report to database
       if (battleState?.session_uuid) {
@@ -963,7 +1088,9 @@ export default function PvpBattle() {
           };
 
           const { data } = await axios.post<SessionReportResponse>(
-            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/save-session-report`,
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/gameplay/battle/save-session-report`,
             sessionReportPayload
           );
 
@@ -1037,7 +1164,9 @@ export default function PvpBattle() {
 
       try {
         const { data } = await axios.get<BattleSessionResponse>(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session-with-material/${lobbyCode}`
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/battle/session-with-material/${lobbyCode}`
         );
 
         if (data.success && data.data) {
@@ -1054,11 +1183,17 @@ export default function PvpBattle() {
 
             // Fetch study material info to get total items
             try {
-              const { data: studyMaterialData } = await axios.get<StudyMaterialInfoResponse>(
-                `${import.meta.env.VITE_BACKEND_URL}/api/study-material/info/${data.data.study_material_id}`
-              );
+              const { data: studyMaterialData } =
+                await axios.get<StudyMaterialInfoResponse>(
+                  `${
+                    import.meta.env.VITE_BACKEND_URL
+                  }/api/study-material/info/${data.data.study_material_id}`
+                );
 
-              if (studyMaterialData.success && studyMaterialData.data.total_items) {
+              if (
+                studyMaterialData.success &&
+                studyMaterialData.data.total_items
+              ) {
                 setTotalItems(studyMaterialData.data.total_items);
               }
             } catch (error) {
@@ -1068,7 +1203,10 @@ export default function PvpBattle() {
 
           // Store session UUID and player role in sessionStorage for card effects
           if (data.data.session_uuid) {
-            sessionStorage.setItem("battle_session_uuid", data.data.session_uuid);
+            sessionStorage.setItem(
+              "battle_session_uuid",
+              data.data.session_uuid
+            );
             sessionStorage.setItem("is_host", isHost.toString());
 
             // Clear card stats at the start of a new battle
@@ -1096,69 +1234,84 @@ export default function PvpBattle() {
   // Update effect to use proper types
   useEffect(() => {
     const generateQuestions = async () => {
-      if (battleState?.battle_started && !questionGenState.isGenerating && questionGenState.questions.length === 0) {
+      if (
+        battleState?.battle_started &&
+        !questionGenState.isGenerating &&
+        questionGenState.questions.length === 0
+      ) {
         try {
-          dispatchQuestionGen({ type: 'START_GENERATION' });
+          dispatchQuestionGen({ type: "START_GENERATION" });
 
           const { data } = await axios.post<GenerateQuestionsResponse>(
-            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/generate-questions`,
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/gameplay/battle/generate-questions`,
             {
               session_uuid: battleState.session_uuid,
               study_material_id: studyMaterialId,
               difficulty_mode: difficultyMode,
               question_types: questionTypes,
-              player_type: isHost ? 'host' : 'guest'
+              player_type: isHost ? "host" : "guest",
             }
           );
 
           if (data?.success && data.data) {
             dispatchQuestionGen({
-              type: 'GENERATION_SUCCESS',
-              questions: data.data
+              type: "GENERATION_SUCCESS",
+              questions: data.data,
             });
           }
         } catch (error) {
-          console.error('Error generating questions:', error);
+          console.error("Error generating questions:", error);
           dispatchQuestionGen({
-            type: 'GENERATION_ERROR',
-            error: 'Failed to generate questions. Please try again.'
+            type: "GENERATION_ERROR",
+            error: "Failed to generate questions. Please try again.",
           });
-          toast.error('Failed to generate questions. Please try again.');
+          toast.error("Failed to generate questions. Please try again.");
         }
       }
     };
 
     generateQuestions();
-  }, [battleState?.battle_started, battleState?.session_uuid, studyMaterialId, difficultyMode, questionTypes, isHost, questionGenState.isGenerating, questionGenState.questions.length]);
+  }, [
+    battleState?.battle_started,
+    battleState?.session_uuid,
+    studyMaterialId,
+    difficultyMode,
+    questionTypes,
+    isHost,
+    questionGenState.isGenerating,
+    questionGenState.questions.length,
+  ]);
 
   // Add useEffect for game state changes
   useEffect(() => {
     if (gameStarted && !waitingForPlayer) {
       // Emit player entered game with inGame field
-      socket.emit('player_entered_game', {
+      socket.emit("player_entered_game", {
         playerId: currentUserId,
-        mode: 'pvp-battle',
-        inGame: true
+        mode: "pvp-battle",
+        inGame: true,
       });
 
       // Also emit user game status change
-      socket.emit('userGameStatusChanged', {
+      socket.emit("userGameStatusChanged", {
         userId: currentUserId,
-        mode: 'pvp-battle',
-        inGame: true
+        mode: "pvp-battle",
+        inGame: true,
       });
     } else {
       // When game ends or player is waiting, set inGame to false
-      socket.emit('player_entered_game', {
+      socket.emit("player_entered_game", {
         playerId: currentUserId,
-        mode: 'pvp-battle',
-        inGame: false
+        mode: "pvp-battle",
+        inGame: false,
       });
 
-      socket.emit('userGameStatusChanged', {
+      socket.emit("userGameStatusChanged", {
         userId: currentUserId,
-        mode: 'pvp-battle',
-        inGame: false
+        mode: "pvp-battle",
+        inGame: false,
       });
     }
 
@@ -1170,15 +1323,15 @@ export default function PvpBattle() {
       sessionStorage.removeItem("battle_turn_count");
       sessionStorage.removeItem("battle_is_first_turn");
 
-      socket.emit('player_exited_game', {
+      socket.emit("player_exited_game", {
         playerId: currentUserId,
-        inGame: false
+        inGame: false,
       });
 
-      socket.emit('userGameStatusChanged', {
+      socket.emit("userGameStatusChanged", {
         userId: currentUserId,
-        mode: 'pvp-battle',
-        inGame: false
+        mode: "pvp-battle",
+        inGame: false,
       });
     };
   }, [gameStarted, waitingForPlayer, currentUserId]);
@@ -1370,7 +1523,7 @@ export default function PvpBattle() {
           isOpen={showVictoryModal}
           onClose={handleVictoryConfirm}
           onViewReport={handleViewSessionReport}
-          isVictory={victoryMessage.includes('Won')}
+          isVictory={victoryMessage.includes("Won")}
           currentUserId={currentUserId}
           sessionUuid={battleState?.session_uuid}
           playerHealth={playerHealth}
@@ -1400,11 +1553,13 @@ export default function PvpBattle() {
         {showSessionReport && <PvpSessionReport />}
 
         {/* Poison effect indicator */}
-        {poisonEffectActive && !showVictoryModal && shouldShowBattleInterface() && (
-          <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
-            <div className="absolute inset-0 bg-green-500/20 animate-pulse"></div>
-          </div>
-        )}
+        {poisonEffectActive &&
+          !showVictoryModal &&
+          shouldShowBattleInterface() && (
+            <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
+              <div className="absolute inset-0 bg-green-500/20 animate-pulse"></div>
+            </div>
+          )}
       </div>
     </div>
   );

@@ -175,6 +175,7 @@ export default function ProfilePopover({
             ) : (
               <Button
                 variant="text"
+                onClick={handleOpenCancelSubsModal}
                 sx={{
                   justifyContent: "flex-start",
                   textTransform: "none",

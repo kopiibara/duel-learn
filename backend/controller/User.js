@@ -310,6 +310,7 @@ export default {
                 u.email_verified,
                 u.isSSO,
                 u.account_type,
+                u.account_type_plan,
                 ui.level,
                 ui.exp,
                 ui.mana,

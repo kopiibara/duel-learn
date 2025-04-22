@@ -6,7 +6,8 @@ export const calculateBattleRewards = (
   myHealth: number,
   opponentHealth: number,
   winStreak: number,
-  isPremium: boolean = false
+  isPremium: boolean = false,
+  rewardMultiplier: number = 1 // Add reward multiplier parameter with default value of 1
 ) => {
   // Base rewards
   const baseXP = 100;
@@ -19,7 +20,7 @@ export const calculateBattleRewards = (
 
   // Calculate win streak bonus for XP (10 points per win, max 50)
   const xpWinStreakBonus = Math.min(winStreak * 10, 50);
-  
+
   // Calculate win streak bonus for coins (3/6/9/12/15 based on streak)
   let coinWinStreakBonus = 0;
   if (winStreak === 1) coinWinStreakBonus = 3;
@@ -39,7 +40,7 @@ export const calculateBattleRewards = (
   } else {
     // Loser gets base - HP penalty
     xpReward = Math.max(0, baseXP - hpModifierXP);
-    coinReward = Math.max(0, baseCoins - Math.floor(hpModifierCoins/2)); // Reduced penalty for losers
+    coinReward = Math.max(0, baseCoins - Math.floor(hpModifierCoins / 2)); // Reduced penalty for losers
   }
 
   // Apply premium multiplier if applicable
@@ -48,8 +49,31 @@ export const calculateBattleRewards = (
     coinReward *= 2;
   }
 
+  // Store original rewards before multiplier
+  const originalXP = xpReward;
+  const originalCoins = coinReward;
+
+  // Apply reward multiplier if active (comes from reward multiplier item)
+  if (rewardMultiplier > 1) {
+    // Log rewards before multiplier
+    console.log(`Rewards before multiplier:`, {
+      xp: Math.floor(originalXP),
+      coins: Math.floor(originalCoins),
+    });
+
+    // Apply multiplier
+    xpReward *= rewardMultiplier;
+    coinReward *= rewardMultiplier;
+
+    // Log rewards after multiplier
+    console.log(`Rewards after ${rewardMultiplier}x multiplier:`, {
+      xp: Math.floor(xpReward),
+      coins: Math.floor(coinReward),
+    });
+  }
+
   return {
     xp: Math.floor(xpReward),
     coins: Math.floor(coinReward),
   };
-}; 
+};
