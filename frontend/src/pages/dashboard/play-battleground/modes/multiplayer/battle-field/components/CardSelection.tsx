@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import axios from "axios";
 
@@ -27,6 +27,7 @@ export interface CardSelectionProps {
   playerName: string;
   onCardSelected: (cardId: string) => void;
   difficultyMode?: string | null;
+  soundEffectsVolume?: number; // Add sound effect volume prop
 }
 
 /**
@@ -39,6 +40,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   playerName,
   onCardSelected,
   difficultyMode = "average",
+  soundEffectsVolume = 0.7, // Default to 0.7 if not provided
 }) => {
   const [showBackCard, setShowBackCard] = useState(true);
   const [showCardOptions, setShowCardOptions] = useState(false);
@@ -46,6 +48,10 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   const [animationComplete, setAnimationComplete] = useState(false);
   const [selectionTimer, setSelectionTimer] = useState(8); // 8 second timer
   const [timerActive, setTimerActive] = useState(false);
+
+  // Audio refs for card sounds
+  const flipCardSoundRef = useRef<HTMLAudioElement | null>(null);
+  const shuffleCardsSoundRef = useRef<HTMLAudioElement | null>(null);
 
   // Card state management
   const [currentCards, setCurrentCards] = useState<Card[]>([]);
@@ -738,6 +744,16 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     }
   }, [isMyTurn, difficultyMode]);
 
+  // Update sound effects when volume changes
+  useEffect(() => {
+    if (flipCardSoundRef.current) {
+      flipCardSoundRef.current.volume = soundEffectsVolume;
+    }
+    if (shuffleCardsSoundRef.current) {
+      shuffleCardsSoundRef.current.volume = soundEffectsVolume;
+    }
+  }, [soundEffectsVolume]);
+
   // Handle turn transitions - this is the key improvement that ensures proper card persistence
   useEffect(() => {
     if (isMyTurn) {
@@ -751,6 +767,14 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
       // Start the card animation sequence with a delay for smoother transitions
       setTimeout(() => {
+        // Play flip card sound 1 second before the card flips
+        if (flipCardSoundRef.current) {
+          flipCardSoundRef.current.currentTime = 0;
+          flipCardSoundRef.current.play().catch(err =>
+            console.error("Error playing flip card sound:", err)
+          );
+        }
+
         const flipTimer = setTimeout(() => {
           setShowBackCard(false);
           setTimeout(() => {
@@ -777,6 +801,14 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       setBackCardExitComplete(true);
       setShowCardOptions(true);
       setTimerActive(true); // Start the selection timer
+
+      // Play shuffle cards sound immediately when showing the 3 cards
+      if (shuffleCardsSoundRef.current) {
+        shuffleCardsSoundRef.current.currentTime = 0;
+        shuffleCardsSoundRef.current.play().catch(err =>
+          console.error("Error playing shuffle cards sound:", err)
+        );
+      }
     }, 100); // Small delay to prevent animation conflicts
   };
 
@@ -1006,7 +1038,20 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120">
+      {/* Audio elements for card animations */}
+      <audio
+        ref={flipCardSoundRef}
+        src="/GameBattle/flipcard.mp3"
+        preload="auto"
+      />
+      <audio
+        ref={shuffleCardsSoundRef}
+        src="/GameBattle/shuffle-cards.mp3"
+        preload="auto"
+      />
+
       {/* Enhanced debug panel - shows more detailed probability info */}
+      {/* Debug panel commented out for production
       {process.env.NODE_ENV === 'development' && (
         <div className="absolute top-0 right-0 bg-gray-800/90 p-2 text-white text-xs max-w-md opacity-90 overflow-y-auto max-h-[400px]">
           <div className="flex justify-between items-center mb-1">
@@ -1095,6 +1140,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
           </button>
         </div>
       )}
+      */}
 
       {/* Only show turn indicator when it's NOT the player's turn */}
       {!isMyTurn && (

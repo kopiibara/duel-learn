@@ -7,7 +7,8 @@ export const calculateBattleRewards = (
   opponentHealth: number,
   winStreak: number,
   isPremium: boolean = false,
-  rewardMultiplier: number = 1 // Add reward multiplier parameter with default value of 1
+  rewardMultiplier: number = 1, // Add reward multiplier parameter with default value of 1
+  playerRole: "host" | "guest" = "host" // Add player role parameter
 ) => {
   // Base rewards
   const baseXP = 100;
@@ -53,27 +54,57 @@ export const calculateBattleRewards = (
   const originalXP = xpReward;
   const originalCoins = coinReward;
 
+  // Always log the base rewards with player role
+  console.log(`${playerRole.toUpperCase()} rewards before multiplier:`, {
+    xp: Math.floor(originalXP),
+    coins: Math.floor(originalCoins),
+    isWinner,
+    winStreak,
+    isPremium,
+  });
+
   // Apply reward multiplier if active (comes from reward multiplier item)
   if (rewardMultiplier > 1) {
-    // Log rewards before multiplier
-    console.log(`Rewards before multiplier:`, {
-      xp: Math.floor(originalXP),
-      coins: Math.floor(originalCoins),
-    });
-
     // Apply multiplier
     xpReward *= rewardMultiplier;
     coinReward *= rewardMultiplier;
 
-    // Log rewards after multiplier
-    console.log(`Rewards after ${rewardMultiplier}x multiplier:`, {
-      xp: Math.floor(xpReward),
-      coins: Math.floor(coinReward),
-    });
+    // Log rewards after multiplier with player role
+    console.log(
+      `${playerRole.toUpperCase()} has active reward multiplier (${rewardMultiplier}x):`,
+      {
+        xpBefore: Math.floor(originalXP),
+        coinsBefore: Math.floor(originalCoins),
+        xpAfter: Math.floor(xpReward),
+        coinsAfter: Math.floor(coinReward),
+        multiplier: rewardMultiplier,
+      }
+    );
   }
 
   return {
     xp: Math.floor(xpReward),
     coins: Math.floor(coinReward),
+  };
+};
+
+/**
+ * Calculates a minimal reward when opponent leaves early
+ * The player who stayed in the battle gets a small victory bonus
+ */
+export const earlyEndRewards = (isPremium: boolean = false) => {
+  // Fixed minimal rewards
+  let xpReward = 20;
+  let coinReward = 1;
+
+  // Apply premium multiplier if applicable
+  if (isPremium) {
+    xpReward *= 2;
+    coinReward *= 2;
+  }
+
+  return {
+    xp: xpReward,
+    coins: coinReward,
   };
 };

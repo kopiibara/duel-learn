@@ -33,6 +33,8 @@ router.put("/:firebase_uid", userController.updateUser);
 // Route for storing user data
 router.post("/store-user/:firebase_uid", storeUserValidation, userController.storeUser);
 router.get("/store-user/:firebase_uid", userController.getStoredUser);
+// Add this route to your user routes
+router.get('/:firebase_uid/stats', userController.getUserStats);
 
 // Export the router as default
 export default router;

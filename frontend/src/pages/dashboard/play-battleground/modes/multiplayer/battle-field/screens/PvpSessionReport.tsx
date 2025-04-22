@@ -145,6 +145,15 @@ const PvpSessionReport = () => {
     fetchWinStreak();
   }, [hostId, guestId, isHost]);
 
+  // Get battle result message based on win status and early end
+  const getBattleResultMessage = () => {
+    if (isWinner) {
+      return earlyEnd ? "VICTORY (OPPONENT LEFT)" : "VICTORY";
+    } else {
+      return "DEFEAT";
+    }
+  };
+
   // Add console logs to check passed data
   console.log("PVP Session Report Data:", {
     timeSpent,
@@ -159,6 +168,7 @@ const PvpSessionReport = () => {
     opponentHealth,
     isWinner,
     winStreak,
+    earlyEnd,
   });
 
   return (
@@ -166,7 +176,7 @@ const PvpSessionReport = () => {
       style={{ overflow: "auto", height: "80vh" }}
       className="min-h-screen flex items-center justify-center p-4 pb-16"
     >
-      {!earlyEnd && isWinner && <AutoConfettiAnimation />}
+      {(!earlyEnd && isWinner) && <AutoConfettiAnimation />}
       <div className="w-full max-w-[1000px] space-y-8 text-center mt-[330px] mb-[1000px] max-h-screen">
         {/* Session Complete Banner */}
         <div className="relative inline-block mx-auto mt-[490px]">
@@ -193,9 +203,11 @@ const PvpSessionReport = () => {
                 value={`${earnedXP} XP`}
                 icon={ManaIcon}
                 subValue={
-                  winStreak > 0
-                    ? `+${getBonusPoints(winStreak)} XP (Win Streak Bonus)`
-                    : undefined
+                  earlyEnd && isWinner
+                    ? "Minimal reward (opponent left)"
+                    : winStreak > 0
+                      ? `+${getBonusPoints(winStreak)} XP (Win Streak Bonus)`
+                      : undefined
                 }
               />
               <StatisticBox
@@ -203,9 +215,11 @@ const PvpSessionReport = () => {
                 value={`${earnedCoins} Coins`}
                 icon={ManaIcon}
                 subValue={
-                  winStreak > 0
-                    ? `+${getBonusPoints(winStreak)} Coins (Win Streak Bonus)`
-                    : undefined
+                  earlyEnd && isWinner
+                    ? "Minimal reward (opponent left)"
+                    : winStreak > 0
+                      ? `+${getBonusPoints(winStreak)} Coins (Win Streak Bonus)`
+                      : undefined
                 }
               />
               <StatisticBox
@@ -215,15 +229,20 @@ const PvpSessionReport = () => {
               />
               <StatisticBox
                 label="BATTLE RESULT"
-                value={isWinner ? "VICTORY" : "DEFEAT"}
+                value={getBattleResultMessage()}
                 icon={ManaIcon}
+                subValue={
+                  earlyEnd && isWinner
+                    ? `${opponentName} left the game early`
+                    : undefined
+                }
               />
               <StatisticBox
                 label="WIN STREAK"
                 value={`${winStreak}x`}
                 icon={ManaIcon}
                 subValue={
-                  winStreak > 0
+                  winStreak > 0 && !earlyEnd
                     ? `Bonus: +${getBonusPoints(winStreak)} XP/Coins`
                     : "No bonus"
                 }

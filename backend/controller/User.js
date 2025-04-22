@@ -695,6 +695,35 @@ export default {
     }
   },
 
+  // Add this new method to your UserController object
+  getUserStats: async (req, res) => {
+    const { firebase_uid } = req.params;
+
+    try {
+      // Get user stats including reward multiplier
+      const [userStats] = await pool.query(
+        "SELECT reward_multiplier, reward_multiplier_expiry, account_type FROM user_info WHERE firebase_uid = ?",
+        [firebase_uid]
+      );
+
+      if (userStats.length === 0) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Format the response
+      const stats = {
+        reward_multiplier: userStats[0].reward_multiplier || 1,
+        reward_multiplier_expiry: userStats[0].reward_multiplier_expiry,
+        account_type: userStats[0].account_type
+      };
+
+      return res.status(200).json(stats);
+    } catch (error) {
+      console.error("Error fetching user stats:", error);
+      return res.status(500).json({ message: "Error fetching user stats" });
+    }
+  },
+
   storeUser,
   getStoredUser,
 }

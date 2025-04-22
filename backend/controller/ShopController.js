@@ -622,6 +622,74 @@ const shopController = {
         }
     },
 
+    getUserActiveItems: async (req, res) => {
+        const { firebase_uid, item_code } = req.params;
+
+        try {
+            const connection = await pool.getConnection();
+
+            try {
+                // Check for active items of the specified type
+                const [activeItems] = await connection.query(
+                    "SELECT id, status FROM user_items WHERE firebase_uid = ? AND item_code = ? AND status = 'active'",
+                    [firebase_uid, item_code]
+                );
+
+                connection.release();
+
+                if (activeItems.length > 0) {
+                    return res.status(200).json({
+                        active: true,
+                        id: activeItems[0].id
+                    });
+                } else {
+                    return res.status(200).json({
+                        active: false
+                    });
+                }
+            } catch (error) {
+                connection.release();
+                throw error;
+            }
+        } catch (error) {
+            console.error("Error checking active items:", error);
+            res.status(500).json({ message: "Error checking active items" });
+        }
+    },
+
+    useFortuneCoins: async (req, res) => {
+        const { firebase_uid, item_id } = req.body;
+
+        try {
+            const connection = await pool.getConnection();
+            await connection.beginTransaction();
+
+            try {
+                // Mark the fortune coin as used (not active anymore)
+                await connection.query(
+                    "UPDATE user_items SET status = 'used' WHERE firebase_uid = ? AND id = ?",
+                    [firebase_uid, item_id]
+                );
+
+                await connection.commit();
+                connection.release();
+
+                // Invalidate cache
+                invalidateShopCaches(firebase_uid);
+
+                res.status(200).json({
+                    message: "Fortune Coin used successfully to protect win streak!"
+                });
+            } catch (error) {
+                await connection.rollback();
+                connection.release();
+                throw error;
+            }
+        } catch (error) {
+            console.error("Error using Fortune Coin:", error);
+            res.status(500).json({ message: "Error using Fortune Coin" });
+        }
+    }
 };
 
 export default shopController;
