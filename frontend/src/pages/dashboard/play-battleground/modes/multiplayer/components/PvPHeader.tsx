@@ -122,9 +122,15 @@ const PvPHeader: React.FC<PvPHeaderProps> = ({
           onClick={onChangeQuestionType}
           sx={{
             cursor: isCurrentUserGuest ? "not-allowed" : "pointer",
-            backgroundColor: "#3d374d",
+            backgroundColor: "#8565E7",
+            color: "#E2DDF3",
+            fontWeight: "bold",
+            height: "fit-content",
+            width: "fit-content",
+            borderRadius: "0.6rem",
+            transition: "all 0.3s ease-in-out",
             "&:hover": {
-              backgroundColor: "#4B17CD",
+              backgroundColor: "#4D18E8",
             },
           }}
           disabled={isCurrentUserGuest}

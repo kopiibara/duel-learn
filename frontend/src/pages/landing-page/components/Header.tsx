@@ -103,7 +103,7 @@ const Header = () => {
     color: "#6F658D",
     transition: "color 0.3s ease",
     "&:hover": {
-      color: "#4D18E8",
+      color: "#E2DDF3",
       backgroundColor: "transparent",
     },
     "&:active": {
@@ -393,7 +393,7 @@ const Header = () => {
                       ...mobileNavButtonStyle,
                       color:
                         activeSection === (item.section || "")
-                          ? "white"
+                          ? "#6F658D"
                           : "#6F658D",
                       justifyContent: "flex-start",
                       width: "100%",
