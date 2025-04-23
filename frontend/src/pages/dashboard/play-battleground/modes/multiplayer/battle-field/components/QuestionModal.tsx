@@ -262,8 +262,8 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
       currentQuestionNumber,
       totalQuestions,
       currentQuestionId: currentQuestion?.id
-    }); 
-    
+    });
+
     if (!currentQuestion || hasAnswered) return;
 
     let correctAnswer = currentQuestion.correctAnswer;

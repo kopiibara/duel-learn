@@ -539,9 +539,20 @@ export default function PvpBattle() {
       timestamp: new Date().toISOString()
     });
 
-    // First, update question IDs using the dedicated endpoint if we have a valid question ID
+    // Get current question IDs from localStorage and add new question ID
+    let currentQuestionIds: string[] = [];
     if (questionId && battleState?.session_uuid) {
-      await updateQuestionIdsDone(questionId);
+      const storedIds = localStorage.getItem(`question_ids_${battleState.session_uuid}`);
+      currentQuestionIds = storedIds ? JSON.parse(storedIds) : [];
+
+      // Add the new question ID if it's not already in the array
+      if (!currentQuestionIds.includes(questionId)) {
+        currentQuestionIds.push(questionId);
+
+        // Update localStorage
+        localStorage.setItem(`question_ids_${battleState.session_uuid}`, JSON.stringify(currentQuestionIds));
+        console.log('Updated question IDs in localStorage:', currentQuestionIds);
+      }
     }
 
     try {
@@ -577,6 +588,9 @@ export default function PvpBattle() {
       if (isCorrect) {
         // Show the character animation first
         setShowCorrectAnswerAnimation(true);
+
+        // Change player animation state to correct_answer
+        setPlayerAnimationState("correct_answer");
 
         // Change background to non-overlayed version
         setCurrentBackground(PvpBattleBG);
@@ -622,8 +636,8 @@ export default function PvpBattle() {
                 card_id: selectedCardId,
                 is_correct: isCorrect,
                 lobby_code: lobbyCode,
-                battle_stats: battleStats // Send current stats to backend
-                // No longer include question_ids_done here - using dedicated endpoint
+                battle_stats: battleStats, // Send current stats to backend
+                question_ids_done: JSON.stringify(currentQuestionIds) // Include question IDs here too
               }
             );
 
@@ -775,16 +789,20 @@ export default function PvpBattle() {
           } catch (error) {
             console.error("Error updating battle round:", error);
           }
-        }, 3000); // 3 seconds total duration
+        }, 3000); // Changed from 2500 to 3000 (3 seconds total duration)
       } else {
         // If incorrect, display incorrect answer animation for 1.5 seconds
         setPlayerAnimationState("incorrect_answer");
+
+        // Keep the original background
+        // No need to change background for incorrect answers
 
         // Wait 1.5 seconds before proceeding normally without attack animation
         setTimeout(async () => {
           // Reset player animation state to idle
           setPlayerAnimationState("idle");
 
+          // No need to reset background as it wasn't changed
           try {
             // First update the round data
             const response = await axios.put(
@@ -795,8 +813,8 @@ export default function PvpBattle() {
                 card_id: selectedCardId,
                 is_correct: isCorrect,
                 lobby_code: lobbyCode,
-                battle_stats: battleStats // Send current stats to backend
-                // No longer include question_ids_done here - using dedicated endpoint
+                battle_stats: battleStats, // Send current stats to backend
+                question_ids_done: JSON.stringify(currentQuestionIds) // Include question IDs here too
               }
             );
 
@@ -864,25 +882,9 @@ export default function PvpBattle() {
       if (!currentQuestionIds.includes(questionId)) {
         currentQuestionIds.push(questionId);
 
-        // Update localStorage
+        // Update localStorage only
         localStorage.setItem(`question_ids_${battleState.session_uuid}`, JSON.stringify(currentQuestionIds));
         console.log('Updated question IDs in localStorage:', currentQuestionIds);
-
-        // Send to the dedicated endpoint
-        const response = await axios.put(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-question-ids`,
-          {
-            session_uuid: battleState.session_uuid,
-            question_ids: currentQuestionIds,
-            increment_count: true
-          }
-        );
-
-        if (response.data.success) {
-          console.log('Successfully updated question IDs in database:', response.data);
-        } else {
-          console.error('Failed to update question IDs:', response.data.message);
-        }
       } else {
         console.log('Question ID already exists:', questionId);
       }
