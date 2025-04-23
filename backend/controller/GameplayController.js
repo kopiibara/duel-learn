@@ -264,6 +264,7 @@ export const endBattle = async (req, res) => {
     }
 };
 
+
 export const initializeBattleSession = async (req, res) => {
     let connection;
     try {
@@ -967,55 +968,53 @@ export const updateBattleRound = async (req, res) => {
             }
 
             // Check if the card_effect columns exist
-            let updateRoundQuery;
-            let updateRoundParams;
 
+            // Check for necessary columns
             const [columns] = await connection.query(`
                 SHOW COLUMNS FROM battle_rounds 
-                WHERE Field IN ('host_card_effect', 'guest_card_effect')
+                WHERE Field IN ('host_card_effect', 'guest_card_effect', 'question_count_total')
             `);
 
-            if (columns.length >= 2) {
-                // Columns exist, include them in the update
-                updateRoundQuery = `
-                    UPDATE battle_rounds 
-                    SET ${updateField} = ?,
-                        ${answerField} = ?,
-                        ${cardEffectField} = ?
-                    WHERE session_uuid = ?
-                `;
-                updateRoundParams = [
-                    finalCardId,
-                    is_correct,
-                    cardEffect ? JSON.stringify(cardEffect) : null,
-                    session_uuid
-                ];
-            } else {
-                // Add the columns first
+            // Add missing columns if needed
+            const existingFields = columns.map(col => col.Field);
+
+            if (!existingFields.includes('host_card_effect') || !existingFields.includes('guest_card_effect')) {
                 console.log("Adding card effect columns to battle_rounds table");
                 await connection.query(`
                     ALTER TABLE battle_rounds 
-                    ADD COLUMN host_card_effect JSON NULL,
-                    ADD COLUMN guest_card_effect JSON NULL
+                    ADD COLUMN IF NOT EXISTS host_card_effect JSON NULL,
+                    ADD COLUMN IF NOT EXISTS guest_card_effect JSON NULL
                 `);
-
-                // Then perform the update
-                updateRoundQuery = `
-                    UPDATE battle_rounds 
-                    SET ${updateField} = ?,
-                        ${answerField} = ?,
-                        ${cardEffectField} = ?
-                    WHERE session_uuid = ?
-                `;
-                updateRoundParams = [
-                    finalCardId,
-                    is_correct,
-                    cardEffect ? JSON.stringify(cardEffect) : null,
-                    session_uuid
-                ];
             }
 
+            if (!existingFields.includes('question_count_total')) {
+                console.log("Adding question_count_total column to battle_rounds table");
+                await connection.query(`
+                    ALTER TABLE battle_rounds 
+                    ADD COLUMN IF NOT EXISTS question_count_total INT DEFAULT 0
+                `);
+            }
+
+            // Prepare update query
+            const updateRoundQuery = `
+                UPDATE battle_rounds 
+                SET ${updateField} = ?,
+                    ${answerField} = ?,
+                    ${cardEffectField} = ?,
+                    question_count_total = COALESCE(question_count_total, 0) + 1
+                WHERE session_uuid = ?
+            `;
+
+            const updateRoundParams = [
+                finalCardId,
+                is_correct,
+                cardEffect ? JSON.stringify(cardEffect) : null,
+                session_uuid
+            ];
+
+            // Execute update
             await connection.query(updateRoundQuery, updateRoundParams);
+
 
             // Update battle_sessions to store active card effects
             // First check if the active_card_effects column exists
@@ -1853,69 +1852,50 @@ export const getWinStreak = async (req, res) => {
  * @param {Object} res - Response object
  */
 export const updateWinStreak = async (req, res) => {
-    let connection;
+    const { firebase_uid, is_winner, protect_streak } = req.body;
+
     try {
-        const { firebase_uid, is_winner } = req.body;
+        const connection = await pool.getConnection();
 
-        if (!firebase_uid || is_winner === undefined) {
-            return res.status(400).json({
-                success: false,
-                message: "Firebase UID and winner status are required"
-            });
-        }
-
-        connection = await pool.getConnection();
-
-        // Get current win streak
-        const [currentStreak] = await connection.execute(
-            'SELECT win_streak FROM user_info WHERE firebase_uid = ?',
-            [firebase_uid]
-        );
-
-        if (currentStreak.length === 0) {
-            return res.status(404).json({
-                success: false,
-                message: "User not found"
-            });
-        }
-
-        // Calculate new win streak
-        let newStreak;
-        if (is_winner) {
-            // Get current streak value, ensuring it's a number
-            const currentStreakValue = currentStreak[0].win_streak === null ? 0 : parseInt(currentStreak[0].win_streak);
-
-            // Increment streak but cap at 5
-            newStreak = Math.min(currentStreakValue + 1, 5);
-
-            console.log('Current streak:', currentStreakValue, 'New streak:', newStreak); // Debug log
-        } else {
-            // Reset streak to 0 on loss
-            newStreak = 0;
-        }
-
-        // Update win streak in database
-        await connection.execute(
-            'UPDATE user_info SET win_streak = ? WHERE firebase_uid = ?',
-            [newStreak, firebase_uid]
-        );
-
-        return res.status(200).json({
-            success: true,
-            data: {
-                win_streak: newStreak
+        try {
+            if (is_winner) {
+                // Winner: increment win streak
+                await connection.query(
+                    "UPDATE user_info SET win_streak = win_streak + 1 WHERE firebase_uid = ?",
+                    [firebase_uid]
+                );
+            } else if (!protect_streak) {
+                // Loser without Fortune Coin: reset win streak to 0
+                await connection.query(
+                    "UPDATE user_info SET win_streak = 0 WHERE firebase_uid = ?",
+                    [firebase_uid]
+                );
             }
-        });
+            // If loser with Fortune Coin (protect_streak is true), do nothing to win_streak
+            // (This preserves the current streak without incrementing it)
 
+            // Get updated win streak
+            const [result] = await connection.query(
+                "SELECT win_streak FROM user_info WHERE firebase_uid = ?",
+                [firebase_uid]
+            );
+
+            connection.release();
+
+            res.status(200).json({
+                success: true,
+                data: {
+                    win_streak: result[0].win_streak
+                },
+                protected: protect_streak && !is_winner
+            });
+        } catch (error) {
+            connection.release();
+            throw error;
+        }
     } catch (error) {
-        console.error('Error updating win streak:', error);
-        return res.status(500).json({
-            success: false,
-            message: "Failed to update win streak",
-            error: error.message
-        });
-    } finally {
-        if (connection) connection.release();
+        console.error("Error updating win streak:", error);
+        res.status(500).json({ success: false, message: "Error updating win streak" });
     }
 };
 
@@ -2481,6 +2461,117 @@ export const claimBattleRewards = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: "Failed to claim battle rewards",
+            error: error.message
+        });
+    } finally {
+        if (connection) connection.release();
+    }
+};
+
+/**
+ * Update question IDs done for a battle session
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const updateQuestionIdsDone = async (req, res) => {
+    let connection;
+    try {
+        const { session_uuid, question_ids } = req.body;
+
+        if (!session_uuid || !question_ids) {
+            return res.status(400).json({
+                success: false,
+                message: "Session UUID and question IDs are required"
+            });
+        }
+
+        connection = await pool.getConnection();
+
+        // Check if the round exists
+        const [existingRound] = await connection.execute(
+            'SELECT question_ids_done FROM battle_rounds WHERE session_uuid = ?',
+            [session_uuid]
+        );
+
+        if (existingRound.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Battle round not found for this session"
+            });
+        }
+
+        // Get the current question IDs array
+        let currentQuestionIds = [];
+        if (existingRound[0].question_ids_done) {
+            try {
+                currentQuestionIds = JSON.parse(existingRound[0].question_ids_done);
+                // Ensure it's an array
+                if (!Array.isArray(currentQuestionIds)) {
+                    currentQuestionIds = [];
+                }
+            } catch (e) {
+                // If parsing fails, start with an empty array
+                console.error('Error parsing existing question_ids_done:', e);
+                currentQuestionIds = [];
+            }
+        }
+
+        // Parse the incoming question IDs
+        let newQuestionIds = [];
+        try {
+            newQuestionIds = typeof question_ids === 'string'
+                ? JSON.parse(question_ids)
+                : question_ids;
+
+            // Ensure it's an array
+            if (!Array.isArray(newQuestionIds)) {
+                newQuestionIds = [newQuestionIds];
+            }
+        } catch (e) {
+            // If it's a single ID that's not JSON
+            newQuestionIds = [question_ids];
+        }
+
+        // Merge the arrays and remove duplicates
+        for (const id of newQuestionIds) {
+            if (!currentQuestionIds.includes(id)) {
+                currentQuestionIds.push(id);
+            }
+        }
+
+        // Convert back to JSON string
+        const questionIdsString = JSON.stringify(currentQuestionIds);
+
+        // Update question_ids_done in the database
+        await connection.execute(
+            'UPDATE battle_rounds SET question_ids_done = ? WHERE session_uuid = ?',
+            [questionIdsString, session_uuid]
+        );
+
+        // Increment question count if needed
+        const increment = req.body.increment_count === true;
+        if (increment) {
+            await connection.execute(
+                'UPDATE battle_rounds SET question_count_total = COALESCE(question_count_total, 0) + 1 WHERE session_uuid = ?',
+                [session_uuid]
+            );
+        }
+
+        return res.json({
+            success: true,
+            message: "Question IDs updated successfully",
+            data: {
+                session_uuid,
+                question_ids: currentQuestionIds,
+                total_count: currentQuestionIds.length
+            }
+        });
+
+    } catch (error) {
+        console.error('Error updating question IDs:', error);
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update question IDs",
             error: error.message
         });
     } finally {

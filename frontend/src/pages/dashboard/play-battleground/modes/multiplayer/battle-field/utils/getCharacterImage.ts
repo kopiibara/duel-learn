@@ -4,6 +4,7 @@ import characterPickingLoop from "/characterinLobby/CharacterPickingLoop.gif"; /
 import correctAnswerAnimation from "/GameBattle/correctAnswerAnimationCharacter.gif"; // Correct answer animation
 import incorrectAnswerAnimation from "/GameBattle/incorrectAnswerAnimationCharacter.gif"; // Incorrect answer animation
 import beenAttackedAnimation from "/GameBattle/BeenAttacked.gif"; // Been attacked animation
+import selectedCardCharacterLooping from "/GameBattle/selectedCardCharacterLooping.gif"; // Selected card animation
 
 /**
  * Get the appropriate character image based on animation state and intro status
@@ -26,6 +27,9 @@ export function getCharacterImage(
   } else if (animationState === "picking" && introComplete) {
     // Then continue with the looping "pickingLoop" animation
     return characterPickingLoop;
+  } else if (animationState === "card_selected") {
+    // Show the card selected looping animation
+    return selectedCardCharacterLooping;
   } else if (animationState === "correct_answer") {
     // Show correct answer animation
     return correctAnswerAnimation;

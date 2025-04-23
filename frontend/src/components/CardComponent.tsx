@@ -49,7 +49,7 @@ const CardComponent: React.FC<CardComponentProps> = ({
       transform: "translateY(-4px)",
       boxShadow: "0 10px 20px rgba(0,0,0,0.12)", // Add shadow for lifting effect
       "& .cardMedia": {
-        transform: "translateY(-8px)",
+        transform: "scale(1.05)", // Scale up the background image on hover
       },
     },
   }));

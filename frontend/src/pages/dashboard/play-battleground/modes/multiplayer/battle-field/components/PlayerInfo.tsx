@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import PoisonatedEffect from "/GameBattle/PoisonatedEffect.png"
+import { BattleState } from "../BattleState";
 
 export interface PlayerInfoProps {
     name: string;
@@ -10,6 +11,7 @@ export interface PlayerInfoProps {
     isRightAligned?: boolean;
     userId?: string;
     poisonEffectActive?: boolean;
+    battleState?: BattleState | null;
 }
 
 /**
@@ -21,7 +23,8 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
     maxHealth,
     isRightAligned = false,
     userId,
-    poisonEffectActive = false
+    poisonEffectActive = false,
+    battleState
 }) => {
     const [profilePicture, setProfilePicture] = useState<string | null>(null);
     const [loading, setLoading] = useState(false);

@@ -19,6 +19,39 @@ const invalidateShopCaches = (firebase_uid) => {
     });
 };
 
+const checkAndUpdateExpiredItems = async (connection, firebase_uid) => {
+    const now = new Date();
+    try {
+        // Find items that are active but have expired
+        const [expiredItems] = await connection.query(
+            "SELECT item_code FROM user_items WHERE firebase_uid = ? AND status = 'active' AND duration_ends_at < ?",
+            [firebase_uid, now]
+        );
+
+        if (expiredItems.length > 0) {
+            console.log(`Found ${expiredItems.length} expired items for user ${firebase_uid}`);
+
+            // Update all expired items to status "expired"
+            await connection.query(
+                "UPDATE user_items SET status = 'expired' WHERE firebase_uid = ? AND status = 'active' AND duration_ends_at < ?",
+                [firebase_uid, now]
+            );
+
+            // If reward multiplier expired, reset it in user_info table
+            await connection.query(
+                "UPDATE user_info SET reward_multiplier = 1.0 WHERE firebase_uid = ? AND reward_multiplier_expiry < ?",
+                [firebase_uid, now]
+            );
+
+            return true; // Items were updated
+        }
+        return false; // No items needed updating
+    } catch (error) {
+        console.error("Error checking expired items:", error);
+        throw error;
+    }
+};
+
 const shopController = {
 
     getShopItems: async (req, res) => {
@@ -385,20 +418,35 @@ const shopController = {
                 // Apply different effects based on the item type
                 switch (effect_type) {
                     case "max_mana":
-                        // Set mana to maximum (200)
+                        // First check if mana is already at maximum
+                        const [currentMana] = await connection.query(
+                            "SELECT mana FROM user_info WHERE firebase_uid = ?",
+                            [firebase_uid]
+                        );
+
+                        if (currentMana.length > 0 && currentMana[0].mana >= 200) {
+                            await connection.rollback();
+                            connection.release();
+                            return res.status(400).json({
+                                message: "Your mana is already full!"
+                            });
+                        }
+
+                        // Set mana to maximum (200) only if not already at max
                         updateQuery = "UPDATE user_info SET mana = 200 WHERE firebase_uid = ?";
                         updateValues = [firebase_uid];
                         resultMessage = `Mana fully restored with ${item_name}!`;
                         break;
 
                     case "tech_pass":
-
-                        updateQuery = "UPDATE user_info SET tech_pass = tech_pass + 1 WHERE firebase_uid = ?";
-                        updateValues = [firebase_uid];
-                        resultMessage = `Tech pass added `;
+                        // Don't perform any database query, just return a message
+                        updateQuery = "SELECT 1"; // Dummy query that does nothing
+                        updateValues = [];
+                        resultMessage = "Scan a material";
                         break;
 
                     case "starter_pack":
+
                         // Update user stats
                         updateQuery = "UPDATE user_info SET coins = coins + 500, exp = exp + 500, mana = 200 WHERE firebase_uid = ?";
                         updateValues = [firebase_uid];
@@ -435,6 +483,84 @@ const shopController = {
                         resultMessage = `${item_name} applied! You got 500 coins, 500 exp, full mana, and 1 Fortune Coin added to your inventory!`;
                         break;
 
+                    case "reward_multiplier":
+                        // First check if user already has an active reward multiplier
+                        const [activeMultiplier] = await connection.query(
+                            "SELECT reward_multiplier, reward_multiplier_expiry FROM user_info WHERE firebase_uid = ? AND reward_multiplier > 1 AND reward_multiplier_expiry > NOW()",
+                            [firebase_uid]
+                        );
+
+                        if (activeMultiplier.length > 0) {
+                            // Calculate remaining time
+                            const now = new Date();
+                            const expiryTime = new Date(activeMultiplier[0].reward_multiplier_expiry);
+                            const remainingHours = Math.ceil((expiryTime - now) / (1000 * 60 * 60));
+
+                            await connection.rollback();
+                            connection.release();
+                            return res.status(400).json({
+                                message: `You already have an active reward multiplier (${activeMultiplier[0].reward_multiplier}x) that expires in ${remainingHours} hours.`
+                            });
+                        }
+
+                        // Get current timestamp
+                        const now = new Date();
+                        // Default duration 24 hours and multiplier value if not specified
+                        const durationHours = effect_value?.duration || 24;
+                        const multiplierValue = effect_value?.multiplier || 2;
+
+                        // Calculate end time
+                        const endTime = new Date(now.getTime() + durationHours * 60 * 60 * 1000);
+
+                        // Define the update query for user_info table
+                        updateQuery = "UPDATE user_info SET reward_multiplier = ?, reward_multiplier_expiry = ? WHERE firebase_uid = ?";
+                        updateValues = [multiplierValue, endTime, firebase_uid];
+
+                        // Also update the duration info in the user_items table for this item
+                        await connection.query(
+                            "UPDATE user_items SET status = ?, duration = ?, duration_starts_at = ?, duration_ends_at = ? WHERE firebase_uid = ? AND item_code = ?",
+                            ["active", durationHours.toString(), now, endTime, firebase_uid, item_code]
+                        );
+
+                        resultMessage = `${item_name} activated! Your rewards are now multiplied by ${multiplierValue}x for the next ${durationHours} hours.`;
+                        break;
+
+                    case "prevent_loss":
+                        // First, check if user already has an active fortune coin
+                        const [activeFortuneCoin] = await connection.query(
+                            "SELECT id FROM user_items WHERE firebase_uid = ? AND item_code = 'ITEM004FC' AND status = 'active'",
+                            [firebase_uid]
+                        );
+
+                        if (activeFortuneCoin.length > 0) {
+                            await connection.rollback();
+                            connection.release();
+                            return res.status(400).json({
+                                message: "You already have an active Fortune Coin!"
+                            });
+                        }
+
+                        // Modified: Get full item details including id
+                        const [fortuneCoinItem] = await connection.query(
+                            "SELECT id FROM user_items WHERE firebase_uid = ? AND item_code = ?",
+                            [firebase_uid, item_code]
+                        );
+
+                        if (fortuneCoinItem.length === 0) {
+                            await connection.rollback();
+                            connection.release();
+                            return res.status(404).json({
+                                message: "Fortune Coin not found in your inventory"
+                            });
+                        }
+
+                        // Set the status to active
+                        updateQuery = "UPDATE user_items SET status = 'active' WHERE firebase_uid = ? AND item_code = ?";
+                        updateValues = [firebase_uid, item_code];
+
+                        resultMessage = `${item_name} activated! Your win streak is now protected from the next loss!`;
+                        break;
+
                     default:
                         await connection.rollback();
                         connection.release();
@@ -457,9 +583,9 @@ const shopController = {
                         [firebase_uid, item_code]
                     );
                 } else {
-                    // Delete item if quantity is 1
+                    // Set quantity to 0 instead of deleting
                     await connection.query(
-                        "DELETE FROM user_items WHERE firebase_uid = ? AND item_code = ?",
+                        "UPDATE user_items SET quantity = 0 WHERE firebase_uid = ? AND item_code = ?",
                         [firebase_uid, item_code]
                     );
                 }
@@ -496,6 +622,74 @@ const shopController = {
         }
     },
 
+    getUserActiveItems: async (req, res) => {
+        const { firebase_uid, item_code } = req.params;
+
+        try {
+            const connection = await pool.getConnection();
+
+            try {
+                // Check for active items of the specified type
+                const [activeItems] = await connection.query(
+                    "SELECT id, status FROM user_items WHERE firebase_uid = ? AND item_code = ? AND status = 'active'",
+                    [firebase_uid, item_code]
+                );
+
+                connection.release();
+
+                if (activeItems.length > 0) {
+                    return res.status(200).json({
+                        active: true,
+                        id: activeItems[0].id
+                    });
+                } else {
+                    return res.status(200).json({
+                        active: false
+                    });
+                }
+            } catch (error) {
+                connection.release();
+                throw error;
+            }
+        } catch (error) {
+            console.error("Error checking active items:", error);
+            res.status(500).json({ message: "Error checking active items" });
+        }
+    },
+
+    useFortuneCoins: async (req, res) => {
+        const { firebase_uid, item_id } = req.body;
+
+        try {
+            const connection = await pool.getConnection();
+            await connection.beginTransaction();
+
+            try {
+                // Mark the fortune coin as used (not active anymore)
+                await connection.query(
+                    "UPDATE user_items SET status = 'used' WHERE firebase_uid = ? AND id = ?",
+                    [firebase_uid, item_id]
+                );
+
+                await connection.commit();
+                connection.release();
+
+                // Invalidate cache
+                invalidateShopCaches(firebase_uid);
+
+                res.status(200).json({
+                    message: "Fortune Coin used successfully to protect win streak!"
+                });
+            } catch (error) {
+                await connection.rollback();
+                connection.release();
+                throw error;
+            }
+        } catch (error) {
+            console.error("Error using Fortune Coin:", error);
+            res.status(500).json({ message: "Error using Fortune Coin" });
+        }
+    }
 };
 
 export default shopController;

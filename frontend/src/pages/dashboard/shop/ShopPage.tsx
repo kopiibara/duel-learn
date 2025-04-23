@@ -203,6 +203,13 @@ const Shop = () => {
       return;
     }
 
+    // Special handling for Tech Pass - redirect to create-study-material page
+    if (itemCode === "ITEM002TP") {
+      // Redirect to create material page
+      navigate("/dashboard/study-material/create");
+      return;
+    }
+
     try {
       console.log(`Using item ${itemCode} for user ${user.firebase_uid}`);
 
@@ -357,7 +364,7 @@ const Shop = () => {
             </p>
             <div className="flex gap-2">
               <button
-                className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px] sm:text-[15px]  text-white rounded-full font-bold"
+                className="mt-3 sm:mt-4 px-6 sm:px-10 py-2 text-[14px] sm:text-[15px] bg-inherit  text-white hover:text-[#3e2880] hover:bg-white rounded-full transition-all duration-300 ease-in-out font-bold"
                 onClick={() => navigate("/dashboard/buy-premium-account")}
               >
                 More Info
@@ -420,7 +427,9 @@ const Shop = () => {
                         handleUseItem(item.item_code, item.item_name)
                       }
                     >
-                      Use ({ownedItems[item.item_code] || 0})
+                      {item.item_code === "ITEM002TP"
+                        ? "Use"
+                        : `Use (${ownedItems[item.item_code] || 0})`}
                     </button>
                   )}
                   {(ownedItems[item.item_code] || 0) < 5 && (
