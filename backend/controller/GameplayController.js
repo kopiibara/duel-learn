@@ -2487,4 +2487,98 @@ export const claimBattleRewards = async (req, res) => {
     }
 };
 
+export const updateEnemyAnsweringQuestion = async (req, res) => {
+    const { session_uuid, player_type, question_text, is_on_flashcard } = req.body;
+
+    if (!session_uuid || !player_type || is_on_flashcard === undefined) {
+        return res.status(400).json({
+            success: false,
+            message: 'Missing required fields: session_uuid, player_type, is_on_flashcard'
+        });
+    }
+
+    try {
+        // Determine which columns to update based on player type
+        const questionColumnToUpdate = player_type === 'host' ? 'host_answering_question_text' : 'guest_answering_question_text';
+        const flashcardColumnToUpdate = player_type === 'host' ? 'host_on_flashcard' : 'guest_on_flashcard';
+
+        const updateQuery = `
+      UPDATE battle_rounds 
+      SET ${questionColumnToUpdate} = ?, ${flashcardColumnToUpdate} = ?
+      WHERE session_uuid = ?
+    `;
+
+        const [result] = await pool.query(updateQuery, [question_text, is_on_flashcard, session_uuid]);
+
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Battle round not found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: `${player_type}'s question status updated successfully`
+        });
+    } catch (error) {
+        console.error('Error updating enemy answering question:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
+export const getEnemyAnsweringQuestion = async (req, res) => {
+    const { session_uuid, player_type } = req.params;
+
+    if (!session_uuid || !player_type) {
+        return res.status(400).json({
+            success: false,
+            message: 'Missing required parameters: session_uuid, player_type'
+        });
+    }
+
+    try {
+        // Determine which columns to retrieve based on player type
+        // If the player is host, we want to get guest's info and vice versa
+        const questionColumnToRetrieve = player_type === 'host' ? 'guest_answering_question_text' : 'host_answering_question_text';
+        const flashcardColumnToRetrieve = player_type === 'host' ? 'guest_on_flashcard' : 'host_on_flashcard';
+
+        const query = `
+      SELECT 
+        ${questionColumnToRetrieve} AS enemy_question_text,
+        ${flashcardColumnToRetrieve} AS enemy_on_flashcard
+      FROM battle_rounds
+      WHERE session_uuid = ?
+    `;
+
+        const [rows] = await pool.query(query, [session_uuid]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Battle round not found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                enemy_question_text: rows[0].enemy_question_text,
+                enemy_on_flashcard: rows[0].enemy_on_flashcard
+            }
+        });
+    } catch (error) {
+        console.error('Error retrieving enemy answering question:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
 

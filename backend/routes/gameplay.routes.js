@@ -24,7 +24,9 @@ import {
     checkMindControlEffects,
     applyPoisonEffects,
     generateBattleQuestions,
-    claimBattleRewards
+    claimBattleRewards,
+    updateEnemyAnsweringQuestion,
+    getEnemyAnsweringQuestion
 } from '../controller/GameplayController.js';
 
 const router = express.Router();
@@ -76,5 +78,9 @@ router.post('/battle/save-session-report', savePvpSessionReport);
 
 // Claim rewards from PvP battle
 router.post('/battle/claim-rewards', claimBattleRewards);
+
+// Add new routes for enemy answering question
+router.put('/battle/update-enemy-question', updateEnemyAnsweringQuestion);
+router.get('/battle/enemy-question/:session_uuid/:player_type', getEnemyAnsweringQuestion);
 
 export default router; 

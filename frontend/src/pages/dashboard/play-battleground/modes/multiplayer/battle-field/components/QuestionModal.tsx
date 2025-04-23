@@ -65,6 +65,7 @@ interface QuestionModalProps {
   playIncorrectSound?: () => void;
   soundEffectsVolume?: number;
   battleState?: { session_uuid?: string };
+  isHost?: boolean;
 }
 
 const QuestionModal: React.FC<QuestionModalProps> = ({
@@ -84,7 +85,8 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   playCorrectSound,
   playIncorrectSound,
   soundEffectsVolume,
-  battleState
+  battleState,
+  isHost
 }) => {
   const [hasAnswered, setHasAnswered] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -154,7 +156,27 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     }
   }, [isOpen]);
 
-  // Select a question when the modal opens
+  // Add a function to update the enemy answering question text
+  const updateEnemyAnsweringQuestion = async (questionText: string) => {
+    if (!battleState?.session_uuid) return;
+
+    try {
+      await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-enemy-question`,
+        {
+          session_uuid: battleState.session_uuid,
+          player_type: isHost ? 'host' : 'guest',
+          question_text: questionText,
+          is_on_flashcard: questionText !== '' // Set to true when question is shown, false when empty
+        }
+      );
+      console.log('Updated enemy answering question text:', questionText);
+    } catch (error) {
+      console.error('Error updating enemy answering question:', error);
+    }
+  };
+
+  // Update effect to send the current question text when a question is selected
   useEffect(() => {
     console.log('Question selection effect triggered:', {
       isOpen,
@@ -189,6 +211,9 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
             question: selectedQuestion.question
           });
           setCurrentQuestion(selectedQuestion);
+
+          // Send the question text to the backend so the opponent can see what question is being answered
+          updateEnemyAnsweringQuestion(selectedQuestion.question);
         } else {
           console.log('Selected question was already shown, trying again');
           // If the selected question was already shown, try again
@@ -200,7 +225,15 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
         onGameEnd?.();
       }
     }
-  }, [isOpen, aiQuestions, isGeneratingAI, currentQuestion, shownQuestionIds]);
+  }, [isOpen, aiQuestions, isGeneratingAI, currentQuestion, shownQuestionIds, battleState?.session_uuid, isHost]);
+
+  // Add effect to clear question when modal closes
+  useEffect(() => {
+    if (!isOpen && battleState?.session_uuid) {
+      // Clear the enemy answering question text when the modal closes
+      updateEnemyAnsweringQuestion('');
+    }
+  }, [isOpen, battleState?.session_uuid]);
 
   // Timer logic
   useEffect(() => {

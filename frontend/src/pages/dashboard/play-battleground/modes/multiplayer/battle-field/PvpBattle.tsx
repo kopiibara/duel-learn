@@ -30,6 +30,7 @@ import GameStartAnimation from "./components/GameStartAnimation";
 import GuestWaitingForRandomization from "./components/GuestWaitingForRandomization";
 import QuestionModal from "./components/QuestionModal";
 import PvpSessionReport from "./screens/PvpSessionReport";
+import EnemyQuestionDisplay from "./components/EnemyQuestionDisplay";
 
 // Import utils directly
 import TurnRandomizer from "./utils/TurnRandomizer";
@@ -918,6 +919,7 @@ export default function PvpBattle() {
     const checkAndApplyPoisonEffects = async () => {
       if (!battleState?.session_uuid) return;
 
+      // Health updates are polled every 1 second for more responsive health bar updates
       try {
         // Get battle scores
         const scoresResponse = await axios.get<BattleScoresResponse>(
@@ -1077,8 +1079,8 @@ export default function PvpBattle() {
       }
     };
 
-    // Poll for battle scores less frequently
-    const scoresPollInterval = setInterval(checkAndApplyPoisonEffects, 2000);
+    // Poll for battle scores more frequently (every 1 second instead of 2)
+    const scoresPollInterval = setInterval(checkAndApplyPoisonEffects, 1000);
     checkAndApplyPoisonEffects(); // Initial fetch
 
     return () => clearInterval(scoresPollInterval);
@@ -2028,6 +2030,18 @@ export default function PvpBattle() {
             playCorrectSound={playRandomCorrectAnswerSound}
             playIncorrectSound={playRandomIncorrectAnswerSound}
             soundEffectsVolume={actualSoundEffectsVolume}
+            battleState={battleState}
+            isHost={isHost}
+          />
+        )}
+
+        {/* Add Enemy Question Display component */}
+        {shouldShowBattleInterface() && (
+          <EnemyQuestionDisplay
+            sessionUuid={battleState?.session_uuid}
+            isHost={isHost}
+            isMyTurn={isMyTurn}
+            opponentName={opponentName}
           />
         )}
 
