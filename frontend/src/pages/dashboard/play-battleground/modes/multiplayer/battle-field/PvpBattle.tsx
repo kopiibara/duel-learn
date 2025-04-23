@@ -1767,6 +1767,11 @@ export default function PvpBattle() {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  // Add a function to determine if we should hide the game UI
+  const shouldHideGameUI = () => {
+    return showVictoryModal || showEarlyLeaveModal;
+  };
+
   return (
     <div
       className="w-full h-screen flex flex-col relative"
@@ -1777,14 +1782,13 @@ export default function PvpBattle() {
         backgroundRepeat: "no-repeat",
       }}
     >
-      {/* Audio element for attack sound */}
+      {/* Audio elements */}
       <audio
         ref={attackSoundRef}
         src="/GameBattle/magical-twinkle-242245.mp3"
         preload="auto"
       />
 
-      {/* Audio element for background music */}
       <audio
         ref={backgroundMusicRef}
         src="/GameBattle/PVPBATTLEBGMUSICAVERAGE.mp3"
@@ -1792,46 +1796,44 @@ export default function PvpBattle() {
         id="pvp-background-music"
       />
 
-      {/* Audio element for correct answer sounds */}
       <audio
         ref={correctAnswerSoundRef}
         src="/GameBattle/correct1.mp3"
         preload="auto"
       />
 
-      {/* Audio element for correct sound effects */}
       <audio
         ref={correctSfxRef}
         src="/GameBattle/correctSfx.mp3"
         preload="auto"
       />
 
-      {/* Audio element for incorrect answer sounds */}
       <audio
         ref={incorrectAnswerSoundRef}
         src="/GameBattle/incorrectAnswerSound.mp3"
         preload="auto"
       />
 
-      {/* Audio element for incorrect sound effects */}
       <audio
         ref={incorrectSfxRef}
         src="/GameBattle/incorrectSfx.mp3"
         preload="auto"
       />
 
-      {/* Character animation manager */}
-      <CharacterAnimationManager
-        playerAnimationState={playerAnimationState}
-        enemyAnimationState={enemyAnimationState}
-        setPlayerPickingIntroComplete={setPlayerPickingIntroComplete}
-        setEnemyPickingIntroComplete={setEnemyPickingIntroComplete}
-        playerPickingIntroComplete={playerPickingIntroComplete}
-        enemyPickingIntroComplete={enemyPickingIntroComplete}
-      />
+      {/* Character animation manager - Hide when modals are active */}
+      {!shouldHideGameUI() && (
+        <CharacterAnimationManager
+          playerAnimationState={playerAnimationState}
+          enemyAnimationState={enemyAnimationState}
+          setPlayerPickingIntroComplete={setPlayerPickingIntroComplete}
+          setEnemyPickingIntroComplete={setEnemyPickingIntroComplete}
+          playerPickingIntroComplete={playerPickingIntroComplete}
+          enemyPickingIntroComplete={enemyPickingIntroComplete}
+        />
+      )}
 
-      {/* Attack Animation Overlay */}
-      {showAttackAnimation && (
+      {/* Attack Animation Overlay - Hide when modals are active */}
+      {!shouldHideGameUI() && showAttackAnimation && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <img
             src="/GameBattle/AttackAndAttacked.png"
@@ -1854,8 +1856,8 @@ export default function PvpBattle() {
         `}
       </style>
 
-      {/* Only show the top UI bar when the battle interface should be shown */}
-      {shouldShowBattleInterface() && (
+      {/* Only show the top UI bar when the battle interface should be shown and no modals are active */}
+      {shouldShowBattleInterface() && !shouldHideGameUI() && (
         <div className="w-full py-4 px-4 sm:px-8 md:px-16 lg:px-32 xl:px-80 mt-4 lg:mt-12 flex items-center justify-between">
           <PlayerInfo
             name={playerName}
@@ -1896,8 +1898,8 @@ export default function PvpBattle() {
 
       {/* Main Battle Area */}
       <div className="flex-1 relative">
-        {/* Characters */}
-        {shouldShowBattleInterface() && (
+        {/* Characters - Hide when modals are active */}
+        {shouldShowBattleInterface() && !shouldHideGameUI() && (
           <>
             <Character
               imageSrc={getCharacterImage(
@@ -1920,8 +1922,8 @@ export default function PvpBattle() {
           </>
         )}
 
-        {/* Turn Randomizer (shown to both host and guest) */}
-        {showRandomizer && (
+        {/* Turn Randomizer (shown to both host and guest) - Hide when modals are active */}
+        {showRandomizer && !shouldHideGameUI() && (
           <TurnRandomizer
             isHost={isHost}
             lobbyCode={lobbyCode}
@@ -1947,24 +1949,24 @@ export default function PvpBattle() {
           />
         )}
 
-        {/* Waiting for host to randomize (shown to guest for 2 seconds) */}
-        {isGuestWaitingForRandomization() && (
+        {/* Waiting for host to randomize (shown to guest for 2 seconds) - Hide when modals are active */}
+        {isGuestWaitingForRandomization() && !shouldHideGameUI() && (
           <GuestWaitingForRandomization waitingForRandomization={true} />
         )}
 
-        {/* Game Start Animation */}
-        {showGameStart && (
+        {/* Game Start Animation - Hide when modals are active */}
+        {showGameStart && !shouldHideGameUI() && (
           <GameStartAnimation
             showGameStart={showGameStart}
             gameStartText={gameStartText}
           />
         )}
 
-        {/* Card Selection UI - Show after the waiting screen and delay */}
+        {/* Card Selection UI - Hide when modals are active */}
         {shouldShowBattleInterface() &&
           showCards &&
           showCardsAfterDelay &&
-          !showVictoryModal && (
+          !shouldHideGameUI() && (
             <div className="fixed inset-0 bg-black/20 z-10">
               <CardSelection
                 isMyTurn={isMyTurn}
@@ -1977,18 +1979,18 @@ export default function PvpBattle() {
             </div>
           )}
 
-        {/* Waiting overlay - now checks only if either player isn't in battle yet */}
-        {waitingForPlayer && !showVictoryModal && (
+        {/* Waiting overlay - Hide when modals are active */}
+        {waitingForPlayer && !shouldHideGameUI() && (
           <WaitingOverlay
             isVisible={true}
             message="Waiting for your opponent to connect..."
           />
         )}
 
-        {/* Loading overlay when ending battle */}
+        {/* Loading overlay when ending battle - Always show */}
         <LoadingOverlay isVisible={isEndingBattle} />
 
-        {/* Victory Modal */}
+        {/* Victory Modal - Always show */}
         <VictoryModal
           isOpen={showVictoryModal}
           onClose={handleVictoryConfirm}
@@ -2001,7 +2003,7 @@ export default function PvpBattle() {
           earlyEnd={earlyEnd}
         />
 
-        {/* Early Leave Modal */}
+        {/* Early Leave Modal - Always show */}
         <EarlyLeaveModal
           isOpen={showEarlyLeaveModal}
           onClose={handleEarlyLeaveConfirm}
@@ -2011,8 +2013,8 @@ export default function PvpBattle() {
           opponentName={opponentName}
         />
 
-        {/* Question Modal */}
-        {!showVictoryModal && shouldShowBattleInterface() && (
+        {/* Question Modal - Hide when other modals are active */}
+        {!shouldHideGameUI() && shouldShowBattleInterface() && (
           <QuestionModal
             isOpen={showQuestionModal}
             onClose={handleQuestionModalClose}
@@ -2035,8 +2037,8 @@ export default function PvpBattle() {
           />
         )}
 
-        {/* Add Enemy Question Display component */}
-        {shouldShowBattleInterface() && (
+        {/* Add Enemy Question Display component - Hide when modals are active */}
+        {shouldShowBattleInterface() && !shouldHideGameUI() && (
           <EnemyQuestionDisplay
             sessionUuid={battleState?.session_uuid}
             isHost={isHost}
@@ -2048,8 +2050,8 @@ export default function PvpBattle() {
         {/* Session Report */}
         {showSessionReport && <PvpSessionReport />}
 
-        {/* Poison effect indicator */}
-        {poisonEffectActive && !showVictoryModal && shouldShowBattleInterface() && (
+        {/* Poison effect indicator - Hide when modals are active */}
+        {poisonEffectActive && shouldShowBattleInterface() && !shouldHideGameUI() && (
           <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
             <div className="absolute inset-0 bg-green-500/20 animate-pulse"></div>
           </div>
