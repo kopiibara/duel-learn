@@ -9,5 +9,7 @@ router.get("/user-item/:firebase_uid", ShopController.getUserItem);
 router.post("/buy-item", ShopController.buyShopItem);
 router.post("/use-item", ShopController.useItem);
 router.post('/use-tech-pass/:firebase_uid/:techPassCount', ShopController.useUserTechPass);
+router.get('/user-active-items/:firebase_uid/:item_code', ShopController.getUserActiveItems);
+router.put('/use-fortune-coin', ShopController.useFortuneCoins);
 
 export default router;

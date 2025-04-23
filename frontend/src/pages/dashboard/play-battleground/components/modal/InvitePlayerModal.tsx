@@ -7,6 +7,135 @@ import axios from "axios";
 import { useUser } from "../../../../../contexts/UserContext";
 import { useBattleInvitations } from "../../../../../hooks/battle.hooks/useBattleInvitations";
 import { useSnackbar } from "../../../../../contexts/SnackbarContext";
+import { useOnlineStatus } from "../../../../../hooks/useOnlineStatus";
+import { useLobbyStatus } from "../../../../../hooks/useLobbyStatus";
+import { GameMode } from "../../../../../hooks/useLobbyStatus";
+
+// Define a proper interface for FriendItem props
+interface FriendItemProps {
+  friend: {
+    firebase_uid: string;
+    username: string;
+    level: number;
+    display_picture: string | null;
+  };
+  inviting: boolean;
+  onInvite: (friend: Player) => void;
+  showSnackbar: (message: string, severity: "success" | "error" | "info" | "warning") => void;
+}
+
+// Update the FriendItem component with proper typing
+const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite, showSnackbar }) => {
+  // Now hooks are at the top level of this component with proper typing
+  const isOnline = useOnlineStatus(friend.firebase_uid);
+  const { isInLobby, isInGame, gameMode } = useLobbyStatus(friend.firebase_uid);
+
+  // Get status color and text
+  const getStatusInfo = () => {
+    if (isInGame) {
+      let statusText = "In Game";
+      let color = "bg-orange-500"; // Default color
+
+      switch (gameMode) {
+        case "pvp-battle":
+          color = "bg-[#A4ADE6]"; // PvP Mode color
+          statusText = "In PVP Battle";
+          break;
+        case "peaceful-mode":
+          color = "bg-[#76F7C3]"; // Peaceful Mode color
+          statusText = "In Peaceful Mode";
+          break;
+        case "time-pressured-mode":
+          color = "bg-[#FFCF47]"; // Time Pressured Mode color
+          statusText = "In Time-Pressured Mode";
+          break;
+        case "creating-study-material":
+          color = "bg-[#4D18E8]"; // Creating Study Material color
+          statusText = "Creating Study Material";
+          break;
+      }
+
+      return { color, text: statusText };
+    } else if (isInLobby) {
+      return { color: "bg-blue-500", text: "In Lobby" };
+    } else if (isOnline) {
+      return { color: "bg-green-500", text: "Online" };
+    } else {
+      return { color: "bg-gray-500", text: "Offline" };
+    }
+  };
+
+  const { color, text } = getStatusInfo();
+
+  // Determine if invite should be disabled
+  const isInviteDisabled = !isOnline || isInGame || inviting;
+
+  // Handle invite click with status check
+  const handleInviteClick = () => {
+    if (!isOnline) {
+      showSnackbar(`${friend.username} is currently offline`, "error");
+      return;
+    }
+    
+    if (isInGame) {
+      showSnackbar(`${friend.username} is currently in ${text}`, "error");
+      return;
+    }
+    
+    onInvite(friend);
+  };
+
+  return (
+    <div
+      key={friend.firebase_uid}
+      className="p-3 rounded-md w-[550px] flex justify-between items-center mb-2"
+    >
+      <div className="flex items-center">
+        <div className="relative">
+          <img
+            src={friend.display_picture || ProfileIcon}
+            alt="Avatar"
+            className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
+          />
+          {/* Status indicator */}
+          <Tooltip 
+            title={text} 
+            placement="top" 
+            arrow
+          >
+            <div 
+              className={`absolute bottom-[-2px] right-1 w-4 h-4 rounded-full border-2 border-[#080511] ${color}`}
+            ></div>
+          </Tooltip>
+        </div>
+        <div>
+          <Typography className="text-white">
+            {friend.username}
+          </Typography>
+          <Typography sx={{ color: "white", fontSize: "0.835rem" }}>
+            LVL {friend.level}
+          </Typography>
+        </div>
+      </div>
+      <Button
+        variant="contained"
+        sx={{
+          backgroundColor: "#57A64E",
+          "&:disabled": {
+            backgroundColor: "#2E5428",
+            color: "#A0A0A0"
+          }
+        }}
+        disabled={isInviteDisabled}
+        onClick={handleInviteClick}
+      >
+        {inviting ? "SENDING..." : 
+         !isOnline ? "OFFLINE" : 
+         isInGame ? "IN GAME" : "INVITE"}
+      </Button>
+    </div>
+  );
+};
 
 interface Player {
   firebase_uid: string;
@@ -166,7 +295,11 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
         </Typography>
 
         {/* Error message */}
-        {error && <div className="text-red-500 text-center mb-4">{error}</div>}
+        {error && (
+          <div className="text-red-500 text-center mb-4">
+            {error}
+          </div>
+        )}
 
         {/* Friend List */}
         <div
@@ -179,43 +312,13 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
             <div className="text-white">No friends found</div>
           ) : (
             friends.map((friend) => (
-              <div
+              <FriendItem 
                 key={friend.firebase_uid}
-                className="p-3 rounded-md w-[550px] flex justify-between items-center mb-2"
-              >
-                <div className="flex items-center">
-                  <img
-                    src={friend.display_picture || ProfileIcon}
-                    alt="Avatar"
-                    className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
-                  />
-                  <div>
-                    <Typography className="text-white">
-                      {friend.username}
-                    </Typography>
-                    <Typography sx={{ color: "white", fontSize: "0.835rem" }}>
-                      LVL {friend.level}
-                    </Typography>
-                  </div>
-                </div>
-                <Button
-                  variant="contained"
-                  sx={{
-                    backgroundColor: "#57A64E",
-                    "&:disabled": {
-                      backgroundColor: "#2E5428",
-                      color: "#A0A0A0",
-                    },
-                  }}
-                  disabled={inviting}
-                  onClick={() => {
-                    console.log("Inviting friend:", friend);
-                    handleInvite(friend);
-                  }}
-                >
-                  {inviting ? "SENDING..." : "INVITE"}
-                </Button>
-              </div>
+                friend={friend} 
+                inviting={inviting} 
+                onInvite={handleInvite}
+                showSnackbar={showSnackbar}
+              />
             ))
           )}
         </div>

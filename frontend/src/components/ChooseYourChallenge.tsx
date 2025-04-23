@@ -45,7 +45,7 @@ const ModeCard = styled(Card)(({ theme }) => {
       transform: "translateY(-4px)",
       boxShadow: "0 10px 20px rgba(0,0,0,0.12)", // Add shadow for lifting effect
       "& .cardMedia": {
-        transform: "translateY(-4px)", // Scale and translate on hover
+        transform: "scale(1.05)", // Scale and translate on hover
       },
     },
   };

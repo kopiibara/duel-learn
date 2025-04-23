@@ -6,6 +6,7 @@ import characterPickingLoop from "/characterinLobby/CharacterPickingLoop.gif"; /
 import correctAnswerAnimation from "/GameBattle/correctAnswerAnimationCharacter.gif"; // Correct answer animation
 import incorrectAnswerAnimation from "/GameBattle/incorrectAnswerAnimationCharacter.gif"; // Incorrect answer animation
 import beenAttackedAnimation from "/GameBattle/BeenAttacked.gif"; // Been attacked animation
+import selectedCardCharacterLooping from "/GameBattle/selectedCardCharacterLooping.gif"; // Selected card animation
 
 interface CharacterAnimationManagerProps {
   playerAnimationState: string;
@@ -81,6 +82,9 @@ export function getCharacterImage(
   if (animationState === "picking") {
     // If in picking state, show intro animation until it completes, then show loop
     return introComplete ? characterPickingLoop : characterPicking;
+  } else if (animationState === "card_selected") {
+    // Show the card selected looping animation
+    return selectedCardCharacterLooping;
   } else if (animationState === "correct_answer") {
     // Show correct answer animation
     return correctAnswerAnimation;
