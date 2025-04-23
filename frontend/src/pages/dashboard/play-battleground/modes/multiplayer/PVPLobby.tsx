@@ -13,6 +13,7 @@ import axios from "axios";
 import SocketService from "../../../../../services/socketService";
 import { toast } from "react-hot-toast";
 import DocumentHead from "../../../../../components/DocumentHead";
+import GeneralLoadingScreen from "../../../../../components/LoadingScreen";
 
 // Import new modular components
 import {
@@ -58,6 +59,12 @@ interface StudyMaterial {
   study_material_id?: string; // Explicitly add study_material_id
   items?: any[];
   [key: string]: any; // For any other properties
+}
+
+// Add this to your interface definitions
+interface LoadingState {
+  isLoading: boolean;
+  message: string;
 }
 
 const PVPLobby: React.FC = () => {
@@ -175,8 +182,11 @@ const PVPLobby: React.FC = () => {
   const [showBanModal, setShowBanModal] = useState(false);
   const [isBanActive, setIsBanActive] = useState(false);
 
-  // Add this state after other state declarations (around line 130)
-  const [navigatingToSelection, setNavigatingToSelection] = useState(false);
+  // Add the loading state
+  const [loadingState, setLoadingState] = useState<LoadingState>({
+    isLoading: false,
+    message: "Preparing Battle"
+  });
 
   // Set the state variables
   useEffect(() => {
@@ -366,12 +376,25 @@ const PVPLobby: React.FC = () => {
   // Update the useEffect for battle started status for guest
   useEffect(() => {
     // Only run this for guests, not for hosts
-    if (!isCurrentUserGuest || !lobbyCode || navigatingToSelection) return;
+    if (!isCurrentUserGuest || !lobbyCode || battleStarted) return;
+
+    let isMounted = true; // Flag to track if component is still mounted
+    let checkCount = 0; // Track number of checks performed
 
     const checkBattleStarted = async () => {
+      // Skip if already navigating or component unmounted
+      if (!isMounted || battleStarted) return;
+
       try {
-        // First check if user is banned - REMOVED, now checking on component mount
-        // Skip the ban check here since we already check on component mount
+        checkCount++;
+        
+        // Every 3 checks (3 seconds), show a "checking" loading state to indicate activity
+        /*if (checkCount > 3 && !loadingState.isLoading) {
+          setLoadingState({
+            isLoading: true,
+            message: "Waiting for host"
+          });
+        }*/
 
         // Proceed with battle status check directly
         const response = await axios.get(
@@ -380,20 +403,29 @@ const PVPLobby: React.FC = () => {
           }/api/battle/invitations-lobby/battle-status/${lobbyCode}`
         );
 
+        // Verify component is still mounted before updating state
+        if (!isMounted) return;
+
         if (response.data.success && response.data.data.battle_started) {
           console.log(
             "Battle has started! Navigating to difficulty selection..."
           );
           setBattleStarted(true);
-          
-          // Set navigating flag to prevent further checks
-          setNavigatingToSelection(true);
 
           // Get host and guest IDs
           const hostId = players[0]?.firebase_uid;
           const guestId = user?.firebase_uid;
 
-          // Navigate guest to their specific route with host username
+          // Clear interval before navigation to prevent further checks
+          clearInterval(interval);
+          
+          // Update loading screen message - we're already showing the loading screen
+          setLoadingState({
+            isLoading: true,
+            message: "Joining Battle"
+          });
+          
+          // Navigate immediately - we don't need a delay since loading screen is already showing
           navigate("/dashboard/select-difficulty/pvp/player2", {
             state: {
               lobbyCode,
@@ -406,19 +438,38 @@ const PVPLobby: React.FC = () => {
               guestId: guestId, // Pass the actual guest ID
             },
           });
+        } else if (loadingState.isLoading && checkCount > 10) {
+          // After 10 checks (10 seconds) with no battle start, hide loading 
+          // to let user interact with UI again
+          setLoadingState({
+            isLoading: false,
+            message: ""
+          });
+          checkCount = 0; // Reset count
         }
       } catch (error) {
         console.error("Error checking battle status:", error);
+        // Hide loading on error
+        if (loadingState.isLoading) {
+          setLoadingState({
+            isLoading: false,
+            message: ""
+          });
+        }
       }
     };
 
     // Check immediately
     checkBattleStarted();
 
-    // Then check every 1.5 seconds
-    const interval = setInterval(checkBattleStarted, 1500);
+    // Check every 1 second (changed from 6000000ms)
+    const interval = setInterval(checkBattleStarted, 1000);
 
-    return () => clearInterval(interval);
+    // Clean up function
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
   }, [
     isCurrentUserGuest,
     lobbyCode,
@@ -426,8 +477,10 @@ const PVPLobby: React.FC = () => {
     selectedMaterial,
     selectedTypesFinal,
     players,
-    user,
-    navigatingToSelection,
+    user?.username,
+    user?.firebase_uid,
+    battleStarted,
+    loadingState.isLoading, // Add loadingState as dependency
   ]);
 
   // Update the handleBattleStart function
@@ -1405,180 +1458,189 @@ const PVPLobby: React.FC = () => {
   return (
     <>
       <DocumentHead title={`PvP Mode | Duel Learn`} />
-      <div className="relative min-h-screen flex flex-col items-center justify-center text-white px-6 py-8 overflow-hidden">
-        {/* Full-Width Fixed Header */}
-        <PvPHeader
-          onBackClick={handleBackClick}
-          onChangeMaterial={handleChangeMaterial}
-          onChangeQuestionType={handleChangeQuestionType}
-          selectedMaterial={selectedMaterial}
-          selectedTypesFinal={selectedTypesFinal}
-          questionTypes={questionTypes}
-          manaPoints={manaPoints}
-          isCurrentUserGuest={isCurrentUserGuest}
+      {loadingState.isLoading && (
+        <GeneralLoadingScreen 
+          text={loadingState.message} 
+          mode="PvP Battle" 
+          isLoading={loadingState.isLoading} 
         />
-
-        {/* Centered Content Wrapper */}
-        <div className="flex-grow flex items-center justify-center w-full">
-          <motion.div
-            className="paper-container flex flex-col items-center justify-center w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg text-center p-6 sm:p-8 rounded-lg shadow-lg"
-            initial={{ opacity: 0, scale: 0.5 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.7 }}
-          >
-            {/* Players Section */}
-            <div className="flex mt-24 w-full justify-between items-center">
-              {/* Player 1 (Host) */}
-              <motion.div
-                className="flex flex-col ml-[-250px] mr-[210px] items-center"
-                initial={{ x: -1000 }}
-                animate={{ x: 0 }}
-                transition={{ type: "spring", stiffness: 100, damping: 20 }}
-              >
-                <PlayerCard
-                  player={
-                    isCurrentUserGuest
-                      ? players[0]
-                      : {
-                          firebase_uid: user?.firebase_uid || "",
-                          username: user?.username || "Player 1",
-                          level: user?.level || 1,
-                          display_picture:
-                            user?.display_picture || defaultAvatar,
-                        }
-                  }
-                  isHost={true}
-                />
-              </motion.div>
-
-              {/* VS Text with Double Impact Animation */}
-              <motion.span
-                className="text-xl mt-14 sm:text-2xl md:text-[70px] font-bold text-[#4D18E8]"
-                style={{ WebkitTextStroke: "1px #fff" }}
-                initial={{ opacity: 0, scale: 1 }}
-                animate={{
-                  opacity: 1,
-                  scale: [1.5, 2, 1],
-                }}
-                transition={{
-                  duration: 1,
-                  ease: "easeInOut",
-                }}
-              >
-                VS
-              </motion.span>
-
-              {/* Player 2 */}
-              <motion.div className="flex flex-col mr-[-250px] ml-[210px] items-center">
-                {isCurrentUserGuest ? (
-                  <PlayerCard
-                    player={{
-                      firebase_uid: user?.firebase_uid || "",
-                      username: user?.username || "Player 2",
-                      level: user?.level || 1,
-                      display_picture: user?.display_picture || defaultAvatar,
-                    }}
-                    isHost={false}
-                  />
-                ) : (
-                  <PlayerCard
-                    player={invitedPlayer}
-                    isHost={false}
-                    isPending={invitedPlayerStatus.isPending}
-                    onClick={() => {
-                      if (
-                        !isCurrentUserGuest &&
-                        !players[1] &&
-                        !invitedPlayer
-                      ) {
-                        setSelectedPlayer("");
-                        setShowInviteModal(true);
-                      }
-                    }}
-                  />
-                )}
-              </motion.div>
-            </div>
-
-            {/* Lobby Code Section - only visible to host */}
-            {!isCurrentUserGuest && <LobbyCodeDisplay lobbyCode={lobbyCode} />}
-
-            {/* Battle Start Button - modified */}
-            <BattleControls
-              onBattleStart={handleBattleStart}
-              isHost={!isCurrentUserGuest}
-              hostReady={playerReadyState.hostReady}
-              guestReady={playerReadyState.guestReady}
-              loading={readyStateLoading || battleStartLoading}
-              disabledReason={manaPoints < 10 ? "Not enough mana" : undefined}
-            />
-          </motion.div>
-        </div>
-
-        {/* Confirmation Modal */}
-        <ConfirmationDialog
-          open={openDialog}
-          title="Are you sure you want to leave?"
-          content="If you leave, your current progress will be lost. Please confirm if you wish to proceed."
-          onConfirm={handleConfirmLeave}
-          onCancel={handleCancelLeave}
-          confirmText="Yes, Leave"
-          cancelText="Cancel"
-        />
-
-        {/* Select Study Material Modal */}
-        <SelectStudyMaterialModal
-          open={openMaterialModal}
-          handleClose={() => setOpenMaterialModal(false)}
-          mode={selectedMode}
-          isLobby={true}
-          onMaterialSelect={handleMaterialSelect}
-          onModeSelect={handleModeSelect}
-          selectedTypes={selectedTypesFinal}
-        />
-
-        {/* Question Type Selection Modal - Only show for host */}
-        {!isCurrentUserGuest && (
-          <QuestionTypeSelectionModal
-            open={modalOpenChangeQuestionType}
-            onClose={() => setModalOpenChangeQuestionType(false)}
-            selectedTypes={selectedTypesFinal || []}
-            questionTypes={questionTypes}
-            onConfirm={handleQuestionTypeUpdate}
-          />
-        )}
-
-        {/* Invite Player Modal */}
-        {showInviteModal && (
-          <InvitePlayerModal
-            open={showInviteModal}
-            handleClose={() => setShowInviteModal(false)}
-            onInviteSuccess={handleInvite}
-            lobbyCode={lobbyCode}
-            inviterName={user?.username ?? undefined}
-            senderId={user?.firebase_uid}
+      )}
+      {!loadingState.isLoading && (
+        <div className="relative min-h-screen flex flex-col items-center justify-center text-white px-6 py-8 overflow-hidden">
+          {/* Full-Width Fixed Header */}
+          <PvPHeader
+            onBackClick={handleBackClick}
+            onChangeMaterial={handleChangeMaterial}
+            onChangeQuestionType={handleChangeQuestionType}
+            selectedMaterial={selectedMaterial}
             selectedTypesFinal={selectedTypesFinal}
-            selectedMaterial={
-              selectedMaterial
-                ? {
-                    id: selectedMaterial.id || "",
-                    title: selectedMaterial.title,
-                  }
-                : null
-            }
+            questionTypes={questionTypes}
+            manaPoints={manaPoints}
+            isCurrentUserGuest={isCurrentUserGuest}
           />
-        )}
 
-        {/* Ban Modal - using the new component */}
-        {user?.firebase_uid && (
-          <BanPvPAccGame
-            isOpen={showBanModal}
-            onClose={() => setShowBanModal(false)}
-            userId={user.firebase_uid}
-            onBanStatusChange={handleBanStatusChange}
+          {/* Centered Content Wrapper */}
+          <div className="flex-grow flex items-center justify-center w-full">
+            <motion.div
+              className="paper-container flex flex-col items-center justify-center w-full max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg text-center p-6 sm:p-8 rounded-lg shadow-lg"
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.7 }}
+            >
+              {/* Players Section */}
+              <div className="flex mt-24 w-full justify-between items-center">
+                {/* Player 1 (Host) */}
+                <motion.div
+                  className="flex flex-col ml-[-250px] mr-[210px] items-center"
+                  initial={{ x: -1000 }}
+                  animate={{ x: 0 }}
+                  transition={{ type: "spring", stiffness: 100, damping: 20 }}
+                >
+                  <PlayerCard
+                    player={
+                      isCurrentUserGuest
+                        ? players[0]
+                        : {
+                            firebase_uid: user?.firebase_uid || "",
+                            username: user?.username || "Player 1",
+                            level: user?.level || 1,
+                            display_picture:
+                              user?.display_picture || defaultAvatar,
+                          }
+                    }
+                    isHost={true}
+                  />
+                </motion.div>
+
+                {/* VS Text with Double Impact Animation */}
+                <motion.span
+                  className="text-xl mt-14 sm:text-2xl md:text-[70px] font-bold text-[#4D18E8]"
+                  style={{ WebkitTextStroke: "1px #fff" }}
+                  initial={{ opacity: 0, scale: 1 }}
+                  animate={{
+                    opacity: 1,
+                    scale: [1.5, 2, 1],
+                  }}
+                  transition={{
+                    duration: 1,
+                    ease: "easeInOut",
+                  }}
+                >
+                  VS
+                </motion.span>
+
+                {/* Player 2 */}
+                <motion.div className="flex flex-col mr-[-250px] ml-[210px] items-center">
+                  {isCurrentUserGuest ? (
+                    <PlayerCard
+                      player={{
+                        firebase_uid: user?.firebase_uid || "",
+                        username: user?.username || "Player 2",
+                        level: user?.level || 1,
+                        display_picture: user?.display_picture || defaultAvatar,
+                      }}
+                      isHost={false}
+                    />
+                  ) : (
+                    <PlayerCard
+                      player={invitedPlayer}
+                      isHost={false}
+                      isPending={invitedPlayerStatus.isPending}
+                      onClick={() => {
+                        if (
+                          !isCurrentUserGuest &&
+                          !players[1] &&
+                          !invitedPlayer
+                        ) {
+                          setSelectedPlayer("");
+                          setShowInviteModal(true);
+                        }
+                      }}
+                    />
+                  )}
+                </motion.div>
+              </div>
+
+              {/* Lobby Code Section - only visible to host */}
+              {!isCurrentUserGuest && <LobbyCodeDisplay lobbyCode={lobbyCode} />}
+
+              {/* Battle Start Button - modified */}
+              <BattleControls
+                onBattleStart={handleBattleStart}
+                isHost={!isCurrentUserGuest}
+                hostReady={playerReadyState.hostReady}
+                guestReady={playerReadyState.guestReady}
+                loading={readyStateLoading || battleStartLoading}
+                disabledReason={manaPoints < 10 ? "Not enough mana" : undefined}
+              />
+            </motion.div>
+          </div>
+
+          {/* Confirmation Modal */}
+          <ConfirmationDialog
+            open={openDialog}
+            title="Are you sure you want to leave?"
+            content="If you leave, your current progress will be lost. Please confirm if you wish to proceed."
+            onConfirm={handleConfirmLeave}
+            onCancel={handleCancelLeave}
+            confirmText="Yes, Leave"
+            cancelText="Cancel"
           />
-        )}
-      </div>
+
+          {/* Select Study Material Modal */}
+          <SelectStudyMaterialModal
+            open={openMaterialModal}
+            handleClose={() => setOpenMaterialModal(false)}
+            mode={selectedMode}
+            isLobby={true}
+            onMaterialSelect={handleMaterialSelect}
+            onModeSelect={handleModeSelect}
+            selectedTypes={selectedTypesFinal}
+          />
+
+          {/* Question Type Selection Modal - Only show for host */}
+          {!isCurrentUserGuest && (
+            <QuestionTypeSelectionModal
+              open={modalOpenChangeQuestionType}
+              onClose={() => setModalOpenChangeQuestionType(false)}
+              selectedTypes={selectedTypesFinal || []}
+              questionTypes={questionTypes}
+              onConfirm={handleQuestionTypeUpdate}
+            />
+          )}
+
+          {/* Invite Player Modal */}
+          {showInviteModal && (
+            <InvitePlayerModal
+              open={showInviteModal}
+              handleClose={() => setShowInviteModal(false)}
+              onInviteSuccess={handleInvite}
+              lobbyCode={lobbyCode}
+              inviterName={user?.username ?? undefined}
+              senderId={user?.firebase_uid}
+              selectedTypesFinal={selectedTypesFinal}
+              selectedMaterial={
+                selectedMaterial
+                  ? {
+                      id: selectedMaterial.id || "",
+                      title: selectedMaterial.title,
+                    }
+                  : null
+              }
+            />
+          )}
+
+          {/* Ban Modal - using the new component */}
+          {user?.firebase_uid && (
+            <BanPvPAccGame
+              isOpen={showBanModal}
+              onClose={() => setShowBanModal(false)}
+              userId={user.firebase_uid}
+              onBanStatusChange={handleBanStatusChange}
+            />
+          )}
+        </div>
+      )}
     </>
   );
 };
