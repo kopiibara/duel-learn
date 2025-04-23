@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Box, Typography, Button, IconButton, Tooltip } from "@mui/material";
 import CloseIcon from "@mui/icons-material/CancelOutlined";
 import InviteFriendList from "/General/ModalFriendList.png";
@@ -10,6 +10,8 @@ import { useSnackbar } from "../../../../../contexts/SnackbarContext";
 import { useOnlineStatus } from "../../../../../hooks/useOnlineStatus";
 import { useLobbyStatus } from "../../../../../hooks/useLobbyStatus";
 import { GameMode } from "../../../../../hooks/useLobbyStatus";
+import { useFriendStatusMap } from "../../../../../hooks/useFriendStatusMap";
+import { useSortedFriends } from "../../../../../hooks/useSortedFriends";
 
 // Define a proper interface for FriendItem props
 interface FriendItemProps {
@@ -230,6 +232,17 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
   const { showSnackbar } = useSnackbar();
   const { sendBattleInvitation } = useBattleInvitations();
 
+  // Extract friend IDs for status mapping
+  const friendIds = useMemo(() => {
+    return friends.map(friend => friend.firebase_uid);
+  }, [friends]);
+
+  // Get status information for all friends
+  const statusMap = useFriendStatusMap(friendIds);
+
+  // Get sorted friend list
+  const sortedFriends = useSortedFriends(friends, statusMap);
+
   useEffect(() => {
     const fetchFriends = async () => {
       if (!user?.firebase_uid || !open) return;
@@ -369,7 +382,7 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
           ) : friends.length === 0 ? (
             <div className="text-white">No friends found</div>
           ) : (
-            friends.map((friend) => (
+            sortedFriends.map((friend) => (
               <FriendItem 
                 key={friend.firebase_uid}
                 friend={friend} 

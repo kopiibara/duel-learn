@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import CloseIcon from "@mui/icons-material/Close";
 import { useFriendList } from "../../../../hooks/friends.hooks/useFriendList";
 import { useFriendSocket } from "../../../../hooks/friends.hooks/useFriendSocket";
@@ -18,6 +18,8 @@ import SelectStudyMaterialModal from "../../../modals/SelectStudyMaterialModal";
 import { createNewLobby } from "../../../../services/pvpLobbyService";
 import { generateCode } from "../../../../pages/dashboard/play-battleground/utils/codeGenerator";
 import { StudyMaterial } from "../../../../types/studyMaterialObject";
+import { useFriendStatusMap } from "../../../../hooks/useFriendStatusMap";
+import { useSortedFriends } from "../../../../hooks/useSortedFriends";
 
 interface FriendItemProps {
   friend: Friend;
@@ -172,6 +174,17 @@ const YourFriends: React.FC = () => {
   const { friendList, handleRemoveFriend, loading, fetchFriends } =
     useFriendList(user?.firebase_uid);
 
+  // Extract friend IDs for status mapping
+  const friendIds = useMemo(() => {
+    return friendList.map(friend => friend.firebase_uid);
+  }, [friendList]);
+
+  // Get status information for all friends
+  const statusMap = useFriendStatusMap(friendIds);
+
+  // Get sorted friend list
+  const sortedFriends = useSortedFriends(friendList, statusMap);
+
   // Set up socket listener for friend request accepted events
   const handleFriendRequestAccepted = (data: { newFriend: Friend }) => {
     console.log("Friend added in YourFriends:", data.newFriend);
@@ -321,7 +334,7 @@ const YourFriends: React.FC = () => {
           </p>
         </Stack>
       ) : (
-        friendList.map((friend) => (
+        sortedFriends.map((friend) => (
           <FriendItem
             key={friend.firebase_uid}
             friend={friend}
