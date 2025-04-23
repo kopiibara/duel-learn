@@ -57,6 +57,46 @@ const FriendItem: React.FC<FriendItemProps> = ({
           color = "bg-[#4D18E8]"; // Creating Study Material color
           statusText = "Creating Study Material";
           break;
+        // Game setup states
+        case "game-setup":
+          color = "bg-[#8A7FFF]";
+          statusText = "Setting Up Game";
+          break;
+        case "question-setup":
+          color = "bg-[#8A7FFF]";
+          statusText = "Selecting Questions";
+          break;
+        case "timer-setup":
+          color = "bg-[#8A7FFF]";
+          statusText = "Setting Timer";
+          break;
+        case "loading-game":
+          color = "bg-[#8A7FFF]";
+          statusText = "Loading Game";
+          break;
+        // PVP setup states
+        case "pvp-host-setup":
+          color = "bg-[#A4ADE6]";
+          statusText = "Setting Up PVP";
+          break;
+        case "pvp-player2-setup":
+          color = "bg-[#A4ADE6]";
+          statusText = "Setting Up PVP";
+          break;
+        case "pvp-lobby":
+          color = "bg-[#A4ADE6]";
+          statusText = "In PVP Lobby";
+          break;
+        // Post-game states
+        case "peaceful-summary":
+        case "time-pressured-summary":
+          color = "bg-[#6DB566]";
+          statusText = "Viewing Results";
+          break;
+        case "pvp-summary":
+          color = "bg-[#A4ADE6]";
+          statusText = "Viewing PVP Results";
+          break;
       }
 
       return { color, text: statusText };

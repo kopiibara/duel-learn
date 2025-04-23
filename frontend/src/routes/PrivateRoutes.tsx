@@ -204,10 +204,38 @@ const PrivateRoutes = () => {
         <Route path="payment-success" element={<PaymentSuccess />} />
 
         {/* Game Setup Routes */}
-        <Route path="welcome-game-mode" element={<WelcomeGameMode />} />
-        <Route path="setup/questions" element={<SetUpQuestionType />} />
-        <Route path="setup/timer" element={<SetUpTimeQuestion />} />
-        <Route path="loading-screen" element={<LoadingScreen />} />
+        <Route 
+          path="welcome-game-mode" 
+          element={
+            <GameModeStatusWrapper gameMode="game-setup">
+              <WelcomeGameMode />
+            </GameModeStatusWrapper>
+          } 
+        />
+        <Route 
+          path="setup/questions" 
+          element={
+            <GameModeStatusWrapper gameMode="question-setup">
+              <SetUpQuestionType />
+            </GameModeStatusWrapper>
+          } 
+        />
+        <Route 
+          path="setup/timer" 
+          element={
+            <GameModeStatusWrapper gameMode="timer-setup">
+              <SetUpTimeQuestion />
+            </GameModeStatusWrapper>
+          } 
+        />
+        <Route 
+          path="loading-screen" 
+          element={
+            <GameModeStatusWrapper gameMode="loading-game">
+              <LoadingScreen />
+            </GameModeStatusWrapper>
+          } 
+        />
 
         {/* Game Mode Routes */}
         <Route
@@ -234,12 +262,36 @@ const PrivateRoutes = () => {
             </GameModeWrapper>
           }
         />
-        <Route path="/pvp-lobby/:lobbyCode?" element={<PVPLobby />} />
-        <Route path="/study/session-summary" element={<SessionReport />} />
-        <Route path="/select-difficulty/pvp" element={<HostModeSelection />} />
+        <Route path="/pvp-lobby/:lobbyCode?" 
+          element={
+            <GameModeStatusWrapper gameMode="pvp-lobby">
+              <PVPLobby />
+            </GameModeStatusWrapper>
+          } 
+        />
+        <Route 
+          path="/study/session-summary" 
+          element={
+            <GameModeStatusWrapper gameMode="peaceful-summary">
+              <SessionReport />
+            </GameModeStatusWrapper>
+          } 
+        />
+        <Route 
+          path="/select-difficulty/pvp" 
+          element={
+            <GameModeStatusWrapper gameMode="pvp-host-setup">
+              <HostModeSelection />
+            </GameModeStatusWrapper>
+          } 
+        />
         <Route
           path="/select-difficulty/pvp/player2"
-          element={<Player2ModeSelection />}
+          element={
+            <GameModeStatusWrapper gameMode="pvp-player2-setup">
+              <Player2ModeSelection />
+            </GameModeStatusWrapper>
+          }
         />
         <Route
           path="/pvp-battle/:lobbyCode?"
@@ -251,7 +303,11 @@ const PrivateRoutes = () => {
         />
         <Route
           path="/pvp-battle/session-report"
-          element={<PvpSessionReport />}
+          element={
+            <GameModeStatusWrapper gameMode="pvp-summary">
+              <PvpSessionReport />
+            </GameModeStatusWrapper>
+          }
         />
 
         {/* Test Route for Card Selection Debugging */}

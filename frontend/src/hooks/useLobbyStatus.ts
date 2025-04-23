@@ -7,6 +7,16 @@ export type GameMode =
   | "peaceful-mode"
   | "time-pressured-mode"
   | "creating-study-material"
+  | "game-setup"
+  | "question-setup"
+  | "timer-setup"
+  | "loading-game"
+  | "pvp-host-setup"
+  | "pvp-player2-setup"
+  | "pvp-lobby"
+  | "peaceful-summary"
+  | "time-pressured-summary"
+  | "pvp-summary"
   | null;
 
 export const useLobbyStatus = (userId: string) => {
