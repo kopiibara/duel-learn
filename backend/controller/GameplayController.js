@@ -1858,47 +1858,73 @@ export const updateWinStreak = async (req, res) => {
         const connection = await pool.getConnection();
 
         try {
+            await connection.beginTransaction();
+
+            // First, get the current win_streak and longest_win_streak
+            const [userStreak] = await connection.query(
+                "SELECT win_streak, longest_win_streak FROM user_info WHERE firebase_uid = ?",
+                [firebase_uid]
+            );
+
+            if (userStreak.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                });
+            }
+
+            const currentStreak = userStreak[0].win_streak || 0;
+            let currentLongestStreak = userStreak[0].longest_win_streak || 0;
+
             if (is_winner) {
                 // Winner: increment win streak
+                const newStreak = currentStreak + 1;
+
+                // Update longest streak if the new streak is higher
+                if (newStreak > currentLongestStreak) {
+                    currentLongestStreak = newStreak;
+                }
+
                 await connection.query(
-                    "UPDATE user_info SET win_streak = win_streak + 1 WHERE firebase_uid = ?",
-                    [firebase_uid]
+                    "UPDATE user_info SET win_streak = ?, longest_win_streak = ? WHERE firebase_uid = ?",
+                    [newStreak, currentLongestStreak, firebase_uid]
                 );
             } else if (!protect_streak) {
-                // Loser without Fortune Coin: reset win streak to 0
+                // Loser without Fortune Coin: reset win streak to 0 (longest_win_streak remains unchanged)
                 await connection.query(
                     "UPDATE user_info SET win_streak = 0 WHERE firebase_uid = ?",
                     [firebase_uid]
                 );
             }
-            // If loser with Fortune Coin (protect_streak is true), do nothing to win_streak
-            // (This preserves the current streak without incrementing it)
 
-            // Get updated win streak
+            await connection.commit();
+
+            // Get updated win streak and longest streak
             const [result] = await connection.query(
-                "SELECT win_streak FROM user_info WHERE firebase_uid = ?",
+                "SELECT win_streak, longest_win_streak FROM user_info WHERE firebase_uid = ?",
                 [firebase_uid]
             );
-
-            connection.release();
 
             res.status(200).json({
                 success: true,
                 data: {
-                    win_streak: result[0].win_streak
+                    win_streak: result[0].win_streak || 0,
+                    longest_win_streak: result[0].longest_win_streak || 0
                 },
                 protected: protect_streak && !is_winner
             });
         } catch (error) {
-            connection.release();
+            await connection.rollback();
             throw error;
+        } finally {
+            connection.release();
         }
     } catch (error) {
         console.error("Error updating win streak:", error);
         res.status(500).json({ success: false, message: "Error updating win streak" });
     }
 };
-
 // Add this new function to check if a player has any card blocking effects
 export const checkCardBlockingEffects = async (req, res) => {
     let connection;
