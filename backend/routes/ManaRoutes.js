@@ -6,7 +6,10 @@ const router = express.Router();
 router.post('/reduce', ManaController.userManaReduction);
 router.post('/replenish', ManaController.replenishMana);
 
-// Change this to GET method to match our frontend implementation
+// Add new route for detailed mana information first (more specific route)
+router.get('/details/:firebase_uid', ManaController.getManaDetails);
+
+// Then the more general route
 router.get('/:firebase_uid', ManaController.getUserMana);
 
 export default router;

@@ -70,6 +70,14 @@ const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite, sho
   // Determine if invite should be disabled
   const isInviteDisabled = !isOnline || isInGame || inviting;
 
+  // Get button text based on status
+  const getButtonText = () => {
+    if (inviting) return "SENDING...";
+    if (!isOnline) return "OFFLINE";
+    if (isInGame) return "BUSY";
+    return "DUEL";
+  };
+
   // Handle invite click with status check
   const handleInviteClick = () => {
     if (!isOnline) {
@@ -117,22 +125,32 @@ const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite, sho
           </Typography>
         </div>
       </div>
-      <Button
-        variant="contained"
-        sx={{
-          backgroundColor: "#57A64E",
-          "&:disabled": {
-            backgroundColor: "#2E5428",
-            color: "#A0A0A0"
-          }
-        }}
-        disabled={isInviteDisabled}
+      {/* Simplified button with inline styles */}
+      <button
         onClick={handleInviteClick}
+        disabled={isInviteDisabled}
+        style={{
+          borderRadius: '4px',
+          padding: '8px 16px',
+          fontSize: '0.875rem',
+          fontWeight: 'bold',
+          textTransform: 'uppercase',
+          border: 'none',
+          cursor: isInviteDisabled ? 'not-allowed' : 'pointer',
+          backgroundColor: isInviteDisabled ? '#2E5428' : '#57A64E',
+          color: isInviteDisabled ? '#A0A0A0' : 'white',
+          transition: 'background-color 0.3s ease',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          opacity: 1,
+          visibility: 'visible',
+          position: 'relative',
+          zIndex: 10
+        }}
       >
-        {inviting ? "SENDING..." : 
-         !isOnline ? "OFFLINE" : 
-         isInGame ? "IN GAME" : "INVITE"}
-      </Button>
+        {getButtonText()}
+      </button>
     </div>
   );
 };

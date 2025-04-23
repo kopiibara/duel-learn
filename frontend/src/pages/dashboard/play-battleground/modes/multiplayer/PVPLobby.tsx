@@ -12,6 +12,7 @@ import { Socket } from "socket.io-client";
 import axios from "axios";
 import SocketService from "../../../../../services/socketService";
 import { toast } from "react-hot-toast";
+import useManaCheck from "../../../../../hooks/useManaCheck";
 import DocumentHead from "../../../../../components/DocumentHead";
 
 // Import new modular components
@@ -21,6 +22,7 @@ import {
   LobbyCodeDisplay,
   BattleControls,
   ConfirmationDialog,
+  ManaAlertModal
 } from "./components";
 import BanPvPAccGame from "./components/BanPvPAccGame";
 
@@ -87,10 +89,11 @@ const PVPLobby: React.FC = () => {
     { display: "True or False", value: "true-false" },
   ];
 
-  const { user, loading } = useUser(); // Get the user and loading state from UserContext
+  const { user, loading, updateUser } = useUser(); // Get the user and loading state from UserContext
+  
+  // Initialize mana check hook with required 10 mana
+  const { hasSufficientMana, isManaModalOpen, closeManaModal, currentMana, requiredMana } = useManaCheck(10);
 
-  const [manaPoints, setManaPoints] = useState(40); // Example starting mana points
-  const [_openManaAlert, setOpenManaAlert] = useState(false); // State for the mana points alert
   const [openDialog, setOpenDialog] = useState(false); // State to control the modal
   const [copySuccess, setCopySuccess] = useState(false); // To track if the text was copied
 
@@ -174,6 +177,13 @@ const PVPLobby: React.FC = () => {
   // Add these new states in the main PVPLobby component after the existing states
   const [showBanModal, setShowBanModal] = useState(false);
   const [isBanActive, setIsBanActive] = useState(false);
+
+  // Add refs to track mana deduction
+  const hostManaDeductedRef = useRef<boolean>(false);
+  const guestManaDeductedRef = useRef<boolean>(false);
+
+  // Add this ref near the top with other refs
+  const hasNavigatedRef = useRef(false);
 
   // Set the state variables
   useEffect(() => {
@@ -360,9 +370,6 @@ const PVPLobby: React.FC = () => {
     setOpenDialog(false); // Close the modal if canceled
   };
 
-  // Add this ref near the top with other refs
-  const hasNavigatedRef = useRef(false);
-
   // Replace the battle started check useEffect
   useEffect(() => {
     // Only run this for guests, not for hosts
@@ -383,6 +390,56 @@ const PVPLobby: React.FC = () => {
         if (response.data.success && response.data.data.battle_started && !hasNavigatedRef.current) {
           console.log("Battle has started! Navigating to difficulty selection...");
           setBattleStarted(true);
+          
+          // Check if guest has enough mana - if not, display modal but still let them join
+          // (since the host already started the battle)
+          if (user?.mana && user.mana < requiredMana) {
+            toast("You don't have enough mana, but the battle is already starting!", {
+              icon: '⚠️',
+              style: {
+                borderRadius: '10px',
+                background: '#333',
+                color: '#fff',
+              },
+            });
+          }
+          
+          // Only deduct mana once using the ref flag
+          if (!guestManaDeductedRef.current && user?.firebase_uid) {
+            // Mark as deducted immediately to prevent race conditions
+            guestManaDeductedRef.current = true;
+            
+            try {
+              // Deduct mana points for guest
+              const manaResponse = await axios.post(
+                `${import.meta.env.VITE_BACKEND_URL}/api/mana/reduce`,
+                {
+                  firebase_uid: user.firebase_uid,
+                }
+              );
+              
+              // Update user mana in context
+              if (updateUser && typeof updateUser === 'function') {
+                updateUser({ mana: manaResponse.data.mana });
+              }
+              
+              console.log("Guest mana reduced to:", manaResponse.data.mana);
+              
+              // Trigger mana replenishment in the background for guest
+              axios
+                .post(`${import.meta.env.VITE_BACKEND_URL}/api/mana/replenish`, {
+                  firebase_uid: user.firebase_uid,
+                })
+                .catch((error) => {
+                  console.error("Error starting mana replenishment for guest:", error);
+                });
+            } catch (error) {
+              console.error("Error reducing guest mana:", error);
+              // Don't block navigation if mana reduction fails
+            }
+          } else {
+            console.log("Guest mana already deducted, skipping deduction");
+          }
           
           // Mark as navigated BEFORE navigation to prevent any possibility of double navigation
           hasNavigatedRef.current = true;
@@ -421,6 +478,8 @@ const PVPLobby: React.FC = () => {
     players,
     user?.username,
     user?.firebase_uid,
+    updateUser,
+    requiredMana
   ]);
 
   // Update the handleBattleStart function
@@ -428,12 +487,19 @@ const PVPLobby: React.FC = () => {
     // For host: only allow battle start if guest is ready
     if (!isCurrentUserGuest) {
       if (!playerReadyState.guestReady) {
-        // Perhaps show a message that guest isn't ready
+        // Show a message that guest isn't ready
+        toast.error("Your opponent is not ready yet!");
         return;
       }
 
-      if (manaPoints < 10) {
-        setOpenManaAlert(true);
+      // Check if host has enough mana - always show the modal if insufficient
+      if (user?.mana && user.mana < requiredMana) {
+        // Show the mana modal
+        closeManaModal(); // Close it first in case it's already open
+        setTimeout(() => {
+          // Using hasSufficientMana to show the modal
+          hasSufficientMana();
+        }, 50);
         return;
       }
 
@@ -442,7 +508,38 @@ const PVPLobby: React.FC = () => {
       setBattleStartLoading(true);
 
       try {
-        // Update battle_started status in the database
+        // Only deduct mana once using the ref flag
+        if (!hostManaDeductedRef.current && user?.firebase_uid) {
+          // Mark as deducted immediately to prevent race conditions
+          hostManaDeductedRef.current = true;
+          
+          // First deduct mana points
+          const manaResponse = await axios.post(
+            `${import.meta.env.VITE_BACKEND_URL}/api/mana/reduce`,
+            {
+              firebase_uid: user.firebase_uid,
+            }
+          );
+
+          if (!manaResponse.data.success) {
+            toast.error("Failed to deduct mana. Please try again.");
+            setBattleStartLoading(false);
+            // Reset the flag since deduction failed
+            hostManaDeductedRef.current = false;
+            return;
+          }
+
+          // Update user mana in context
+          if (updateUser && typeof updateUser === 'function') {
+            updateUser({ mana: manaResponse.data.mana });
+          }
+          
+          console.log("Host mana reduced to:", manaResponse.data.mana);
+        } else {
+          console.log("Host mana already deducted, skipping deduction");
+        }
+
+        // Then update battle_started status in the database
         const response = await axios.put(
           `${
             import.meta.env.VITE_BACKEND_URL
@@ -454,8 +551,6 @@ const PVPLobby: React.FC = () => {
         );
 
         if (response.data.success) {
-          // Deduct mana points
-          setManaPoints((prev) => prev - 10);
           console.log("Battle Started!");
 
           // Get the appropriate IDs
@@ -477,14 +572,26 @@ const PVPLobby: React.FC = () => {
               guestId: guestId,
             },
           });
+          
+          // Trigger mana replenishment in the background
+          axios
+            .post(`${import.meta.env.VITE_BACKEND_URL}/api/mana/replenish`, {
+              firebase_uid: user?.firebase_uid,
+            })
+            .catch((error) => {
+              console.error("Error starting mana replenishment:", error);
+            });
         }
       } catch (error) {
         console.error("Error starting battle:", error);
+        toast.error("Failed to start battle. Please try again.");
+        // Reset the mana deducted flag on error
+        hostManaDeductedRef.current = false;
       } finally {
         setBattleStartLoading(false);
       }
     } else {
-      // For guest: toggle ready state (no ban check needed here anymore)
+      // For guest: toggle ready state - explicitly check mana when setting ready
       toggleGuestReadyState();
     }
   };
@@ -927,12 +1034,34 @@ const PVPLobby: React.FC = () => {
     });
   };
 
-  // Add this function to toggle ready state
+  // Update the toggleGuestReadyState function to also check mana for guests
   const toggleGuestReadyState = async () => {
     if (!user?.firebase_uid || !lobbyCode) return;
 
-    setReadyStateLoading(true);
+    // If the guest is already ready, they can always cancel ready status
+    if (playerReadyState.guestReady) {
+      setReadyStateLoading(true);
+      updateGuestReadyState(false);
+      return;
+    }
 
+    // If guest is not ready and trying to become ready, explicitly check mana
+    if (!playerReadyState.guestReady && user?.mana && user.mana < requiredMana) {
+      // Show the mana modal
+      closeManaModal(); // Close it first in case it's already open
+      setTimeout(() => {
+        // Using hasSufficientMana to show the modal
+        hasSufficientMana();
+      }, 50);
+      return;
+    }
+
+    setReadyStateLoading(true);
+    updateGuestReadyState(true);
+  };
+
+  // Helper function to update the guest ready state
+  const updateGuestReadyState = async (isReady: boolean) => {
     try {
       // Update ready state in the database
       const response = await axios.put(
@@ -941,7 +1070,7 @@ const PVPLobby: React.FC = () => {
         }/api/battle/invitations-lobby/ready-state`,
         {
           lobby_code: lobbyCode,
-          player_id: user.firebase_uid,
+          player_id: user?.firebase_uid,
           is_ready: !playerReadyState.guestReady, // Toggle current state
         }
       );
@@ -1407,7 +1536,6 @@ const PVPLobby: React.FC = () => {
           selectedMaterial={selectedMaterial}
           selectedTypesFinal={selectedTypesFinal}
           questionTypes={questionTypes}
-          manaPoints={manaPoints}
           isCurrentUserGuest={isCurrentUserGuest}
         />
 
@@ -1503,21 +1631,29 @@ const PVPLobby: React.FC = () => {
               hostReady={playerReadyState.hostReady}
               guestReady={playerReadyState.guestReady}
               loading={readyStateLoading || battleStartLoading}
-              disabledReason={manaPoints < 10 ? "Not enough mana" : undefined}
+              disabledReason={user?.mana < 10 ? "Not enough mana" : undefined}
             />
           </motion.div>
         </div>
 
-        {/* Confirmation Modal */}
-        <ConfirmationDialog
-          open={openDialog}
-          title="Are you sure you want to leave?"
-          content="If you leave, your current progress will be lost. Please confirm if you wish to proceed."
-          onConfirm={handleConfirmLeave}
-          onCancel={handleCancelLeave}
-          confirmText="Yes, Leave"
-          cancelText="Cancel"
-        />
+      {/* Confirmation Modal */}
+      <ConfirmationDialog
+        open={openDialog}
+        title="Are you sure you want to leave?"
+        content="If you leave, your current progress will be lost. Please confirm if you wish to proceed."
+        onConfirm={handleConfirmLeave}
+        onCancel={handleCancelLeave}
+        confirmText="Yes, Leave"
+        cancelText="Cancel"
+      />
+
+      {/* Mana Alert Modal */}
+      <ManaAlertModal
+        isOpen={isManaModalOpen}
+        onClose={closeManaModal}
+        currentMana={currentMana}
+        requiredMana={requiredMana}
+      />
 
         {/* Select Study Material Modal */}
         <SelectStudyMaterialModal

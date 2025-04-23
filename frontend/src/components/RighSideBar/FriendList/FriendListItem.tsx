@@ -13,7 +13,9 @@ import {
   generateLobbyCode,
 } from "../../../services/pvpLobbyService";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
-  import { useSnackbar } from "../../../contexts/SnackbarContext";
+import { useSnackbar } from "../../../contexts/SnackbarContext";
+import useManaCheck from "../../../hooks/useManaCheck";
+import ManaAlertModal from "../../../pages/dashboard/play-battleground/modes/multiplayer/components/ManaAlertModal";
 
 interface FriendListItemProps {
   friend: Friend;
@@ -31,6 +33,9 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   const isOnline = useOnlineStatus(friend.firebase_uid);
   const { isInLobby, isInGame, gameMode } = useLobbyStatus(friend.firebase_uid);
   const { showSnackbar } = useSnackbar();
+  
+  // Initialize mana check hook with PVP requirement (10 mana)
+  const { hasSufficientMana, isManaModalOpen, closeManaModal, currentMana, requiredMana } = useManaCheck(10);
 
   const handleViewProfile = (friendId: string) => {
     setSelectedFriend(friendId);
@@ -73,8 +78,8 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   };
 
   const { color, text } = getStatusInfo();
-
-  // Handler for the INVITE button
+  
+  // Handler for the INVITE button with mana check
   const handleInviteClick = () => {
     // Check if friend is online and not in game
     if (!isOnline) {
@@ -87,6 +92,12 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
       return;
     }
     
+    // Check if user has enough mana
+    if (!hasSufficientMana()) {
+      // Modal will be shown automatically via the hook
+      return;
+    }
+    
     // Open material selection modal
     setMaterialModalOpen(true);
   };
@@ -94,8 +105,20 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
   // Determine if invite should be disabled
   const isInviteDisabled = !isOnline || isInGame;
   
-  // Handler for material selection
+  // Get button text based on status
+  const getButtonText = () => {
+    if (!isOnline) return "OFFLINE";
+    if (isInGame) return "BUSY";
+    return "DUEL";
+  };
+  
+  // Handler for material selection with mana check
   const handleMaterialSelect = (material: StudyMaterial) => {
+    // Check mana again before proceeding
+    if (!hasSufficientMana()) {
+      return;
+    }
+    
     // Generate a new lobby code
     const lobbyCode = generateLobbyCode();
 
@@ -165,42 +188,32 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
           </div>
         </div>
 
-        {/* Button with more responsive padding */}
-        <Button
-          variant="contained"
+        {/* Simplified button with inline styles */}
+        <button 
           onClick={handleInviteClick}
           disabled={isInviteDisabled}
-          sx={{
-            borderRadius: "0.6rem",
-            padding: {
-              xs: "0.25rem 0.5rem", // Smaller padding on very small screens
-              sm: "0.3rem 0.75rem", // Medium padding
-              md: "0.4rem 1rem", // Larger padding
-            },
-            marginLeft: "8px",
-            display: "flex",
-            width: "fit-content",
-            minWidth: "60px",
-            height: "fit-content",
-            fontSize: {
-              xs: "0.7rem",
-              sm: "0.75rem",
-              md: "0.8rem",
-            },
-            justifyContent: "center",
-            alignItems: "center",
-            transition: "all 0.3s ease",
-            backgroundColor: isInviteDisabled ? "#2E5428" : "#52A647",
-            color: isInviteDisabled ? "#A0A0A0" : "inherit",
-            "&:hover": {
-              transform: isInviteDisabled ? "none" : "scale(1.05)",
-              backgroundColor: isInviteDisabled ? "#2E5428" : "#45913c",
-            },
+          style={{
+            borderRadius: '0.6rem',
+            marginLeft: '8px',
+            padding: '4px 10px',
+            minWidth: '60px',
+            fontSize: '0.8rem',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            transition: 'all 0.3s ease',
+            backgroundColor: isInviteDisabled ? '#2E5428' : '#52A647',
+            color: isInviteDisabled ? '#A0A0A0' : 'white',
+            border: 'none',
+            cursor: isInviteDisabled ? 'not-allowed' : 'pointer',
+            position: 'relative',
+            zIndex: 10,
+            opacity: 1,
+            visibility: 'visible'
           }}
         >
-          {!isOnline ? "OFFLINE" : 
-           isInGame ? "IN GAME" : "INVITE"}
-        </Button>
+          {getButtonText()}
+        </button>
       </div>
       {/* Profile Modal */}
       <ProfileModal
@@ -218,6 +231,14 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
         onModeSelect={handleModeSelect}
         selectedTypes={selectedTypes}
         isLobby={true}
+      />
+      
+      {/* Mana Alert Modal */}
+      <ManaAlertModal
+        isOpen={isManaModalOpen}
+        onClose={closeManaModal}
+        currentMana={currentMana}
+        requiredMana={requiredMana}
       />
     </>
   );

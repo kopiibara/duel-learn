@@ -1,6 +1,7 @@
 import * as React from "react";
 import ActionButtons from "./ActionButtons";
-import defaultPicture from "/profile-picture/default-picture.svg";
+//import defaultPicture from "/profile-picture/default-picture.svg";
+import defaultPicture from "../../../public/profile-picture/default-picture.svg";
 
 interface NotificationCardProps {
   type?:

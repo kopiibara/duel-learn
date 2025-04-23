@@ -14,11 +14,9 @@ import SelectStudyMaterialModal from "./SelectStudyMaterialModal"; // Assuming i
 import PvPOptionsModal from "./PvPOptionsModal"; // Add this import
 import { useAudio } from "../../contexts/AudioContext";
 import { useNavigate } from "react-router-dom";
-import {
-  createNewLobby,
-  joinExistingLobby,
-  navigateToWelcomeScreen,
-} from "../../services/pvpLobbyService";
+import { createNewLobby, joinExistingLobby, navigateToWelcomeScreen } from "../../services/pvpLobbyService";
+import useManaCheck from "../../hooks/useManaCheck";
+import ManaAlertModal from "../../pages/dashboard/play-battleground/modes/multiplayer/components/ManaAlertModal";
 
 // Add modeToTypesMap
 const modeToTypesMap = {
@@ -60,6 +58,9 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
   const { setActiveModeAudio } = useAudio();
   const [pvpOptionsOpen, setPvpOptionsOpen] = useState<boolean>(false);
   const navigate = useNavigate();
+  
+  // Initialize mana check hook with PVP requirement (10 mana)
+  const { hasSufficientMana, isManaModalOpen, closeManaModal, currentMana, requiredMana } = useManaCheck(10);
 
   // Update when the parent open state changes
   useEffect(() => {
@@ -100,8 +101,23 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
     setSelectedMode(mode);
     setSelectedTypes(modeToTypesMap[mode as keyof typeof modeToTypesMap] || []);
 
-    // If PvP mode, show options modal
+    // Add Time Pressured mana check
+    if (mode === "Time Pressured") {
+      // Check if user has enough mana
+      if (!hasSufficientMana()) {
+        // Modal will be shown automatically via the hook
+        return;
+      }
+    }
+
+    // If PvP mode, check mana before showing options modal
     if (mode === "PvP Mode") {
+      // Check if user has enough mana
+      if (!hasSufficientMana()) {
+        // Modal will be shown automatically via the hook
+        return;
+      }
+      
       if (preSelectedMaterial) {
         // If we have pre-selected material, call onModeSelect directly
         if (onModeSelect) {
@@ -188,14 +204,24 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
     }
   };
 
-  // Handler for creating a new lobby
+  // Handler for creating a new lobby with mana check
   const handleCreateLobby = () => {
+    // Check mana again before proceeding
+    if (!hasSufficientMana()) {
+      return;
+    }
+    
     setPvpOptionsOpen(false);
     setModalOpen(true);
   };
 
-  // Handler for joining an existing lobby
+  // Handler for joining an existing lobby with mana check
   const handleJoinLobby = (lobbyCode: string) => {
+    // Check mana before joining
+    if (!hasSufficientMana()) {
+      return;
+    }
+    
     setPvpOptionsOpen(false);
 
     // Use the lobby service
@@ -407,6 +433,14 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
         onMaterialSelect={handleMaterialSelect}
         onModeSelect={handleModeSelect}
         selectedTypes={selectedTypes}
+      />
+      
+      {/* Mana Alert Modal */}
+      <ManaAlertModal
+        isOpen={isManaModalOpen}
+        onClose={closeManaModal}
+        currentMana={currentMana}
+        requiredMana={requiredMana}
       />
     </>
   );
