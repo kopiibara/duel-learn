@@ -128,7 +128,7 @@ export function useFriendStatusMap(friendIds: string[]): Map<string, FriendStatu
     
     const handleGameStatusChange = (data: { 
       userId: string; 
-      inGame: boolean; 
+      inGame: boolean;
       mode: string | null 
     }) => {
       setStatusMap(prevMap => {

@@ -11,6 +11,8 @@ interface FriendStatus {
   isOnline: boolean;
   isInGame: boolean;
   isInLobby: boolean;
+  // Include gameMode for additional information
+  gameMode?: string | null;
 }
 
 /**

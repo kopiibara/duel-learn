@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useRef } from "react";
 import SocketService from "../services/socketService";
 import { useUser } from "./UserContext";
 import { GameMode } from "../hooks/useLobbyStatus";
@@ -20,9 +20,40 @@ export const GameStatusProvider: React.FC<{ children: React.ReactNode }> = ({
   const [gameMode, setGameMode] = useState<GameMode>(null);
   const { user } = useUser();
   const socketService = SocketService.getInstance();
+  const lastStatusUpdateRef = useRef<{inGame: boolean, mode: GameMode, timestamp: number}>({
+    inGame: false,
+    mode: null,
+    timestamp: 0
+  });
 
-  // Update game status in both local state and via socket
+  // Update game status in both local state and via socket with debounce
   const setInGame = (inGame: boolean, mode: GameMode) => {
+    // Skip redundant updates
+    if (isInGame === inGame && gameMode === mode) {
+      return;
+    }
+    
+    // Check if we're updating too quickly (debounce)
+    const now = Date.now();
+    const timeSinceLastUpdate = now - lastStatusUpdateRef.current.timestamp;
+    const isSameTransition = 
+      lastStatusUpdateRef.current.inGame !== inGame && 
+      lastStatusUpdateRef.current.mode !== mode;
+      
+    // If same transition happened within 500ms, skip this update to avoid flickering
+    if (isSameTransition && timeSinceLastUpdate < 500) {
+      console.log("Skipping rapid status change to prevent flickering");
+      return;
+    }
+    
+    // Update refs
+    lastStatusUpdateRef.current = {
+      inGame,
+      mode,
+      timestamp: now
+    };
+    
+    // Update state
     setIsInGame(inGame);
     setGameMode(mode);
 
@@ -31,20 +62,24 @@ export const GameStatusProvider: React.FC<{ children: React.ReactNode }> = ({
       const socket = socketService.getSocket();
 
       if (socket?.connected) {
+        // Always include both inGame and mode fields
         socket.emit("userGameStatusChanged", {
           userId: user.firebase_uid,
           inGame,
-          mode,
+          mode: mode || null, // Ensure mode is never undefined
         });
 
         if (inGame) {
           socket.emit("player_entered_game", {
             playerId: user.firebase_uid,
-            mode,
+            inGame: true,
+            mode: mode || null,
           });
         } else {
           socket.emit("player_exited_game", {
             playerId: user.firebase_uid,
+            inGame: false,
+            mode: null,
           });
         }
       }
@@ -83,6 +118,7 @@ export const GameStatusProvider: React.FC<{ children: React.ReactNode }> = ({
       if (user?.firebase_uid && isInGame) {
         const socket = socketService.getSocket();
         if (socket?.connected) {
+          // Ensure all required fields are included
           socket.emit("userGameStatusChanged", {
             userId: user.firebase_uid,
             inGame: false,
@@ -90,6 +126,8 @@ export const GameStatusProvider: React.FC<{ children: React.ReactNode }> = ({
           });
           socket.emit("player_exited_game", {
             playerId: user.firebase_uid,
+            inGame: false,
+            mode: null,
           });
         }
       }
