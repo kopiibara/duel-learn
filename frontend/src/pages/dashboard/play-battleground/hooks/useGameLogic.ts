@@ -879,6 +879,12 @@ export const useGameLogic = ({
     mode === "Time Pressured" &&
     correctCount + incorrectCount >= (aiQuestions?.length || 0)
   ) {
+    // Don't end the game if no questions have been loaded yet
+    if (aiQuestions?.length === 0) {
+      console.log("No questions loaded yet, skipping game completion check");
+      return;
+    }
+
     console.log("All questions answered in Time Pressured mode, ending game.");
     handleGameComplete();
     return;
@@ -886,23 +892,26 @@ export const useGameLogic = ({
 
   const handleFlip = () => {
     if (showResult) return;
-    
+
     console.log("User flipped card to reveal answer");
-    
+
     // First, reveal the current question's answer
     setIsCorrect(false);
-    setIncorrectCount(prev => prev + 1);
+    setIncorrectCount((prev) => prev + 1);
     setCurrentStreak(0);
     setShowResult(true);
     setShowNextButton(true);
     setIsFlipped(true);
-    
+
     // Add revealed question to retake list if not already in it
-    if (!retakeQuestions.some(q => 
-      q.question === currentQuestion.question && 
-      q.correctAnswer === currentQuestion.correctAnswer
-    )) {
-      setRetakeQuestions(prev => [...prev, currentQuestion]);
+    if (
+      !retakeQuestions.some(
+        (q) =>
+          q.question === currentQuestion.question &&
+          q.correctAnswer === currentQuestion.correctAnswer
+      )
+    ) {
+      setRetakeQuestions((prev) => [...prev, currentQuestion]);
     }
   };
 
