@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import CloseIcon from "@mui/icons-material/ClearRounded";
+import CloseIcon from "@mui/icons-material/HighlightOffRounded";
+
 import Subscription from "./Subscription";
 import PageTransition from "../../styles/PageTransition";
 import PremiumBuyBG from "/premium-page/Payment.png";
@@ -31,7 +32,7 @@ const BuyPremium = () => {
               onClick={handleCloseButton}
               className="fixed top-4 right-4 sm:top-10 sm:right-10 md:top-20 md:right-20 p-2 hover:scale-110 transition-all duration-300 z-10"
             >
-              <CloseIcon className="text-[#C4BEDB]" />
+              <CloseIcon fontSize="large" className="text-[#C4BEDB]" />
             </button>
 
             <h1 className="text-2xl sm:text-3xl md:text-[40px] font-bold">

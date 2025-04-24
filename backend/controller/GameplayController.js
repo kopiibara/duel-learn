@@ -1858,47 +1858,73 @@ export const updateWinStreak = async (req, res) => {
         const connection = await pool.getConnection();
 
         try {
+            await connection.beginTransaction();
+
+            // First, get the current win_streak and longest_win_streak
+            const [userStreak] = await connection.query(
+                "SELECT win_streak, longest_win_streak FROM user_info WHERE firebase_uid = ?",
+                [firebase_uid]
+            );
+
+            if (userStreak.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                });
+            }
+
+            const currentStreak = userStreak[0].win_streak || 0;
+            let currentLongestStreak = userStreak[0].longest_win_streak || 0;
+
             if (is_winner) {
                 // Winner: increment win streak
+                const newStreak = currentStreak + 1;
+
+                // Update longest streak if the new streak is higher
+                if (newStreak > currentLongestStreak) {
+                    currentLongestStreak = newStreak;
+                }
+
                 await connection.query(
-                    "UPDATE user_info SET win_streak = win_streak + 1 WHERE firebase_uid = ?",
-                    [firebase_uid]
+                    "UPDATE user_info SET win_streak = ?, longest_win_streak = ? WHERE firebase_uid = ?",
+                    [newStreak, currentLongestStreak, firebase_uid]
                 );
             } else if (!protect_streak) {
-                // Loser without Fortune Coin: reset win streak to 0
+                // Loser without Fortune Coin: reset win streak to 0 (longest_win_streak remains unchanged)
                 await connection.query(
                     "UPDATE user_info SET win_streak = 0 WHERE firebase_uid = ?",
                     [firebase_uid]
                 );
             }
-            // If loser with Fortune Coin (protect_streak is true), do nothing to win_streak
-            // (This preserves the current streak without incrementing it)
 
-            // Get updated win streak
+            await connection.commit();
+
+            // Get updated win streak and longest streak
             const [result] = await connection.query(
-                "SELECT win_streak FROM user_info WHERE firebase_uid = ?",
+                "SELECT win_streak, longest_win_streak FROM user_info WHERE firebase_uid = ?",
                 [firebase_uid]
             );
-
-            connection.release();
 
             res.status(200).json({
                 success: true,
                 data: {
-                    win_streak: result[0].win_streak
+                    win_streak: result[0].win_streak || 0,
+                    longest_win_streak: result[0].longest_win_streak || 0
                 },
                 protected: protect_streak && !is_winner
             });
         } catch (error) {
-            connection.release();
+            await connection.rollback();
             throw error;
+        } finally {
+            connection.release();
         }
     } catch (error) {
         console.error("Error updating win streak:", error);
         res.status(500).json({ success: false, message: "Error updating win streak" });
     }
 };
-
 // Add this new function to check if a player has any card blocking effects
 export const checkCardBlockingEffects = async (req, res) => {
     let connection;
@@ -2468,114 +2494,97 @@ export const claimBattleRewards = async (req, res) => {
     }
 };
 
-/**
- * Update question IDs done for a battle session
- * @param {Object} req - Request object
- * @param {Object} res - Response object
- */
-export const updateQuestionIdsDone = async (req, res) => {
-    let connection;
+export const updateEnemyAnsweringQuestion = async (req, res) => {
+    const { session_uuid, player_type, question_text, is_on_flashcard } = req.body;
+
+    if (!session_uuid || !player_type || is_on_flashcard === undefined) {
+        return res.status(400).json({
+            success: false,
+            message: 'Missing required fields: session_uuid, player_type, is_on_flashcard'
+        });
+    }
+
     try {
-        const { session_uuid, question_ids } = req.body;
+        // Determine which columns to update based on player type
+        const questionColumnToUpdate = player_type === 'host' ? 'host_answering_question_text' : 'guest_answering_question_text';
+        const flashcardColumnToUpdate = player_type === 'host' ? 'host_on_flashcard' : 'guest_on_flashcard';
 
-        if (!session_uuid || !question_ids) {
-            return res.status(400).json({
-                success: false,
-                message: "Session UUID and question IDs are required"
-            });
-        }
+        const updateQuery = `
+      UPDATE battle_rounds 
+      SET ${questionColumnToUpdate} = ?, ${flashcardColumnToUpdate} = ?
+      WHERE session_uuid = ?
+    `;
 
-        connection = await pool.getConnection();
+        const [result] = await pool.query(updateQuery, [question_text, is_on_flashcard, session_uuid]);
 
-        // Check if the round exists
-        const [existingRound] = await connection.execute(
-            'SELECT question_ids_done FROM battle_rounds WHERE session_uuid = ?',
-            [session_uuid]
-        );
-
-        if (existingRound.length === 0) {
+        if (result.affectedRows === 0) {
             return res.status(404).json({
                 success: false,
-                message: "Battle round not found for this session"
+                message: 'Battle round not found'
             });
         }
 
-        // Get the current question IDs array
-        let currentQuestionIds = [];
-        if (existingRound[0].question_ids_done) {
-            try {
-                currentQuestionIds = JSON.parse(existingRound[0].question_ids_done);
-                // Ensure it's an array
-                if (!Array.isArray(currentQuestionIds)) {
-                    currentQuestionIds = [];
-                }
-            } catch (e) {
-                // If parsing fails, start with an empty array
-                console.error('Error parsing existing question_ids_done:', e);
-                currentQuestionIds = [];
-            }
-        }
-
-        // Parse the incoming question IDs
-        let newQuestionIds = [];
-        try {
-            newQuestionIds = typeof question_ids === 'string'
-                ? JSON.parse(question_ids)
-                : question_ids;
-
-            // Ensure it's an array
-            if (!Array.isArray(newQuestionIds)) {
-                newQuestionIds = [newQuestionIds];
-            }
-        } catch (e) {
-            // If it's a single ID that's not JSON
-            newQuestionIds = [question_ids];
-        }
-
-        // Merge the arrays and remove duplicates
-        for (const id of newQuestionIds) {
-            if (!currentQuestionIds.includes(id)) {
-                currentQuestionIds.push(id);
-            }
-        }
-
-        // Convert back to JSON string
-        const questionIdsString = JSON.stringify(currentQuestionIds);
-
-        // Update question_ids_done in the database
-        await connection.execute(
-            'UPDATE battle_rounds SET question_ids_done = ? WHERE session_uuid = ?',
-            [questionIdsString, session_uuid]
-        );
-
-        // Increment question count if needed
-        const increment = req.body.increment_count === true;
-        if (increment) {
-            await connection.execute(
-                'UPDATE battle_rounds SET question_count_total = COALESCE(question_count_total, 0) + 1 WHERE session_uuid = ?',
-                [session_uuid]
-            );
-        }
-
-        return res.json({
+        return res.status(200).json({
             success: true,
-            message: "Question IDs updated successfully",
-            data: {
-                session_uuid,
-                question_ids: currentQuestionIds,
-                total_count: currentQuestionIds.length
-            }
+            message: `${player_type}'s question status updated successfully`
         });
-
     } catch (error) {
-        console.error('Error updating question IDs:', error);
+        console.error('Error updating enemy answering question:', error);
         return res.status(500).json({
             success: false,
-            message: "Failed to update question IDs",
+            message: 'Internal server error',
             error: error.message
         });
-    } finally {
-        if (connection) connection.release();
+    }
+};
+
+export const getEnemyAnsweringQuestion = async (req, res) => {
+    const { session_uuid, player_type } = req.params;
+
+    if (!session_uuid || !player_type) {
+        return res.status(400).json({
+            success: false,
+            message: 'Missing required parameters: session_uuid, player_type'
+        });
+    }
+
+    try {
+        // Determine which columns to retrieve based on player type
+        // If the player is host, we want to get guest's info and vice versa
+        const questionColumnToRetrieve = player_type === 'host' ? 'guest_answering_question_text' : 'host_answering_question_text';
+        const flashcardColumnToRetrieve = player_type === 'host' ? 'guest_on_flashcard' : 'host_on_flashcard';
+
+        const query = `
+      SELECT 
+        ${questionColumnToRetrieve} AS enemy_question_text,
+        ${flashcardColumnToRetrieve} AS enemy_on_flashcard
+      FROM battle_rounds
+      WHERE session_uuid = ?
+    `;
+
+        const [rows] = await pool.query(query, [session_uuid]);
+
+        if (rows.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: 'Battle round not found'
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            data: {
+                enemy_question_text: rows[0].enemy_question_text,
+                enemy_on_flashcard: rows[0].enemy_on_flashcard
+            }
+        });
+    } catch (error) {
+        console.error('Error retrieving enemy answering question:', error);
+        return res.status(500).json({
+            success: false,
+            message: 'Internal server error',
+            error: error.message
+        });
     }
 };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Box, Typography, Button, IconButton, Tooltip } from "@mui/material";
 import CloseIcon from "@mui/icons-material/CancelOutlined";
 import InviteFriendList from "/General/ModalFriendList.png";
@@ -10,6 +10,8 @@ import { useSnackbar } from "../../../../../contexts/SnackbarContext";
 import { useOnlineStatus } from "../../../../../hooks/useOnlineStatus";
 import { useLobbyStatus } from "../../../../../hooks/useLobbyStatus";
 import { GameMode } from "../../../../../hooks/useLobbyStatus";
+import { useFriendStatusMap } from "../../../../../hooks/useFriendStatusMap";
+import { useSortedFriends } from "../../../../../hooks/useSortedFriends";
 
 // Define a proper interface for FriendItem props
 interface FriendItemProps {
@@ -21,11 +23,19 @@ interface FriendItemProps {
   };
   inviting: boolean;
   onInvite: (friend: Player) => void;
-  showSnackbar: (message: string, severity: "success" | "error" | "info" | "warning") => void;
+  showSnackbar: (
+    message: string,
+    severity: "success" | "error" | "info" | "warning"
+  ) => void;
 }
 
 // Update the FriendItem component with proper typing
-const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite, showSnackbar }) => {
+const FriendItem: React.FC<FriendItemProps> = ({
+  friend,
+  inviting,
+  onInvite,
+  showSnackbar,
+}) => {
   // Now hooks are at the top level of this component with proper typing
   const isOnline = useOnlineStatus(friend.firebase_uid);
   const { isInLobby, isInGame, gameMode } = useLobbyStatus(friend.firebase_uid);
@@ -53,6 +63,46 @@ const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite, sho
           color = "bg-[#4D18E8]"; // Creating Study Material color
           statusText = "Creating Study Material";
           break;
+        // Game setup states
+        case "game-setup":
+          color = "bg-[#8A7FFF]";
+          statusText = "Setting Up Game";
+          break;
+        case "question-setup":
+          color = "bg-[#8A7FFF]";
+          statusText = "Selecting Questions";
+          break;
+        case "timer-setup":
+          color = "bg-[#8A7FFF]";
+          statusText = "Setting Timer";
+          break;
+        case "loading-game":
+          color = "bg-[#8A7FFF]";
+          statusText = "Loading Game";
+          break;
+        // PVP setup states
+        case "pvp-host-setup":
+          color = "bg-[#A4ADE6]";
+          statusText = "Setting Up PVP";
+          break;
+        case "pvp-player2-setup":
+          color = "bg-[#A4ADE6]";
+          statusText = "Setting Up PVP";
+          break;
+        case "pvp-lobby":
+          color = "bg-[#A4ADE6]";
+          statusText = "In PVP Lobby";
+          break;
+        // Post-game states
+        case "peaceful-summary":
+        case "time-pressured-summary":
+          color = "bg-[#6DB566]";
+          statusText = "Viewing Results";
+          break;
+        case "pvp-summary":
+          color = "bg-[#A4ADE6]";
+          statusText = "Viewing PVP Results";
+          break;
       }
 
       return { color, text: statusText };
@@ -70,18 +120,26 @@ const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite, sho
   // Determine if invite should be disabled
   const isInviteDisabled = !isOnline || isInGame || inviting;
 
+  // Get button text based on status
+  const getButtonText = () => {
+    if (inviting) return "SENDING...";
+    if (!isOnline) return "OFFLINE";
+    if (isInGame) return "BUSY";
+    return "DUEL";
+  };
+
   // Handle invite click with status check
   const handleInviteClick = () => {
     if (!isOnline) {
       showSnackbar(`${friend.username} is currently offline`, "error");
       return;
     }
-    
+
     if (isInGame) {
       showSnackbar(`${friend.username} is currently in ${text}`, "error");
       return;
     }
-    
+
     onInvite(friend);
   };
 
@@ -98,41 +156,45 @@ const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite, sho
             className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
           />
           {/* Status indicator */}
-          <Tooltip 
-            title={text} 
-            placement="top" 
-            arrow
-          >
-            <div 
+          <Tooltip title={text} placement="top" arrow>
+            <div
               className={`absolute bottom-[-2px] right-1 w-4 h-4 rounded-full border-2 border-[#080511] ${color}`}
             ></div>
           </Tooltip>
         </div>
         <div>
-          <Typography className="text-white">
-            {friend.username}
-          </Typography>
+          <Typography className="text-white">{friend.username}</Typography>
           <Typography sx={{ color: "white", fontSize: "0.835rem" }}>
             LVL {friend.level}
           </Typography>
         </div>
       </div>
-      <Button
-        variant="contained"
-        sx={{
-          backgroundColor: "#57A64E",
-          "&:disabled": {
-            backgroundColor: "#2E5428",
-            color: "#A0A0A0"
-          }
-        }}
-        disabled={isInviteDisabled}
+      {/* Simplified button with inline styles */}
+      <button
         onClick={handleInviteClick}
+        disabled={isInviteDisabled}
+        style={{
+          borderRadius: "0.6rem",
+          marginLeft: "8px",
+          padding: "8px 20px",
+          minWidth: "60px",
+          fontSize: "0.8rem",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          transition: "all 0.3s ease",
+          cursor: isInviteDisabled ? "not-allowed" : "pointer",
+          backgroundColor: isInviteDisabled ? "#2E5428" : "#57A64E",
+          color: isInviteDisabled ? "#A0A0A0" : "white",
+          opacity: 1,
+          visibility: "visible",
+          position: "relative",
+          zIndex: 10,
+        }}
+        className={`${!isInviteDisabled && " hover:scale-110"}`}
       >
-        {inviting ? "SENDING..." : 
-         !isOnline ? "OFFLINE" : 
-         isInGame ? "IN GAME" : "INVITE"}
-      </Button>
+        {getButtonText()}
+      </button>
     </div>
   );
 };
@@ -171,6 +233,17 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
   const { user } = useUser();
   const { showSnackbar } = useSnackbar();
   const { sendBattleInvitation } = useBattleInvitations();
+
+  // Extract friend IDs for status mapping
+  const friendIds = useMemo(() => {
+    return friends.map((friend) => friend.firebase_uid);
+  }, [friends]);
+
+  // Get status information for all friends
+  const statusMap = useFriendStatusMap(friendIds);
+
+  // Get sorted friend list
+  const sortedFriends = useSortedFriends(friends, statusMap);
 
   useEffect(() => {
     const fetchFriends = async () => {
@@ -295,11 +368,7 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
         </Typography>
 
         {/* Error message */}
-        {error && (
-          <div className="text-red-500 text-center mb-4">
-            {error}
-          </div>
-        )}
+        {error && <div className="text-red-500 text-center mb-4">{error}</div>}
 
         {/* Friend List */}
         <div
@@ -311,11 +380,11 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
           ) : friends.length === 0 ? (
             <div className="text-white">No friends found</div>
           ) : (
-            friends.map((friend) => (
-              <FriendItem 
+            sortedFriends.map((friend) => (
+              <FriendItem
                 key={friend.firebase_uid}
-                friend={friend} 
-                inviting={inviting} 
+                friend={friend}
+                inviting={inviting}
                 onInvite={handleInvite}
                 showSnackbar={showSnackbar}
               />

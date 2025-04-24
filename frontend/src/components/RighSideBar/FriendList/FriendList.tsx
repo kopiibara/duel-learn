@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { Box, IconButton, Stack } from "@mui/material";
 import { useUser } from "../../../contexts/UserContext";
 import cauldronGif from "/General/Cauldron.gif";
@@ -9,6 +9,8 @@ import FriendListActions from "./FriendListActions";
 import { useFriendList } from "../../../hooks/friends.hooks/useFriendList";
 import { useFriendSocket } from "../../../hooks/friends.hooks/useFriendSocket";
 import { usePendingFriendRequests } from "../../../hooks/friends.hooks/usePendingFriendRequests";
+import { useFriendStatusMap } from "../../../hooks/useFriendStatusMap";
+import { useSortedFriends } from "../../../hooks/useSortedFriends";
 import axios from "axios";
 import { SnackbarState, FriendRequestData } from "../../../types/friendObject";
 import CheckIcon from "@mui/icons-material/Check";
@@ -51,6 +53,17 @@ const FriendList: React.FC = () => {
       setLocalFriendList(friendList);
     }
   }, [friendList]);
+
+  // Extract friend IDs for status mapping
+  const friendIds = useMemo(() => {
+    return localFriendList.map(friend => friend.firebase_uid);
+  }, [localFriendList]);
+
+  // Get status information for all friends
+  const statusMap = useFriendStatusMap(friendIds);
+
+  // Get sorted friend list
+  const sortedFriendList = useSortedFriends(localFriendList, statusMap);
 
   // Setup socket handlers
   const { sendFriendRequest } = useFriendSocket({
@@ -325,7 +338,7 @@ const FriendList: React.FC = () => {
             </Stack>
           ) : (
             <div className="space-y-2 sm:space-y-3">
-              {localFriendList.map((friend: Friend) => (
+              {sortedFriendList.map((friend: Friend) => (
                 <FriendListItem key={friend.firebase_uid} friend={friend} />
               ))}
             </div>

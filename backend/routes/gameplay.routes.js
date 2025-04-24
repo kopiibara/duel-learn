@@ -25,7 +25,8 @@ import {
     applyPoisonEffects,
     generateBattleQuestions,
     claimBattleRewards,
-    updateQuestionIdsDone
+    updateEnemyAnsweringQuestion,
+    getEnemyAnsweringQuestion
 } from '../controller/GameplayController.js';
 
 const router = express.Router();
@@ -43,7 +44,6 @@ router.post('/battle/generate-questions', generateBattleQuestions);
 router.post('/battle/initialize-rounds', initializeBattleRounds);
 router.put('/battle/update-round', updateBattleRound);
 router.get('/battle/round/:session_uuid', getBattleRound);
-router.put('/battle/update-question-ids', updateQuestionIdsDone);
 
 // Card effects
 router.get('/battle/card-effects/:session_uuid/:player_type', getActiveCardEffects);
@@ -78,5 +78,9 @@ router.post('/battle/save-session-report', savePvpSessionReport);
 
 // Claim rewards from PvP battle
 router.post('/battle/claim-rewards', claimBattleRewards);
+
+// Add new routes for enemy answering question
+router.put('/battle/update-enemy-question', updateEnemyAnsweringQuestion);
+router.get('/battle/enemy-question/:session_uuid/:player_type', getEnemyAnsweringQuestion);
 
 export default router; 

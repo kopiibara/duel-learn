@@ -3,7 +3,7 @@ import CloseIcon from "@mui/icons-material/ClearRounded";
 import YourFriends from "./Modals/YourFriends";
 import FriendRequests from "./Modals/FriendRequest";
 import FindFriends from "./Modals/FindFriends";
-import ModalIconFriendList from "/General/ModalFriendList.png";
+import ModalIconFriendList from "/bunny.png";
 import { Box, Tooltip, IconButton, Modal, Backdrop, Fade } from "@mui/material";
 
 interface ModalProps {

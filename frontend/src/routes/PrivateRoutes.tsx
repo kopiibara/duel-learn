@@ -46,6 +46,8 @@ import {
 import { GameMode } from "../hooks/useLobbyStatus";
 import CardSelectionTest from "../pages/dashboard/play-battleground/modes/multiplayer/battle-field/CardSelectionTest";
 import BattleInvitationCenter from "../components/battle/BattleInvitationCenter";
+import React from "react";
+
 // Create a wrapper component that handles game status changes
 const GameModeStatusWrapper = ({
   children,
@@ -55,17 +57,57 @@ const GameModeStatusWrapper = ({
   gameMode: GameMode;
 }) => {
   const { setInGame } = useGameStatus();
+  const { user } = useUser();
+  const prevModeRef = React.useRef<GameMode>(null);
 
-  // Set game status when component mounts
+  // Set game status when component mounts or gameMode changes
   useEffect(() => {
-    // Set game status to active with the specified mode
-    setInGame(true, gameMode);
+    const socketService = SocketService.getInstance();
+    const socket = socketService.getSocket();
+    
+    // Don't emit events if no socket or user
+    if (!socket?.connected || !user?.firebase_uid) {
+      return;
+    }
+    
+    // Track whether we're changing modes or initially mounting
+    const isChangingModes = prevModeRef.current !== null;
+    prevModeRef.current = gameMode;
+    
+    // If changing modes, avoid the exit/enter sequence that causes flickering
+    if (isChangingModes) {
+      // Just update the mode directly without exiting first
+      socket.emit("userGameStatusChanged", {
+        userId: user.firebase_uid,
+        inGame: true,
+        mode: gameMode,
+      });
+      
+      // Also emit the player_entered_game event with the new mode
+      socket.emit("player_entered_game", {
+        playerId: user.firebase_uid,
+        inGame: true,
+        mode: gameMode,
+      });
+    } else {
+      // Initial mount - set game status to active with the specified mode
+      setInGame(true, gameMode);
+    }
 
     // Clean up when unmounting
     return () => {
-      setInGame(false, null);
+      // Only fully exit if component is unmounting, not just changing modes
+      // We can detect unmounting by checking if we're navigating away from game modes
+      const currentPath = window.location.pathname;
+      const isStillInGameFlow = currentPath.includes('/study/') || 
+                              currentPath.includes('/setup/') ||
+                              currentPath.includes('/pvp-');
+      
+      if (!isStillInGameFlow) {
+        setInGame(false, null);
+      }
     };
-  }, [gameMode, setInGame]);
+  }, [gameMode, setInGame, user]);
 
   return <>{children}</>;
 };
@@ -204,10 +246,38 @@ const PrivateRoutes = () => {
         <Route path="payment-success" element={<PaymentSuccess />} />
 
         {/* Game Setup Routes */}
-        <Route path="welcome-game-mode" element={<WelcomeGameMode />} />
-        <Route path="setup/questions" element={<SetUpQuestionType />} />
-        <Route path="setup/timer" element={<SetUpTimeQuestion />} />
-        <Route path="loading-screen" element={<LoadingScreen />} />
+        <Route 
+          path="welcome-game-mode" 
+          element={
+            <GameModeStatusWrapper gameMode="game-setup">
+              <WelcomeGameMode />
+            </GameModeStatusWrapper>
+          } 
+        />
+        <Route 
+          path="setup/questions" 
+          element={
+            <GameModeStatusWrapper gameMode="question-setup">
+              <SetUpQuestionType />
+            </GameModeStatusWrapper>
+          } 
+        />
+        <Route 
+          path="setup/timer" 
+          element={
+            <GameModeStatusWrapper gameMode="timer-setup">
+              <SetUpTimeQuestion />
+            </GameModeStatusWrapper>
+          } 
+        />
+        <Route 
+          path="loading-screen" 
+          element={
+            <GameModeStatusWrapper gameMode="loading-game">
+              <LoadingScreen />
+            </GameModeStatusWrapper>
+          } 
+        />
 
         {/* Game Mode Routes */}
         <Route
@@ -234,12 +304,36 @@ const PrivateRoutes = () => {
             </GameModeWrapper>
           }
         />
-        <Route path="/pvp-lobby/:lobbyCode?" element={<PVPLobby />} />
-        <Route path="/study/session-summary" element={<SessionReport />} />
-        <Route path="/select-difficulty/pvp" element={<HostModeSelection />} />
+        <Route path="/pvp-lobby/:lobbyCode?" 
+          element={
+            <GameModeStatusWrapper gameMode="pvp-lobby">
+              <PVPLobby />
+            </GameModeStatusWrapper>
+          } 
+        />
+        <Route 
+          path="/study/session-summary" 
+          element={
+            <GameModeStatusWrapper gameMode="peaceful-summary">
+              <SessionReport />
+            </GameModeStatusWrapper>
+          } 
+        />
+        <Route 
+          path="/select-difficulty/pvp" 
+          element={
+            <GameModeStatusWrapper gameMode="pvp-host-setup">
+              <HostModeSelection />
+            </GameModeStatusWrapper>
+          } 
+        />
         <Route
           path="/select-difficulty/pvp/player2"
-          element={<Player2ModeSelection />}
+          element={
+            <GameModeStatusWrapper gameMode="pvp-player2-setup">
+              <Player2ModeSelection />
+            </GameModeStatusWrapper>
+          }
         />
         <Route
           path="/pvp-battle/:lobbyCode?"
@@ -251,7 +345,11 @@ const PrivateRoutes = () => {
         />
         <Route
           path="/pvp-battle/session-report"
-          element={<PvpSessionReport />}
+          element={
+            <GameModeStatusWrapper gameMode="pvp-summary">
+              <PvpSessionReport />
+            </GameModeStatusWrapper>
+          }
         />
 
         {/* Test Route for Card Selection Debugging */}

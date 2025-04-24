@@ -11,6 +11,22 @@ import PremiumLabel from "/premium-star.png";
 import axios from "axios";
 import "./ManaIndicator.css"; // We'll create this CSS file
 
+interface ManaDetails {
+  current: number;
+  maximum: number;
+  percentageFilled: number;
+  lastUpdated: string;
+  replenishRate: {
+    perMinute: number;
+    perHour: number;
+  };
+  timeToFull: {
+    minutes: number;
+    formattedTime: string;
+  };
+  isFull: boolean;
+}
+
 const StatsNProfile = () => {
   const { user } = useUser();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -18,6 +34,8 @@ const StatsNProfile = () => {
     "replenishing" | "maxed" | "normal"
   >("normal");
   const [currentMana, setCurrentMana] = useState<number>(user?.mana || 0);
+  const [manaDetails, setManaDetails] = useState<ManaDetails | null>(null);
+  const [tooltipContent, setTooltipContent] = useState<string>("Mana");
   const maxMana = 200; // Default max mana - could be fetched from user data
 
   const isPremium = user?.account_type === "premium";
@@ -33,22 +51,64 @@ const StatsNProfile = () => {
     return () => clearInterval(interval);
   }, [user?.firebase_uid]);
 
+  // Format the time to full replenishment
+  const formatTooltipContent = (details: ManaDetails) => {
+    if (details.isFull) {
+      return "Mana at maximum capacity";
+    }
+    
+    // Get time to full details
+    const { minutes, formattedTime } = details.timeToFull;
+    
+    if (minutes <= 0) {
+      return "Mana replenishing";
+    }
+    
+    const replenishRate = Math.round(details.replenishRate.perHour);
+    return `Mana replenishing • Full in ${formattedTime}`;
+  };
+
   // Function to update mana status
   const updateManaStatus = async () => {
     if (!user?.firebase_uid) return;
 
     try {
+      // Use the detailed mana endpoint
       const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/mana/${user.firebase_uid}`
+        `${import.meta.env.VITE_BACKEND_URL}/api/mana/details/${user.firebase_uid}`
       );
-      if (response.status === 200) {
-        setCurrentMana(response.data.mana);
+      
+      if (response.status === 200 && response.data.success) {
+        const details = response.data.mana as ManaDetails;
+        setManaDetails(details);
+        setCurrentMana(details.current);
 
         // Determine mana status
-        if (response.data.mana >= maxMana) {
+        if (details.isFull) {
           setManaStatus("maxed");
         } else {
           setManaStatus("replenishing");
+        }
+        
+        // Update tooltip content
+        setTooltipContent(formatTooltipContent(details));
+      } else {
+        // Fallback to basic mana endpoint if detailed fails
+        const basicResponse = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/mana/${user.firebase_uid}`
+        );
+        
+        if (basicResponse.status === 200) {
+          setCurrentMana(basicResponse.data.mana);
+          
+          // Determine mana status
+          if (basicResponse.data.mana >= maxMana) {
+            setManaStatus("maxed");
+            setTooltipContent("Mana at maximum capacity");
+          } else {
+            setManaStatus("replenishing");
+            setTooltipContent("Mana replenishing");
+          }
         }
       }
     } catch (error) {
@@ -91,20 +151,15 @@ const StatsNProfile = () => {
 
       {/* Mana Icon */}
       <Tooltip
-        title={
-          manaStatus === "replenishing"
-            ? "Mana replenishing"
-            : manaStatus === "maxed"
-            ? "Mana at maximum capacity"
-            : "Mana"
-        }
+        title={tooltipContent}
         arrow
         sx={{
           "& .MuiTooltip-tooltip": {
             padding: "8px 12px",
-            fontSize: "16px",
-            fontWeight: "bold",
+            fontSize: "14px",
+            fontWeight: "medium",
             animation: "fadeInOut 0.3s ease-in-out",
+            whiteSpace: "nowrap",
           },
         }}
       >
@@ -119,7 +174,7 @@ const StatsNProfile = () => {
                 : "text-[#9F9BAE]"
             }`}
           >
-            {currentMana || 0}
+            {Math.floor(currentMana) || 0}
           </span>
         </div>
       </Tooltip>

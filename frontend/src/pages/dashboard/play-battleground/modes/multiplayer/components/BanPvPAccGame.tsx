@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import CloseIcon from "@mui/icons-material/HighlightOffRounded";
+import { useNavigate } from "react-router-dom";
 
 interface BanPvPAccGameProps {
   isOpen: boolean;
@@ -49,6 +51,7 @@ const BanPvPAccGame: React.FC<BanPvPAccGameProps> = ({
   });
   const [timeLeft, setTimeLeft] = useState<string>("");
   const [isBanExpired, setIsBanExpired] = useState(false);
+  const navigate = useNavigate();
 
   // Fetch the initial ban status when component mounts
   useEffect(() => {
@@ -57,24 +60,31 @@ const BanPvPAccGame: React.FC<BanPvPAccGameProps> = ({
     const checkInitialBanStatus = async () => {
       try {
         const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/user/ban-status/${userId}`
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/user/ban-status/${userId}`
         );
-        const data = response.data as { success: boolean; data: { banUntil: string } };
+        const data = response.data as {
+          success: boolean;
+          data: { banUntil: string };
+        };
 
-    
         if (data.success && data.data.banUntil) {
           const banUntil = new Date(data.data.banUntil);
           if (isNaN(banUntil.getTime())) {
-            console.error("Invalid banUntil date received from API:", data.data.banUntil);
+            console.error(
+              "Invalid banUntil date received from API:",
+              data.data.banUntil
+            );
             return;
           }
           const isBanActive = banUntil > new Date();
-          
+
           setBanStatus({
             banUntil,
-            isBanActive
+            isBanActive,
           });
-          
+
           // Notify parent component of ban status
           if (onBanStatusChange) {
             onBanStatusChange(isBanActive);
@@ -102,11 +112,11 @@ const BanPvPAccGame: React.FC<BanPvPAccGameProps> = ({
 
       // Update ban active status
       if (isExpired !== !banStatus.isBanActive) {
-        setBanStatus(prev => ({
+        setBanStatus((prev) => ({
           ...prev,
-          isBanActive: !isExpired
+          isBanActive: !isExpired,
         }));
-        
+
         // Notify parent component of ban status change
         if (onBanStatusChange) {
           onBanStatusChange(!isExpired);
@@ -127,31 +137,49 @@ const BanPvPAccGame: React.FC<BanPvPAccGameProps> = ({
     }
   };
 
+  const handleExitModal = () => {
+    navigate("/dashboard/home");
+  };
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 p-6 rounded-lg shadow-xl max-w-md w-full mx-4">
-        <h2 className="text-xl font-bold text-red-500 mb-4">
-          Account Temporarily Banned
-        </h2>
-        <p className="text-white mb-4">
+      <div className="bg-[#120F1B] p-6 border-2 border-[#3b354d] rounded-[0.8rem] shadow-xl max-w-md w-full mx-4">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-[20px] font-bold text-red-600">
+            Account Temporarily Banned
+          </h2>
+          {!isBanExpired && (
+            <CloseIcon
+              onClick={handleExitModal}
+              fontSize="medium"
+              className="text-[#6F658D]  cursor-pointer hover:scale-110 transition-all duration-300 ease-in"
+            />
+          )}
+        </div>
+
+        <p className=" mb-4">
           You are temporarily banned from battles due to leaving games early.
         </p>
-        <p className="text-white mb-4">
-          Ban expires: {banStatus.banUntil ? formatDateTime(banStatus.banUntil) : "Loading..."}
+        <p className="mb-4">
+          Ban expires:{" "}
+          {banStatus.banUntil
+            ? formatDateTime(banStatus.banUntil)
+            : "Loading..."}
         </p>
         <p
           className={`${
-            isBanExpired ? "text-green-400" : "text-yellow-400"
+            isBanExpired ? "text-green-400" : "text-yellow-300"
           } font-semibold mb-6`}
         >
           {isBanExpired ? "Ban has expired!" : `Time remaining: ${timeLeft}`}
         </p>
+
         {isBanExpired && (
           <button
             onClick={handleCloseModal}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+            className="mt-3 sm:mt-4 w-full bg-[#8565E7] hover:bg-[#4D18E8]  text-[14px] sm:text-[16px] py-1.5 sm:py-2 px-4 rounded-[0.6rem] transition-colors duration-300 ease-in-out"
           >
             Close
           </button>

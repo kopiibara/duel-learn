@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import CloseIcon from "@mui/icons-material/Close";
 import { useFriendList } from "../../../../hooks/friends.hooks/useFriendList";
 import { useFriendSocket } from "../../../../hooks/friends.hooks/useFriendSocket";
@@ -18,12 +18,17 @@ import SelectStudyMaterialModal from "../../../modals/SelectStudyMaterialModal";
 import { createNewLobby } from "../../../../services/pvpLobbyService";
 import { generateCode } from "../../../../pages/dashboard/play-battleground/utils/codeGenerator";
 import { StudyMaterial } from "../../../../types/studyMaterialObject";
+import { useFriendStatusMap } from "../../../../hooks/useFriendStatusMap";
+import { useSortedFriends } from "../../../../hooks/useSortedFriends";
+import useManaCheck from "../../../../hooks/useManaCheck";
+import ManaAlertModal from "../../../../pages/dashboard/play-battleground/modes/multiplayer/components/ManaAlertModal";
+import { useSnackbar } from "../../../../contexts/SnackbarContext";
 
 interface FriendItemProps {
   friend: Friend;
   onRemoveFriend: (friendId: string) => void;
   onViewProfile: (friendId: string) => void;
-  onInvite: (friend: Friend) => void; // Add this prop
+  onInvite: (friend: Friend) => void;
 }
 
 const FriendItem: React.FC<FriendItemProps> = ({
@@ -34,28 +39,74 @@ const FriendItem: React.FC<FriendItemProps> = ({
 }) => {
   const isOnline = useOnlineStatus(friend.firebase_uid);
   const { isInLobby, isInGame, gameMode } = useLobbyStatus(friend.firebase_uid);
+  const { showSnackbar } = useSnackbar();
+
+  const isInviteDisabled = !isOnline || isInGame;
+
+  const getButtonText = () => {
+    if (!isOnline) return "OFFLINE";
+    if (isInGame) return "BUSY";
+    return "DUEL";
+  };
 
   const getStatusInfo = () => {
     if (isInGame) {
       let statusText = "In Game";
-      let color = "bg-orange-500"; // Default color
+      let color = "bg-orange-500";
 
       switch (gameMode) {
         case "pvp-battle":
-          color = "bg-[#A4ADE6]"; // PvP Mode color
+          color = "bg-[#A4ADE6]";
           statusText = "In PVP Battle";
           break;
         case "peaceful-mode":
-          color = "bg-[#76F7C3]"; // Peaceful Mode color
+          color = "bg-[#76F7C3]";
           statusText = "In Peaceful Mode";
           break;
         case "time-pressured-mode":
-          color = "bg-[#FFCF47]"; // Time Pressured Mode color
+          color = "bg-[#FFCF47]";
           statusText = "In Time-Pressured Mode";
           break;
         case "creating-study-material":
-          color = "bg-[#4D18E8]"; // Creating Study Material color
+          color = "bg-[#4D18E8]";
           statusText = "Creating Study Material";
+          break;
+        case "game-setup":
+          color = "bg-[#8A7FFF]";
+          statusText = "Setting Up Game";
+          break;
+        case "question-setup":
+          color = "bg-[#8A7FFF]";
+          statusText = "Selecting Questions";
+          break;
+        case "timer-setup":
+          color = "bg-[#8A7FFF]";
+          statusText = "Setting Timer";
+          break;
+        case "loading-game":
+          color = "bg-[#8A7FFF]";
+          statusText = "Loading Game";
+          break;
+        case "pvp-host-setup":
+          color = "bg-[#A4ADE6]";
+          statusText = "Setting Up PVP";
+          break;
+        case "pvp-player2-setup":
+          color = "bg-[#A4ADE6]";
+          statusText = "Setting Up PVP";
+          break;
+        case "pvp-lobby":
+          color = "bg-[#A4ADE6]";
+          statusText = "In PVP Lobby";
+          break;
+        case "peaceful-summary":
+        case "time-pressured-summary":
+          color = "bg-[#6DB566]";
+          statusText = "Viewing Results";
+          break;
+        case "pvp-summary":
+          color = "bg-[#A4ADE6]";
+          statusText = "Viewing PVP Results";
           break;
       }
 
@@ -95,17 +146,26 @@ const FriendItem: React.FC<FriendItemProps> = ({
         </div>
       </div>
       <Box flex={1} />
-      <Tooltip title="Invite" enterDelay={100} arrow>
+      <Tooltip
+        title={isInviteDisabled ? text : "Invite to Duel"}
+        enterDelay={100}
+        arrow
+      >
         <button
-          className="bg-[#52A647] text-xs text-white py-2 px-4 rounded-md hover:scale-105 transition-all duration-300"
-          onClick={() => onInvite(friend)}
+          className={`text-xs py-2.5 px-4 rounded-[0.6rem] transition-all duration-300 ${
+            isInviteDisabled
+              ? "bg-[#3B354D] text-[#A0A0A0] cursor-not-allowed"
+              : "bg-[#52A647] text-white hover:scale-105"
+          }`}
+          onClick={() => !isInviteDisabled && onInvite(friend)}
+          disabled={isInviteDisabled}
         >
-          <AddIcon sx={{ fontSize: 18 }} />
+          {getButtonText()}
         </button>
       </Tooltip>
       <Tooltip title="Remove Friend" enterDelay={100} arrow>
         <button
-          className="bg-[#E03649] text-xs text-white py-2 px-4 rounded-md hover:bg-[#E84040] hover:scale-105 transition-all duration-300"
+          className="bg-[#E03649] text-xs text-white py-2 px-4 rounded-[0.6rem] hover:bg-[#E84040] hover:scale-105 transition-all duration-300"
           onClick={() => onRemoveFriend(friend.firebase_uid)}
         >
           <CloseIcon sx={{ fontSize: 18 }} />
@@ -131,8 +191,24 @@ const YourFriends: React.FC = () => {
   const [friendToInvite, setFriendToInvite] = useState<Friend | null>(null);
   const { friendList, handleRemoveFriend, loading, fetchFriends } =
     useFriendList(user?.firebase_uid);
+  const { showSnackbar } = useSnackbar();
 
-  // Set up socket listener for friend request accepted events
+  const {
+    hasSufficientMana,
+    isManaModalOpen,
+    closeManaModal,
+    currentMana,
+    requiredMana,
+  } = useManaCheck(10);
+
+  const friendIds = useMemo(() => {
+    return friendList.map((friend) => friend.firebase_uid);
+  }, [friendList]);
+
+  const statusMap = useFriendStatusMap(friendIds);
+
+  const sortedFriends = useSortedFriends(friendList, statusMap);
+
   const handleFriendRequestAccepted = (data: { newFriend: Friend }) => {
     console.log("Friend added in YourFriends:", data.newFriend);
     setSnackbar({
@@ -140,7 +216,6 @@ const YourFriends: React.FC = () => {
       message: `${data.newFriend.username} is now your friend!`,
       isError: false,
     });
-    // Refresh friend list when a new friend is added
     fetchFriends();
   };
 
@@ -153,7 +228,6 @@ const YourFriends: React.FC = () => {
     fetchFriends();
   };
 
-  // Use the socket hook to listen for real-time updates
   useFriendSocket({
     userId: user?.firebase_uid,
     onFriendRequestAccepted: handleFriendRequestAccepted,
@@ -181,26 +255,33 @@ const YourFriends: React.FC = () => {
   };
 
   const handleInviteClick = (friend: Friend) => {
-    // Store the friend to invite
+    if (!statusMap[friend.firebase_uid]?.isOnline) {
+      showSnackbar(`${friend.username} is currently offline`, "error");
+      return;
+    }
+
+    if (statusMap[friend.firebase_uid]?.isInGame) {
+      const status = statusMap[friend.firebase_uid]?.gameMode;
+      showSnackbar(`${friend.username} is currently in ${status}`, "error");
+      return;
+    }
+
+    if (!hasSufficientMana()) {
+      return;
+    }
+
     setFriendToInvite(friend);
-    // Open material selection modal
     setMaterialModalOpen(true);
   };
-  // Handler for material selection
+
   const handleMaterialSelect = (material: StudyMaterial) => {
-    // Generate a new lobby code
     const lobbyCode = generateCode();
 
-    // Create a new lobby state
     const lobbyState = createNewLobby(inviteMode, material);
 
-    // Store the friend to invite
     localStorage.setItem("friendToInvite", JSON.stringify(friendToInvite));
 
-    // Close the modal
     setMaterialModalOpen(false);
-
-    // Navigate to welcome screen
 
     navigate("/dashboard/welcome-game-mode", {
       state: {
@@ -214,7 +295,6 @@ const YourFriends: React.FC = () => {
     });
   };
 
-  // Handler for mode selection
   const handleModeSelect = (mode: string) => {
     setInviteMode(mode);
   };
@@ -244,7 +324,6 @@ const YourFriends: React.FC = () => {
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       />
 
-      {/* Profile Modal */}
       <ProfileModal
         open={profileModalOpen}
         onClose={() => setProfileModalOpen(false)}
@@ -259,6 +338,13 @@ const YourFriends: React.FC = () => {
         onModeSelect={handleModeSelect}
         selectedTypes={selectedTypes}
         isLobby={true}
+      />
+
+      <ManaAlertModal
+        isOpen={isManaModalOpen}
+        onClose={closeManaModal}
+        currentMana={currentMana}
+        requiredMana={requiredMana}
       />
 
       {friendList.length === 0 ? (
@@ -281,7 +367,7 @@ const YourFriends: React.FC = () => {
           </p>
         </Stack>
       ) : (
-        friendList.map((friend) => (
+        sortedFriends.map((friend) => (
           <FriendItem
             key={friend.firebase_uid}
             friend={friend}

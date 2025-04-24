@@ -301,9 +301,9 @@ const AchievementController = {
                 }
             }
 
-            // Get user's highest streak
+            // Get user's highest streak using the longest_win_streak column
             const [result] = await pool.query(
-                `SELECT MAX(win_streak) as highest_streak FROM user_info WHERE firebase_uid = ?`,
+                `SELECT longest_win_streak as highest_streak FROM user_info WHERE firebase_uid = ?`,
                 [firebase_uid]
             );
 

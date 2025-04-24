@@ -83,13 +83,6 @@ const SetUpTimeQuestion: React.FC = () => {
           // Trigger mana replenishment in the background
           // This isn't strictly necessary as getUserMana will handle this automatically next time
           // But it ensures the replenishment timer starts right away
-          axios
-            .post(`${import.meta.env.VITE_BACKEND_URL}/api/mana/replenish`, {
-              firebase_uid: user?.firebase_uid,
-            })
-            .catch((error) => {
-              console.error("Error starting mana replenishment:", error);
-            });
         }
       } catch (error) {
         console.error("Error reducing mana:", error);
@@ -146,10 +139,6 @@ const SetUpTimeQuestion: React.FC = () => {
             <span className="text-[14px] sm:text-[16px] text-gray-300 mr-2 sm:mr-3">
               {manaPoints}
             </span>{" "}
-            {/* Dynamic mana points */}
-            <span className="animate-spin text-[14px] sm:text-[16px] text-purple-400">
-              ⚙️
-            </span>
           </div>
         </div>
 

@@ -1,6 +1,7 @@
 import * as React from "react";
 import ActionButtons from "./ActionButtons";
-import defaultPicture from "/profile-picture/default-picture.svg";
+//import defaultPicture from "/profile-picture/default-picture.svg";
+import defaultPicture from "../../../public/profile-picture/default-picture.svg";
 
 interface NotificationCardProps {
   type?:
@@ -171,7 +172,7 @@ const NotificationCard: React.FC<NotificationCardProps> = ({
     <article
       className={`
         flex relative items-center px-5 py-0 rounded-[0.8rem] h-[75px] w-[650px] 
-        max-md:p-4 max-md:w-full max-md:h-auto max-md:min-w-80 max-sm:p-2.5
+        max-md:p-4 max-md:w-full max-md:h-auto max-md:min-w-80 max-sm:p-2.5 border-2 border-[#3B354D]
         ${getBackgroundColor()}
       `}
     >

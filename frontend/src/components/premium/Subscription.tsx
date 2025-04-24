@@ -125,18 +125,17 @@ const Subscription = () => {
               </div>
               {isFreePlan ? (
                 <button
-                  className="mt-3 sm:mt-4 bg-[#8565E7] w-full text-white text-[14px] sm:text-[16px] py-1.5 sm:py-2 px-4 rounded-md transition-colors duration-300"
+                  className="mt-3 sm:mt-4 w-full bg-[#120F1D]  text-white text-[14px] sm:text-[16px] py-1.5 sm:py-2 px-4 rounded-[0.6rem] transition-colors duration-300"
                   disabled
                 >
                   Current Plan
                 </button>
               ) : (
                 <button
-                  className="mt-3 sm:mt-4 border-[#120F1D] border-2 w-full hover:bg-[#4D18E8] hover:border-[#4d18e8] text-white text-[14px] sm:text-[16px] py-1.5 sm:py-2 px-4 rounded-[0.6rem] transition-colors duration-300"
-                  onClick={handleOpenCancelSubsModal}
+                  className="mt-3 sm:mt-4 w-full bg-[#8565E7] hover:bg-[#4D18E8] text-white text-[14px] sm:text-[16px] py-1.5 sm:py-2 px-4 rounded-[0.6rem] transition-colors duration-300 ease-in-out"
                   disabled={processing}
                 >
-                  {processing ? "Processing..." : "Cancel Subscription"}
+                  {processing ? "Processing..." : "DOWNGRADE TO FREE"}
                 </button>
               )}
             </div>
@@ -193,10 +192,10 @@ const Subscription = () => {
               </div>
               {isMonthlyPlan ? (
                 <button
-                  className="mt-3 sm:mt-4 w-full bg-[#120F1D] text-white text-[14px] sm:text-[16px] py-1.5 sm:py-2 px-4 rounded-[0.6rem] transition-colors duration-300"
-                  disabled
+                  onClick={handleOpenCancelSubsModal}
+                  className="mt-3 sm:mt-4 w-full bg-[#120F1D] hover:bg-[#4D18E8] text-white text-[14px] sm:text-[16px] py-1.5 sm:py-2 px-4 rounded-[0.6rem] transition-colors duration-300"
                 >
-                  Current Plan
+                  Cancel Subscription
                 </button>
               ) : (
                 <button
@@ -261,10 +260,10 @@ const Subscription = () => {
               </div>
               {isYearlyPlan ? (
                 <button
-                  className="mt-3 sm:mt-4 w-full bg-[#120F1D] text-white text-[14px] sm:text-[16px] py-1.5 sm:py-2 px-4 rounded-[0.6rem] transition-colors duration-300"
-                  disabled
+                  onClick={handleOpenCancelSubsModal}
+                  className="mt-3 sm:mt-4 w-full bg-[#120F1D] hover:bg-[#4D18E8] text-white text-[14px] sm:text-[16px] py-1.5 sm:py-2 px-4 rounded-[0.6rem] transition-colors duration-300"
                 >
-                  Current Plan
+                  Cancel Subscription
                 </button>
               ) : (
                 <button

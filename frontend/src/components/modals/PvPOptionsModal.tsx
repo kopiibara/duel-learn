@@ -299,13 +299,14 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
                 <Button
                   onClick={handleCreateLobby}
                   sx={{
-                    backgroundColor: "#9F9BAE",
-                    color: "#3B354D",
+                    backgroundColor: "#8565E7",
+                    color: "#E2DDF3",
                     fontWeight: "bold",
                     padding: "12px 24px",
-                    borderRadius: "8px",
+                    borderRadius: "0.6rem",
+                    transition: "all 0.3s ease-in-out",
                     "&:hover": {
-                      backgroundColor: "#E2DDF3",
+                      backgroundColor: "#4D18E8",
                     },
                   }}
                 >
@@ -314,13 +315,14 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
                 <Button
                   onClick={handleShowJoinForm}
                   sx={{
-                    backgroundColor: "#9F9BAE",
-                    color: "#3B354D",
+                    backgroundColor: "#8565E7",
+                    color: "#E2DDF3",
                     fontWeight: "bold",
                     padding: "12px 24px",
-                    borderRadius: "8px",
+                    borderRadius: "0.6rem",
+                    transition: "all 0.3s ease-in-out",
                     "&:hover": {
-                      backgroundColor: "#E2DDF3",
+                      backgroundColor: "#4D18E8",
                     },
                   }}
                 >

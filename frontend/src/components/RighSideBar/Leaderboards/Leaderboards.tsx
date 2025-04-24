@@ -1,5 +1,12 @@
 import { useState, useEffect } from "react";
-import { Box, Stack, CircularProgress } from "@mui/material";
+import {
+  Box,
+  Stack,
+  CircularProgress,
+  Modal,
+  Backdrop,
+  Fade,
+} from "@mui/material";
 import GoldMedal from "/General/gold-medal.svg";
 import SilverMedal from "/General/silver-medal.svg";
 import BronzeMedal from "/General/bronze-medal.svg";
@@ -268,15 +275,38 @@ const Leaderboards = () => {
           </Stack>
         )}
 
-        {/* Modal with updated styling for mobile */}
-        {isModalOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-2 sm:p-4"
-            onClick={() => setIsModalOpen(false)}
-          >
-            <div
-              className="bg-[#080511] px-3 sm:px-5 md:px-8 py-4 sm:py-6 border-[#3B354D] border rounded-[0.8rem] w-full max-w-3xl max-h-[90vh] shadow-lg flex flex-col space-y-3 sm:space-y-4 items-center"
-              onClick={(e) => e.stopPropagation()}
+        {/* Modal with transition effects */}
+        <Modal
+          open={isModalOpen}
+          onClose={() => setIsModalOpen(false)}
+          closeAfterTransition
+          BackdropComponent={Backdrop}
+          BackdropProps={{
+            timeout: 500,
+            sx: {
+              backgroundColor: "rgba(0, 0, 0, 0.75)",
+              zIndex: 49,
+            },
+          }}
+        >
+          <Fade in={isModalOpen}>
+            <Box
+              sx={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: "689px",
+                maxWidth: "95%",
+                maxHeight: "95vh",
+                bgcolor: "#080511",
+                border: "1px solid #3B354D",
+                borderRadius: "0.8rem",
+                boxShadow: "0px 10px 20px rgba(0, 0, 0, 0.2)",
+                p: { xs: 2, sm: 3, md: 4 },
+                zIndex: 50,
+              }}
+              className="px-3 sm:px-5 md:px-8 py-4 sm:py-6 flex flex-col space-y-3 sm:space-y-4 items-center"
             >
               <h2 className="text-base sm:text-lg md:text-xl text-white font-semibold">
                 Friend Leaderboard
@@ -291,9 +321,9 @@ const Leaderboards = () => {
               >
                 Close
               </button>
-            </div>
-          </div>
-        )}
+            </Box>
+          </Fade>
+        </Modal>
       </Box>
       <ProfileModal
         open={profileModalOpen}
