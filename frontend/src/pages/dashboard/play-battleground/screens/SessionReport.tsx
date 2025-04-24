@@ -260,7 +260,7 @@ const SessionReport = () => {
         </div>
 
         {/* Buttons */}
-        <div className="flex gap-4 justify-center mt-6">
+        <div className="flex gap-4 justify-center mt-12">
           <Button
             sx={{
               px: 4,

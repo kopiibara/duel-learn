@@ -65,21 +65,23 @@ const StatisticBox = ({
 }: StatisticProps) => (
   <div
     style={{ width: '200px', minWidth: '200px' }}
-    className="rounded-[0.8rem] h-[185px] bg-[#1C1827] border border-[#6F658D] flex flex-col items-center justify-center p-4"
+    className="rounded-[0.8rem] h-[185px] bg-[#1C1827] border border-[#6F658D] flex flex-col items-center p-4"
   >
-    <div className="flex items-center justify-center mb-2">
+    <div className="flex items-center justify-center w-full pt-4 mb-3">
       {typeof iconSrc === 'string' ? (
         <img src={iconSrc} alt="" className="w-6 h-6 text-[#9A88FF]" />
       ) : (
         <div className="text-[#9A88FF]">{iconSrc}</div>
       )}
     </div>
-    <div className="text-sm text-[#9A88FF] uppercase mb-1 font-medium tracking-wide">
+    <div className="text-sm text-[#9A88FF] uppercase mb-3 font-medium tracking-wide">
       {label}
     </div>
-    <div className="text-3xl font-bold text-white mt-1">{value}</div>
-    {bonusText && (
-      <div className="text-sm text-green-500 mt-2">{bonusText}</div>
+    <div className="text-3xl font-bold text-white mb-3">{value}</div>
+    {bonusText ? (
+      <div className="text-sm text-green-500 mt-auto mb-2">{bonusText}</div>
+    ) : (
+      <div className="mt-auto"></div> // Empty spacer when no bonus text
     )}
   </div>
 );
