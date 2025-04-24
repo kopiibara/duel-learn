@@ -109,7 +109,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
       <div className={`w-[400px] rounded-2xl p-8 flex flex-col items-center ${isVictory ? 'bg-[#1a1f2e] border-2 border-purple-500/20' : 'bg-[#1a1f2e] border-2 border-red-500/20'
         }`}>
         {/* Icon */}
@@ -209,7 +209,7 @@ export const EarlyLeaveModal: React.FC<EarlyLeaveModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
       <div className="w-[400px] rounded-2xl p-8 flex flex-col items-center bg-[#1a1f2e] border-2 border-blue-500/20">
         {/* Icon */}
         <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-blue-900/50">

@@ -35,6 +35,7 @@ import GameStartAnimation from "./components/GameStartAnimation";
 import GuestWaitingForRandomization from "./components/GuestWaitingForRandomization";
 import QuestionModal from "./components/QuestionModal";
 import PvpSessionReport from "./screens/PvpSessionReport";
+import EnemyQuestionDisplay from "./components/EnemyQuestionDisplay";
 
 // Import utils directly
 import TurnRandomizer from "./utils/TurnRandomizer";
@@ -225,9 +226,20 @@ export default function PvpBattle() {
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
+  // Add state for mind control effect
+  const [hasMindControl, setHasMindControl] = useState(false);
+  const [mindControlActive, setMindControlActive] = useState(false);
+
+  // State for card blocking effect
+  const [hasCardBlocking, setHasCardBlocking] = useState(false);
+  const [blockedCardCount, setBlockedCardCount] = useState(0);
+  const [visibleCardIndices, setVisibleCardIndices] = useState<number[]>([]);
+
   // Add a state to track current turn number for poison effects
   const [currentTurnNumber, setCurrentTurnNumber] = useState(0);
   const [poisonEffectActive, setPoisonEffectActive] = useState(false);
+  const [opponentPoisonEffectActive, setOpponentPoisonEffectActive] =
+    useState(false);
   const [poisonTurnsRemaining, setPoisonTurnsRemaining] = useState(0);
 
   // Battle statistics tracking
@@ -256,12 +268,10 @@ export default function PvpBattle() {
       error: null,
     }
   );
-
   const [rewardMultipliers, setRewardMultipliers] = useState({
     hostMultiplier: 1,
     guestMultiplier: 1,
   });
-
   // Update the shownQuestionIds state to store strings instead of numbers
   const [shownQuestionIds, setShownQuestionIds] = useState<Set<string>>(
     new Set()
@@ -625,9 +635,28 @@ export default function PvpBattle() {
       timestamp: new Date().toISOString(),
     });
 
-    // First, update question IDs using the dedicated endpoint if we have a valid question ID
+    // Get current question IDs from localStorage and add new question ID
+    let currentQuestionIds: string[] = [];
     if (questionId && battleState?.session_uuid) {
-      await updateQuestionIdsDone(questionId);
+      const storedIds = localStorage.getItem(
+        `question_ids_${battleState.session_uuid}`
+      );
+      currentQuestionIds = storedIds ? JSON.parse(storedIds) : [];
+
+      // Add the new question ID if it's not already in the array
+      if (!currentQuestionIds.includes(questionId)) {
+        currentQuestionIds.push(questionId);
+
+        // Update localStorage
+        localStorage.setItem(
+          `question_ids_${battleState.session_uuid}`,
+          JSON.stringify(currentQuestionIds)
+        );
+        console.log(
+          "Updated question IDs in localStorage:",
+          currentQuestionIds
+        );
+      }
     }
 
     try {
@@ -663,6 +692,9 @@ export default function PvpBattle() {
       if (isCorrect) {
         // Show the character animation first
         setShowCorrectAnswerAnimation(true);
+
+        // Change player animation state to correct_answer
+        setPlayerAnimationState("correct_answer");
 
         // Change background to non-overlayed version
         setCurrentBackground(PvpBattleBG);
@@ -716,7 +748,7 @@ export default function PvpBattle() {
                 is_correct: isCorrect,
                 lobby_code: lobbyCode,
                 battle_stats: battleStats, // Send current stats to backend
-                // No longer include question_ids_done here - using dedicated endpoint
+                question_ids_done: JSON.stringify(currentQuestionIds), // Include question IDs here too
               }
             );
 
@@ -878,16 +910,20 @@ export default function PvpBattle() {
           } catch (error) {
             console.error("Error updating battle round:", error);
           }
-        }, 3000); // 3 seconds total duration
+        }, 3000); // Changed from 2500 to 3000 (3 seconds total duration)
       } else {
         // If incorrect, display incorrect answer animation for 1.5 seconds
         setPlayerAnimationState("incorrect_answer");
+
+        // Keep the original background
+        // No need to change background for incorrect answers
 
         // Wait 1.5 seconds before proceeding normally without attack animation
         setTimeout(async () => {
           // Reset player animation state to idle
           setPlayerAnimationState("idle");
 
+          // No need to reset background as it wasn't changed
           try {
             // First update the round data
             const response = await axios.put(
@@ -901,7 +937,7 @@ export default function PvpBattle() {
                 is_correct: isCorrect,
                 lobby_code: lobbyCode,
                 battle_stats: battleStats, // Send current stats to backend
-                // No longer include question_ids_done here - using dedicated endpoint
+                question_ids_done: JSON.stringify(currentQuestionIds), // Include question IDs here too
               }
             );
 
@@ -1008,6 +1044,15 @@ export default function PvpBattle() {
             response.data.message
           );
         }
+        // Update localStorage only
+        localStorage.setItem(
+          `question_ids_${battleState.session_uuid}`,
+          JSON.stringify(currentQuestionIds)
+        );
+        console.log(
+          "Updated question IDs in localStorage:",
+          currentQuestionIds
+        );
       } else {
         console.log("Question ID already exists:", questionId);
       }
@@ -1041,6 +1086,7 @@ export default function PvpBattle() {
     const checkAndApplyPoisonEffects = async () => {
       if (!battleState?.session_uuid) return;
 
+      // Health updates are polled every 1 second for more responsive health bar updates
       try {
         // Get battle scores
         const scoresResponse = await axios.get<BattleScoresResponse>(
@@ -1055,6 +1101,65 @@ export default function PvpBattle() {
             battleState.session_uuid
           }`
         );
+
+        // Check for active poison effects on the player and opponent
+        if (battleState.session_uuid) {
+          try {
+            // Get active effects for the current player
+            const playerType = isHost ? "host" : "guest";
+            const playerResponse = await axios.get(
+              `${
+                import.meta.env.VITE_BACKEND_URL
+              }/api/gameplay/battle/card-effects/${
+                battleState.session_uuid
+              }/${playerType}`
+            );
+
+            // Get active effects for the opponent
+            const opponentType = isHost ? "guest" : "host";
+            const opponentResponse = await axios.get(
+              `${
+                import.meta.env.VITE_BACKEND_URL
+              }/api/gameplay/battle/card-effects/${
+                battleState.session_uuid
+              }/${opponentType}`
+            );
+
+            // Check if player has active poison effects
+            if (playerResponse.data.success) {
+              const playerEffects = playerResponse.data.data?.effects || [];
+              const hasPlayerPoisonEffect = playerEffects.some(
+                (effect) =>
+                  effect.effect === "poison" && effect.turns_remaining > 0
+              );
+              setPoisonEffectActive(hasPlayerPoisonEffect);
+
+              console.log(
+                `Player poison status: ${
+                  hasPlayerPoisonEffect ? "POISONED" : "NOT POISONED"
+                }`
+              );
+            }
+
+            // Log opponent's poison effects for debugging
+            if (opponentResponse.data.success) {
+              const opponentEffects = opponentResponse.data.data?.effects || [];
+              const hasOpponentPoisonEffect = opponentEffects.some(
+                (effect) =>
+                  effect.effect === "poison" && effect.turns_remaining > 0
+              );
+
+              setOpponentPoisonEffectActive(hasOpponentPoisonEffect);
+              console.log(
+                `Opponent poison status: ${
+                  hasOpponentPoisonEffect ? "POISONED" : "NOT POISONED"
+                }`
+              );
+            }
+          } catch (error) {
+            console.error("Error checking poison effects:", error);
+          }
+        }
 
         // Add debugging for health data
         console.log("HEALTH DATA:", {
@@ -1217,8 +1322,8 @@ export default function PvpBattle() {
       }
     };
 
-    // Poll for battle scores less frequently
-    const scoresPollInterval = setInterval(checkAndApplyPoisonEffects, 2000);
+    // Poll for battle scores more frequently (every 1 second instead of 2)
+    const scoresPollInterval = setInterval(checkAndApplyPoisonEffects, 1000);
     checkAndApplyPoisonEffects(); // Initial fetch
 
     return () => clearInterval(scoresPollInterval);
@@ -1392,26 +1497,20 @@ export default function PvpBattle() {
       .padStart(2, "0")}`;
 
     // Determine if player is winner
-    const isWinner = playerHealth > 0 && opponentHealth <= 0;
+    const isWinner = playerHealth > opponentHealth;
+
+    const [hostMultiplier, guestMultiplier] = await Promise.all([
+      fetchUserRewardMultiplier(hostId),
+      fetchUserRewardMultiplier(guestId),
+    ]);
+
+    // Update state with multipliers (for debugging)
+    setRewardMultipliers({
+      hostMultiplier,
+      guestMultiplier,
+    });
 
     try {
-      // Fetch reward multipliers for both players
-      const [hostMultiplier, guestMultiplier] = await Promise.all([
-        fetchUserRewardMultiplier(hostId),
-        fetchUserRewardMultiplier(guestId),
-      ]);
-
-      // Update state with multipliers (for debugging)
-      setRewardMultipliers({
-        hostMultiplier,
-        guestMultiplier,
-      });
-
-      console.log("Reward multipliers:", {
-        hostMultiplier,
-        guestMultiplier,
-      });
-
       // Get current win streak for winner
       const winnerId = isHost
         ? isWinner
@@ -2085,6 +2184,11 @@ export default function PvpBattle() {
       .padStart(2, "0")}`;
   };
 
+  // Add a function to determine if we should hide the game UI
+  const shouldHideGameUI = () => {
+    return showVictoryModal || showEarlyLeaveModal;
+  };
+
   return (
     <div
       className="w-full h-screen flex flex-col relative"
@@ -2095,14 +2199,13 @@ export default function PvpBattle() {
         backgroundRepeat: "no-repeat",
       }}
     >
-      {/* Audio element for attack sound */}
+      {/* Audio elements */}
       <audio
         ref={attackSoundRef}
         src="/GameBattle/magical-twinkle-242245.mp3"
         preload="auto"
       />
 
-      {/* Audio element for background music */}
       <audio
         ref={backgroundMusicRef}
         src="/GameBattle/PVPBATTLEBGMUSICAVERAGE.mp3"
@@ -2110,46 +2213,44 @@ export default function PvpBattle() {
         id="pvp-background-music"
       />
 
-      {/* Audio element for correct answer sounds */}
       <audio
         ref={correctAnswerSoundRef}
         src="/GameBattle/correct1.mp3"
         preload="auto"
       />
 
-      {/* Audio element for correct sound effects */}
       <audio
         ref={correctSfxRef}
         src="/GameBattle/correctSfx.mp3"
         preload="auto"
       />
 
-      {/* Audio element for incorrect answer sounds */}
       <audio
         ref={incorrectAnswerSoundRef}
         src="/GameBattle/incorrectAnswerSound.mp3"
         preload="auto"
       />
 
-      {/* Audio element for incorrect sound effects */}
       <audio
         ref={incorrectSfxRef}
         src="/GameBattle/incorrectSfx.mp3"
         preload="auto"
       />
 
-      {/* Character animation manager */}
-      <CharacterAnimationManager
-        playerAnimationState={playerAnimationState}
-        enemyAnimationState={enemyAnimationState}
-        setPlayerPickingIntroComplete={setPlayerPickingIntroComplete}
-        setEnemyPickingIntroComplete={setEnemyPickingIntroComplete}
-        playerPickingIntroComplete={playerPickingIntroComplete}
-        enemyPickingIntroComplete={enemyPickingIntroComplete}
-      />
+      {/* Character animation manager - Hide when modals are active */}
+      {!shouldHideGameUI() && (
+        <CharacterAnimationManager
+          playerAnimationState={playerAnimationState}
+          enemyAnimationState={enemyAnimationState}
+          setPlayerPickingIntroComplete={setPlayerPickingIntroComplete}
+          setEnemyPickingIntroComplete={setEnemyPickingIntroComplete}
+          playerPickingIntroComplete={playerPickingIntroComplete}
+          enemyPickingIntroComplete={enemyPickingIntroComplete}
+        />
+      )}
 
-      {/* Attack Animation Overlay */}
-      {showAttackAnimation && (
+      {/* Attack Animation Overlay - Hide when modals are active */}
+      {!shouldHideGameUI() && showAttackAnimation && (
         <div className="fixed inset-0 flex items-center justify-center z-50">
           <img
             src="/GameBattle/AttackAndAttacked.png"
@@ -2172,8 +2273,8 @@ export default function PvpBattle() {
         `}
       </style>
 
-      {/* Only show the top UI bar when the battle interface should be shown */}
-      {shouldShowBattleInterface() && (
+      {/* Only show the top UI bar when the battle interface should be shown and no modals are active */}
+      {shouldShowBattleInterface() && !shouldHideGameUI() && (
         <div className="w-full py-4 px-4 sm:px-8 md:px-16 lg:px-32 xl:px-80 mt-4 lg:mt-12 flex items-center justify-between">
           <PlayerInfo
             name={playerName}
@@ -2198,7 +2299,7 @@ export default function PvpBattle() {
             maxHealth={maxHealth}
             isRightAligned
             userId={opponentId}
-            poisonEffectActive={false}
+            poisonEffectActive={opponentPoisonEffectActive}
             battleState={battleState}
           />
 
@@ -2214,8 +2315,8 @@ export default function PvpBattle() {
 
       {/* Main Battle Area */}
       <div className="flex-1 relative">
-        {/* Characters */}
-        {shouldShowBattleInterface() && (
+        {/* Characters - Hide when modals are active */}
+        {shouldShowBattleInterface() && !shouldHideGameUI() && (
           <>
             <Character
               imageSrc={getCharacterImage(
@@ -2238,8 +2339,8 @@ export default function PvpBattle() {
           </>
         )}
 
-        {/* Turn Randomizer (shown to both host and guest) */}
-        {showRandomizer && (
+        {/* Turn Randomizer (shown to both host and guest) - Hide when modals are active */}
+        {showRandomizer && !shouldHideGameUI() && (
           <TurnRandomizer
             isHost={isHost}
             lobbyCode={lobbyCode}
@@ -2265,24 +2366,24 @@ export default function PvpBattle() {
           />
         )}
 
-        {/* Waiting for host to randomize (shown to guest for 2 seconds) */}
-        {isGuestWaitingForRandomization() && (
+        {/* Waiting for host to randomize (shown to guest for 2 seconds) - Hide when modals are active */}
+        {isGuestWaitingForRandomization() && !shouldHideGameUI() && (
           <GuestWaitingForRandomization waitingForRandomization={true} />
         )}
 
-        {/* Game Start Animation */}
-        {showGameStart && (
+        {/* Game Start Animation - Hide when modals are active */}
+        {showGameStart && !shouldHideGameUI() && (
           <GameStartAnimation
             showGameStart={showGameStart}
             gameStartText={gameStartText}
           />
         )}
 
-        {/* Card Selection UI - Show after the waiting screen and delay */}
+        {/* Card Selection UI - Hide when modals are active */}
         {shouldShowBattleInterface() &&
           showCards &&
           showCardsAfterDelay &&
-          !showVictoryModal && (
+          !shouldHideGameUI() && (
             <div className="fixed inset-0 bg-black/20 z-10">
               <CardSelection
                 isMyTurn={isMyTurn}
@@ -2295,18 +2396,18 @@ export default function PvpBattle() {
             </div>
           )}
 
-        {/* Waiting overlay - now checks only if either player isn't in battle yet */}
-        {waitingForPlayer && !showVictoryModal && (
+        {/* Waiting overlay - Hide when modals are active */}
+        {waitingForPlayer && !shouldHideGameUI() && (
           <WaitingOverlay
             isVisible={true}
             message="Waiting for your opponent to connect..."
           />
         )}
 
-        {/* Loading overlay when ending battle */}
+        {/* Loading overlay when ending battle - Always show */}
         <LoadingOverlay isVisible={isEndingBattle} />
 
-        {/* Victory Modal */}
+        {/* Victory Modal - Always show */}
         <VictoryModal
           isOpen={showVictoryModal}
           onClose={handleVictoryConfirm}
@@ -2319,7 +2420,7 @@ export default function PvpBattle() {
           earlyEnd={earlyEnd}
         />
 
-        {/* Early Leave Modal */}
+        {/* Early Leave Modal - Always show */}
         <EarlyLeaveModal
           isOpen={showEarlyLeaveModal}
           onClose={handleEarlyLeaveConfirm}
@@ -2329,8 +2430,8 @@ export default function PvpBattle() {
           opponentName={opponentName}
         />
 
-        {/* Question Modal */}
-        {!showVictoryModal && shouldShowBattleInterface() && (
+        {/* Question Modal - Hide when other modals are active */}
+        {!shouldHideGameUI() && shouldShowBattleInterface() && (
           <QuestionModal
             isOpen={showQuestionModal}
             onClose={handleQuestionModalClose}
@@ -2348,6 +2449,18 @@ export default function PvpBattle() {
             playCorrectSound={playRandomCorrectAnswerSound}
             playIncorrectSound={playRandomIncorrectAnswerSound}
             soundEffectsVolume={actualSoundEffectsVolume}
+            battleState={battleState}
+            isHost={isHost}
+          />
+        )}
+
+        {/* Add Enemy Question Display component - Hide when modals are active */}
+        {shouldShowBattleInterface() && !shouldHideGameUI() && (
+          <EnemyQuestionDisplay
+            sessionUuid={battleState?.session_uuid}
+            isHost={isHost}
+            isMyTurn={isMyTurn}
+            opponentName={opponentName}
           />
         )}
 
@@ -2360,6 +2473,58 @@ export default function PvpBattle() {
           shouldShowBattleInterface() && (
             <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
               <div className="absolute inset-0 bg-green-500/20 animate-pulse"></div>
+            </div>
+          )}
+        {/* Poison effect overlay - Fullscreen effect */}
+        {poisonEffectActive &&
+          shouldShowBattleInterface() &&
+          !shouldHideGameUI() && (
+            <div className="fixed inset-0 z-[5] pointer-events-none overflow-hidden">
+              <div className="absolute inset-0 bg-purple-900/30"></div>
+              <div className="absolute inset-0 bg-gradient-to-t from-green-900/10 to-purple-800/10"></div>
+
+              {/* Floating particles */}
+              <div className="particle-container">
+                {Array.from({ length: 20 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`absolute w-2 h-2 rounded-full bg-green-400/60 animate-pulse`}
+                    style={{
+                      left: `${Math.random() * 100}%`,
+                      top: `${Math.random() * 100}%`,
+                      animationDuration: `${5 + Math.random() * 10}s`,
+                      animationDelay: `${Math.random() * 5}s`,
+                      boxShadow: "0 0 8px 2px rgba(74, 222, 128, 0.4)",
+                    }}
+                  />
+                ))}
+                {Array.from({ length: 15 }).map((_, i) => (
+                  <div
+                    key={i + 20}
+                    className={`absolute w-3 h-3 rotate-45 bg-purple-500/50 animate-pulse`}
+                    style={{
+                      left: `${Math.random() * 100}%`,
+                      top: `${Math.random() * 100}%`,
+                      animationDuration: `${8 + Math.random() * 15}s`,
+                      animationDelay: `${Math.random() * 5}s`,
+                      boxShadow: "0 0 12px 3px rgba(139, 92, 246, 0.4)",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+        {/* Poison effect notification */}
+        {poisonEffectActive &&
+          shouldShowBattleInterface() &&
+          !shouldHideGameUI() && (
+            <div className="fixed bottom-20 left-0 right-0 flex justify-center pointer-events-none z-40">
+              <div className="bg-purple-800 text-white py-4 px-8 rounded-lg shadow-lg border-2 border-purple-500">
+                <p className="text-xl font-bold">
+                  Poison Effect: You are taking 5 damage per turn!
+                </p>
+              </div>
             </div>
           )}
 

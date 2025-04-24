@@ -139,10 +139,6 @@ const SetUpTimeQuestion: React.FC = () => {
             <span className="text-[14px] sm:text-[16px] text-gray-300 mr-2 sm:mr-3">
               {manaPoints}
             </span>{" "}
-            {/* Dynamic mana points */}
-            <span className="animate-spin text-[14px] sm:text-[16px] text-purple-400">
-              ⚙️
-            </span>
           </div>
         </div>
 
