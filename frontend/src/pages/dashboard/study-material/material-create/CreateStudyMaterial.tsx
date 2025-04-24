@@ -30,6 +30,7 @@ import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust 
 import Filter from "../../../../components/Filter"; // Adjust the
 import CauldronIcon from "/General/Cauldron.gif";
 import "../../../../styles/custom-scrollbar.css"; // Add this import
+import "./errorHighlight.css";
 
 // Add these imports near the top with your other imports
 import {
@@ -1782,12 +1783,10 @@ const CreateStudyMaterial = () => {
               <Stack
                 spacing={2}
                 sx={{
-                  border: itemsError ? "1px solid #f44336" : "none",
+                  border: "none",
                   borderRadius: "0.8rem",
                   padding: itemsError ? "1rem" : 0,
-                  backgroundColor: itemsError
-                    ? "rgba(244, 67, 54, 0.08)"
-                    : "transparent",
+                  backgroundColor: "transparent",
                 }}
               >
                 <DndContext
@@ -1856,7 +1855,7 @@ const CreateStudyMaterial = () => {
                   {(itemsError || emptyItemIds.length > 0) &&
                     `(${
                       items.length - emptyItemIds.length
-                    }/${MIN_REQUIRED_ITEMS} valid)`}
+                    }/${MIN_REQUIRED_ITEMS})`}
                 </Button>
               </Stack>
             </Box>
