@@ -68,258 +68,6 @@ const AchievementController = {
         }
     },
 
-    getUserCreatedStudyMaterial: async (req, res) => {
-        try {
-            const { user_uid } = req.params;
-
-            // Using created_by_id which is the likely column name based on your other code
-            const [result] = await pool.query(
-                `SELECT COUNT(*) as count FROM study_material_info WHERE created_by_id = ?`,
-                [user_uid]
-            );
-
-            // Return a properly formatted response
-            res.status(200).json({
-                success: true,
-                count: result[0].count
-            });
-
-        } catch (error) {
-            console.error("Error counting user study materials:", error);
-            res.status(500).json({
-                success: false,
-                message: "Failed to retrieve study material count",
-                error: error.message
-            });
-        }
-    },
-
-    checkMysticElderAchievement: async (req, res) => {
-        try {
-            const { firebase_uid } = req.params;
-            const skipCache = req.query.timestamp !== undefined;
-            const cacheKey = `mystic_elder_${firebase_uid}`;
-
-            // Check cache first unless skipping
-            if (!skipCache) {
-                const cachedData = achievementCache.get(cacheKey);
-                if (cachedData) {
-                    console.log(`Cache hit for Mystic Elder - user: ${firebase_uid}`);
-                    return res.status(200).json(cachedData);
-                }
-            }
-
-            // Fetch the user's level
-            const [userLevelResult] = await pool.query(
-                `SELECT level FROM user_info WHERE firebase_uid = ?`,
-                [firebase_uid]
-            );
-
-            if (userLevelResult.length === 0) {
-                return res.status(404).json({
-                    success: false,
-                    message: "User not found",
-                });
-            }
-
-            const userLevel = userLevelResult[0].level;
-
-            // Fetch only the Mystic Elder achievement
-            const [mysticElderResult] = await pool.query(
-                `SELECT achievement_id, achievement_name, achievement_description, 
-                achievement_requirement, achievement_level, achievement_picture_url 
-                FROM achievements WHERE achievement_name = 'Mystic Elder'`
-            );
-
-            if (mysticElderResult.length === 0) {
-                return res.status(404).json({
-                    success: false,
-                    message: "Mystic Elder achievement not found",
-                });
-            }
-
-            const mysticElderAchievement = mysticElderResult[0];
-            const achieved = userLevel >= mysticElderAchievement.achievement_requirement;
-
-            const result = {
-                success: true,
-                userLevel,
-                mysticElderAchievement: {
-                    ...mysticElderAchievement,
-                    achieved
-                }
-            };
-
-            // If the achievement was just earned, emit an event
-            if (achieved && userLevel >= mysticElderAchievement.achievement_requirement) {
-                const io = getIO();
-                io.emit('achievementUnlocked', {
-                    firebase_uid,
-                    achievement_name: 'Mystic Elder',
-                    achievement_level: userLevel,
-                    timestamp: new Date().toISOString()
-                });
-            }
-
-            // Cache the result (5 minutes TTL)
-            achievementCache.set(cacheKey, result, 3600);
-
-            res.status(200).json(result);
-        } catch (error) {
-            console.error("Error checking Mystic Elder achievement:", error);
-            res.status(500).json({
-                success: false,
-                message: "Failed to check Mystic Elder achievement",
-                error: error.message
-            });
-        }
-    },
-
-    checkWisdomCollectorAchievement: async (req, res) => {
-        try {
-            const { firebase_uid } = req.params;
-            const skipCache = req.query.timestamp !== undefined;
-            const cacheKey = `wisdom_collector_${firebase_uid}`;
-
-            // Check cache first unless skipping
-            if (!skipCache) {
-                const cachedData = achievementCache.get(cacheKey);
-                if (cachedData) {
-                    console.log(`Cache hit for Wisdom Collector - user: ${firebase_uid}`);
-                    return res.status(200).json(cachedData);
-                }
-            }
-
-            const [userStudyMaterial] = await pool.query(
-                `SELECT COUNT(*) as count FROM study_material_info WHERE created_by_id = ?`,
-                [firebase_uid]
-            );
-
-            const userStudyMaterialCount = userStudyMaterial[0].count;
-
-            // Fetch only the Wisdom Collector achievement
-            const [wisdomCollectorResult] = await pool.query(
-                `SELECT achievement_id, achievement_name, achievement_description, 
-                achievement_requirement, achievement_level, achievement_picture_url 
-                FROM achievements WHERE achievement_name = 'Wisdom Collector'`
-            );
-
-            if (wisdomCollectorResult.length === 0) {
-                return res.status(404).json({
-                    success: false,
-                    message: "Wisdom Collector achievement not found",
-                });
-            }
-
-            const wisdomCollectorAchievement = wisdomCollectorResult[0];
-            const achieved = userStudyMaterialCount >= wisdomCollectorAchievement.achievement_requirement;
-
-            const result = {
-                success: true,
-                userStudyMaterialCount,
-                wisdomCollectorAchievement: {
-                    ...wisdomCollectorAchievement,
-                    achieved
-                }
-            };
-
-            // If the achievement was just earned, emit an event
-            if (achieved && userStudyMaterialCount >= wisdomCollectorAchievement.achievement_requirement) {
-                const io = getIO();
-                io.emit('achievementUnlocked', {
-                    firebase_uid,
-                    achievement_name: 'Wisdom Collector',
-                    achievement_level: userStudyMaterialCount,
-                    timestamp: new Date().toISOString()
-                });
-            }
-
-            // Cache the result (5 minutes TTL)
-            achievementCache.set(cacheKey, result, 3600);
-
-            res.status(200).json(result);
-        } catch (error) {
-            console.error("Error checking Wisdom Collector achievement:", error);
-            res.status(500).json({
-                success: false,
-                message: "Failed to check Wisdom Collector achievement",
-                error: error.message
-            });
-        }
-    },
-
-    checkArcaneScholarAchievement: async (req, res) => {
-        try {
-            const { firebase_uid } = req.params;
-            const skipCache = req.query.timestamp !== undefined;
-            const cacheKey = `arcane_scholar_${firebase_uid}`;
-
-            // Check cache first unless skipping
-            if (!skipCache) {
-                const cachedData = achievementCache.get(cacheKey);
-                if (cachedData) {
-                    console.log(`Cache hit for Arcane Scholar - user: ${firebase_uid}`);
-                    return res.status(200).json(cachedData);
-                }
-            }
-
-            const [userStudyMaterial] = await pool.query(
-                `SELECT COUNT(*) as count FROM session_report WHERE session_by_user_id = ? AND status = 'completed'`,
-                [firebase_uid]
-            );
-
-            const userStudyMaterialCount = userStudyMaterial[0].count;
-
-            // Fetch only the Arcane Scholar achievement
-            const [arcaneScholarResult] = await pool.query(
-                `SELECT achievement_id, achievement_name, achievement_description, 
-                achievement_requirement, achievement_level, achievement_picture_url 
-                FROM achievements WHERE achievement_name = 'Arcane Scholar'`
-            );
-
-            if (arcaneScholarResult.length === 0) {
-                return res.status(404).json({
-                    success: false,
-                    message: "Arcane Scholar achievement not found",
-                });
-            }
-
-            const arcaneScholarAchievement = arcaneScholarResult[0];
-            const achieved = userStudyMaterialCount >= arcaneScholarAchievement.achievement_requirement;
-
-            const result = {
-                success: true,
-                userStudyMaterialCount,
-                arcaneScholarAchievement: {
-                    ...arcaneScholarAchievement,
-                    achieved
-                }
-            };
-
-            // If the achievement was just earned, emit an event
-            if (achieved && userStudyMaterialCount >= arcaneScholarAchievement.achievement_requirement) {
-                const io = getIO();
-                io.emit('achievementUnlocked', {
-                    firebase_uid,
-                    achievement_name: 'Arcane Scholar',
-                    achievement_level: userStudyMaterialCount,
-                    timestamp: new Date().toISOString()
-                });
-            }
-
-            // Cache the result (5 minutes TTL)
-            achievementCache.set(cacheKey, result, 3600);
-
-            res.status(200).json(result);
-        } catch (error) {
-            console.error("Error checking Arcane Scholar achievement:", error);
-            res.status(500).json({
-                success: false,
-                message: "Failed to check Arcane Scholar achievement",
-                error: error.message
-            });
-        }
-    },
 
     getUserLongestStreak: async (req, res) => {
         try {
@@ -579,6 +327,191 @@ const AchievementController = {
             success: true,
             message: "Achievement cache invalidated"
         });
+    },
+
+    getAllUserAchievements: async (req, res) => {
+        try {
+            const { firebase_uid } = req.params;
+            const skipCache = req.query.timestamp !== undefined;
+            const cacheKey = `all_user_achievements_${firebase_uid}`;
+
+            // Check cache
+            if (!skipCache) {
+                const cachedData = achievementCache.get(cacheKey);
+                if (cachedData) {
+                    return res.status(200).json(cachedData);
+                }
+            }
+
+            // We'll use these in multiple queries
+            const achievementQueries = [
+                // Query for Mystic Elder
+                pool.query(
+                    `SELECT level FROM user_info WHERE firebase_uid = ?`,
+                    [firebase_uid]
+                ),
+                pool.query(
+                    `SELECT achievement_id, achievement_name, achievement_description, 
+                    achievement_requirement, achievement_level, achievement_picture_url 
+                    FROM achievements WHERE achievement_name = 'Mystic Elder'`
+                ),
+
+                // Query for Wisdom Collector
+                pool.query(
+                    `SELECT COUNT(*) as count FROM study_material_info WHERE created_by_id = ?`,
+                    [firebase_uid]
+                ),
+                pool.query(
+                    `SELECT achievement_id, achievement_name, achievement_description, 
+                    achievement_requirement, achievement_level, achievement_picture_url 
+                    FROM achievements WHERE achievement_name = 'Wisdom Collector'`
+                ),
+
+                // Query for Arcane Scholar
+                pool.query(
+                    `SELECT COUNT(*) as count FROM session_report WHERE session_by_user_id = ? AND status = 'completed'`,
+                    [firebase_uid]
+                ),
+                pool.query(
+                    `SELECT achievement_id, achievement_name, achievement_description, 
+                    achievement_requirement, achievement_level, achievement_picture_url 
+                    FROM achievements WHERE achievement_name = 'Arcane Scholar'`
+                ),
+
+                // Query for Duelist
+                pool.query(
+                    `SELECT longest_win_streak as highest_streak FROM user_info WHERE firebase_uid = ?`,
+                    [firebase_uid]
+                ),
+                pool.query(
+                    `SELECT achievement_id, achievement_name, achievement_description, 
+                    achievement_requirement, achievement_level, achievement_picture_url 
+                    FROM achievements WHERE achievement_name = 'Duelist'`
+                ),
+
+                // Query for Battle Archmage
+                pool.query(
+                    `SELECT COUNT(*) as total_matches FROM pvp_battle_sessions 
+                    WHERE host_id = ? OR guest_id = ?`,
+                    [firebase_uid, firebase_uid]
+                ),
+                pool.query(
+                    `SELECT achievement_id, achievement_name, achievement_description, 
+                    achievement_requirement, achievement_level, achievement_picture_url 
+                    FROM achievements WHERE achievement_name = 'Battle Archmage'`
+                ),
+
+                // Query for Best Magician
+                pool.query(
+                    `SELECT COUNT(*) as total_wins FROM pvp_battle_sessions 
+                    WHERE winner_id = ?`,
+                    [firebase_uid]
+                ),
+                pool.query(
+                    `SELECT achievement_id, achievement_name, achievement_description, 
+                    achievement_requirement, achievement_level, achievement_picture_url 
+                    FROM achievements WHERE achievement_name = 'Best Magician'`
+                )
+            ];
+
+            // Execute all queries in parallel
+            const queryResults = await Promise.all(achievementQueries);
+
+            // Process Mystic Elder data
+            const userLevel = queryResults[0][0][0]?.level || 0;
+            const mysticElderAchievement = queryResults[1][0][0] || null;
+            const mysticElderAchieved = mysticElderAchievement ? userLevel >= mysticElderAchievement.achievement_requirement : false;
+
+            // Process Wisdom Collector data
+            const userStudyMaterialCount = queryResults[2][0][0]?.count || 0;
+            const wisdomCollectorAchievement = queryResults[3][0][0] || null;
+            const wisdomCollectorAchieved = wisdomCollectorAchievement ? userStudyMaterialCount >= wisdomCollectorAchievement.achievement_requirement : false;
+
+            // Process Arcane Scholar data
+            const completedSessionsCount = queryResults[4][0][0]?.count || 0;
+            const arcaneScholarAchievement = queryResults[5][0][0] || null;
+            const arcaneScholarAchieved = arcaneScholarAchievement ? completedSessionsCount >= arcaneScholarAchievement.achievement_requirement : false;
+
+            // Process Duelist data
+            const highestStreak = queryResults[6][0][0]?.highest_streak || 0;
+            const duelistAchievement = queryResults[7][0][0] || null;
+            const duelistAchieved = duelistAchievement ? highestStreak >= duelistAchievement.achievement_requirement : false;
+
+            // Process Battle Archmage data
+            const totalMatches = queryResults[8][0][0]?.total_matches || 0;
+            const battleArchmageAchievement = queryResults[9][0][0] || null;
+            const battleArchmageAchieved = battleArchmageAchievement ? totalMatches >= battleArchmageAchievement.achievement_requirement : false;
+
+            // Process Best Magician data
+            const totalWins = queryResults[10][0][0]?.total_wins || 0;
+            const bestMagicianAchievement = queryResults[11][0][0] || null;
+            const bestMagicianAchieved = bestMagicianAchievement ? totalWins >= bestMagicianAchievement.achievement_requirement : false;
+
+            // Build consolidated response
+            const result = {
+                success: true,
+                mysticElder: {
+                    success: true,
+                    userLevel,
+                    mysticElderAchievement: mysticElderAchievement ? {
+                        ...mysticElderAchievement,
+                        achieved: mysticElderAchieved
+                    } : null
+                },
+                wisdomCollector: {
+                    success: true,
+                    userStudyMaterialCount,
+                    wisdomCollectorAchievement: wisdomCollectorAchievement ? {
+                        ...wisdomCollectorAchievement,
+                        achieved: wisdomCollectorAchieved
+                    } : null
+                },
+                arcaneScholar: {
+                    success: true,
+                    userStudyMaterialCount: completedSessionsCount,
+                    arcaneScholarAchievement: arcaneScholarAchievement ? {
+                        ...arcaneScholarAchievement,
+                        achieved: arcaneScholarAchieved
+                    } : null
+                },
+                duelist: {
+                    success: true,
+                    highest_streak: highestStreak,
+                    duelistAchievement: duelistAchievement ? {
+                        ...duelistAchievement,
+                        achieved: duelistAchieved
+                    } : null
+                },
+                battleArchmage: {
+                    success: true,
+                    total_matches: totalMatches,
+                    battleArchmageAchievement: battleArchmageAchievement ? {
+                        ...battleArchmageAchievement,
+                        achieved: battleArchmageAchieved
+                    } : null
+                },
+                bestMagician: {
+                    success: true,
+                    total_wins: totalWins,
+                    bestMagicianAchievement: bestMagicianAchievement ? {
+                        ...bestMagicianAchievement,
+                        achieved: bestMagicianAchieved
+                    } : null
+                }
+            };
+
+            // Cache result (1 hour TTL)
+            achievementCache.set(cacheKey, result, 3600);
+
+            res.status(200).json(result);
+        } catch (error) {
+            console.error("Error fetching all user achievements:", error);
+            res.status(500).json({
+                success: false,
+                message: "Failed to retrieve user achievements",
+                error: error.message
+            });
+        }
     }
 };
 

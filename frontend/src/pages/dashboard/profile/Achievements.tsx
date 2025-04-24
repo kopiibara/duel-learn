@@ -1,77 +1,25 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import {
-  AchievementObject,
   FormattedAchievement,
   MysticElderAchievement,
 } from "../../../types/achievementObject";
-import {
-  useGetAchievements,
-  getMysticElder,
-  getWisdomCollector,
-  getArcaneScholar,
-  getBattleArchmage,
-  getDuelist,
-  getBestMagician,
-} from "./hooks/getAchievement";
+import { useAllUserAchievements } from "./hooks/getAchievement";
 import { useUser } from "../../../contexts/UserContext";
 
-// Define the response type you expect from fetchAchievements
-interface AchievementResponse {
-  success: boolean;
-  data: AchievementObject[];
-  message?: string;
-}
-
-// Define the formatted achievement type for your component state
-
 const Achievements = () => {
-  const { fetchAchievements } = useGetAchievements();
-  const { fetchMysticElder } = getMysticElder();
-  const { fetchWisdomCollector } = getWisdomCollector();
-  const { fetchArcaneScholar } = getArcaneScholar();
-  const { fetchBattleArchmage } = getBattleArchmage();
-  const { fetchDuelist } = getDuelist();
-  const { fetchBestMagician } = getBestMagician();
+  const { fetchAllAchievements } = useAllUserAchievements();
   const { user } = useUser();
   const location = useLocation();
   const [achievements, setAchievements] = useState<FormattedAchievement[]>([]);
-  const [mysticElder, setMysticElder] = useState<MysticElderAchievement | null>(
-    null
-  );
-  const [wisdomCollector, setWisdomCollector] = useState(null);
-  const [arcaneScholar, setArcaneScholar] = useState(null);
   const [studyMaterialCount, setStudyMaterialCount] = useState(0);
   const [completedSessionsCount, setCompletedSessionsCount] = useState(0);
   const [userLevel, setUserLevel] = useState<number>(0);
   const [loading, setLoading] = useState(true);
-  const [mysticElderLoading, setMysticElderLoading] = useState(true);
-  const [wisdomCollectorLoading, setWisdomCollectorLoading] = useState(true);
-  const [arcaneScholarLoading, setArcaneScholarLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mysticElderError, setMysticElderError] = useState<string | null>(null);
-  const [wisdomCollectorError, setWisdomCollectorError] = useState<
-    string | null
-  >(null);
-  const [arcaneScholarError, setArcaneScholarError] = useState<string | null>(
-    null
-  );
-  const [battleArchmage, setBattleArchmage] = useState(null);
   const [pvpMatchesCount, setPvpMatchesCount] = useState(0);
-  const [battleArchmageLoading, setBattleArchmageLoading] = useState(true);
-  const [battleArchmageError, setBattleArchmageError] = useState<string | null>(
-    null
-  );
-  const [duelist, setDuelist] = useState(null);
   const [winStreak, setWinStreak] = useState(0);
-  const [duelistLoading, setDuelistLoading] = useState(true);
-  const [duelistError, setDuelistError] = useState<string | null>(null);
-  const [bestMagician, setBestMagician] = useState(null);
   const [pvpWinsCount, setPvpWinsCount] = useState(0);
-  const [bestMagicianLoading, setBestMagicianLoading] = useState(true);
-  const [bestMagicianError, setBestMagicianError] = useState<string | null>(
-    null
-  );
 
   // Convert achievement level to progress percentage
   const levelToProgress = (level: number): number => {
@@ -96,423 +44,58 @@ const Achievements = () => {
     return Math.min(Math.floor((userLevel / requirement) * 100), 100);
   };
 
-  // Single useEffect to initialize all achievement data when user is available
   useEffect(() => {
-    if (!user?.firebase_uid) {
-      return; // Exit if user isn't loaded yet
-    }
+    if (!user?.firebase_uid) return;
 
-    // Bootstrap all achievements in parallel
-    const bootstrapAchievements = async () => {
-      setLoading(true);
-      try {
-        // Fetch all achievements in parallel rather than sequentially
-        const [
-          mysticElderResponse,
-          wisdomCollectorResponse,
-          arcaneScholarResponse,
-          battleArchmageResponse,
-          duelistResponse,
-          bestMagicianResponse,
-        ] = await Promise.all([
-          fetchMysticElder(user.firebase_uid),
-          fetchWisdomCollector(user.firebase_uid),
-          fetchArcaneScholar(user.firebase_uid),
-          fetchBattleArchmage(user.firebase_uid),
-          fetchDuelist(user.firebase_uid),
-          fetchBestMagician(user.firebase_uid),
-        ]);
+    setLoading(true);
 
-        // Update all the state values from the responses
-        if (mysticElderResponse) {
-          setMysticElder(mysticElderResponse.mysticElderAchievement);
-          setUserLevel(mysticElderResponse.userLevel);
+    fetchAllAchievements(user.firebase_uid)
+      .then((data) => {
+        if (!data) {
+          setError("Failed to fetch achievements");
+          return;
         }
 
-        if (wisdomCollectorResponse) {
-          setWisdomCollector(
-            wisdomCollectorResponse.wisdomCollectorAchievement
+        try {
+          // Check if formatttedAchievements exist before using them
+          if (data.formattedAchievements) {
+            // Set all achievements at once
+            setAchievements(
+              [
+                data.formattedAchievements.mysticElder,
+                data.formattedAchievements.wisdomCollector,
+                data.formattedAchievements.arcaneScholar,
+                data.formattedAchievements.duelist,
+                data.formattedAchievements.battleArchmage,
+                data.formattedAchievements.bestMagician,
+              ].filter(Boolean)
+            ); // Filter out any undefined values
+          }
+
+          // Set individual values with safe defaults
+          setUserLevel(data.mysticElder?.userLevel || 0);
+          setStudyMaterialCount(
+            data.wisdomCollector?.userStudyMaterialCount || 0
           );
-          setStudyMaterialCount(wisdomCollectorResponse.userStudyMaterialCount);
-        }
-
-        if (arcaneScholarResponse) {
-          setArcaneScholar(arcaneScholarResponse.arcaneScholarAchievement);
           setCompletedSessionsCount(
-            arcaneScholarResponse.userStudyMaterialCount
+            data.arcaneScholar?.userStudyMaterialCount || 0
           );
-        }
-
-        if (battleArchmageResponse) {
-          setBattleArchmage(battleArchmageResponse.battleArchmageAchievement);
-          setPvpMatchesCount(battleArchmageResponse.total_matches);
-        }
-
-        if (duelistResponse) {
-          setDuelist(duelistResponse.duelistAchievement);
-          setWinStreak(duelistResponse.highest_streak);
-        }
-
-        if (bestMagicianResponse) {
-          setBestMagician(bestMagicianResponse.bestMagicianAchievement);
-          setPvpWinsCount(bestMagicianResponse.total_wins);
-        }
-
-        // Now fetch regular achievements
-        loadAchievements(false);
-      } catch (err) {
-        console.error("Error bootstrapping achievements:", err);
-        setError("Failed to load achievements");
-      }
-    };
-
-    bootstrapAchievements();
-  }, [user?.firebase_uid]); // Only depends on user ID
-
-  // Load Mystic Elder achievement
-  useEffect(() => {
-    const loadMysticElder = async () => {
-      if (!user?.firebase_uid) {
-        setMysticElderError("User not authenticated");
-        setMysticElderLoading(false);
-        return;
-      }
-
-      try {
-        setMysticElderLoading(true);
-        const response = await fetchMysticElder(user.firebase_uid);
-
-        if (response && response.success) {
-          setMysticElder(response.mysticElderAchievement);
-          setUserLevel(response.userLevel);
-        } else {
-          setMysticElderError("Failed to load Mystic Elder achievement");
-        }
-      } catch (err) {
-        setMysticElderError("Error loading Mystic Elder achievement");
-        console.error(err);
-      } finally {
-        setMysticElderLoading(false);
-      }
-    };
-
-    loadMysticElder();
-  }, [fetchMysticElder, user?.firebase_uid]);
-
-  // Load Wisdom Collector achievement
-  useEffect(() => {
-    const loadWisdomCollector = async () => {
-      if (!user?.firebase_uid) {
-        setWisdomCollectorError("User not authenticated");
-        setWisdomCollectorLoading(false);
-        return;
-      }
-
-      try {
-        setWisdomCollectorLoading(true);
-        const response = await fetchWisdomCollector(user.firebase_uid);
-
-        if (response && response.success) {
-          setWisdomCollector(response.wisdomCollectorAchievement);
-          setStudyMaterialCount(response.userStudyMaterialCount);
-        } else {
-          setWisdomCollectorError(
-            "Failed to load Wisdom Collector achievement"
-          );
-        }
-      } catch (err) {
-        setWisdomCollectorError("Error loading Wisdom Collector achievement");
-        console.error(err);
-      } finally {
-        setWisdomCollectorLoading(false);
-      }
-    };
-
-    loadWisdomCollector();
-  }, [fetchWisdomCollector, user?.firebase_uid]);
-
-  // Load Arcane Scholar achievement
-  useEffect(() => {
-    const loadArcaneScholar = async () => {
-      if (!user?.firebase_uid) {
-        setArcaneScholarError("User not authenticated");
-        setArcaneScholarLoading(false);
-        return;
-      }
-
-      try {
-        setArcaneScholarLoading(true);
-        const response = await fetchArcaneScholar(user.firebase_uid);
-
-        if (response && response.success) {
-          setArcaneScholar(response.arcaneScholarAchievement);
-          setCompletedSessionsCount(response.userStudyMaterialCount);
-        } else {
-          setArcaneScholarError("Failed to load Arcane Scholar achievement");
-        }
-      } catch (err) {
-        setArcaneScholarError("Error loading Arcane Scholar achievement");
-        console.error(err);
-      } finally {
-        setArcaneScholarLoading(false);
-      }
-    };
-
-    loadArcaneScholar();
-  }, [fetchArcaneScholar, user?.firebase_uid]);
-
-  // Load Battle Archmage achievement
-  useEffect(() => {
-    const loadBattleArchmage = async () => {
-      if (!user?.firebase_uid) {
-        setBattleArchmageError("User not authenticated");
-        setBattleArchmageLoading(false);
-        return;
-      }
-
-      try {
-        setBattleArchmageLoading(true);
-        const response = await fetchBattleArchmage(user.firebase_uid);
-
-        if (response && response.success) {
-          setBattleArchmage(response.battleArchmageAchievement);
-          setPvpMatchesCount(response.total_matches);
-        } else {
-          setBattleArchmageError("Failed to load Battle Archmage achievement");
-        }
-      } catch (err) {
-        setBattleArchmageError("Error loading Battle Archmage achievement");
-        console.error(err);
-      } finally {
-        setBattleArchmageLoading(false);
-      }
-    };
-
-    loadBattleArchmage();
-  }, [fetchBattleArchmage, user?.firebase_uid]);
-
-  // Load Duelist achievement
-  useEffect(() => {
-    const loadDuelist = async () => {
-      if (!user?.firebase_uid) {
-        setDuelistError("User not authenticated");
-        setDuelistLoading(false);
-        return;
-      }
-
-      try {
-        setDuelistLoading(true);
-        const response = await fetchDuelist(user.firebase_uid);
-
-        if (response && response.success) {
-          setDuelist(response.duelistAchievement);
-          setWinStreak(response.highest_streak);
-        } else {
-          setDuelistError("Failed to load Duelist achievement");
-        }
-      } catch (err) {
-        setDuelistError("Error loading Duelist achievement");
-        console.error(err);
-      } finally {
-        setDuelistLoading(false);
-      }
-    };
-
-    loadDuelist();
-  }, [fetchDuelist, user?.firebase_uid]);
-
-  // Load Best Magician achievement
-  useEffect(() => {
-    const loadBestMagician = async () => {
-      if (!user?.firebase_uid) {
-        setBestMagicianError("User not authenticated");
-        setBestMagicianLoading(false);
-        return;
-      }
-
-      try {
-        setBestMagicianLoading(true);
-        const response = await fetchBestMagician(user.firebase_uid);
-
-        if (response && response.success) {
-          setBestMagician(response.bestMagicianAchievement);
-          setPvpWinsCount(response.total_wins);
-        } else {
-          setBestMagicianError("Failed to load Best Magician achievement");
-        }
-      } catch (err) {
-        setBestMagicianError("Error loading Best Magician achievement");
-        console.error(err);
-      } finally {
-        setBestMagicianLoading(false);
-      }
-    };
-
-    loadBestMagician();
-  }, [fetchBestMagician, user?.firebase_uid]);
-
-  const loadAchievements = async (forceRefresh = false) => {
-    try {
-      setLoading(true);
-      const response = (await fetchAchievements(
-        forceRefresh
-      )) as AchievementResponse | null;
-
-      if (response && response.data) {
-        // Transform API data to match component's expected format
-        const formattedAchievements = response.data.map(
-          (achievement: AchievementObject) => ({
-            id: achievement.achievement_id,
-            name: achievement.achievement_name,
-            description: achievement.achievement_description,
-            progress: levelToProgress(achievement.achievement_level),
-            baseImage: achievement.achievement_picture_url,
-          })
-        );
-
-        // Filter out special achievements from regular achievements
-        const filteredAchievements = formattedAchievements.filter(
-          (achievement) => {
-            // Normalize achievement name by trimming and converting to lowercase
-            const name = achievement.name.trim().toLowerCase();
-            return !(
-              (
-                name === "mystic elder" ||
-                name === "wisdom collector" ||
-                name === "arcane scholar" ||
-                name === "battle archmage" ||
-                name === "duelist" ||
-                name.startsWith("duelist") || // Handle variations like "Duelist "
-                name === "best magician" ||
-                name.startsWith("best magician")
-              ) // Handle variations like "Best Magician "
-            );
-          }
-        );
-
-        // Add enhanced versions if they exist
-        if (mysticElder && userLevel) {
-          const mysticElderResponse = await fetchMysticElder(
-            user?.firebase_uid || ""
-          );
-          if (mysticElderResponse?.formattedAchievement) {
-            filteredAchievements.unshift(
-              mysticElderResponse.formattedAchievement
-            );
-          }
-        }
-
-        if (wisdomCollector && studyMaterialCount) {
-          const wisdomCollectorResponse = await fetchWisdomCollector(
-            user?.firebase_uid || ""
-          );
-          if (wisdomCollectorResponse?.formattedAchievement) {
-            filteredAchievements.unshift(
-              wisdomCollectorResponse.formattedAchievement
-            );
-          }
-        }
-
-        // Keep this block that always adds Arcane Scholar
-        try {
-          // Always attempt to fetch Arcane Scholar, regardless of count
-          const arcaneScholarResponse = await fetchArcaneScholar(
-            user?.firebase_uid || ""
-          );
-          if (arcaneScholarResponse?.formattedAchievement) {
-            filteredAchievements.unshift(
-              arcaneScholarResponse.formattedAchievement
-            );
-          }
+          setPvpMatchesCount(data.battleArchmage?.total_matches || 0);
+          setWinStreak(data.duelist?.highest_streak || 0);
+          setPvpWinsCount(data.bestMagician?.total_wins || 0);
         } catch (err) {
-          console.error("Error adding Arcane Scholar achievement:", err);
+          console.error("Error processing achievement data:", err);
+          setError("Error processing achievement data");
         }
-
-        try {
-          // Always attempt to fetch Battle Archmage
-          const battleArchmageResponse = await fetchBattleArchmage(
-            user?.firebase_uid || ""
-          );
-          if (battleArchmageResponse?.formattedAchievement) {
-            filteredAchievements.unshift(
-              battleArchmageResponse.formattedAchievement
-            );
-          }
-        } catch (err) {
-          console.error("Error adding Battle Archmage achievement:", err);
-        }
-
-        try {
-          // Always attempt to fetch Duelist
-          const duelistResponse = await fetchDuelist(user?.firebase_uid || "");
-          if (duelistResponse?.formattedAchievement) {
-            filteredAchievements.unshift(duelistResponse.formattedAchievement);
-          }
-        } catch (err) {
-          console.error("Error adding Duelist achievement:", err);
-        }
-
-        try {
-          // Always attempt to fetch Best Magician
-          const bestMagicianResponse = await fetchBestMagician(
-            user?.firebase_uid || ""
-          );
-          if (bestMagicianResponse?.formattedAchievement) {
-            filteredAchievements.unshift(
-              bestMagicianResponse.formattedAchievement
-            );
-          }
-        } catch (err) {
-          console.error("Error adding Best Magician achievement:", err);
-        }
-
-        console.log("Formatted Achievements:", filteredAchievements);
-        setAchievements(filteredAchievements);
-      } else {
-        setError("No achievement data received");
-      }
-    } catch (err) {
-      setError("Failed to load achievements");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Add detection for refresh parameter in URL
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const refresh = params.get("refresh");
-
-    if (refresh === "achievements") {
-      loadAchievements(true);
-    }
-  }, [location]);
-
-  useEffect(() => {
-    loadAchievements();
-  }, [
-    fetchAchievements,
-    mysticElder,
-    userLevel,
-    wisdomCollector,
-    studyMaterialCount,
-    arcaneScholar,
-    completedSessionsCount,
-    battleArchmage,
-    pvpMatchesCount,
-    duelist,
-    winStreak,
-    bestMagician,
-    pvpWinsCount,
-    fetchMysticElder,
-    fetchWisdomCollector,
-    fetchArcaneScholar,
-    fetchBattleArchmage,
-    fetchDuelist,
-    fetchBestMagician,
-    user?.firebase_uid,
-  ]);
+      })
+      .catch((err) => {
+        console.error("Error fetching achievements:", err);
+        setError("An error occurred while fetching achievements");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, [user?.firebase_uid, location.pathname, fetchAllAchievements]);
 
   // Universal getBadgeImage function that handles all achievements appropriately
   const getBadgeImage = (baseImage: string, progress: number) => {
@@ -590,6 +173,7 @@ const Achievements = () => {
     return "Level 0"; // Changed from "Locked" to "Level 0"
   };
 
+  // Only render when all achievements are loaded
   if (loading) {
     return (
       <div className="text-white text-center p-8">Loading achievements...</div>
