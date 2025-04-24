@@ -5,7 +5,7 @@ export interface Question {
   options?: string[] | { [key: string]: string };
   correct_answer: string;
   answer?: string;
-  explanatio?: string;
+  explanation?: string;
   study_material_id: string;
   created_at?: string;
   updated_at?: string;
