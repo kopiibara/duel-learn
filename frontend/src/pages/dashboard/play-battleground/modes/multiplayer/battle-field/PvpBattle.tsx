@@ -213,9 +213,19 @@ export default function PvpBattle() {
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
+  // Add state for mind control effect
+  const [hasMindControl, setHasMindControl] = useState(false);
+  const [mindControlActive, setMindControlActive] = useState(false);
+
+  // State for card blocking effect
+  const [hasCardBlocking, setHasCardBlocking] = useState(false);
+  const [blockedCardCount, setBlockedCardCount] = useState(0);
+  const [visibleCardIndices, setVisibleCardIndices] = useState<number[]>([]);
+
   // Add a state to track current turn number for poison effects
   const [currentTurnNumber, setCurrentTurnNumber] = useState(0);
   const [poisonEffectActive, setPoisonEffectActive] = useState(false);
+  const [opponentPoisonEffectActive, setOpponentPoisonEffectActive] = useState(false);
   const [poisonTurnsRemaining, setPoisonTurnsRemaining] = useState(0);
 
   // Battle statistics tracking
@@ -931,6 +941,47 @@ export default function PvpBattle() {
           `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${battleState.session_uuid}`
         );
 
+        // Check for active poison effects on the player and opponent
+        if (battleState.session_uuid) {
+          try {
+            // Get active effects for the current player
+            const playerType = isHost ? "host" : "guest";
+            const playerResponse = await axios.get(
+              `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/card-effects/${battleState.session_uuid}/${playerType}`
+            );
+
+            // Get active effects for the opponent
+            const opponentType = isHost ? "guest" : "host";
+            const opponentResponse = await axios.get(
+              `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/card-effects/${battleState.session_uuid}/${opponentType}`
+            );
+
+            // Check if player has active poison effects
+            if (playerResponse.data.success) {
+              const playerEffects = playerResponse.data.data?.effects || [];
+              const hasPlayerPoisonEffect = playerEffects.some(
+                effect => effect.effect === "poison" && effect.turns_remaining > 0
+              );
+              setPoisonEffectActive(hasPlayerPoisonEffect);
+
+              console.log(`Player poison status: ${hasPlayerPoisonEffect ? 'POISONED' : 'NOT POISONED'}`);
+            }
+
+            // Log opponent's poison effects for debugging
+            if (opponentResponse.data.success) {
+              const opponentEffects = opponentResponse.data.data?.effects || [];
+              const hasOpponentPoisonEffect = opponentEffects.some(
+                effect => effect.effect === "poison" && effect.turns_remaining > 0
+              );
+
+              setOpponentPoisonEffectActive(hasOpponentPoisonEffect);
+              console.log(`Opponent poison status: ${hasOpponentPoisonEffect ? 'POISONED' : 'NOT POISONED'}`);
+            }
+          } catch (error) {
+            console.error("Error checking poison effects:", error);
+          }
+        }
+
         // Add debugging for health data
         console.log("HEALTH DATA:", {
           battleScores: scoresResponse.data,
@@ -1217,7 +1268,7 @@ export default function PvpBattle() {
     const timeSpent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
     // Determine if player is winner
-    const isWinner = playerHealth > 0 && opponentHealth <= 0;
+    const isWinner = playerHealth > opponentHealth;
 
     try {
       // Get current win streak for winner
@@ -1882,7 +1933,7 @@ export default function PvpBattle() {
             maxHealth={maxHealth}
             isRightAligned
             userId={opponentId}
-            poisonEffectActive={false}
+            poisonEffectActive={opponentPoisonEffectActive}
             battleState={battleState}
           />
 
@@ -2050,10 +2101,50 @@ export default function PvpBattle() {
         {/* Session Report */}
         {showSessionReport && <PvpSessionReport />}
 
-        {/* Poison effect indicator - Hide when modals are active */}
+        {/* Poison effect overlay - Fullscreen effect */}
         {poisonEffectActive && shouldShowBattleInterface() && !shouldHideGameUI() && (
-          <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
-            <div className="absolute inset-0 bg-green-500/20 animate-pulse"></div>
+          <div className="fixed inset-0 z-[5] pointer-events-none overflow-hidden">
+            <div className="absolute inset-0 bg-purple-900/30"></div>
+            <div className="absolute inset-0 bg-gradient-to-t from-green-900/10 to-purple-800/10"></div>
+
+            {/* Floating particles */}
+            <div className="particle-container">
+              {Array.from({ length: 20 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`absolute w-2 h-2 rounded-full bg-green-400/60 animate-pulse`}
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animationDuration: `${5 + Math.random() * 10}s`,
+                    animationDelay: `${Math.random() * 5}s`,
+                    boxShadow: '0 0 8px 2px rgba(74, 222, 128, 0.4)'
+                  }}
+                />
+              ))}
+              {Array.from({ length: 15 }).map((_, i) => (
+                <div
+                  key={i + 20}
+                  className={`absolute w-3 h-3 rotate-45 bg-purple-500/50 animate-pulse`}
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                    animationDuration: `${8 + Math.random() * 15}s`,
+                    animationDelay: `${Math.random() * 5}s`,
+                    boxShadow: '0 0 12px 3px rgba(139, 92, 246, 0.4)'
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Poison effect notification */}
+        {poisonEffectActive && shouldShowBattleInterface() && !shouldHideGameUI() && (
+          <div className="fixed bottom-20 left-0 right-0 flex justify-center pointer-events-none z-40">
+            <div className="bg-purple-800 text-white py-4 px-8 rounded-lg shadow-lg border-2 border-purple-500">
+              <p className="text-xl font-bold">Poison Effect: You are taking 5 damage per turn!</p>
+            </div>
           </div>
         )}
 

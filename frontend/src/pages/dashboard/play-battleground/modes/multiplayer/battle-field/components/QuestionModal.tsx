@@ -97,6 +97,8 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [timerProgress, setTimerProgress] = useState(100);
   const [shownQuestionIdsState, setShownQuestionIds] = useState<Set<string>>(new Set());
+  const [hasTimeManipulation, setHasTimeManipulation] = useState(false);
+  const [timeManipulationEffect, setTimeManipulationEffect] = useState<CardEffect | null>(null);
 
   // Initialize shownQuestionIds from round data when component mounts
   useEffect(() => {
@@ -278,12 +280,95 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     }
   }, [timeRemaining, hasAnswered, currentQuestion, onAnswerSubmit, onAnswerSubmitRound, onClose]);
 
+  // Add effect to check for time manipulation when modal opens
+  useEffect(() => {
+    if (isOpen && battleState?.session_uuid) {
+      const checkForTimeManipulation = async () => {
+        try {
+          // Get player type based on isHost
+          const playerType = isHost ? 'host' : 'guest';
+
+          // Check for active card effects
+          const response = await axios.get(
+            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/card-effects/${battleState.session_uuid}/${playerType}`
+          );
+
+          if (response.data.success) {
+            // Find any time manipulation effects
+            const timeEffects = response.data.data.effects.filter((effect: CardEffect) =>
+              effect.effect === "reduce_time" && !effect.used);
+
+            if (timeEffects.length > 0) {
+              const effect = timeEffects[0];
+              setHasTimeManipulation(true);
+              setTimeManipulationEffect(effect);
+
+              // Show notification about time manipulation
+              const messageElement = document.createElement("div");
+              messageElement.className = "fixed inset-0 flex items-center justify-center z-50";
+              const reductionPercent = effect.reduction_percent || 30;
+              const originalTime = getTimeLimit();
+              const reducedTime = Math.max(effect.min_time || 5, originalTime * (1 - reductionPercent / 100));
+
+              messageElement.innerHTML = `
+                <div class="bg-purple-900/80 text-white py-6 px-10 rounded-lg text-2xl font-bold shadow-lg border-2 border-purple-500/50 flex flex-col items-center">
+                  <div class="text-3xl mb-3 text-purple-300">Time Manipulation!</div>
+                  <div class="flex items-center gap-4">
+                    <span class="line-through text-gray-400">${originalTime}s</span>
+                    <span class="text-4xl text-yellow-300">→</span>
+                    <span class="text-yellow-300">${reducedTime.toFixed(1)}s</span>
+                  </div>
+                  <div class="mt-2 text-lg">Your time has been reduced by ${reductionPercent}%</div>
+                </div>
+              `;
+              document.body.appendChild(messageElement);
+
+              // Remove the message after 2.5 seconds
+              setTimeout(() => {
+                document.body.removeChild(messageElement);
+              }, 2500);
+
+              // Mark the effect as used
+              await axios.post(
+                `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/consume-card-effect`,
+                {
+                  session_uuid: battleState.session_uuid,
+                  player_type: playerType,
+                  effect_type: effect.type
+                }
+              );
+
+              console.log(`Time manipulation effect consumed, time reduced by ${reductionPercent}%`);
+            } else {
+              setHasTimeManipulation(false);
+              setTimeManipulationEffect(null);
+            }
+          }
+        } catch (error) {
+          console.error("Error checking for time manipulation effects:", error);
+        }
+      };
+
+      checkForTimeManipulation();
+    }
+  }, [isOpen, battleState?.session_uuid, isHost]);
+
+  // Modify the getTimeLimit function to apply time reduction
   const getTimeLimit = () => {
     const difficultyNormalized = difficultyMode?.toLowerCase().trim() || "average";
     let timeLimit = 15;
     if (difficultyNormalized.includes("easy")) timeLimit = 20;
     if (difficultyNormalized.includes("hard")) timeLimit = 10;
-    console.log('Calculated time limit:', { difficultyMode, timeLimit });
+
+    // Apply time manipulation effect if active
+    if (hasTimeManipulation && timeManipulationEffect) {
+      const reductionPercent = timeManipulationEffect.reduction_percent || 30;
+      const minTime = timeManipulationEffect.min_time || 5;
+      timeLimit = Math.max(minTime, timeLimit * (1 - reductionPercent / 100));
+      console.log(`Time limit reduced by ${reductionPercent}% to ${timeLimit}s (min: ${minTime}s)`);
+    }
+
+    console.log('Calculated time limit:', { difficultyMode, timeLimit, hasTimeManipulation });
     return timeLimit;
   };
 
@@ -479,13 +564,34 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
       {/* Progress Bar */}
       <div className="fixed bottom-0 left-0 right-0 w-full h-1.5 bg-gray-700/50 overflow-hidden z-[9999]">
         <div
-          className={`h-full ${timeRemaining && timeRemaining <= 3 ? "bg-red-500" : "bg-white"}`}
+          className={`h-full ${hasTimeManipulation
+            ? "bg-purple-500"
+            : timeRemaining && timeRemaining <= 3
+              ? "bg-red-500"
+              : "bg-white"}`}
           style={{
             width: `${timerProgress}%`,
             transition: "all 0.1s linear",
           }}
         />
       </div>
+
+      {/* Time Manipulation Indicator */}
+      {hasTimeManipulation && (
+        <>
+          {/* Timer display with time manipulation indicator */}
+          <div className="fixed top-4 left-4 bg-purple-900/80 text-yellow-300 py-2 px-4 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50 animate-pulse">
+            Time: {timeRemaining?.toFixed(1)}s
+            <span className="block text-sm text-red-300">reduced -{timeManipulationEffect?.reduction_percent || 30}%</span>
+          </div>
+
+          {/* Notification badge */}
+          <div className="fixed top-4 right-4 bg-purple-900/80 text-white py-2 px-4 rounded-lg text-lg font-bold shadow-lg border-2 border-purple-500/50">
+            Time Manipulation Active!
+            <span className="block text-sm text-yellow-300">-{timeManipulationEffect?.reduction_percent || 30}% time</span>
+          </div>
+        </>
+      )}
 
       {/* Result Overlay */}
       {showResult && (
