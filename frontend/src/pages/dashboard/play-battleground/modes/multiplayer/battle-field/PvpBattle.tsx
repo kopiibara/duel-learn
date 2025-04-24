@@ -171,6 +171,8 @@ export default function PvpBattle() {
   const decreaseHealthSoundRef = useRef<HTMLAudioElement | null>(null);
   const healthAttackSoundRef = useRef<HTMLAudioElement | null>(null);
   const healRegenSoundRef = useRef<HTMLAudioElement | null>(null);
+  const selectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
+  const noSelectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
 
   // Game state
   const [timeLeft, setTimeLeft] = useState(25);
@@ -2304,6 +2306,18 @@ export default function PvpBattle() {
           preload="auto"
         />
 
+        <audio
+          ref={selectedCardSoundRef}
+          src="/GameBattle/selectedCard.mp3"
+          preload="auto"
+        />
+
+        <audio
+          ref={noSelectedCardSoundRef}
+          src="/GameBattle/noSelectedCard.mp3"
+          preload="auto"
+        />
+
         {/* Character animation manager - Hide when modals are active */}
         {!shouldHideGameUI() && (
           <CharacterAnimationManager
@@ -2458,7 +2472,7 @@ export default function PvpBattle() {
                   playerName={playerName}
                   onCardSelected={handleCardSelected}
                   difficultyMode={difficultyMode}
-                  soundEffectsVolume={actualSoundEffectsVolume}
+                  soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
                 />
               </div>
             )}
@@ -2609,6 +2623,8 @@ export default function PvpBattle() {
             decreaseHealthSoundRef={decreaseHealthSoundRef}
             healthAttackSoundRef={healthAttackSoundRef}
             healRegenSoundRef={healRegenSoundRef}
+            selectedCardSoundRef={selectedCardSoundRef}
+            noSelectedCardSoundRef={noSelectedCardSoundRef}
             masterVolume={masterVolume}
             musicVolume={musicVolume}
             soundEffectsVolume={soundEffectsVolume}

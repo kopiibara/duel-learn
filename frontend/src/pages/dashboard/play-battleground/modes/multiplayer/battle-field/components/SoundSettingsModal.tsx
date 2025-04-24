@@ -14,6 +14,8 @@ interface SoundSettingsModalProps {
     decreaseHealthSoundRef: React.RefObject<HTMLAudioElement>;
     healthAttackSoundRef: React.RefObject<HTMLAudioElement>;
     healRegenSoundRef: React.RefObject<HTMLAudioElement>;
+    selectedCardSoundRef?: React.RefObject<HTMLAudioElement>;
+    noSelectedCardSoundRef?: React.RefObject<HTMLAudioElement>;
     masterVolume: number;
     musicVolume: number;
     soundEffectsVolume: number;
@@ -35,6 +37,8 @@ export default function SoundSettingsModal({
     decreaseHealthSoundRef,
     healthAttackSoundRef,
     healRegenSoundRef,
+    selectedCardSoundRef,
+    noSelectedCardSoundRef,
     masterVolume,
     musicVolume,
     soundEffectsVolume,
@@ -80,7 +84,9 @@ export default function SoundSettingsModal({
             { name: "incorrectSfx", ref: incorrectSfxRef.current },
             { name: "decreaseHealthSound", ref: decreaseHealthSoundRef.current },
             { name: "healthAttackSound", ref: healthAttackSoundRef.current },
-            { name: "healRegenSound", ref: healRegenSoundRef.current }
+            { name: "healRegenSound", ref: healRegenSoundRef.current },
+            { name: "selectedCardSound", ref: selectedCardSoundRef?.current },
+            { name: "noSelectedCardSound", ref: noSelectedCardSoundRef?.current }
         ];
 
         // Update each sound effect volume individually and log for debugging
@@ -105,7 +111,7 @@ export default function SoundSettingsModal({
             music: musicVolume,
             effects: soundEffectsVolume
         }));
-    }, [masterVolume, musicVolume, soundEffectsVolume, backgroundMusicRef, attackSoundRef, correctAnswerSoundRef, incorrectAnswerSoundRef, correctSfxRef, incorrectSfxRef, decreaseHealthSoundRef, healthAttackSoundRef, healRegenSoundRef]);
+    }, [masterVolume, musicVolume, soundEffectsVolume, backgroundMusicRef, attackSoundRef, correctAnswerSoundRef, incorrectAnswerSoundRef, correctSfxRef, incorrectSfxRef, decreaseHealthSoundRef, healthAttackSoundRef, healRegenSoundRef, selectedCardSoundRef, noSelectedCardSoundRef]);
 
     // Load saved volume settings from localStorage on initial render
     useEffect(() => {

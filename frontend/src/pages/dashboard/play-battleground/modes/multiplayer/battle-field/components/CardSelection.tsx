@@ -52,6 +52,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   // Audio refs for card sounds
   const flipCardSoundRef = useRef<HTMLAudioElement | null>(null);
   const shuffleCardsSoundRef = useRef<HTMLAudioElement | null>(null);
+  const selectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
+  const noSelectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
 
   // Card state management
   const [currentCards, setCurrentCards] = useState<Card[]>([]);
@@ -561,6 +563,15 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   const handleTimeExpired = () => {
     console.log("Time expired, no card selected");
 
+    // Play no card selected sound
+    if (noSelectedCardSoundRef.current) {
+      noSelectedCardSoundRef.current.currentTime = 0;
+      noSelectedCardSoundRef.current.volume = soundEffectsVolume;
+      noSelectedCardSoundRef.current
+        .play()
+        .catch(err => console.error("Error playing no selected card sound:", err));
+    }
+
     // Show a brief on-screen message
     const messageElement = document.createElement("div");
     messageElement.className =
@@ -752,6 +763,12 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     if (shuffleCardsSoundRef.current) {
       shuffleCardsSoundRef.current.volume = soundEffectsVolume;
     }
+    if (selectedCardSoundRef.current) {
+      selectedCardSoundRef.current.volume = soundEffectsVolume;
+    }
+    if (noSelectedCardSoundRef.current) {
+      noSelectedCardSoundRef.current.volume = soundEffectsVolume;
+    }
   }, [soundEffectsVolume]);
 
   // Handle turn transitions - this is the key improvement that ensures proper card persistence
@@ -816,6 +833,16 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   const handleCardSelect = (cardId: string, index: number) => {
     // Stop the timer
     setTimerActive(false);
+
+    // Play selected card sound
+    if (selectedCardSoundRef.current) {
+      selectedCardSoundRef.current.currentTime = 0;
+      selectedCardSoundRef.current.volume = soundEffectsVolume;
+      selectedCardSoundRef
+        .current
+        .play()
+        .catch(err => console.error("Error playing selected card sound:", err));
+    }
 
     // Store the selected index for the next turn
     setLastSelectedIndex(index);
@@ -1047,6 +1074,16 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       <audio
         ref={shuffleCardsSoundRef}
         src="/GameBattle/shuffle-cards.mp3"
+        preload="auto"
+      />
+      <audio
+        ref={selectedCardSoundRef}
+        src="/GameBattle/selectedCard.mp3"
+        preload="auto"
+      />
+      <audio
+        ref={noSelectedCardSoundRef}
+        src="/GameBattle/noSelectedCard.mp3"
         preload="auto"
       />
 
