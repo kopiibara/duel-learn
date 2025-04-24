@@ -17,6 +17,7 @@ import { StudyMaterial } from "../../../types/studyMaterialObject";
 import NoStudyMaterial from "/images/noStudyMaterial.svg";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { Tooltip } from "@mui/material";
+import { cacheService } from "../../../services/CacheService";
 
 const ExplorePage = () => {
   const { user } = useUser();
@@ -142,6 +143,21 @@ const ExplorePage = () => {
       const url = getUrlForTab(tabIndex, force);
       if (!url) return;
 
+      const cacheKey = `explore_tab_${tabIndex}`;
+
+      if (!force) {
+        const cachedData = cacheService.get<StudyMaterial[]>(cacheKey);
+        if (cachedData) {
+          console.log(`Using cached data for tab ${tabIndex}`);
+          if (tabIndex === selected) {
+            setCards(cachedData);
+            setFilteredCards(cachedData);
+            setIsLoading(false);
+          }
+          return;
+        }
+      }
+
       // Prevent duplicate fetches within 500ms unless forced
       const now = Date.now();
       if (
@@ -225,6 +241,9 @@ const ExplorePage = () => {
           // Cache the data for this tab
           cachedTabData.current[tabIndex] = data;
           tabDataTimestamps.current[tabIndex] = Date.now();
+
+          // Cache the data using cacheService
+          cacheService.set(cacheKey, data);
 
           // If this is background refresh and we have new data, show indicator
           if (hasNewData && tabIndex === selected) {

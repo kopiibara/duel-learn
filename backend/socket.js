@@ -227,6 +227,98 @@ const setupSocket = (server) => {
       }
     });
 
+    // Add these after the existing "newStudyMaterial" handler
+
+    // Study material update event with cache metadata
+    socket.on("studyMaterialUpdated", (data) => {
+      try {
+        if (!data || !data.studyMaterialId) {
+          throw new Error("Invalid study material data for update");
+        }
+
+        console.log("📝 Study material updated:", data.studyMaterialId);
+
+        // Normalize data structure for consistency
+        const broadcastData = {
+          study_material_id: data.studyMaterialId || data.study_material_id,
+          title: data.title,
+          tags: data.tags || [],
+          total_items: data.totalItems || data.total_items || 0,
+          created_by: data.createdBy || data.created_by,
+          created_by_id: data.createdById || data.created_by_id,
+          visibility: data.visibility || 0,
+          updated_at: data.updated_at || new Date().toISOString(),
+          // Add cache metadata
+          cache_keys: [
+            `study_material_${data.studyMaterialId || data.study_material_id}`,
+            `study_materials_${data.createdBy || data.created_by}`,
+            ...(data.tags || []).map(tag => `study_materials_tag_${tag}`)
+          ]
+        };
+
+        io.emit("broadcastStudyMaterialUpdate", broadcastData);
+      } catch (error) {
+        handleSocketError(socket, error, "studyMaterialUpdate");
+      }
+    });
+
+    // Study material archive event
+    socket.on("studyMaterialArchived", (data) => {
+      try {
+        if (!data || !data.studyMaterialId) {
+          throw new Error("Invalid study material data for archiving");
+        }
+
+        console.log("🗄️ Study material archived:", data.studyMaterialId);
+
+        const broadcastData = {
+          study_material_id: data.studyMaterialId || data.study_material_id,
+          created_by: data.createdBy || data.created_by,
+          created_by_id: data.createdById || data.created_by_id,
+          // Cache keys to invalidate
+          cache_keys: [
+            `study_material_${data.studyMaterialId || data.study_material_id}`,
+            `study_materials_${data.createdBy || data.created_by}`,
+            'top_picks',
+            'explore_tab_0'
+          ]
+        };
+
+        io.emit("broadcastStudyMaterialArchived", broadcastData);
+      } catch (error) {
+        handleSocketError(socket, error, "studyMaterialArchive");
+      }
+    });
+
+    // Study material visibility change
+    socket.on("studyMaterialVisibilityChanged", (data) => {
+      try {
+        if (!data || !data.studyMaterialId) {
+          throw new Error("Invalid visibility change data");
+        }
+
+        console.log("👁️ Study material visibility changed:", data.studyMaterialId);
+
+        const broadcastData = {
+          study_material_id: data.studyMaterialId || data.study_material_id,
+          visibility: data.visibility,
+          created_by: data.createdBy || data.created_by,
+          created_by_id: data.createdById || data.created_by_id,
+          // Cache keys to invalidate
+          cache_keys: [
+            `study_material_${data.studyMaterialId || data.study_material_id}`,
+            `study_materials_${data.createdBy || data.created_by}`,
+            'explore_tab_0',
+            'top_picks'
+          ]
+        };
+
+        io.emit("broadcastVisibilityChange", broadcastData);
+      } catch (error) {
+        handleSocketError(socket, error, "visibilityChange");
+      }
+    });
+
     // Simple notification events with standardized error handling
     const simpleEvents = [
       { event: "emailActionResult", requires: ["mode"], logEmoji: "📧" },
@@ -860,6 +952,55 @@ const setupSocket = (server) => {
   const isUserOnline = (userId) => {
     return activeUsers.has(userId);
   };
+
+  // Add these before "return io;"
+
+  // Helper function to broadcast cache invalidation messages
+  const broadcastCacheInvalidation = (cacheKeys, reason) => {
+    if (!cacheKeys || !Array.isArray(cacheKeys) || cacheKeys.length === 0) return;
+
+    console.log(`🔄 Broadcasting cache invalidation for keys: ${cacheKeys.join(', ')}`, reason);
+
+    io.emit('cacheInvalidation', {
+      keys: cacheKeys,
+      reason: reason,
+      timestamp: Date.now()
+    });
+  };
+
+  // Configure global events for study material updates
+  const setupStudyMaterialEventRelays = (pool) => {
+    // Set up a periodic check for new study materials (every 2 minutes)
+    setInterval(async () => {
+      try {
+        const connection = await pool.getConnection();
+
+        // Query for recent changes in the last 3 minutes
+        const [recentChanges] = await connection.execute(
+          `SELECT study_material_id, created_by, created_by_id, updated_at 
+           FROM study_material_info 
+           WHERE updated_at > DATE_SUB(NOW(), INTERVAL 3 MINUTE)
+           LIMIT 20`
+        );
+
+        if (recentChanges && recentChanges.length > 0) {
+          // Broadcast a notification about recent changes
+          io.emit('recentStudyMaterialChanges', {
+            count: recentChanges.length,
+            ids: recentChanges.map(item => item.study_material_id),
+            timestamp: Date.now()
+          });
+        }
+
+        connection.release();
+      } catch (error) {
+        console.error('Error checking for recent study material changes:', error);
+      }
+    }, 120000); // Every 2 minutes
+  };
+
+  // Initialize the study material events
+  setupStudyMaterialEventRelays(pool);
 
   return io;
 };

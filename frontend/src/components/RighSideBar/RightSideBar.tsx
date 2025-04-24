@@ -33,7 +33,13 @@ const RightSideBar: React.FC = () => {
         {leaderboardContent}
       </>
     ),
-    "/dashboard/explore": leaderboardContent,
+    "/dashboard/explore": (
+      <>
+        {friendListContent}
+        <div className="my-7"></div>
+        {leaderboardContent}
+      </>
+    ),
     "/dashboard/my-library": (
       <>
         {friendListContent}

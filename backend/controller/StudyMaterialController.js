@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { pool } from "../config/db.js";
 import manilacurrentTimestamp from "../utils/CurrentTimestamp.js";
 import NodeCache from "node-cache";
+import { getIO } from '../socket.js';
 
 // Create optimized cache instance (TTL: 10 minutes, check period: 2 minutes)
 const studyMaterialCache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
@@ -111,6 +112,20 @@ const studyMaterialController = {
 
       invalidateCachesForUser(createdBy, createdById);
 
+      // Emit socket event for real-time updates
+      const io = getIO();
+      io.emit('newStudyMaterial', {
+        studyMaterialId,
+        title,
+        tags,
+        totalItems,
+        createdBy,
+        createdById,
+        visibility,
+        createdAt: currentTimestamp,
+        updatedAt: currentTimestamp
+      });
+
       res.status(201).json({
         message: "Study material saved successfully",
         studyMaterialId,
@@ -215,6 +230,19 @@ const studyMaterialController = {
       }
 
       studyMaterialCache.del(`study_material_${studyMaterialId}`);
+
+      // Emit socket event for update
+      const io = getIO();
+      io.emit('studyMaterialUpdated', {
+        studyMaterialId,
+        title,
+        tags,
+        totalItems,
+        visibility,
+        createdBy: creatorInfo[0]?.created_by,
+        createdById: creatorInfo[0]?.created_by_id,
+        updatedAt: updatedTimestamp
+      });
 
       res.status(200).json({
         message: "Study material updated successfully",
@@ -389,6 +417,7 @@ const studyMaterialController = {
       const cachedData = studyMaterialCache.get(cacheKey);
 
       if (cachedData) {
+        res.set('Cache-Control', 'private, max-age=300'); // 5 minutes browser cache
         return res.status(200).json(cachedData);
       }
 
@@ -431,6 +460,7 @@ const studyMaterialController = {
       // Cache the result
       studyMaterialCache.set(cacheKey, result, 300); // 5 minutes cache
 
+      res.set('Cache-Control', 'private, max-age=300'); // 5 minutes browser cache
       res.status(200).json(result);
     } catch (error) {
       console.error("Error fetching study material:", error);
@@ -1276,6 +1306,7 @@ const studyMaterialController = {
       const cachedInfo = studyMaterialCache.get(cacheKey);
 
       if (cachedInfo) {
+        res.set('Cache-Control', 'private, max-age=300'); // 5 minutes browser cache
         return res.json({
           success: true,
           data: cachedInfo,
@@ -1302,6 +1333,7 @@ const studyMaterialController = {
       // Store in cache for future requests
       studyMaterialCache.set(cacheKey, result[0], 600); // Cache for 10 minutes
 
+      res.set('Cache-Control', 'private, max-age=300'); // 5 minutes browser cache
       return res.json({
         success: true,
         data: result[0],
