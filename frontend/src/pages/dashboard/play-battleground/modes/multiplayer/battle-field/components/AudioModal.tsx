@@ -36,49 +36,87 @@ export default function SoundSettingsModal({
     setMusicVolume,
     setSoundEffectsVolume
 }: SoundSettingsModalProps) {
-    // No need for local state since we're using props
+    // Create audio context and gain nodes
+    const audioContextRef = useRef<AudioContext | null>(null);
+    const musicGainNodeRef = useRef<GainNode | null>(null);
+    const effectsGainNodeRef = useRef<GainNode | null>(null);
+    const connectedElementsRef = useRef<Set<HTMLAudioElement>>(new Set());
 
-    // Initialize volume values from audio refs when modal opens
+    // Initialize audio context and gain nodes
     useEffect(() => {
         if (!isOpen) return;
 
-        // Only set initial values if they haven't been changed by the user
-        if (musicVolume === 100 && backgroundMusicRef?.current) {
-            setMusicVolume(Math.round(backgroundMusicRef.current.volume * 100));
+        // Create audio context if it doesn't exist
+        if (!audioContextRef.current) {
+            audioContextRef.current = new AudioContext();
         }
 
-        // Assuming all sound effects have the same volume initially
-        if (soundEffectsVolume === 100 && correctAnswerSoundRef?.current) {
-            setSoundEffectsVolume(Math.round(correctAnswerSoundRef.current.volume * 100));
+        // Create gain nodes if they don't exist
+        if (!musicGainNodeRef.current) {
+            musicGainNodeRef.current = audioContextRef.current.createGain();
+            musicGainNodeRef.current.connect(audioContextRef.current.destination);
         }
-    }, [isOpen, backgroundMusicRef, correctAnswerSoundRef, musicVolume, soundEffectsVolume, setMusicVolume, setSoundEffectsVolume]);
+        if (!effectsGainNodeRef.current) {
+            effectsGainNodeRef.current = audioContextRef.current.createGain();
+            effectsGainNodeRef.current.connect(audioContextRef.current.destination);
+        }
+
+        // Connect audio elements to gain nodes if not already connected
+        const connectAudioElement = (element: HTMLAudioElement | null, gainNode: GainNode) => {
+            if (!element || connectedElementsRef.current.has(element)) return;
+            
+            try {
+                const source = audioContextRef.current!.createMediaElementSource(element);
+                source.connect(gainNode);
+                connectedElementsRef.current.add(element);
+            } catch (error) {
+                console.error("Error connecting audio element:", error);
+            }
+        };
+
+        // Connect background music
+        if (backgroundMusicRef?.current) {
+            connectAudioElement(backgroundMusicRef.current, musicGainNodeRef.current);
+        }
+
+        // Connect sound effects
+        const soundRefs = [
+            attackSoundRef?.current,
+            correctAnswerSoundRef?.current,
+            incorrectAnswerSoundRef?.current,
+            correctSfxRef?.current,
+            incorrectSfxRef?.current
+        ].filter(Boolean);
+
+        soundRefs.forEach(ref => {
+            if (ref) {
+                connectAudioElement(ref, effectsGainNodeRef.current!);
+            }
+        });
+
+        return () => {
+            // Cleanup when modal closes
+            if (audioContextRef.current) {
+                audioContextRef.current.close();
+                audioContextRef.current = null;
+            }
+            musicGainNodeRef.current = null;
+            effectsGainNodeRef.current = null;
+            connectedElementsRef.current.clear();
+        };
+    }, [isOpen, backgroundMusicRef, attackSoundRef, correctAnswerSoundRef, incorrectAnswerSoundRef, correctSfxRef, incorrectSfxRef]);
 
     // Update audio volumes when sliders change
     useEffect(() => {
+        if (!audioContextRef.current || !musicGainNodeRef.current || !effectsGainNodeRef.current) return;
+
         // Calculate actual volumes by applying master volume percentage
         const actualMusicVolume = (musicVolume / 100) * (masterVolume / 100);
         const actualSoundEffectsVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
 
-        // Update music volume
-        if (backgroundMusicRef?.current) {
-            backgroundMusicRef.current.volume = actualMusicVolume;
-        }
-
-        // Create an array of all sound effect references with their names for better debugging
-        const soundRefsWithNames = [
-            { name: "attackSound", ref: attackSoundRef?.current },
-            { name: "correctAnswerSound", ref: correctAnswerSoundRef?.current },
-            { name: "incorrectAnswerSound", ref: incorrectAnswerSoundRef?.current },
-            { name: "correctSfx", ref: correctSfxRef?.current },
-            { name: "incorrectSfx", ref: incorrectSfxRef?.current }
-        ].filter(({ ref }) => ref !== null && ref !== undefined);
-
-        // Update each sound effect volume individually
-        soundRefsWithNames.forEach(({ name, ref }) => {
-            if (ref) {
-                ref.volume = actualSoundEffectsVolume;
-            }
-        });
+        // Update gain nodes
+        musicGainNodeRef.current.gain.value = actualMusicVolume;
+        effectsGainNodeRef.current.gain.value = actualSoundEffectsVolume;
 
         // Store the current volume settings in localStorage for persistence
         localStorage.setItem('duel-learn-audio-settings', JSON.stringify({
@@ -86,7 +124,7 @@ export default function SoundSettingsModal({
             music: musicVolume,
             effects: soundEffectsVolume
         }));
-    }, [masterVolume, musicVolume, soundEffectsVolume, backgroundMusicRef, attackSoundRef, correctAnswerSoundRef, incorrectAnswerSoundRef, correctSfxRef, incorrectSfxRef]);
+    }, [masterVolume, musicVolume, soundEffectsVolume]);
 
     // Load saved volume settings from localStorage on initial render
     useEffect(() => {
@@ -98,7 +136,6 @@ export default function SoundSettingsModal({
                     setMasterVolume(master);
                     setMusicVolume(music);
                     setSoundEffectsVolume(effects);
-                    console.log("Loaded saved audio settings:", { master, music, effects });
                 }
             } catch (error) {
                 console.error("Error loading saved audio settings:", error);
@@ -113,7 +150,6 @@ export default function SoundSettingsModal({
         );
 
         if (confirmLeave) {
-            // Just call the passed-in onLeaveGame function
             onLeaveGame();
         }
     };
