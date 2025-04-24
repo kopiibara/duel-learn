@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useGameLogic } from "../../hooks/useGameLogic";
 import FlashCard from "../../components/common/FlashCard";
 import Header from "../../components/common/Header";
@@ -82,6 +82,42 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 
   // 3. Then useRef declarations
   const previousTimerRef = React.useRef<number | null>(null);
+
+  // Add audio refs
+  const backgroundMusicRef = useRef<HTMLAudioElement>(null);
+  const speedUpMusicRef = useRef<HTMLAudioElement>(null);
+  const correctAnswerSoundRef = useRef<HTMLAudioElement>(null);
+  const incorrectAnswerSoundRef = useRef<HTMLAudioElement>(null);
+  const sessionIncompleteRef = useRef<HTMLAudioElement>(null);
+  const sessionCompleteRef = useRef<HTMLAudioElement>(null);
+
+  // Add volume control state
+  const [masterVolume, setMasterVolume] = useState(() => {
+    const savedSettings = localStorage.getItem('duel-learn-audio-settings');
+    if (savedSettings) {
+      const { master } = JSON.parse(savedSettings);
+      return master || 100;
+    }
+    return 100;
+  });
+
+  const [musicVolume, setMusicVolume] = useState(() => {
+    const savedSettings = localStorage.getItem('duel-learn-audio-settings');
+    if (savedSettings) {
+      const { music } = JSON.parse(savedSettings);
+      return music || 100;
+    }
+    return 100;
+  });
+
+  const [soundEffectsVolume, setSoundEffectsVolume] = useState(() => {
+    const savedSettings = localStorage.getItem('duel-learn-audio-settings');
+    if (savedSettings) {
+      const { effects } = JSON.parse(savedSettings);
+      return effects || 100;
+    }
+    return 100;
+  });
 
   // 4. Fix whitespace and case sensitivity
   const normalizedMode = String(mode).trim();
@@ -295,12 +331,35 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
         const generatedQuestions = [];
         for (const type of selectedTypes) {
           const questionsOfThisType = distribution[type];
-          console.log(
-            `\nGenerating ${questionsOfThisType} questions of type "${type}":`
-          );
+          console.log(`\nGenerating ${questionsOfThisType} questions of type "${type}":`);
 
           for (let i = 0; i < questionsOfThisType; i++) {
             const item = shuffledItems[currentItemIndex];
+
+            // For identification type, create question directly without AI
+            if (type === 'identification') {
+              const directQuestion = {
+                question: item.definition,
+                answer: item.term,
+                correctAnswer: item.term,
+                questionType: 'identification',
+                type: 'identification',
+                item_id: item.item_id,
+                item_number: item.item_number,
+                itemInfo: {
+                  term: item.term,
+                  definition: item.definition,
+                  itemId: item.item_id,
+                  itemNumber: item.item_number,
+                  studyMaterialId: material.study_material_id,
+                  image: item.image && item.image.startsWith('data:image') ? item.image : null
+                }
+              };
+              generatedQuestions.push(directQuestion);
+              console.log(`✓ Created direct identification question for "${item.term}"`);
+              currentItemIndex++;
+              continue; // Skip AI generation for identification questions
+            }
 
             console.log("Processing item:", {
               item_id: item.item_id,
@@ -308,20 +367,12 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
               term: item.term,
               definition: item.definition,
               image: item.image,
-              originalItemId: material.items[currentItemIndex].item_id, // Log the original item ID from material
-              materialItemsStructure: typeof material.items[currentItemIndex],
+              originalItemId: material.items[currentItemIndex].item_id,
+              materialItemsStructure: typeof material.items[currentItemIndex]
             });
 
-            // Add this logging when processing items
-            console.log("Processing item with image:", {
-              term: item.term,
-              image: item.image,
-              fullItem: item,
-            });
-
-            const endpoint = `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/openai/generate-${type}`;
+            // Rest of the existing code for other question types
+            const endpoint = `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-${type}`;
             const requestPayload = {
               term: item.term,
               definition: item.definition,
@@ -477,7 +528,93 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     hasSessionSaved,
   ]);
 
-  // Custom answer submit handler with sound effects
+  // Initialize and manage audio
+  useEffect(() => {
+    // Configure audio elements
+    if (backgroundMusicRef.current) {
+      backgroundMusicRef.current.src = '/sounds-sfx/time-pressured-mode.mp3';
+      backgroundMusicRef.current.loop = true;
+      const actualMusicVolume = (musicVolume / 100) * (masterVolume / 100);
+      backgroundMusicRef.current.volume = actualMusicVolume;
+    }
+
+    if (speedUpMusicRef.current) {
+      speedUpMusicRef.current.src = '/sounds-sfx/time-pressured-speed-up.mp3';
+      speedUpMusicRef.current.loop = true;
+      const actualMusicVolume = (musicVolume / 100) * (masterVolume / 100);
+      speedUpMusicRef.current.volume = actualMusicVolume;
+    }
+
+    const soundEffects = [
+      { ref: correctAnswerSoundRef, src: '/sounds-sfx/right-answer.mp3' },
+      { ref: incorrectAnswerSoundRef, src: '/sounds-sfx/wrong-answer.mp3' },
+      { ref: sessionIncompleteRef, src: '/sounds-sfx/session-incomplete.wav' },
+      { ref: sessionCompleteRef, src: '/sounds-sfx/session_report_completed.mp3' }
+    ];
+
+    // Configure sound effects
+    soundEffects.forEach(({ ref, src }) => {
+      if (ref.current) {
+        ref.current.src = src;
+        const actualVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
+        ref.current.volume = actualVolume;
+      }
+    });
+
+    // Start playing background music
+    if (backgroundMusicRef.current) {
+      backgroundMusicRef.current.play().catch(error => {
+        console.log("Audio autoplay was prevented:", error);
+      });
+    }
+
+    // Cleanup function
+    return () => {
+      const allRefs = [
+        backgroundMusicRef,
+        speedUpMusicRef,
+        correctAnswerSoundRef,
+        incorrectAnswerSoundRef,
+        sessionIncompleteRef,
+        sessionCompleteRef
+      ];
+
+      allRefs.forEach(ref => {
+        if (ref.current) {
+          ref.current.pause();
+          ref.current.currentTime = 0;
+        }
+      });
+    };
+  }, [masterVolume, musicVolume, soundEffectsVolume]);
+
+  // Handle speed-up music based on timer
+  useEffect(() => {
+    if (questionTimer !== null) {
+      const isSpeedUpThreshold = questionTimer <= 5;
+
+      if (isSpeedUpThreshold) {
+        // Switch to speed-up music
+        if (backgroundMusicRef.current) {
+          backgroundMusicRef.current.pause();
+        }
+        if (speedUpMusicRef.current) {
+          speedUpMusicRef.current.play().catch(console.error);
+        }
+      } else {
+        // Switch back to normal music
+        if (speedUpMusicRef.current) {
+          speedUpMusicRef.current.pause();
+          speedUpMusicRef.current.currentTime = 0;
+        }
+        if (backgroundMusicRef.current) {
+          backgroundMusicRef.current.play().catch(console.error);
+        }
+      }
+    }
+  }, [questionTimer]);
+
+  // Update handleAnswerSubmit to play sounds
   const handleAnswerSubmit = (answer: string) => {
     let isAnswerCorrect = false;
 
@@ -534,11 +671,11 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
       currentQuestion.isCorrect = isAnswerCorrect;
     }
 
-    // Play appropriate sound using AudioContext
-    if (isAnswerCorrect) {
-      playCorrectAnswerSound();
-    } else {
-      playIncorrectAnswerSound();
+    // Play appropriate sound
+    if (isAnswerCorrect && correctAnswerSoundRef.current) {
+      correctAnswerSoundRef.current.play();
+    } else if (!isAnswerCorrect && incorrectAnswerSoundRef.current) {
+      incorrectAnswerSoundRef.current.play();
     }
 
     // Call the original handler
@@ -556,7 +693,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   if (isGeneratingAI) {
     return (
       <GeneralLoadingScreen
-        text="Generating Questions"
+        text="Loading Questions"
         isLoading={isGeneratingAI}
       />
     );
@@ -574,40 +711,43 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
       case "multiple-choice":
         return (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 w-full max-w-[1000px] mx-auto">
-            {currentQuestion.options &&
-            typeof currentQuestion.options === "object"
+            {currentQuestion.options && typeof currentQuestion.options === 'object'
               ? // Handle options as an object (like {A: "option1", B: "option2"})
-                Object.entries(currentQuestion.options).map(
-                  ([key, value], index) => (
+                Object.entries(currentQuestion.options).map(([key, value], index) => {
+                  // Convert numeric index to letter
+                  const letter = String.fromCharCode(65 + index); // 65 is ASCII for 'A'
+                  return (
                     <button
-                      key={index}
+                      key={letter}
                       onClick={() => handleAnswerSubmit(value as string)}
                       disabled={showResult}
                       className={`h-[100px] w-full bg-transparent 
-                    ${getButtonStyle(value as string)}
-                    rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                    disabled:cursor-not-allowed px-4 text-center`}
+                        ${getButtonStyle(value as string)}
+                        rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                        disabled:cursor-not-allowed px-4 text-center`}
                     >
-                      <span className="font-bold mr-2">{key}:</span>{" "}
-                      {value as string}
+                      <span className="font-bold mr-2">{letter}:</span> {value as string}
                     </button>
-                  )
-                )
+                  );
+                })
               : // Handle options as an array (for backward compatibility)
                 Array.isArray(currentQuestion.options) &&
-                currentQuestion.options.map((option: string, index: number) => (
-                  <button
-                    key={index}
-                    onClick={() => handleAnswerSubmit(option)}
-                    disabled={showResult}
-                    className={`h-[100px] w-full bg-transparent 
-                    ${getButtonStyle(option)}
-                    rounded-lg text-white hover:bg-gray-800/20 transition-colors
-                    disabled:cursor-not-allowed px-4 text-center`}
-                  >
-                    {option}
-                  </button>
-                ))}
+                currentQuestion.options.map((option: string, index: number) => {
+                  const letter = String.fromCharCode(65 + index); // 65 is ASCII for 'A'
+                  return (
+                    <button
+                      key={letter}
+                      onClick={() => handleAnswerSubmit(option)}
+                      disabled={showResult}
+                      className={`h-[100px] w-full bg-transparent 
+                        ${getButtonStyle(option)}
+                        rounded-lg text-white hover:bg-gray-800/20 transition-colors
+                        disabled:cursor-not-allowed px-4 text-center`}
+                    >
+                      <span className="font-bold mr-2">{letter}:</span> {option}
+                    </button>
+                  );
+                })}
           </div>
         );
 
@@ -781,6 +921,11 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
       return;
     }
 
+    // Play session incomplete sound
+    if (sessionIncompleteRef.current) {
+      sessionIncompleteRef.current.play();
+    }
+
     const timeSpent = calculateTimeSpent(startTime, new Date());
     const navigationState = {
       timeSpent,
@@ -835,6 +980,14 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
 
   return (
     <div className={`min-h-screen relative ${getBorderClass()}`}>
+      {/* Audio elements */}
+      <audio ref={backgroundMusicRef} preload="auto" />
+      <audio ref={speedUpMusicRef} preload="auto" />
+      <audio ref={correctAnswerSoundRef} preload="auto" />
+      <audio ref={incorrectAnswerSoundRef} preload="auto" />
+      <audio ref={sessionIncompleteRef} preload="auto" />
+      <audio ref={sessionCompleteRef} preload="auto" />
+
       {renderVignette()}
       <div className={`relative ${getLowHealthEffects()}`}>
         <Header
@@ -847,6 +1000,18 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
           masteredCount={masteredCount}
           unmasteredCount={unmasteredCount}
           onEndGame={handleEndGame}
+          backgroundMusicRef={backgroundMusicRef}
+          attackSoundRef={speedUpMusicRef}
+          correctAnswerSoundRef={correctAnswerSoundRef}
+          incorrectAnswerSoundRef={incorrectAnswerSoundRef}
+          correctSfxRef={sessionCompleteRef}
+          incorrectSfxRef={sessionIncompleteRef}
+          masterVolume={masterVolume}
+          musicVolume={musicVolume}
+          soundEffectsVolume={soundEffectsVolume}
+          setMasterVolume={setMasterVolume}
+          setMusicVolume={setMusicVolume}
+          setSoundEffectsVolume={setSoundEffectsVolume}
         />
         <main className="pt-24 px-4">
           <div className="mx-auto max-w-[1200px] flex flex-col items-center gap-8 h-[calc(100vh-96px)] justify-center">
