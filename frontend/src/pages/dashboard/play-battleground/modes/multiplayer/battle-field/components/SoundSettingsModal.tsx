@@ -143,7 +143,7 @@ export default function SoundSettingsModal({
     // Function to handle leave game confirmation
     const handleLeaveGameClick = () => {
         const confirmLeave = window.confirm(
-            "Are you sure you want to leave the battle? Leaving will count as a defeat for you and a victory for your opponent with minimal rewards."
+            "Are you sure you want to leave the battle? You will lose 100 XP and your win streak will reset to 0. The battle will count as a defeat for you and a victory for your opponent."
         );
 
         if (confirmLeave) {
@@ -222,7 +222,7 @@ export default function SoundSettingsModal({
                             Leave Game
                         </button>
                         <p className="text-xs text-gray-400 mt-2 text-center">
-                            Note: Leaving will count as a defeat for you and your opponent will win.
+                            Note: Leaving will deduct 100 XP, reset your win streak to 0, and count as a defeat.
                         </p>
                     </div>
                 </div>

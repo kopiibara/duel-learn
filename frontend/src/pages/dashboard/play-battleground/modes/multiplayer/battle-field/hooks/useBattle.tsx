@@ -103,6 +103,14 @@ export function useBattle({
             protect_streak: false, // No protection for leaving early
           }
         );
+
+        // Also deduct 100 XP as penalty for leaving early
+        await axios.put(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/deduct-leaver-xp`,
+          {
+            firebase_uid: currentUserId
+          }
+        );
       }
 
       // Force navigation to dashboard
