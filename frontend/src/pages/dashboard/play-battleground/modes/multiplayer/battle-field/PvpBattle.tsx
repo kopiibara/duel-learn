@@ -2499,6 +2499,7 @@ export default function PvpBattle() {
             playerHealth={playerHealth}
             opponentHealth={opponentHealth}
             earlyEnd={earlyEnd}
+            soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
           />
 
           {/* Early Leave Modal - Always show */}
@@ -2509,6 +2510,7 @@ export default function PvpBattle() {
             currentUserId={currentUserId}
             sessionUuid={battleState?.session_uuid}
             opponentName={opponentName}
+            soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
           />
 
           {/* Question Modal - Hide when other modals are active */}
