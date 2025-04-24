@@ -51,6 +51,7 @@ import { BattleState } from "./BattleState";
 
 // Import the sound settings modal
 import SoundSettingsModal from "./components/SoundSettingsModal";
+import DocumentHead from "../../../../../../components/DocumentHead";
 
 // Types
 interface StudyMaterial {
@@ -2190,363 +2191,374 @@ export default function PvpBattle() {
   };
 
   return (
-    <div
-      className="w-full h-screen flex flex-col relative"
-      style={{
-        backgroundImage: `url(${currentBackground})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-        backgroundRepeat: "no-repeat",
-      }}
-    >
-      {/* Audio elements */}
-      <audio
-        ref={attackSoundRef}
-        src="/GameBattle/magical-twinkle-242245.mp3"
-        preload="auto"
+    <>
+      <DocumentHead
+        title={
+          !gameStarted
+            ? "PvP Mode | Duel Learn"
+            : isMyTurn
+            ? "Your Turn | Duel Learn"
+            : `${opponentName}'s Turn | Duel Learn`
+        }
       />
-
-      <audio
-        ref={backgroundMusicRef}
-        src="/GameBattle/PVPBATTLEBGMUSICAVERAGE.mp3"
-        preload="auto"
-        id="pvp-background-music"
-      />
-
-      <audio
-        ref={correctAnswerSoundRef}
-        src="/GameBattle/correct1.mp3"
-        preload="auto"
-      />
-
-      <audio
-        ref={correctSfxRef}
-        src="/GameBattle/correctSfx.mp3"
-        preload="auto"
-      />
-
-      <audio
-        ref={incorrectAnswerSoundRef}
-        src="/GameBattle/incorrectAnswerSound.mp3"
-        preload="auto"
-      />
-
-      <audio
-        ref={incorrectSfxRef}
-        src="/GameBattle/incorrectSfx.mp3"
-        preload="auto"
-      />
-
-      {/* Character animation manager - Hide when modals are active */}
-      {!shouldHideGameUI() && (
-        <CharacterAnimationManager
-          playerAnimationState={playerAnimationState}
-          enemyAnimationState={enemyAnimationState}
-          setPlayerPickingIntroComplete={setPlayerPickingIntroComplete}
-          setEnemyPickingIntroComplete={setEnemyPickingIntroComplete}
-          playerPickingIntroComplete={playerPickingIntroComplete}
-          enemyPickingIntroComplete={enemyPickingIntroComplete}
+      <div
+        className="w-full h-screen flex flex-col relative"
+        style={{
+          backgroundImage: `url(${currentBackground})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {/* Audio elements */}
+        <audio
+          ref={attackSoundRef}
+          src="/GameBattle/magical-twinkle-242245.mp3"
+          preload="auto"
         />
-      )}
 
-      {/* Attack Animation Overlay - Hide when modals are active */}
-      {!shouldHideGameUI() && showAttackAnimation && (
-        <div className="fixed inset-0 flex items-center justify-center z-50">
-          <img
-            src="/GameBattle/AttackAndAttacked.png"
-            alt="Attack Animation"
-            className="max-w-full max-h-full"
-            style={{
-              animation: "fadeInPulse 1s ease-out",
-            }}
+        <audio
+          ref={backgroundMusicRef}
+          src="/GameBattle/PVPBATTLEBGMUSICAVERAGE.mp3"
+          preload="auto"
+          id="pvp-background-music"
+        />
+
+        <audio
+          ref={correctAnswerSoundRef}
+          src="/GameBattle/correct1.mp3"
+          preload="auto"
+        />
+
+        <audio
+          ref={correctSfxRef}
+          src="/GameBattle/correctSfx.mp3"
+          preload="auto"
+        />
+
+        <audio
+          ref={incorrectAnswerSoundRef}
+          src="/GameBattle/incorrectAnswerSound.mp3"
+          preload="auto"
+        />
+
+        <audio
+          ref={incorrectSfxRef}
+          src="/GameBattle/incorrectSfx.mp3"
+          preload="auto"
+        />
+
+        {/* Character animation manager - Hide when modals are active */}
+        {!shouldHideGameUI() && (
+          <CharacterAnimationManager
+            playerAnimationState={playerAnimationState}
+            enemyAnimationState={enemyAnimationState}
+            setPlayerPickingIntroComplete={setPlayerPickingIntroComplete}
+            setEnemyPickingIntroComplete={setEnemyPickingIntroComplete}
+            playerPickingIntroComplete={playerPickingIntroComplete}
+            enemyPickingIntroComplete={enemyPickingIntroComplete}
           />
-        </div>
-      )}
+        )}
 
-      <style>
-        {`
+        {/* Attack Animation Overlay - Hide when modals are active */}
+        {!shouldHideGameUI() && showAttackAnimation && (
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <img
+              src="/GameBattle/AttackAndAttacked.png"
+              alt="Attack Animation"
+              className="max-w-full max-h-full"
+              style={{
+                animation: "fadeInPulse 1s ease-out",
+              }}
+            />
+          </div>
+        )}
+
+        <style>
+          {`
         @keyframes fadeInPulse {
           0% { opacity: 0; transform: scale(0.9); }
           50% { opacity: 1; transform: scale(1.05); }
           100% { opacity: 1; transform: scale(1); }
         }
         `}
-      </style>
+        </style>
 
-      {/* Only show the top UI bar when the battle interface should be shown and no modals are active */}
-      {shouldShowBattleInterface() && !shouldHideGameUI() && (
-        <div className="w-full py-4 px-4 sm:px-8 md:px-16 lg:px-32 xl:px-80 mt-4 lg:mt-12 flex items-center justify-between">
-          <PlayerInfo
-            name={playerName}
-            health={playerHealth}
-            maxHealth={maxHealth}
-            userId={currentUserId}
-            poisonEffectActive={poisonEffectActive}
-          />
-
-          <QuestionTimer
-            timeLeft={timeLeft}
-            currentQuestion={currentQuestionNumber}
-            totalQuestions={totalItems}
-            difficultyMode={difficultyMode}
-            randomizationDone={randomizationDone}
-            sessionUuid={battleState?.session_uuid}
-          />
-
-          <PlayerInfo
-            name={opponentName}
-            health={opponentHealth}
-            maxHealth={maxHealth}
-            isRightAligned
-            userId={opponentId}
-            poisonEffectActive={opponentPoisonEffectActive}
-            battleState={battleState}
-          />
-
-          {/* Settings button - updated to open modal */}
-          <button
-            className="absolute right-2 sm:right-4 top-2 sm:top-4 text-white z-50"
-            onClick={handleSettingsButtonClick}
-          >
-            <Settings size={16} className="sm:w-[20px] sm:h-[20px]" />
-          </button>
-        </div>
-      )}
-
-      {/* Main Battle Area */}
-      <div className="flex-1 relative">
-        {/* Characters - Hide when modals are active */}
+        {/* Only show the top UI bar when the battle interface should be shown and no modals are active */}
         {shouldShowBattleInterface() && !shouldHideGameUI() && (
-          <>
-            <Character
-              imageSrc={getCharacterImage(
-                playerCharacter,
-                playerAnimationState,
-                playerPickingIntroComplete
-              )}
-              alt="Player Character"
+          <div className="w-full py-4 px-4 sm:px-8 md:px-16 lg:px-32 xl:px-80 mt-4 lg:mt-12 flex items-center justify-between">
+            <PlayerInfo
+              name={playerName}
+              health={playerHealth}
+              maxHealth={maxHealth}
+              userId={currentUserId}
+              poisonEffectActive={poisonEffectActive}
             />
 
-            <Character
-              imageSrc={getCharacterImage(
-                enemyCharacter,
-                enemyAnimationState,
-                enemyPickingIntroComplete
-              )}
-              alt="Enemy Character"
-              isRight
+            <QuestionTimer
+              timeLeft={timeLeft}
+              currentQuestion={currentQuestionNumber}
+              totalQuestions={totalItems}
+              difficultyMode={difficultyMode}
+              randomizationDone={randomizationDone}
+              sessionUuid={battleState?.session_uuid}
             />
-          </>
+
+            <PlayerInfo
+              name={opponentName}
+              health={opponentHealth}
+              maxHealth={maxHealth}
+              isRightAligned
+              userId={opponentId}
+              poisonEffectActive={opponentPoisonEffectActive}
+              battleState={battleState}
+            />
+
+            {/* Settings button - updated to open modal */}
+            <button
+              className="absolute right-2 sm:right-4 top-2 sm:top-4 text-white z-50"
+              onClick={handleSettingsButtonClick}
+            >
+              <Settings size={16} className="sm:w-[20px] sm:h-[20px]" />
+            </button>
+          </div>
         )}
 
-        {/* Turn Randomizer (shown to both host and guest) - Hide when modals are active */}
-        {showRandomizer && !shouldHideGameUI() && (
-          <TurnRandomizer
-            isHost={isHost}
-            lobbyCode={lobbyCode}
-            hostUsername={hostUsername}
-            guestUsername={guestUsername}
-            hostId={hostId}
-            guestId={guestId}
-            showRandomizer={showRandomizer}
-            playerPickingIntroComplete={playerPickingIntroComplete}
-            enemyPickingIntroComplete={enemyPickingIntroComplete}
-            battleState={battleState}
-            setRandomizationDone={setRandomizationDone}
-            setShowRandomizer={setShowRandomizer}
-            setShowGameStart={setShowGameStart}
-            setGameStartText={setGameStartText}
-            setGameStarted={setGameStarted}
-            setIsMyTurn={setIsMyTurn}
-            setPlayerAnimationState={setPlayerAnimationState}
-            setPlayerPickingIntroComplete={setPlayerPickingIntroComplete}
-            setEnemyAnimationState={setEnemyAnimationState}
-            setEnemyPickingIntroComplete={setEnemyPickingIntroComplete}
-            setShowCards={setShowCards}
-          />
-        )}
-
-        {/* Waiting for host to randomize (shown to guest for 2 seconds) - Hide when modals are active */}
-        {isGuestWaitingForRandomization() && !shouldHideGameUI() && (
-          <GuestWaitingForRandomization waitingForRandomization={true} />
-        )}
-
-        {/* Game Start Animation - Hide when modals are active */}
-        {showGameStart && !shouldHideGameUI() && (
-          <GameStartAnimation
-            showGameStart={showGameStart}
-            gameStartText={gameStartText}
-          />
-        )}
-
-        {/* Card Selection UI - Hide when modals are active */}
-        {shouldShowBattleInterface() &&
-          showCards &&
-          showCardsAfterDelay &&
-          !shouldHideGameUI() && (
-            <div className="fixed inset-0 bg-black/20 z-10">
-              <CardSelection
-                isMyTurn={isMyTurn}
-                opponentName={opponentName}
-                playerName={playerName}
-                onCardSelected={handleCardSelected}
-                difficultyMode={difficultyMode}
-                soundEffectsVolume={actualSoundEffectsVolume}
+        {/* Main Battle Area */}
+        <div className="flex-1 relative">
+          {/* Characters - Hide when modals are active */}
+          {shouldShowBattleInterface() && !shouldHideGameUI() && (
+            <>
+              <Character
+                imageSrc={getCharacterImage(
+                  playerCharacter,
+                  playerAnimationState,
+                  playerPickingIntroComplete
+                )}
+                alt="Player Character"
               />
-            </div>
+
+              <Character
+                imageSrc={getCharacterImage(
+                  enemyCharacter,
+                  enemyAnimationState,
+                  enemyPickingIntroComplete
+                )}
+                alt="Enemy Character"
+                isRight
+              />
+            </>
           )}
 
-        {/* Waiting overlay - Hide when modals are active */}
-        {waitingForPlayer && !shouldHideGameUI() && (
-          <WaitingOverlay
-            isVisible={true}
-            message="Waiting for your opponent to connect..."
-          />
-        )}
+          {/* Turn Randomizer (shown to both host and guest) - Hide when modals are active */}
+          {showRandomizer && !shouldHideGameUI() && (
+            <TurnRandomizer
+              isHost={isHost}
+              lobbyCode={lobbyCode}
+              hostUsername={hostUsername}
+              guestUsername={guestUsername}
+              hostId={hostId}
+              guestId={guestId}
+              showRandomizer={showRandomizer}
+              playerPickingIntroComplete={playerPickingIntroComplete}
+              enemyPickingIntroComplete={enemyPickingIntroComplete}
+              battleState={battleState}
+              setRandomizationDone={setRandomizationDone}
+              setShowRandomizer={setShowRandomizer}
+              setShowGameStart={setShowGameStart}
+              setGameStartText={setGameStartText}
+              setGameStarted={setGameStarted}
+              setIsMyTurn={setIsMyTurn}
+              setPlayerAnimationState={setPlayerAnimationState}
+              setPlayerPickingIntroComplete={setPlayerPickingIntroComplete}
+              setEnemyAnimationState={setEnemyAnimationState}
+              setEnemyPickingIntroComplete={setEnemyPickingIntroComplete}
+              setShowCards={setShowCards}
+            />
+          )}
 
-        {/* Loading overlay when ending battle - Always show */}
-        <LoadingOverlay isVisible={isEndingBattle} />
+          {/* Waiting for host to randomize (shown to guest for 2 seconds) - Hide when modals are active */}
+          {isGuestWaitingForRandomization() && !shouldHideGameUI() && (
+            <GuestWaitingForRandomization waitingForRandomization={true} />
+          )}
 
-        {/* Victory Modal - Always show */}
-        <VictoryModal
-          isOpen={showVictoryModal}
-          onClose={handleVictoryConfirm}
-          onViewReport={handleViewSessionReport}
-          isVictory={victoryMessage.includes("Won")}
-          currentUserId={currentUserId}
-          sessionUuid={battleState?.session_uuid}
-          playerHealth={playerHealth}
-          opponentHealth={opponentHealth}
-          earlyEnd={earlyEnd}
-        />
+          {/* Game Start Animation - Hide when modals are active */}
+          {showGameStart && !shouldHideGameUI() && (
+            <GameStartAnimation
+              showGameStart={showGameStart}
+              gameStartText={gameStartText}
+            />
+          )}
 
-        {/* Early Leave Modal - Always show */}
-        <EarlyLeaveModal
-          isOpen={showEarlyLeaveModal}
-          onClose={handleEarlyLeaveConfirm}
-          onViewReport={handleViewEarlyLeaveReport}
-          currentUserId={currentUserId}
-          sessionUuid={battleState?.session_uuid}
-          opponentName={opponentName}
-        />
+          {/* Card Selection UI - Hide when modals are active */}
+          {shouldShowBattleInterface() &&
+            showCards &&
+            showCardsAfterDelay &&
+            !shouldHideGameUI() && (
+              <div className="fixed inset-0 bg-black/20 z-10">
+                <CardSelection
+                  isMyTurn={isMyTurn}
+                  opponentName={opponentName}
+                  playerName={playerName}
+                  onCardSelected={handleCardSelected}
+                  difficultyMode={difficultyMode}
+                  soundEffectsVolume={actualSoundEffectsVolume}
+                />
+              </div>
+            )}
 
-        {/* Question Modal - Hide when other modals are active */}
-        {!shouldHideGameUI() && shouldShowBattleInterface() && (
-          <QuestionModal
-            isOpen={showQuestionModal}
-            onClose={handleQuestionModalClose}
-            onAnswerSubmit={handleAnswerSubmit}
-            onAnswerSubmitRound={handleAnswerSubmitRound}
-            difficultyMode={difficultyMode}
-            questionTypes={questionTypes}
-            selectedCardId={selectedCardId}
-            aiQuestions={questionGenState.questions}
-            isGeneratingAI={questionGenState.isGenerating}
-            currentQuestionNumber={currentQuestionNumber}
-            totalQuestions={totalItems}
-            onGameEnd={handleGameEnd}
-            shownQuestionIds={shownQuestionIds}
-            playCorrectSound={playRandomCorrectAnswerSound}
-            playIncorrectSound={playRandomIncorrectAnswerSound}
-            soundEffectsVolume={actualSoundEffectsVolume}
-            battleState={battleState}
-            isHost={isHost}
-          />
-        )}
+          {/* Waiting overlay - Hide when modals are active */}
+          {waitingForPlayer && !shouldHideGameUI() && (
+            <WaitingOverlay
+              isVisible={true}
+              message="Waiting for your opponent to connect..."
+            />
+          )}
 
-        {/* Add Enemy Question Display component - Hide when modals are active */}
-        {shouldShowBattleInterface() && !shouldHideGameUI() && (
-          <EnemyQuestionDisplay
+          {/* Loading overlay when ending battle - Always show */}
+          <LoadingOverlay isVisible={isEndingBattle} />
+
+          {/* Victory Modal - Always show */}
+          <VictoryModal
+            isOpen={showVictoryModal}
+            onClose={handleVictoryConfirm}
+            onViewReport={handleViewSessionReport}
+            isVictory={victoryMessage.includes("Won")}
+            currentUserId={currentUserId}
             sessionUuid={battleState?.session_uuid}
-            isHost={isHost}
-            isMyTurn={isMyTurn}
+            playerHealth={playerHealth}
+            opponentHealth={opponentHealth}
+            earlyEnd={earlyEnd}
+          />
+
+          {/* Early Leave Modal - Always show */}
+          <EarlyLeaveModal
+            isOpen={showEarlyLeaveModal}
+            onClose={handleEarlyLeaveConfirm}
+            onViewReport={handleViewEarlyLeaveReport}
+            currentUserId={currentUserId}
+            sessionUuid={battleState?.session_uuid}
             opponentName={opponentName}
           />
-        )}
 
-        {/* Session Report */}
-        {showSessionReport && <PvpSessionReport />}
-
-        {/* Poison effect indicator */}
-        {poisonEffectActive &&
-          !showVictoryModal &&
-          shouldShowBattleInterface() && (
-            <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
-              <div className="absolute inset-0 bg-green-500/20 animate-pulse"></div>
-            </div>
+          {/* Question Modal - Hide when other modals are active */}
+          {!shouldHideGameUI() && shouldShowBattleInterface() && (
+            <QuestionModal
+              isOpen={showQuestionModal}
+              onClose={handleQuestionModalClose}
+              onAnswerSubmit={handleAnswerSubmit}
+              onAnswerSubmitRound={handleAnswerSubmitRound}
+              difficultyMode={difficultyMode}
+              questionTypes={questionTypes}
+              selectedCardId={selectedCardId}
+              aiQuestions={questionGenState.questions}
+              isGeneratingAI={questionGenState.isGenerating}
+              currentQuestionNumber={currentQuestionNumber}
+              totalQuestions={totalItems}
+              onGameEnd={handleGameEnd}
+              shownQuestionIds={shownQuestionIds}
+              playCorrectSound={playRandomCorrectAnswerSound}
+              playIncorrectSound={playRandomIncorrectAnswerSound}
+              soundEffectsVolume={actualSoundEffectsVolume}
+              battleState={battleState}
+              isHost={isHost}
+            />
           )}
-        {/* Poison effect overlay - Fullscreen effect */}
-        {poisonEffectActive &&
-          shouldShowBattleInterface() &&
-          !shouldHideGameUI() && (
-            <div className="fixed inset-0 z-[5] pointer-events-none overflow-hidden">
-              <div className="absolute inset-0 bg-purple-900/30"></div>
-              <div className="absolute inset-0 bg-gradient-to-t from-green-900/10 to-purple-800/10"></div>
 
-              {/* Floating particles */}
-              <div className="particle-container">
-                {Array.from({ length: 20 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`absolute w-2 h-2 rounded-full bg-green-400/60 animate-pulse`}
-                    style={{
-                      left: `${Math.random() * 100}%`,
-                      top: `${Math.random() * 100}%`,
-                      animationDuration: `${5 + Math.random() * 10}s`,
-                      animationDelay: `${Math.random() * 5}s`,
-                      boxShadow: "0 0 8px 2px rgba(74, 222, 128, 0.4)",
-                    }}
-                  />
-                ))}
-                {Array.from({ length: 15 }).map((_, i) => (
-                  <div
-                    key={i + 20}
-                    className={`absolute w-3 h-3 rotate-45 bg-purple-500/50 animate-pulse`}
-                    style={{
-                      left: `${Math.random() * 100}%`,
-                      top: `${Math.random() * 100}%`,
-                      animationDuration: `${8 + Math.random() * 15}s`,
-                      animationDelay: `${Math.random() * 5}s`,
-                      boxShadow: "0 0 12px 3px rgba(139, 92, 246, 0.4)",
-                    }}
-                  />
-                ))}
+          {/* Add Enemy Question Display component - Hide when modals are active */}
+          {shouldShowBattleInterface() && !shouldHideGameUI() && (
+            <EnemyQuestionDisplay
+              sessionUuid={battleState?.session_uuid}
+              isHost={isHost}
+              isMyTurn={isMyTurn}
+              opponentName={opponentName}
+            />
+          )}
+
+          {/* Session Report */}
+          {showSessionReport && <PvpSessionReport />}
+
+          {/* Poison effect indicator */}
+          {poisonEffectActive &&
+            !showVictoryModal &&
+            shouldShowBattleInterface() && (
+              <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
+                <div className="absolute inset-0 bg-green-500/20 animate-pulse"></div>
               </div>
-            </div>
-          )}
+            )}
+          {/* Poison effect overlay - Fullscreen effect */}
+          {poisonEffectActive &&
+            shouldShowBattleInterface() &&
+            !shouldHideGameUI() && (
+              <div className="fixed inset-0 z-[5] pointer-events-none overflow-hidden">
+                <div className="absolute inset-0 bg-purple-900/30"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-green-900/10 to-purple-800/10"></div>
 
-        {/* Poison effect notification */}
-        {poisonEffectActive &&
-          shouldShowBattleInterface() &&
-          !shouldHideGameUI() && (
-            <div className="fixed bottom-20 left-0 right-0 flex justify-center pointer-events-none z-40">
-              <div className="bg-purple-800 text-white py-4 px-8 rounded-lg shadow-lg border-2 border-purple-500">
-                <p className="text-xl font-bold">
-                  Poison Effect: You are taking 5 damage per turn!
-                </p>
+                {/* Floating particles */}
+                <div className="particle-container">
+                  {Array.from({ length: 20 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`absolute w-2 h-2 rounded-full bg-green-400/60 animate-pulse`}
+                      style={{
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                        animationDuration: `${5 + Math.random() * 10}s`,
+                        animationDelay: `${Math.random() * 5}s`,
+                        boxShadow: "0 0 8px 2px rgba(74, 222, 128, 0.4)",
+                      }}
+                    />
+                  ))}
+                  {Array.from({ length: 15 }).map((_, i) => (
+                    <div
+                      key={i + 20}
+                      className={`absolute w-3 h-3 rotate-45 bg-purple-500/50 animate-pulse`}
+                      style={{
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                        animationDuration: `${8 + Math.random() * 15}s`,
+                        animationDelay: `${Math.random() * 5}s`,
+                        boxShadow: "0 0 12px 3px rgba(139, 92, 246, 0.4)",
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-        {/* Sound Settings Modal */}
-        <SoundSettingsModal
-          isOpen={showSoundSettings}
-          onClose={() => setShowSoundSettings(false)}
-          onLeaveGame={handleSettingsClick}
-          backgroundMusicRef={backgroundMusicRef}
-          attackSoundRef={attackSoundRef}
-          correctAnswerSoundRef={correctAnswerSoundRef}
-          incorrectAnswerSoundRef={incorrectAnswerSoundRef}
-          correctSfxRef={correctSfxRef}
-          incorrectSfxRef={incorrectSfxRef}
-          masterVolume={masterVolume}
-          musicVolume={musicVolume}
-          soundEffectsVolume={soundEffectsVolume}
-          setMasterVolume={setMasterVolume}
-          setMusicVolume={setMusicVolume}
-          setSoundEffectsVolume={setSoundEffectsVolume}
-        />
+          {/* Poison effect notification */}
+          {poisonEffectActive &&
+            shouldShowBattleInterface() &&
+            !shouldHideGameUI() && (
+              <div className="fixed bottom-20 left-0 right-0 flex justify-center pointer-events-none z-40">
+                <div className="bg-purple-800 text-white py-4 px-8 rounded-lg shadow-lg border-2 border-purple-500">
+                  <p className="text-xl font-bold">
+                    Poison Effect: You are taking 5 damage per turn!
+                  </p>
+                </div>
+              </div>
+            )}
+
+          {/* Sound Settings Modal */}
+          <SoundSettingsModal
+            isOpen={showSoundSettings}
+            onClose={() => setShowSoundSettings(false)}
+            onLeaveGame={handleSettingsClick}
+            backgroundMusicRef={backgroundMusicRef}
+            attackSoundRef={attackSoundRef}
+            correctAnswerSoundRef={correctAnswerSoundRef}
+            incorrectAnswerSoundRef={incorrectAnswerSoundRef}
+            correctSfxRef={correctSfxRef}
+            incorrectSfxRef={incorrectSfxRef}
+            masterVolume={masterVolume}
+            musicVolume={musicVolume}
+            soundEffectsVolume={soundEffectsVolume}
+            setMasterVolume={setMasterVolume}
+            setMusicVolume={setMusicVolume}
+            setSoundEffectsVolume={setSoundEffectsVolume}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

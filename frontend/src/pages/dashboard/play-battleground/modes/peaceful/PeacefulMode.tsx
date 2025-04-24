@@ -1081,6 +1081,15 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
       <audio ref={incorrectAnswerSoundRef} preload="auto" />
       <audio ref={sessionIncompleteRef} preload="auto" />
       <audio ref={sessionCompleteRef} preload="auto" />
+      <DocumentHead
+        title={
+          isInRetakeMode
+            ? `Retake Mode (${retakeQuestionsCount} remaining) | Duel Learn`
+            : ` ${
+                material?.title || "Study Session"
+              } - Peaceful Mode  | Duel Learn`
+        }
+      />
 
       <Header
         material={material}

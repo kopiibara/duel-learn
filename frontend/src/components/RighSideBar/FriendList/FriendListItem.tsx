@@ -248,7 +248,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
             justifyContent: "center",
             alignItems: "center",
             transition: "all 0.3s ease",
-            backgroundColor: isInviteDisabled ? "#2E5428" : "#52A647",
+            backgroundColor: isInviteDisabled ? "#120F1D" : "#52A647",
             color: isInviteDisabled ? "#A0A0A0" : "white",
             border: "none",
             cursor: isInviteDisabled ? "not-allowed" : "pointer",
@@ -257,6 +257,7 @@ const FriendListItem: React.FC<FriendListItemProps> = ({ friend }) => {
             opacity: 1,
             visibility: "visible",
           }}
+          className={`${!isInviteDisabled && " hover:scale-110"}`}
         >
           {getButtonText()}
         </button>

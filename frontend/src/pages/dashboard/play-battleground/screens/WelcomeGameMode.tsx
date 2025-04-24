@@ -186,7 +186,7 @@ const WelcomeGameMode: React.FC = () => {
 
   // Update the welcome message based on the role
   const getWelcomeMessage = () => {
-    if (mode === "Peaceful" || mode === "Peaceful Mode") {
+    if (mode === "Peaceful Mode" || mode === "Peaceful") {
       return "Take your time, master at your own pace! ✨";
     } else if (mode === "Time Pressured" || mode === "Time Pressured Mode") {
       return "Beat the clock, unleash your magical prowess! ⚡";

@@ -1011,6 +1011,11 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
       <audio ref={incorrectAnswerSoundRef} preload="auto" />
       <audio ref={sessionIncompleteRef} preload="auto" />
       <audio ref={sessionCompleteRef} preload="auto" />
+      <DocumentHead
+        title={` ${
+          material?.title || "Study Session"
+        } - Time Pressured Mode | Duel Learn`}
+      />
 
       {renderVignette()}
       <div className={`relative ${getLowHealthEffects()}`}>

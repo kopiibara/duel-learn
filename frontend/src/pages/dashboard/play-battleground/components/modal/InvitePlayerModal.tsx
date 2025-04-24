@@ -23,11 +23,19 @@ interface FriendItemProps {
   };
   inviting: boolean;
   onInvite: (friend: Player) => void;
-  showSnackbar: (message: string, severity: "success" | "error" | "info" | "warning") => void;
+  showSnackbar: (
+    message: string,
+    severity: "success" | "error" | "info" | "warning"
+  ) => void;
 }
 
 // Update the FriendItem component with proper typing
-const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite, showSnackbar }) => {
+const FriendItem: React.FC<FriendItemProps> = ({
+  friend,
+  inviting,
+  onInvite,
+  showSnackbar,
+}) => {
   // Now hooks are at the top level of this component with proper typing
   const isOnline = useOnlineStatus(friend.firebase_uid);
   const { isInLobby, isInGame, gameMode } = useLobbyStatus(friend.firebase_uid);
@@ -126,12 +134,12 @@ const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite, sho
       showSnackbar(`${friend.username} is currently offline`, "error");
       return;
     }
-    
+
     if (isInGame) {
       showSnackbar(`${friend.username} is currently in ${text}`, "error");
       return;
     }
-    
+
     onInvite(friend);
   };
 
@@ -148,20 +156,14 @@ const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite, sho
             className="w-14 h-14 rounded-[5px] mr-4 hover:scale-110 transition-all duration-300"
           />
           {/* Status indicator */}
-          <Tooltip 
-            title={text} 
-            placement="top" 
-            arrow
-          >
-            <div 
+          <Tooltip title={text} placement="top" arrow>
+            <div
               className={`absolute bottom-[-2px] right-1 w-4 h-4 rounded-full border-2 border-[#080511] ${color}`}
             ></div>
           </Tooltip>
         </div>
         <div>
-          <Typography className="text-white">
-            {friend.username}
-          </Typography>
+          <Typography className="text-white">{friend.username}</Typography>
           <Typography sx={{ color: "white", fontSize: "0.835rem" }}>
             LVL {friend.level}
           </Typography>
@@ -172,24 +174,24 @@ const FriendItem: React.FC<FriendItemProps> = ({ friend, inviting, onInvite, sho
         onClick={handleInviteClick}
         disabled={isInviteDisabled}
         style={{
-          borderRadius: '4px',
-          padding: '8px 16px',
-          fontSize: '0.875rem',
-          fontWeight: 'bold',
-          textTransform: 'uppercase',
-          border: 'none',
-          cursor: isInviteDisabled ? 'not-allowed' : 'pointer',
-          backgroundColor: isInviteDisabled ? '#2E5428' : '#57A64E',
-          color: isInviteDisabled ? '#A0A0A0' : 'white',
-          transition: 'background-color 0.3s ease',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
+          borderRadius: "0.6rem",
+          marginLeft: "8px",
+          padding: "8px 20px",
+          minWidth: "60px",
+          fontSize: "0.8rem",
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          transition: "all 0.3s ease",
+          cursor: isInviteDisabled ? "not-allowed" : "pointer",
+          backgroundColor: isInviteDisabled ? "#2E5428" : "#57A64E",
+          color: isInviteDisabled ? "#A0A0A0" : "white",
           opacity: 1,
-          visibility: 'visible',
-          position: 'relative',
-          zIndex: 10
+          visibility: "visible",
+          position: "relative",
+          zIndex: 10,
         }}
+        className={`${!isInviteDisabled && " hover:scale-110"}`}
       >
         {getButtonText()}
       </button>
@@ -234,7 +236,7 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
 
   // Extract friend IDs for status mapping
   const friendIds = useMemo(() => {
-    return friends.map(friend => friend.firebase_uid);
+    return friends.map((friend) => friend.firebase_uid);
   }, [friends]);
 
   // Get status information for all friends
@@ -366,11 +368,7 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
         </Typography>
 
         {/* Error message */}
-        {error && (
-          <div className="text-red-500 text-center mb-4">
-            {error}
-          </div>
-        )}
+        {error && <div className="text-red-500 text-center mb-4">{error}</div>}
 
         {/* Friend List */}
         <div
@@ -383,10 +381,10 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
             <div className="text-white">No friends found</div>
           ) : (
             sortedFriends.map((friend) => (
-              <FriendItem 
+              <FriendItem
                 key={friend.firebase_uid}
-                friend={friend} 
-                inviting={inviting} 
+                friend={friend}
+                inviting={inviting}
                 onInvite={handleInvite}
                 showSnackbar={showSnackbar}
               />
