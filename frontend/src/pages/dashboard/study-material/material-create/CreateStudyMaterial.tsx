@@ -1779,13 +1779,12 @@ const CreateStudyMaterial = () => {
             </Box>
 
             {/* Items */}
-            <Box className="pb-6">
+            <Box>
               <Stack
                 spacing={2}
                 sx={{
                   border: "none",
                   borderRadius: "0.8rem",
-                  padding: itemsError ? "1rem" : 0,
                   backgroundColor: "transparent",
                 }}
               >

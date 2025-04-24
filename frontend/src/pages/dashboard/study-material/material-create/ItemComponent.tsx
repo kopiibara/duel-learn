@@ -262,7 +262,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
         {/* Drag Indicator with Item Number - Hidden on mobile */}
         {!isMobile && (
           <Box
-            className={`flex items-center rounded-tl-[0.8rem] rounded-bl-[0.8rem] border-[#211D2F] ${
+            className={`flex items-center rounded-tl-[0.6rem] rounded-bl-[0.8rem] border-[#211D2F] ${
               isGrabbing ? "bg-[#3B354D]" : "bg-[#211D2F]"
             } w-auto border transition-colors duration-200`}
             {...dragHandleProps?.attributes}

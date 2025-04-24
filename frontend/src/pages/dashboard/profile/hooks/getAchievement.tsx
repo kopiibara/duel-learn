@@ -4,6 +4,28 @@ import {
 } from "../../../../types/achievementObject";
 import { useCallback, useRef } from "react";
 
+// Update the getFullImagePath function to properly handle public folder assets
+const getFullImagePath = (relativePath: string): string => {
+  if (!relativePath) return "";
+
+  // Normalize path - remove any double slashes, ensure it starts with /
+  let normalizedPath = relativePath.replace(/\/+/g, "/");
+  if (!normalizedPath.startsWith("/")) {
+    normalizedPath = "/" + normalizedPath;
+  }
+
+  // When using the public folder, we use relative paths from the root
+  // No need for a CDN URL as these assets are served directly from your app
+
+  // Add cache-busting parameter for production to prevent stale images
+  const cacheBuster = import.meta.env.PROD
+    ? `?v=${new Date().getTime().toString().slice(0, 8)}`
+    : "";
+
+  console.log("Using public folder image path:", normalizedPath);
+  return `${normalizedPath}${cacheBuster}`;
+};
+
 // Define the response structure
 interface AchievementResponse {
   success: boolean;
@@ -185,9 +207,9 @@ export const getMysticElder = () => {
     else if (level >= 3) suffix = "-s.png"; // Silver
     else if (level >= 2) suffix = "-b.png"; // Bronze
 
-    // Debug the image path being generated
-    const resultPath = `${path}${baseName}${suffix}`;
-    console.log("Generated image path:", resultPath);
+    // Use getFullImagePath for consistent path handling
+    const resultPath = getFullImagePath(`${path}${baseName}${suffix}`);
+    console.log("Generated Mystic Elder image path:", resultPath);
 
     return resultPath;
   };
@@ -412,8 +434,8 @@ export const getWisdomCollector = () => {
     else if (level >= 3) suffix = "-s.png"; // Silver
     else if (level >= 2) suffix = "-b.png"; // Bronze
 
-    // Debug the image path being generated
-    const resultPath = `${path}${baseName}${suffix}`;
+    // Use getFullImagePath for consistent path handling
+    const resultPath = getFullImagePath(`${path}${baseName}${suffix}`);
     console.log("Generated Wisdom Collector image path:", resultPath);
 
     return resultPath;
@@ -628,8 +650,8 @@ export const getArcaneScholar = () => {
     else if (level >= 3) suffix = "-s.png"; // Silver
     else if (level >= 2) suffix = "-b.png"; // Bronze
 
-    // Debug the image path being generated
-    const resultPath = `${path}${baseName}${suffix}`;
+    // Use getFullImagePath for consistent path handling
+    const resultPath = getFullImagePath(`${path}${baseName}${suffix}`);
     console.log("Generated Arcane Scholar image path:", resultPath);
 
     return resultPath;
@@ -840,8 +862,8 @@ export const getBattleArchmage = () => {
     else if (level >= 3) suffix = "-s.png"; // Silver
     else if (level >= 2) suffix = "-b.png"; // Bronze
 
-    // Debug the image path being generated
-    const resultPath = `${path}${baseName}${suffix}`;
+    // Use getFullImagePath for consistent path handling
+    const resultPath = getFullImagePath(`${path}${baseName}${suffix}`);
     console.log("Generated Battle Archmage image path:", resultPath);
 
     return resultPath;
@@ -1057,7 +1079,8 @@ export const getDuelist = () => {
     else if (level >= 3) suffix = "-s.png"; // Silver
     else if (level >= 2) suffix = "-b.png"; // Bronze
 
-    const resultPath = `${path}${baseName}${suffix}`;
+    // Use getFullImagePath for consistent path handling
+    const resultPath = getFullImagePath(`${path}${baseName}${suffix}`);
     console.log("Generated Duelist image path:", resultPath);
 
     return resultPath;
@@ -1276,7 +1299,8 @@ export const getBestMagician = () => {
     else if (level >= 3) suffix = "-s.png"; // Silver
     else if (level >= 2) suffix = "-b.png"; // Bronze
 
-    const resultPath = `${path}${baseName}${suffix}`;
+    // Use getFullImagePath for consistent path handling
+    const resultPath = getFullImagePath(`${path}${baseName}${suffix}`);
     console.log("Generated Best Magician image path:", resultPath);
 
     return resultPath;
