@@ -96,6 +96,79 @@ const Achievements = () => {
     return Math.min(Math.floor((userLevel / requirement) * 100), 100);
   };
 
+  // Single useEffect to initialize all achievement data when user is available
+  useEffect(() => {
+    if (!user?.firebase_uid) {
+      return; // Exit if user isn't loaded yet
+    }
+
+    // Bootstrap all achievements in parallel
+    const bootstrapAchievements = async () => {
+      setLoading(true);
+      try {
+        // Fetch all achievements in parallel rather than sequentially
+        const [
+          mysticElderResponse,
+          wisdomCollectorResponse,
+          arcaneScholarResponse,
+          battleArchmageResponse,
+          duelistResponse,
+          bestMagicianResponse,
+        ] = await Promise.all([
+          fetchMysticElder(user.firebase_uid),
+          fetchWisdomCollector(user.firebase_uid),
+          fetchArcaneScholar(user.firebase_uid),
+          fetchBattleArchmage(user.firebase_uid),
+          fetchDuelist(user.firebase_uid),
+          fetchBestMagician(user.firebase_uid),
+        ]);
+
+        // Update all the state values from the responses
+        if (mysticElderResponse) {
+          setMysticElder(mysticElderResponse.mysticElderAchievement);
+          setUserLevel(mysticElderResponse.userLevel);
+        }
+
+        if (wisdomCollectorResponse) {
+          setWisdomCollector(
+            wisdomCollectorResponse.wisdomCollectorAchievement
+          );
+          setStudyMaterialCount(wisdomCollectorResponse.userStudyMaterialCount);
+        }
+
+        if (arcaneScholarResponse) {
+          setArcaneScholar(arcaneScholarResponse.arcaneScholarAchievement);
+          setCompletedSessionsCount(
+            arcaneScholarResponse.userStudyMaterialCount
+          );
+        }
+
+        if (battleArchmageResponse) {
+          setBattleArchmage(battleArchmageResponse.battleArchmageAchievement);
+          setPvpMatchesCount(battleArchmageResponse.total_matches);
+        }
+
+        if (duelistResponse) {
+          setDuelist(duelistResponse.duelistAchievement);
+          setWinStreak(duelistResponse.highest_streak);
+        }
+
+        if (bestMagicianResponse) {
+          setBestMagician(bestMagicianResponse.bestMagicianAchievement);
+          setPvpWinsCount(bestMagicianResponse.total_wins);
+        }
+
+        // Now fetch regular achievements
+        loadAchievements(false);
+      } catch (err) {
+        console.error("Error bootstrapping achievements:", err);
+        setError("Failed to load achievements");
+      }
+    };
+
+    bootstrapAchievements();
+  }, [user?.firebase_uid]); // Only depends on user ID
+
   // Load Mystic Elder achievement
   useEffect(() => {
     const loadMysticElder = async () => {

@@ -18,6 +18,7 @@ const StatsNProfile = () => {
     "replenishing" | "maxed" | "normal"
   >("normal");
   const [currentMana, setCurrentMana] = useState<number>(user?.mana || 0);
+  const [timeToFull, setTimeToFull] = useState<string>("");
   const maxMana = 200; // Default max mana - could be fetched from user data
 
   const isPremium = user?.account_type === "premium";
@@ -38,17 +39,24 @@ const StatsNProfile = () => {
     if (!user?.firebase_uid) return;
 
     try {
+      // Use getManaDetails endpoint instead of basic mana endpoint
       const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/api/mana/${user.firebase_uid}`
+        `${import.meta.env.VITE_BACKEND_URL}/api/mana/details/${
+          user.firebase_uid
+        }`
       );
-      if (response.status === 200) {
-        setCurrentMana(response.data.mana);
 
-        // Determine mana status
-        if (response.data.mana >= maxMana) {
+      if (response.status === 200 && response.data.success) {
+        const manaData = response.data.mana;
+        setCurrentMana(manaData.current);
+
+        // Set time remaining and mana status
+        if (manaData.isFull) {
           setManaStatus("maxed");
+          setTimeToFull("");
         } else {
           setManaStatus("replenishing");
+          setTimeToFull(manaData.timeToFull.formattedTime);
         }
       }
     } catch (error) {
@@ -93,7 +101,7 @@ const StatsNProfile = () => {
       <Tooltip
         title={
           manaStatus === "replenishing"
-            ? "Mana replenishing"
+            ? `Mana replenishing - ${timeToFull} remaining`
             : manaStatus === "maxed"
             ? "Mana at maximum capacity"
             : "Mana"

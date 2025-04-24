@@ -23,9 +23,18 @@ export const useGetAchievements = () => {
   const fetchStartTimeRef = useRef(0);
 
   const fetchAchievements = useCallback(async (forceRefresh = false) => {
-    // Return cached data if available and not forcing refresh
-    if (achievementsCache.current.isFetched && !forceRefresh) {
+    const isBrowser = typeof window !== "undefined";
+    const isFirstLoad =
+      isBrowser && !sessionStorage.getItem("achievementsVisited");
+
+    // Return cached data only on subsequent visits, not first load
+    if (achievementsCache.current.isFetched && !forceRefresh && !isFirstLoad) {
       return achievementsCache.current.data;
+    }
+
+    // Mark that we've visited this page
+    if (isBrowser && isFirstLoad) {
+      sessionStorage.setItem("achievementsVisited", "true");
     }
 
     try {
@@ -185,9 +194,22 @@ export const getMysticElder = () => {
 
   const fetchMysticElder = useCallback(
     async (firebase_uid: string, forceRefresh = false) => {
-      // Return cached data if available
-      if (achievementsCache.current.isFetched && !forceRefresh) {
+      const isBrowser = typeof window !== "undefined";
+      const isFirstLoad =
+        isBrowser && !sessionStorage.getItem("achievementsVisited");
+
+      // Return cached data only on subsequent visits, not first load
+      if (
+        achievementsCache.current.isFetched &&
+        !forceRefresh &&
+        !isFirstLoad
+      ) {
         return achievementsCache.current.data;
+      }
+
+      // Mark that we've visited this page
+      if (isBrowser && isFirstLoad) {
+        sessionStorage.setItem("achievementsVisited", "true");
       }
 
       try {
@@ -398,9 +420,18 @@ export const getWisdomCollector = () => {
   };
 
   const fetchWisdomCollector = useCallback(async (firebase_uid: string) => {
-    // Return cached data if available
-    if (achievementsCache.current.isFetched) {
+    const isBrowser = typeof window !== "undefined";
+    const isFirstLoad =
+      isBrowser && !sessionStorage.getItem("achievementsVisited");
+
+    // Return cached data only on subsequent visits, not first load
+    if (achievementsCache.current.isFetched && !isFirstLoad) {
       return achievementsCache.current.data;
+    }
+
+    // Mark that we've visited this page
+    if (isBrowser && isFirstLoad) {
+      sessionStorage.setItem("achievementsVisited", "true");
     }
 
     try {
@@ -605,9 +636,18 @@ export const getArcaneScholar = () => {
   };
 
   const fetchArcaneScholar = useCallback(async (firebase_uid: string) => {
-    // Return cached data if available
-    if (achievementsCache.current.isFetched) {
+    const isBrowser = typeof window !== "undefined";
+    const isFirstLoad =
+      isBrowser && !sessionStorage.getItem("achievementsVisited");
+
+    // Return cached data only on subsequent visits, not first load
+    if (achievementsCache.current.isFetched && !isFirstLoad) {
       return achievementsCache.current.data;
+    }
+
+    // Mark that we've visited this page
+    if (isBrowser && isFirstLoad) {
+      sessionStorage.setItem("achievementsVisited", "true");
     }
 
     try {
@@ -808,9 +848,18 @@ export const getBattleArchmage = () => {
   };
 
   const fetchBattleArchmage = useCallback(async (firebase_uid: string) => {
-    // Return cached data if available
-    if (achievementsCache.current.isFetched) {
+    const isBrowser = typeof window !== "undefined";
+    const isFirstLoad =
+      isBrowser && !sessionStorage.getItem("achievementsVisited");
+
+    // Return cached data only on subsequent visits, not first load
+    if (achievementsCache.current.isFetched && !isFirstLoad) {
       return achievementsCache.current.data;
+    }
+
+    // Mark that we've visited this page
+    if (isBrowser && isFirstLoad) {
+      sessionStorage.setItem("achievementsVisited", "true");
     }
 
     try {
@@ -1015,9 +1064,18 @@ export const getDuelist = () => {
   };
 
   const fetchDuelist = useCallback(async (firebase_uid: string) => {
-    // Return cached data if available
-    if (achievementsCache.current.isFetched) {
+    const isBrowser = typeof window !== "undefined";
+    const isFirstLoad =
+      isBrowser && !sessionStorage.getItem("achievementsVisited");
+
+    // Return cached data only on subsequent visits, not first load
+    if (achievementsCache.current.isFetched && !isFirstLoad) {
       return achievementsCache.current.data;
+    }
+
+    // Mark that we've visited this page
+    if (isBrowser && isFirstLoad) {
+      sessionStorage.setItem("achievementsVisited", "true");
     }
 
     try {
@@ -1225,9 +1283,18 @@ export const getBestMagician = () => {
   };
 
   const fetchBestMagician = useCallback(async (firebase_uid: string) => {
-    // Return cached data if available
-    if (achievementsCache.current.isFetched) {
+    const isBrowser = typeof window !== "undefined";
+    const isFirstLoad =
+      isBrowser && !sessionStorage.getItem("achievementsVisited");
+
+    // Return cached data only on subsequent visits, not first load
+    if (achievementsCache.current.isFetched && !isFirstLoad) {
       return achievementsCache.current.data;
+    }
+
+    // Mark that we've visited this page
+    if (isBrowser && isFirstLoad) {
+      sessionStorage.setItem("achievementsVisited", "true");
     }
 
     try {
