@@ -147,7 +147,10 @@ export default function SoundSettingsModal({
         );
 
         if (confirmLeave) {
-            // Just call the passed-in onLeaveGame function
+            // First close the modal
+            onClose();
+
+            // Then call the leave game function
             onLeaveGame();
         }
     };
