@@ -82,6 +82,7 @@ export function useBattle({
       setIsEndingBattle(true);
 
       if (battleState?.session_uuid) {
+        // End the battle first
         await axios.post(
           `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/end`,
           {
@@ -90,6 +91,16 @@ export function useBattle({
             battle_end_reason: reason,
             early_leaver_id: currentUserId,
             winner_id: isHost ? guestId : hostId,
+          }
+        );
+
+        // Then reset the win streak to 0 for the user who left
+        await axios.put(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/win-streak`,
+          {
+            firebase_uid: currentUserId,
+            is_winner: false, // Leaver is considered a loser
+            protect_streak: false, // No protection for leaving early
           }
         );
       }
