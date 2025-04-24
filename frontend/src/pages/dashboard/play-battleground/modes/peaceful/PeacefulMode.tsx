@@ -928,7 +928,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
   if (isGeneratingAI) {
     return (
       <GeneralLoadingScreen
-        text="Generating Questions"
+        text="Loading Questions"
         mode="Peaceful Mode"
         isLoading={isGeneratingAI}
       />

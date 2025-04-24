@@ -686,7 +686,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   if (isGeneratingAI) {
     return (
       <GeneralLoadingScreen
-        text="Generating Questions"
+        text="Loading Questions"
         mode="Time Pressured Mode"
         isLoading={isGeneratingAI}
       />
