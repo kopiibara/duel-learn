@@ -1,5 +1,7 @@
 import { pool } from "../config/db.js";
 import NodeCache from "node-cache";
+import { getIO } from '../socket.js';
+
 
 // Create cache instance with 10-minute default TTL and 2-minute check period
 const achievementCache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
@@ -148,8 +150,19 @@ const AchievementController = {
                 }
             };
 
+            // If the achievement was just earned, emit an event
+            if (achieved && userLevel >= mysticElderAchievement.achievement_requirement) {
+                const io = getIO();
+                io.emit('achievementUnlocked', {
+                    firebase_uid,
+                    achievement_name: 'Mystic Elder',
+                    achievement_level: userLevel,
+                    timestamp: new Date().toISOString()
+                });
+            }
+
             // Cache the result (5 minutes TTL)
-            achievementCache.set(cacheKey, result, 300);
+            achievementCache.set(cacheKey, result, 3600);
 
             res.status(200).json(result);
         } catch (error) {
@@ -210,8 +223,19 @@ const AchievementController = {
                 }
             };
 
+            // If the achievement was just earned, emit an event
+            if (achieved && userStudyMaterialCount >= wisdomCollectorAchievement.achievement_requirement) {
+                const io = getIO();
+                io.emit('achievementUnlocked', {
+                    firebase_uid,
+                    achievement_name: 'Wisdom Collector',
+                    achievement_level: userStudyMaterialCount,
+                    timestamp: new Date().toISOString()
+                });
+            }
+
             // Cache the result (5 minutes TTL)
-            achievementCache.set(cacheKey, result, 300);
+            achievementCache.set(cacheKey, result, 3600);
 
             res.status(200).json(result);
         } catch (error) {
@@ -272,8 +296,19 @@ const AchievementController = {
                 }
             };
 
+            // If the achievement was just earned, emit an event
+            if (achieved && userStudyMaterialCount >= arcaneScholarAchievement.achievement_requirement) {
+                const io = getIO();
+                io.emit('achievementUnlocked', {
+                    firebase_uid,
+                    achievement_name: 'Arcane Scholar',
+                    achievement_level: userStudyMaterialCount,
+                    timestamp: new Date().toISOString()
+                });
+            }
+
             // Cache the result (5 minutes TTL)
-            achievementCache.set(cacheKey, result, 300);
+            achievementCache.set(cacheKey, result, 3600);
 
             res.status(200).json(result);
         } catch (error) {
@@ -333,8 +368,19 @@ const AchievementController = {
                 }
             };
 
+            // If the achievement was just earned, emit an event
+            if (achieved && result[0].highest_streak >= duelistAchievement.achievement_requirement) {
+                const io = getIO();
+                io.emit('achievementUnlocked', {
+                    firebase_uid,
+                    achievement_name: 'Duelist',
+                    achievement_level: result[0].highest_streak,
+                    timestamp: new Date().toISOString()
+                });
+            }
+
             // Cache the result (5 minutes TTL)
-            achievementCache.set(cacheKey, response, 300);
+            achievementCache.set(cacheKey, response, 3600);
 
             res.status(200).json(response);
         } catch (error) {
@@ -410,8 +456,19 @@ const AchievementController = {
                 }
             };
 
+            // If the achievement was just earned, emit an event
+            if (achieved && totalMatches >= battleArchmageAchievement.achievement_requirement) {
+                const io = getIO();
+                io.emit('achievementUnlocked', {
+                    firebase_uid,
+                    achievement_name: 'Battle Archmage',
+                    achievement_level: totalMatches,
+                    timestamp: new Date().toISOString()
+                });
+            }
+
             // Cache the result (5 minutes TTL)
-            achievementCache.set(cacheKey, response, 300);
+            achievementCache.set(cacheKey, response, 3600);
 
             res.status(200).json(response);
         } catch (error) {
@@ -487,8 +544,19 @@ const AchievementController = {
                 }
             };
 
+            // If the achievement was just earned, emit an event
+            if (achieved && totalWins >= bestMagicianAchievement.achievement_requirement) {
+                const io = getIO();
+                io.emit('achievementUnlocked', {
+                    firebase_uid,
+                    achievement_name: 'Best Magician',
+                    achievement_level: totalWins,
+                    timestamp: new Date().toISOString()
+                });
+            }
+
             // Cache the result (5 minutes TTL)
-            achievementCache.set(cacheKey, response, 300);
+            achievementCache.set(cacheKey, response, 3600);
 
             res.status(200).json(response);
         } catch (error) {

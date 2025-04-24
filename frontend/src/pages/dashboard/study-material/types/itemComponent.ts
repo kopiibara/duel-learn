@@ -25,6 +25,7 @@ export interface ItemComponentProps {
   updateItem: (field: string, value: string | File | null) => void;
   dragHandleProps?: DragHandleProps;
   isDragging?: boolean;
+  isError?: boolean; // Optional prop for error state
 }
 
 export interface SortableItemProps {
@@ -32,4 +33,5 @@ export interface SortableItemProps {
   item: StudyItem;
   deleteItem: () => void;
   updateItem: (field: string, value: string | File | null) => void;
+  isError?: boolean; // Optional prop for error state
 }

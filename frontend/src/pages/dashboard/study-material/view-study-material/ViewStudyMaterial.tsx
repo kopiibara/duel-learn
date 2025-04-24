@@ -44,10 +44,12 @@ const ViewStudyMaterial = () => {
 
     const fetchStudyMaterial = async () => {
       try {
+        // Add timestamp to bypass cache
+        const timestamp = new Date().getTime();
         const response = await fetch(
           `${
             import.meta.env.VITE_BACKEND_URL
-          }/api/study-material/get-by-study-material-id/${studyMaterialId}`
+          }/api/study-material/get-by-study-material-id/${studyMaterialId}?timestamp=${timestamp}`
         );
         const data = await response.json();
         console.log("API Response:", data);
@@ -424,7 +426,7 @@ const ViewStudyMaterial = () => {
           </Stack>
 
           <Stack
-            spacing={1.5}
+            spacing={1}
             direction={{ xs: "column", sm: "row" }}
             alignItems={{ xs: "flex-start", sm: "center" }}
             sx={{ mt: 2 }}
@@ -434,7 +436,7 @@ const ViewStudyMaterial = () => {
             </Typography>
             <Stack
               direction="row"
-              spacing={1}
+              spacing={0}
               sx={{ flexWrap: "wrap", gap: "8px" }}
             >
               {studyMaterial?.tags?.map((tag: string, index: number) => (

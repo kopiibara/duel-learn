@@ -145,7 +145,7 @@ const CardComponent: React.FC<CardComponentProps> = ({
             </Typography>
             <Stack
               direction="row"
-              spacing={0.5}
+              spacing={0}
               sx={{
                 flexWrap: "wrap",
                 gap: 0.5,

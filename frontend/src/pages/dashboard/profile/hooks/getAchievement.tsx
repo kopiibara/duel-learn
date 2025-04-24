@@ -1,7 +1,7 @@
 import {
   AchievementObject,
   FormattedAchievement,
-} from "src/types/achievementObject";
+} from "../../../../types/achievementObject";
 import { useCallback, useRef } from "react";
 
 // Define the response structure

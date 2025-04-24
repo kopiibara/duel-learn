@@ -509,7 +509,7 @@ const MyLibraryPage = () => {
                   ]}
                   value={filter}
                   onChange={setFilter}
-                  hoverOpen={false} // Disable hover on mobile
+                  hoverOpen
                 />
                 <Filter
                   menuItems={[
@@ -520,7 +520,7 @@ const MyLibraryPage = () => {
                   ]}
                   value={sort}
                   onChange={setSort}
-                  hoverOpen={false} // Disable hover on mobile
+                  hoverOpen
                 />
               </Stack>
             </Stack>

@@ -151,8 +151,7 @@ const studyMaterialController = {
     let connection;
     try {
       connection = await pool.getConnection();
-      const { studyMaterialId, title, tags, totalItems, visibility, items } =
-        req.body;
+      const { studyMaterialId, title, tags, totalItems, visibility, items } = req.body;
 
       if (!studyMaterialId || !title || !items || !items.length) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -162,10 +161,25 @@ const studyMaterialController = {
         return res.status(400).json({ error: "At least one tag is required." });
       }
 
+      // Add validation for minimum items
+      const MIN_REQUIRED_ITEMS = 10; // Should match frontend requirement
+
+      // Filter out empty items (match frontend validation)
+      const validItems = items.filter(item =>
+        item.term && item.term.trim() !== "" &&
+        item.definition && item.definition.trim() !== ""
+      );
+
+      if (validItems.length < MIN_REQUIRED_ITEMS) {
+        return res.status(400).json({
+          error: `At least ${MIN_REQUIRED_ITEMS} valid items are required. Found ${validItems.length}.`
+        });
+      }
+
       await connection.beginTransaction();
       const updatedTimestamp = manilacurrentTimestamp;
 
-      // Update study_material_info
+      // Update study_material_info with the valid item count
       await connection.execute(
         `UPDATE study_material_info 
          SET title = ?, tags = ?, total_items = ?, visibility = ?, updated_at = ? 
@@ -173,7 +187,7 @@ const studyMaterialController = {
         [
           title,
           JSON.stringify(tags),
-          totalItems,
+          validItems.length, // Use validated count
           visibility,
           updatedTimestamp,
           studyMaterialId,
@@ -186,8 +200,8 @@ const studyMaterialController = {
         [studyMaterialId]
       );
 
-      // Insert updated items
-      const insertItemPromises = items.map(async (item, index) => {
+      // Insert only valid items
+      const insertItemPromises = validItems.map(async (item, index) => {
         const itemId = nanoid();
         let imageBuffer = null;
 
@@ -205,7 +219,7 @@ const studyMaterialController = {
           [
             studyMaterialId,
             itemId,
-            index + 1,
+            index + 1, // Sequential item numbering
             item.term,
             item.definition,
             imageBuffer,
@@ -230,6 +244,13 @@ const studyMaterialController = {
       }
 
       studyMaterialCache.del(`study_material_${studyMaterialId}`);
+      // Also invalidate any keys that might contain this study material
+      const allKeys = studyMaterialCache.keys();
+      allKeys.forEach((key) => {
+        if (key.includes(studyMaterialId)) {
+          studyMaterialCache.del(key);
+        }
+      });
 
       // Emit socket event for update
       const io = getIO();

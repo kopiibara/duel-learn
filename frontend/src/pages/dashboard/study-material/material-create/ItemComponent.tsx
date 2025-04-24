@@ -738,17 +738,20 @@ const ItemComponent: FC<ItemComponentProps> = ({
                 onClick={handleFactCheck}
                 disabled={isFactChecking}
                 sx={{
-                  color: "#A38CE6",
-
+                  color: "#3B354D",
+                  padding: "0.3rem",
+                  transition: "all 0.3s ease-in-out",
                   "&:hover": {
-                    backgroundColor: "rgba(163, 140, 230, 0.08)",
+                    backgroundColor: "#080511",
+                    color: "#E2DDF3",
+                    scale: 1.1,
                   },
                 }}
               >
                 {isFactChecking ? (
                   <CircularProgress size={16} sx={{ color: "#A38CE6" }} />
                 ) : (
-                  <FactCheckIcon sx={{ fontSize: 20 }} />
+                  <FactCheckIcon />
                 )}
               </IconButton>
             </Tooltip>
@@ -756,14 +759,15 @@ const ItemComponent: FC<ItemComponentProps> = ({
             {/* Add photo button */}
             <Tooltip title="Add Photo" arrow>
               <IconButton
-                size="small"
                 onClick={handleAddPhoto}
                 sx={{
-                  color: "#9F9BAE",
+                  color: "#3B354D",
                   padding: "0.3rem",
+                  transition: "all 0.3s ease-in-out",
                   "&:hover": {
-                    backgroundColor: "#2F283A",
+                    backgroundColor: "#080511",
                     color: "#E2DDF3",
+                    scale: 1.1,
                   },
                 }}
               >
@@ -777,11 +781,13 @@ const ItemComponent: FC<ItemComponentProps> = ({
                 size="small"
                 onClick={deleteItem}
                 sx={{
-                  color: "#9F9BAE",
+                  color: "#3B354D",
                   padding: "0.3rem",
+                  transition: "all 0.3s ease-in-out",
                   "&:hover": {
-                    backgroundColor: "#2F283A",
-                    color: "#E2DDF3",
+                    backgroundColor: "#080511",
+                    color: "#CD171A",
+                    scale: 1.1,
                   },
                 }}
               >
