@@ -78,7 +78,7 @@ const ManaController = {
             const elapsedMinutes = (now - lastUpdate) / (1000 * 60);
 
             // Calculate mana to replenish (1.67 mana per minute = 200 per 2 hours)
-            const replenishRate = 200 / (4 * 60); // mana per minute
+            const replenishRate = 200 / (3 * 60); // mana per minute
             let manaToAdd = Math.floor(elapsedMinutes * replenishRate);
 
             // Cap at max_mana
@@ -123,7 +123,7 @@ const ManaController = {
             const elapsedMinutes = (now - lastUpdate) / (1000 * 60);
 
             // Calculate mana to replenish (1.67 mana per minute = 200 per 2 hours)
-            const replenishRate = 200 / (4 * 60); // mana per minute
+            const replenishRate = 200 / (3 * 60); // mana per minute
             let manaToAdd = Math.floor(elapsedMinutes * replenishRate);
 
             // Cap at max_mana
@@ -169,7 +169,7 @@ const ManaController = {
             const elapsedMinutes = (now - lastUpdate) / (1000 * 60);
 
             // Calculate mana replenishment rate and settings
-            const replenishRatePerMinute = 200 / (4 * 60); // mana per minute
+            const replenishRatePerMinute = 200 / (3 * 60); // mana per minute
             const replenishRatePerHour = replenishRatePerMinute * 60;
             const timeToFullReplenish = (max_mana - mana) / replenishRatePerMinute; // minutes
 
