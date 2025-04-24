@@ -9,30 +9,47 @@ const ManaController = {
         try {
             const { firebase_uid } = req.body;
 
-            // First check if user has enough mana
-            const [userInfo] = await pool.query(
-                "SELECT mana FROM user_info WHERE firebase_uid = ?",
-                [firebase_uid]
-            );
+            // Start a transaction for atomic operation
+            const connection = await pool.getConnection();
+            await connection.beginTransaction();
 
-            if (!userInfo.length || userInfo[0].mana < 10) {
-                return res.status(400).json({ error: 'Insufficient mana' });
+            try {
+                // Check if user has enough mana within the transaction
+                const [userInfo] = await connection.query(
+                    "SELECT mana FROM user_info WHERE firebase_uid = ?",
+                    [firebase_uid]
+                );
+
+                if (!userInfo.length || userInfo[0].mana < 10) {
+                    await connection.rollback();
+                    connection.release();
+                    return res.status(400).json({ error: 'Insufficient mana' });
+                }
+
+                // Update mana (reduce by 10)
+                await connection.query(
+                    `UPDATE user_info SET mana = mana - 10 WHERE firebase_uid = ?`,
+                    [firebase_uid]
+                );
+
+                // Get updated mana value
+                const [updatedInfo] = await connection.query(
+                    "SELECT mana FROM user_info WHERE firebase_uid = ?",
+                    [firebase_uid]
+                );
+
+                await connection.commit();
+                connection.release();
+
+                res.status(200).json({
+                    success: true,
+                    mana: updatedInfo[0].mana
+                });
+            } catch (error) {
+                await connection.rollback();
+                connection.release();
+                throw error;
             }
-
-            // Update mana (reduce by 10)
-            const updateQuery = `UPDATE user_info SET mana = mana - 10 WHERE firebase_uid = ?`;
-            await pool.query(updateQuery, [firebase_uid]);
-
-            // Get updated mana value
-            const [updatedInfo] = await pool.query(
-                "SELECT mana FROM user_info WHERE firebase_uid = ?",
-                [firebase_uid]
-            );
-
-            res.status(200).json({
-                success: true,
-                mana: updatedInfo[0].mana
-            });
         } catch (error) {
             console.error('Error reducing mana:', error);
             res.status(500).json({ error: 'Internal server error' });
@@ -61,7 +78,7 @@ const ManaController = {
             const elapsedMinutes = (now - lastUpdate) / (1000 * 60);
 
             // Calculate mana to replenish (1.67 mana per minute = 200 per 2 hours)
-            const replenishRate = 200 / (4 * 60); // mana per minute
+            const replenishRate = 200 / (3 * 60); // mana per minute
             let manaToAdd = Math.floor(elapsedMinutes * replenishRate);
 
             // Cap at max_mana
@@ -106,7 +123,7 @@ const ManaController = {
             const elapsedMinutes = (now - lastUpdate) / (1000 * 60);
 
             // Calculate mana to replenish (1.67 mana per minute = 200 per 2 hours)
-            const replenishRate = 200 / (4 * 60); // mana per minute
+            const replenishRate = 200 / (3 * 60); // mana per minute
             let manaToAdd = Math.floor(elapsedMinutes * replenishRate);
 
             // Cap at max_mana
@@ -152,7 +169,7 @@ const ManaController = {
             const elapsedMinutes = (now - lastUpdate) / (1000 * 60);
 
             // Calculate mana replenishment rate and settings
-            const replenishRatePerMinute = 200 / (4 * 60); // mana per minute
+            const replenishRatePerMinute = 200 / (3 * 60); // mana per minute
             const replenishRatePerHour = replenishRatePerMinute * 60;
             const timeToFullReplenish = (max_mana - mana) / replenishRatePerMinute; // minutes
 

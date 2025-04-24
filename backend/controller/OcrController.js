@@ -308,11 +308,36 @@ function preprocessExtractedText(text) {
 async function countPdfPages(pdfPath) {
   try {
     const pdfBuffer = fs.readFileSync(pdfPath);
-    const data = await pdfParse(pdfBuffer);
-    return data.numpages;
+
+    // First attempt with pdf-parse
+    try {
+      const data = await pdfParse(pdfBuffer);
+
+      // Validate the page count - if it's suspiciously low for the file size
+      const fileSizeMB = pdfBuffer.length / (1024 * 1024);
+      const estimatedPages = Math.ceil(fileSizeMB / 0.1); // Rough estimate based on file size
+
+      if (data.numpages < 5 && fileSizeMB > 1 && estimatedPages > 10) {
+        console.log(`PDF page count suspicious: library reports ${data.numpages} pages but file size suggests ~${estimatedPages} pages`);
+
+        // Alternative method - try to estimate based on file size
+        return Math.max(data.numpages, Math.min(estimatedPages, 200)); // Cap at 200 to avoid extreme numbers
+      }
+
+      return data.numpages;
+    } catch (parseError) {
+      console.error("Error in pdf-parse, falling back to size estimation:", parseError);
+
+      // Fallback: Rough estimation based on file size
+      const fileSizeMB = pdfBuffer.length / (1024 * 1024);
+      const estimatedPages = Math.ceil(fileSizeMB / 0.1); // Assuming ~100KB per page
+
+      console.log(`Estimated ${estimatedPages} pages based on file size ${fileSizeMB.toFixed(2)}MB`);
+      return Math.min(estimatedPages, 200); // Cap at 200 to avoid extreme numbers
+    }
   } catch (error) {
-    console.error("Error counting PDF pages:", error);
-    return 0;
+    console.error("Critical error in counting PDF pages:", error);
+    return 5; // Return at least 1 tech pass worth of pages as fallback
   }
 }
 

@@ -80,6 +80,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   const [isCurrentAnswerCorrect, setIsCurrentAnswerCorrect] = useState<
     boolean | null
   >(null);
+  const [manaAlreadyDeducted, setManaAlreadyDeducted] = useState(false); // Add this state to track mana deduction attempts
 
   // 3. Then useRef declarations
   const previousTimerRef = React.useRef<number | null>(null);
@@ -627,6 +628,31 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     }
   }, [questionTimer]);
 
+  // Deduct mana when the game starts
+  useEffect(() => {
+    const deductMana = async () => {
+      if (!manaAlreadyDeducted) {
+        setManaAlreadyDeducted(true); // Set this immediately to prevent race conditions
+
+        try {
+          const manaResponse = await axios.post(
+            `${import.meta.env.VITE_BACKEND_URL}/api/mana/reduce`,
+            {
+              firebase_uid: user.firebase_uid,
+            }
+          );
+
+          // Handle response...
+        } catch (error) {
+          setManaAlreadyDeducted(false); // Reset the flag if there's an error
+          console.error("Error reducing mana:", error);
+        }
+      }
+    };
+
+    deductMana();
+  }, [manaAlreadyDeducted, user.firebase_uid]);
+
   // Update handleAnswerSubmit to play sounds
   const handleAnswerSubmit = (answer: string) => {
     let isAnswerCorrect = false;
@@ -718,6 +744,17 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     return (
       <GeneralLoadingScreen
         text="Preparing Challenge"
+        mode="Time Pressured Mode"
+        isLoading={true}
+      />
+    );
+  }
+
+  // Add this additional check for when currentQuestion isn't available
+  if (!currentQuestion || Object.keys(currentQuestion).length === 0) {
+    return (
+      <GeneralLoadingScreen
+        text="Preparing Study Session"
         mode="Time Pressured Mode"
         isLoading={true}
       />
@@ -1047,18 +1084,29 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
             <div
               className={`w-[1200px] flex flex-col items-center gap-8 ${getHeartbeatClass()}`}
             >
-              <FlashCard
-                question={currentQuestion?.question || ""}
-                correctAnswer={currentQuestion?.correctAnswer || ""}
-                isFlipped={isFlipped}
-                onFlip={handleFlip}
-                onReveal={handleRevealAnswer}
-                timeRemaining={questionTimer}
-                type={currentQuestion?.type}
-                disabled={cardDisabled}
-                image={currentQuestion?.itemInfo?.image || null}
-                currentQuestion={currentQuestion}
-              />
+              {currentQuestion && Object.keys(currentQuestion).length > 0 ? (
+                <FlashCard
+                  question={currentQuestion?.question || ""}
+                  correctAnswer={currentQuestion?.correctAnswer || ""}
+                  isFlipped={isFlipped}
+                  onFlip={handleFlip}
+                  onReveal={handleRevealAnswer}
+                  timeRemaining={questionTimer}
+                  type={currentQuestion?.type}
+                  disabled={cardDisabled}
+                  image={currentQuestion?.itemInfo?.image || null}
+                  currentQuestion={currentQuestion}
+                />
+              ) : (
+                <div className="w-full flex items-center justify-center p-6 h-[300px] rounded-lg border border-gray-600 bg-black/30 backdrop-blur-sm">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-t-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-white text-xl font-medium">
+                      Loading questions...
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
             {renderQuestionContent()}
             {showResult && (

@@ -21,7 +21,7 @@ import {
   DialogContent,
   DialogActions,
 } from "@mui/material";
-import CloseIcon from "@mui/icons-material/Close";
+import CloseIcon from "@mui/icons-material/HighlightOffRounded";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import { nanoid } from "nanoid";
 import { motion, AnimatePresence } from "framer-motion"; // Importing from Framer Motion
@@ -30,6 +30,7 @@ import AutoHideSnackbar from "../../../../components/ErrorsSnackbar"; // Adjust 
 import Filter from "../../../../components/Filter"; // Adjust the
 import CauldronIcon from "/General/Cauldron.gif";
 import "../../../../styles/custom-scrollbar.css"; // Add this import
+import "./errorHighlight.css";
 
 // Add these imports near the top with your other imports
 import {
@@ -143,6 +144,7 @@ const CreateStudyMaterial = () => {
   const [titleError, setTitleError] = useState(false);
   const [tagsError, setTagsError] = useState(false);
   const [itemsError, setItemsError] = useState(false);
+  const [emptyItemIds, setEmptyItemIds] = useState<number[]>([]);
 
   // Flatten all subjects from topics
   const allSubjects = topics
@@ -333,23 +335,42 @@ const CreateStudyMaterial = () => {
 
   // Set up socket connection with proper cleanup
   useEffect(() => {
-    // Initialize socket connection
-    const socketInstance = io(import.meta.env.VITE_BACKEND_URL);
+    // Initialize socket connection with proper options
+    const socketInstance = io(import.meta.env.VITE_BACKEND_URL, {
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 10000,
+    });
+
+    socketInstance.on("connect", () => {
+      console.log("Socket connected successfully");
+    });
+
+    socketInstance.on("disconnect", (reason) => {
+      console.log("Socket disconnected:", reason);
+    });
+
+    socketInstance.on("connect_error", (error) => {
+      console.error("Socket connection error:", error);
+    });
+
     setSocket(socketInstance);
 
     // Clean up on component unmount
     return () => {
+      console.log("Cleaning up socket connection");
       socketInstance.disconnect();
     };
   }, []);
 
-  // Update the save button handler to preserve item_number values
-  // Update the handleSaveButton function to highlight fields with errors
+  // Update the save button handler to highlight specific empty items
   const handleSaveButton = async () => {
     // Reset all error states first
     setTitleError(false);
     setTagsError(false);
     setItemsError(false);
+    setEmptyItemIds([]);
 
     // Track if validation passes
     let isValid = true;
@@ -372,17 +393,55 @@ const CreateStudyMaterial = () => {
       firstErrorElement = document.getElementById("title");
     }
 
-    if (items.length === 0) {
-      setItemsError(true);
-      handleShowSnackbar("At least one item is required.");
-      isValid = false;
-      // Only set this as first error if title is valid
-      if (!firstErrorElement) {
-        const itemsContainer = document.querySelector(
-          '[data-error="items-container"]'
-        );
-        firstErrorElement = itemsContainer || null;
+    // Check for minimum items requirement AND validate content of each item
+    const validItems = items.filter(
+      (item) => item.term.trim() !== "" && item.definition.trim() !== ""
+    );
+
+    const emptyItems = items.filter(
+      (item) => item.term.trim() === "" || item.definition.trim() === ""
+    );
+
+    // Get IDs of empty items for highlighting
+    const emptyIds = emptyItems.map((item) => item.id);
+    setEmptyItemIds(emptyIds);
+
+    if (validItems.length < MIN_REQUIRED_ITEMS) {
+      // Only set itemsError if we actually don't have enough items in total
+      // This will highlight the "Add New Item" button
+      if (items.length < MIN_REQUIRED_ITEMS) {
+        setItemsError(true);
       }
+
+      // Custom message based on whether we have enough items total but some are empty
+      if (items.length >= MIN_REQUIRED_ITEMS && emptyItems.length > 0) {
+        handleShowSnackbar(
+          `Please complete the highlighted items. (${validItems.length}/${MIN_REQUIRED_ITEMS} valid items)`
+        );
+
+        // Set the first empty item as the focus target
+        if (emptyItems.length > 0 && !firstErrorElement) {
+          const firstEmptyItemElement = document.getElementById(
+            `item-${emptyItems[0].id}`
+          );
+          if (firstEmptyItemElement) {
+            firstErrorElement = firstEmptyItemElement;
+          }
+        }
+      } else {
+        handleShowSnackbar(
+          `At least ${MIN_REQUIRED_ITEMS} complete items are required. You currently have ${validItems.length} valid items.`
+        );
+
+        // Focus the "Add New Item" button if we don't have enough items
+        if (!firstErrorElement) {
+          // Add an id to the button for direct targeting
+          const addItemButton = document.getElementById("add-new-item-button");
+          firstErrorElement = addItemButton;
+        }
+      }
+
+      isValid = false;
     }
 
     // Create a copy of current tags
@@ -429,21 +488,6 @@ const CreateStudyMaterial = () => {
       }
     }
 
-    if (items.length < MIN_REQUIRED_ITEMS) {
-      setItemsError(true);
-      handleShowSnackbar(
-        `At least ${MIN_REQUIRED_ITEMS} items are required. You currently have ${items.length} items.`
-      );
-      isValid = false;
-      // Only set this as first error if no previous errors
-      if (!firstErrorElement) {
-        const itemsContainer = document.querySelector(
-          '[data-error="items-container"]'
-        );
-        firstErrorElement = itemsContainer || null;
-      }
-    }
-
     // If validation fails, focus on the first error element and return early
     if (!isValid && firstErrorElement) {
       // Smooth scroll to the element
@@ -460,14 +504,176 @@ const CreateStudyMaterial = () => {
         }, 1500);
       }, 500);
 
-      return;
+      return; // Don't proceed with saving if validation fails
     }
 
+    // Only set isSaving to true if we've passed all validation
     setIsSaving(true);
 
-    // The rest of the function remains the same...
-  };
+    // Define summary variable outside try block so it's accessible in the main scope
+    let summary = "";
 
+    try {
+      // Generate summary using OpenAI
+      const summaryPayload = {
+        tags: finalTags,
+        items: items.map((item) => ({
+          term: item.term,
+          definition: item.definition,
+        })),
+      };
+
+      console.log("Sending summary request with payload:", summaryPayload);
+
+      try {
+        const summaryResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/openai/generate-summary`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(summaryPayload),
+          }
+        );
+
+        if (!summaryResponse.ok) {
+          const errorData = await summaryResponse.json().catch(() => ({}));
+          throw new Error(errorData.message || "Failed to generate summary");
+        }
+
+        const summaryData = await summaryResponse.json();
+        summary = summaryData.summary;
+
+        console.log("Generated summary:", summary);
+      } catch (summaryError) {
+        console.error("Error generating summary:", summaryError);
+        // Create a fallback summary instead of failing the whole save process
+        summary = title;
+        handleShowSnackbar(
+          "Couldn't generate summary, using title as fallback."
+        );
+      }
+
+      // Check total payload size before sending
+      let totalImageSize = 0;
+      items.forEach((item) => {
+        if (item.image && typeof item.image === "string") {
+          totalImageSize += getFileSizeInMB(item.image);
+        }
+      });
+
+      if (totalImageSize > MAX_TOTAL_PAYLOAD_MB) {
+        handleShowSnackbar(
+          `Total images size (${totalImageSize.toFixed(
+            2
+          )}MB) exceeds maximum allowed (${MAX_TOTAL_PAYLOAD_MB}MB). Please reduce image sizes or remove some images.`
+        );
+        return;
+      }
+
+      try {
+        // Transform items to include base64 images and preserve item_number
+        // But ONLY include valid items
+        const transformedItems = validItems.map((item, index) => ({
+          id: item.id,
+          term: item.term,
+          definition: item.definition,
+          image: item.image || null,
+          item_number: index + 1, // Recalculate item numbers to be sequential
+        }));
+
+        const studyMaterial = {
+          studyMaterialId: editMode ? studyMaterialId : nanoid(),
+          title,
+          tags: finalTags,
+          summary, // Use the generated or fallback summary
+          totalItems: validItems.length, // Use validItems.length instead of items.length
+          visibility: parseInt(visibility),
+          createdBy: user.username,
+          createdById: user.firebase_uid,
+          items: transformedItems, // Only include valid items in the payload
+        };
+
+        // Check socket but don't block saving if not connected
+        if (!socket || !socket.connected) {
+          console.warn(
+            "Socket connection is not established - will continue without real-time updates"
+          );
+        }
+
+        // Determine the endpoint based on whether we're creating or updating
+        const apiUrl = editMode
+          ? `${import.meta.env.VITE_BACKEND_URL}/api/study-material/update`
+          : `${import.meta.env.VITE_BACKEND_URL}/api/study-material/save`;
+
+        console.log("Saving with payload:", studyMaterial);
+
+        const response = await fetch(apiUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(studyMaterial),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => null);
+          throw new Error(
+            errorData?.message ||
+              errorData?.error ||
+              `Server error: ${response.status}`
+          );
+        }
+
+        const savedData = await response.json();
+
+        if (!savedData) {
+          throw new Error("No data received from server");
+        }
+
+        // Create broadcast data with consistent property naming
+        const broadcastData = {
+          study_material_id:
+            savedData.studyMaterialId || studyMaterial.studyMaterialId,
+          title: savedData.title || title,
+          tags: savedData.tags || finalTags,
+          summary: savedData.summary || summary,
+          total_items: savedData.totalItems || items.length,
+          created_by: savedData.createdBy || user.username,
+          created_by_id: savedData.createdById || user.firebase_uid,
+          visibility: savedData.visibility,
+          created_at: savedData.created_at || new Date().toISOString(),
+          items: savedData.items || transformedItems,
+        };
+
+        // Emit the transformed data (now with null check for socket)
+        console.log("Emitting new study material event:", broadcastData);
+        if (socket && socket.connected) {
+          socket.emit("newStudyMaterial", broadcastData);
+        }
+
+        // Navigate to preview page
+        navigate(
+          `/dashboard/study-material/view/${broadcastData.study_material_id}`
+        );
+      } catch (error) {
+        console.error(
+          editMode
+            ? "Failed to update study material:"
+            : "Failed to save study material:",
+          error
+        );
+        handleShowSnackbar(
+          error instanceof Error
+            ? error.message
+            : "Failed to save study material. Please try again."
+        );
+      }
+    } catch (error) {
+      console.error("Error in handleSaveButton:", error);
+      handleShowSnackbar("An unexpected error occurred. Please try again.");
+    } finally {
+      // Make sure isSaving is set to false regardless of success or failure
+      setIsSaving(false);
+    }
+  };
   useEffect(() => {
     const fetchStudyMaterial = async () => {
       if (editMode && studyMaterialId) {
@@ -1125,7 +1331,7 @@ const CreateStudyMaterial = () => {
           <DocumentHead
             title={
               editMode
-                ? `Editing ${title || "Study Material"}`
+                ? `Editing ${title || "Study Material"} | Duel Learn`
                 : title || "Create Study Material"
             }
           />
@@ -1566,23 +1772,20 @@ const CreateStudyMaterial = () => {
                     ]}
                     value={visibility}
                     onChange={handleVisibilityChange}
-                    hoverOpen
+                    hoverOpen={true}
                   />
                 </Box>
               </Stack>
             </Box>
 
             {/* Items */}
-            <Box className="pb-6">
+            <Box>
               <Stack
                 spacing={2}
                 sx={{
-                  border: itemsError ? "1px solid #f44336" : "none",
+                  border: "none",
                   borderRadius: "0.8rem",
-                  padding: itemsError ? "1rem" : 0,
-                  backgroundColor: itemsError
-                    ? "rgba(244, 67, 54, 0.08)"
-                    : "transparent",
+                  backgroundColor: "transparent",
                 }}
               >
                 <DndContext
@@ -1610,6 +1813,8 @@ const CreateStudyMaterial = () => {
                             updateItem={(field, value) =>
                               handleUpdateItem(item.id, field, value)
                             }
+                            isError={emptyItemIds.includes(item.id)}
+                            key={item.id}
                           />
                         </motion.div>
                       ))}
@@ -1618,6 +1823,7 @@ const CreateStudyMaterial = () => {
                 </DndContext>
 
                 <Button
+                  id="add-new-item-button"
                   variant="outlined"
                   sx={{
                     borderRadius: "0.8rem",
@@ -1628,6 +1834,9 @@ const CreateStudyMaterial = () => {
                     justifyContent: "center",
                     color: itemsError ? "#f44336" : "#3B354D",
                     border: `2px solid ${itemsError ? "#f44336" : "#3B354D"}`,
+                    backgroundColor: itemsError
+                      ? "rgba(244, 67, 54, 0.08)"
+                      : "transparent",
                     textTransform: "none",
                     bottom: 0,
                     transform: "scale(1)",
@@ -1639,9 +1848,13 @@ const CreateStudyMaterial = () => {
                     },
                   }}
                   onClick={handleAddItem}
+                  className={itemsError ? "error-highlight-animation" : ""}
                 >
                   Add New Item{" "}
-                  {itemsError && `(${items.length}/${MIN_REQUIRED_ITEMS})`}
+                  {(itemsError || emptyItemIds.length > 0) &&
+                    `(${
+                      items.length - emptyItemIds.length
+                    }/${MIN_REQUIRED_ITEMS})`}
                 </Button>
               </Stack>
             </Box>

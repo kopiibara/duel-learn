@@ -19,6 +19,7 @@ import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import { useStoreUser } from "../../hooks/api.hooks/useStoreUser";
 import { setAuthToken } from "../../api/apiClient";
+import GeneralLoadingScreen from "../../components/LoadingScreen";
 
 const Login = () => {
   const { user, loadUserData } = useUser();
@@ -216,26 +217,21 @@ const Login = () => {
 
           if (userData?.isNew) {
             setSuccessMessage("Account found successfully!");
+            setLoading(true);
             setTimeout(() => {
-              setLoading(true);
               navigate("/dashboard/welcome");
             }, 1500);
           } else if (userData && !userData.email_verified) {
             console.log("Email not verified, navigating to verification page");
             setLoading(true);
             navigate("/verify-email", { state: { token } });
+          } else if (userData?.account_type === "admin") {
+            console.log("Admin user detected, navigating to admin dashboard");
+            setLoading(true);
+            navigate("/admin/dashboard");
           } else {
-            console.log("Email verified, navigating to dashboard");
-
-            // Check if user is admin and handle special redirection
-            if (userData?.account_type === "admin") {
-              console.log("Admin user detected, navigating to admin dashboard");
-              setLoading(true);
-              navigate("/admin/dashboard");
-            } else {
-              setLoading(true);
-              navigate("/dashboard/home");
-            }
+            setLoading(true);
+            navigate("/dashboard/home");
           }
         } catch (loginError: any) {
           console.error("Error during login user data loading:", loginError);
@@ -246,8 +242,7 @@ const Login = () => {
             setSubmitError(
               "Your account exists but needs to be set up. Please complete registration."
             );
-
-            // Redirect to verify email page to continue registration process
+            setLoading(true);
             setTimeout(() => {
               navigate("/verify-email", { state: { token } });
             }, 2000);
@@ -268,6 +263,7 @@ const Login = () => {
 
   const googleSubmit = async () => {
     try {
+      setLoading(true); // Add loading state at the beginning of the function
       const account_type = "free";
       const authResult = await handleGoogleAuth(account_type);
 
@@ -286,6 +282,7 @@ const Login = () => {
       }
     } catch (error) {
       handleError(error);
+      setLoading(false); // Make sure to turn off loading state if there's an error
     }
   };
 

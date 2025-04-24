@@ -669,14 +669,160 @@ const generateIdentification = async (req, res) => {
   }
 };
 
+const shouldGenerateNewSummary = async (studyMaterialId, newContent) => {
+  try {
+    const { pool } = await import("../config/db.js");
+
+    // Get the current material's content and summary
+    const [currentMaterial] = await pool.query(
+      `SELECT title, tags, summary, content_hash 
+       FROM study_material_info 
+       WHERE study_material_id = ?`,
+      [studyMaterialId]
+    );
+
+    if (!currentMaterial || currentMaterial.length === 0) {
+      console.log("No existing material found, generating new summary");
+      return true;
+    }
+
+    const existingMaterial = currentMaterial[0];
+
+    // Rule 1: If title or tags have changed, always generate new summary
+    const existingTags = JSON.parse(existingMaterial.tags || "[]").sort();
+    const newTags = newContent.tags.sort();
+    const titleChanged = existingMaterial.title !== newContent.title;
+    const tagsChanged =
+      JSON.stringify(existingTags) !== JSON.stringify(newTags);
+
+    if (titleChanged || tagsChanged) {
+      console.log("Title or tags changed, generating new summary");
+      return true;
+    }
+
+    // Rule 2: For term and definition changes, check if they impact the current summary
+    const [currentContent] = await pool.query(
+      `SELECT term, definition 
+       FROM study_material_content 
+       WHERE study_material_id = ? 
+       ORDER BY term`,
+      [studyMaterialId]
+    );
+
+    // If number of items changed significantly (more than 20%), generate new summary
+    const itemCountChange = Math.abs(
+      currentContent.length - newContent.items.length
+    );
+    const significantItemChange = itemCountChange > currentContent.length * 0.2;
+
+    if (significantItemChange) {
+      console.log(
+        "Significant change in number of items, generating new summary"
+      );
+      return true;
+    }
+
+    // Calculate content hash for the new content
+    const newContentHash = calculateContentHash(newContent.items);
+
+    // If content hash matches, no need for new summary
+    if (existingMaterial.content_hash === newContentHash) {
+      console.log("Content hash matches, reusing existing summary");
+      return false;
+    }
+
+    // If we have an existing summary, check if it still applies to the content changes
+    if (existingMaterial.summary) {
+      const prompt = `
+        Analyze if this summary still accurately represents the updated study material.
+        Only recommend a new summary if the changes significantly alter the core concepts or themes.
+        Minor wording changes or clarifications should not trigger a new summary.
+        
+        Current Summary: "${existingMaterial.summary}"
+        
+        Updated Material:
+        Title: "${newContent.title}"
+        Tags: ${JSON.stringify(newTags)}
+        Items: ${JSON.stringify(
+        newContent.items.map((item) => ({
+          term: item.term,
+          definition: item.definition,
+        }))
+      )}
+        
+        Return a JSON object with:
+        {
+          "stillApplies": boolean,
+          "reason": "brief explanation"
+        }
+      `;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-3.5-turbo",
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are an expert at analyzing if summaries still accurately represent updated content. Be lenient with minor changes and only recommend new summaries when core concepts or themes are significantly altered.",
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.2,
+      });
+
+      const response = JSON.parse(completion.choices[0].message.content);
+
+      if (response.stillApplies) {
+        console.log("Existing summary still applies:", response.reason);
+        return false;
+      }
+
+      console.log("Existing summary no longer applies:", response.reason);
+      return true;
+    }
+
+    // If we get here, content is identical or changes are minor
+    console.log(
+      "Content unchanged or changes are minor, reusing existing summary"
+    );
+    return false;
+  } catch (error) {
+    console.error("Error in shouldGenerateNewSummary:", error);
+    // On error, generate new summary to be safe
+    return true;
+  }
+};
+
+// Helper function to calculate content hash
+const calculateContentHash = (items) => {
+  // Sort items by term to ensure consistent hashing
+  const sortedItems = [...items].sort((a, b) => a.term.localeCompare(b.term));
+
+  // Create a string representation of the content
+  const contentString = sortedItems
+    .map((item) => `${item.term}:${item.definition}`)
+    .join("|");
+
+  // Simple hash function
+  let hash = 0;
+  for (let i = 0; i < contentString.length; i++) {
+    const char = contentString.charCodeAt(i);
+    hash = (hash << 5) - hash + char;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+
+  return hash.toString(16);
+};
+
 export const OpenAiController = {
   generateSummary: async (req, res) => {
     try {
-      const { tags, items } = req.body;
+      const { tags, items, studyMaterialId } = req.body;
 
       console.log("Received summary generation request with data:", {
         tagCount: tags?.length || 0,
         itemCount: items?.length || 0,
+        studyMaterialId,
       });
 
       if (!items || !Array.isArray(items) || items.length === 0) {
@@ -687,18 +833,68 @@ export const OpenAiController = {
         });
       }
 
-      const prompt = `Generate an overview that will cater the topic of the following details of the study material:  
-            Tags: ${tags ? tags.join(", ") : "No tags"}  
-            Items: ${items
+      // Check if we need to generate a new summary
+      const needsNewSummary = await shouldGenerateNewSummary(studyMaterialId, {
+        title: req.body.title || "",
+        tags: tags || [],
+        items: items,
+      });
+
+      if (!needsNewSummary) {
+        // Get the existing summary
+        const { pool } = await import("../config/db.js");
+        const [currentMaterial] = await pool.query(
+          `SELECT summary FROM study_material_info WHERE study_material_id = ?`,
+          [studyMaterialId]
+        );
+
+        if (
+          currentMaterial &&
+          currentMaterial.length > 0 &&
+          currentMaterial[0].summary
+        ) {
+          console.log("Reusing existing summary");
+          return res.json({ summary: currentMaterial[0].summary });
+        }
+      }
+
+      const prompt = `Generate a concise overview-style summary (maximum 500 characters) for the following study material. Focus on describing the content that is actually present in the material:
+
+      Tags: ${tags ? tags.join(", ") : "No tags"}  
+      Items: ${items
           .map((item) => `${item.term}: ${item.definition}`)
           .join("\n")}  
-            
-            Make it so that it will gather the attention of the user that will read this overview and will make them interested to read the full study material.
-            
-            Rules:  
-            1. Make it concise, clear, and professional.  
-            2. Highlight the main idea in a cool way.  
-            3. Use simple and engaging language`;
+
+      Rules:
+      1. CRITICAL: Keep the entire summary not more than 500 characters (including spaces and line breaks)
+      2. Write in a clear, concise style that maximizes information in limited space
+      3. Create a focused overview that:
+        - Introduces the core subject matter
+        - Highlights 2-3 key themes or concepts
+        - Gives a quick preview of what to expect based on the terms and definitions provided
+        - Don't include terminologies or sentences that are not explicitly defined in the material
+        - No need to include application if not necessary
+        - Focus on what the material includes, not what it can teach you because it will be too out of scope
+      4. Format efficiently:
+        - Use 1-2 short paragraphs maximum
+        - Double line breaks ("\\n\\n") between paragraphs
+        - Keep sentences brief but informative
+      5. Prioritize content:
+        - Focus on the most important themes
+        - Mention only the most representative terms
+        - Skip minor details
+      6. Make every character count while maintaining readability
+      7. Avoid making assumptions about what the material can teach you
+      8. Avoid overgeneralizing the material, and strictly use the definitions and terms provided
+      9. Use a "In this material, ..." kind of sentence to start the summary
+
+      Example for reference:
+      
+      Java is a programming language that is used to create applications for the web.
+      
+      Then, summary should not include terms that are out of the scope of the material. Like, "Users will learn how to code in Java" or "Users will learn how to create applications for the web".
+
+      IMPORTANT: The 500-character limit is strict - responses exceeding this will be truncated.`;
 
       console.log("Calling OpenAI API...");
 
@@ -713,11 +909,22 @@ export const OpenAiController = {
             },
             { role: "user", content: prompt },
           ],
-          max_tokens: 50, // Limit response length
+          max_tokens: 100, // Increased from 50 to 200 to allow for longer summaries
         });
 
         const summary = completion.choices[0].message.content.trim();
         console.log("Generated summary:", summary);
+
+        // Update the material with the new summary
+        if (studyMaterialId) {
+          const { pool } = await import("../config/db.js");
+          await pool.query(
+            `UPDATE study_material_info 
+             SET summary = ? 
+             WHERE study_material_id = ?`,
+            [summary, studyMaterialId]
+          );
+        }
 
         res.json({ summary });
       } catch (openaiError) {
@@ -748,7 +955,6 @@ export const OpenAiController = {
       });
     }
   },
-
   generateTrueFalse,
   generateMultipleChoice,
   generateIdentification,

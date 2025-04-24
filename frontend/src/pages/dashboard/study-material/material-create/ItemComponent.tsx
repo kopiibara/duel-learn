@@ -22,6 +22,7 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
 import { motion, AnimatePresence } from "framer-motion";
 import { ItemComponentProps } from "../types/itemComponent";
+import "./errorHighlight.css";
 
 const MAX_TERM_LENGTH = 50; // Define max term length
 const MAX_DEFINITION_LENGTH = 200; // Define max definition length
@@ -32,6 +33,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
   updateItem,
   dragHandleProps,
   isDragging,
+  isError = false, // Add this line to destructure the prop with default value
 }) => {
   // Add MUI theme and media query to detect mobile view
   const theme = useTheme();
@@ -226,7 +228,8 @@ const ItemComponent: FC<ItemComponentProps> = ({
   // Determine the border class based on the current state
   const getBorderClass = () => {
     if (isDragging) return "ring-[0.1rem] ring-[#A38CE6] border-[#A38CE6]";
-    if (isGrabbing) return "border-[#A38CE6] z-10"; // New color when grabbing
+    if (isGrabbing) return "border-[#A38CE6] z-10";
+    if (isError) return "border-[#f44336] error-highlight-animation"; // Add error styling
     return "border-[#3B354D] hover:border-[#9F9BAE]";
   };
 
@@ -249,6 +252,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
 
   return (
     <Box
+      id={`item-${item.id}`} // Add an ID for targeting with scroll
       className={`bg-[#080511] rounded-[0.8rem] border-2 ${getBorderClass()} w-full transition-colors duration-300 ease-in-out ${
         isMobile ? "relative cursor-grab active:cursor-grabbing" : ""
       }`}
@@ -258,7 +262,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
         {/* Drag Indicator with Item Number - Hidden on mobile */}
         {!isMobile && (
           <Box
-            className={`flex items-center rounded-tl-[0.8rem] rounded-bl-[0.8rem] border-[#211D2F] ${
+            className={`flex items-center rounded-tl-[0.6rem] rounded-bl-[0.8rem] border-[#211D2F] ${
               isGrabbing ? "bg-[#3B354D]" : "bg-[#211D2F]"
             } w-auto border transition-colors duration-200`}
             {...dragHandleProps?.attributes}
@@ -738,17 +742,20 @@ const ItemComponent: FC<ItemComponentProps> = ({
                 onClick={handleFactCheck}
                 disabled={isFactChecking}
                 sx={{
-                  color: "#A38CE6",
-
+                  color: "#3B354D",
+                  padding: "0.3rem",
+                  transition: "all 0.3s ease-in-out",
                   "&:hover": {
-                    backgroundColor: "rgba(163, 140, 230, 0.08)",
+                    backgroundColor: "#080511",
+                    color: "#E2DDF3",
+                    scale: 1.1,
                   },
                 }}
               >
                 {isFactChecking ? (
                   <CircularProgress size={16} sx={{ color: "#A38CE6" }} />
                 ) : (
-                  <FactCheckIcon sx={{ fontSize: 20 }} />
+                  <FactCheckIcon />
                 )}
               </IconButton>
             </Tooltip>
@@ -756,14 +763,15 @@ const ItemComponent: FC<ItemComponentProps> = ({
             {/* Add photo button */}
             <Tooltip title="Add Photo" arrow>
               <IconButton
-                size="small"
                 onClick={handleAddPhoto}
                 sx={{
-                  color: "#9F9BAE",
+                  color: "#3B354D",
                   padding: "0.3rem",
+                  transition: "all 0.3s ease-in-out",
                   "&:hover": {
-                    backgroundColor: "#2F283A",
+                    backgroundColor: "#080511",
                     color: "#E2DDF3",
+                    scale: 1.1,
                   },
                 }}
               >
@@ -777,11 +785,13 @@ const ItemComponent: FC<ItemComponentProps> = ({
                 size="small"
                 onClick={deleteItem}
                 sx={{
-                  color: "#9F9BAE",
+                  color: "#3B354D",
                   padding: "0.3rem",
+                  transition: "all 0.3s ease-in-out",
                   "&:hover": {
-                    backgroundColor: "#2F283A",
-                    color: "#E2DDF3",
+                    backgroundColor: "#080511",
+                    color: "#CD171A",
+                    scale: 1.1,
                   },
                 }}
               >

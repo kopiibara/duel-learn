@@ -2,6 +2,7 @@ import { nanoid } from "nanoid";
 import { pool } from "../config/db.js";
 import manilacurrentTimestamp from "../utils/CurrentTimestamp.js";
 import NodeCache from "node-cache";
+import { getIO } from '../socket.js';
 
 // Create optimized cache instance (TTL: 10 minutes, check period: 2 minutes)
 const studyMaterialCache = new NodeCache({ stdTTL: 600, checkperiod: 120 });
@@ -111,6 +112,20 @@ const studyMaterialController = {
 
       invalidateCachesForUser(createdBy, createdById);
 
+      // Emit socket event for real-time updates
+      const io = getIO();
+      io.emit('newStudyMaterial', {
+        studyMaterialId,
+        title,
+        tags,
+        totalItems,
+        createdBy,
+        createdById,
+        visibility,
+        createdAt: currentTimestamp,
+        updatedAt: currentTimestamp
+      });
+
       res.status(201).json({
         message: "Study material saved successfully",
         studyMaterialId,
@@ -136,8 +151,7 @@ const studyMaterialController = {
     let connection;
     try {
       connection = await pool.getConnection();
-      const { studyMaterialId, title, tags, totalItems, visibility, items } =
-        req.body;
+      const { studyMaterialId, title, tags, totalItems, visibility, items } = req.body;
 
       if (!studyMaterialId || !title || !items || !items.length) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -147,10 +161,25 @@ const studyMaterialController = {
         return res.status(400).json({ error: "At least one tag is required." });
       }
 
+      // Add validation for minimum items
+      const MIN_REQUIRED_ITEMS = 10; // Should match frontend requirement
+
+      // Filter out empty items (match frontend validation)
+      const validItems = items.filter(item =>
+        item.term && item.term.trim() !== "" &&
+        item.definition && item.definition.trim() !== ""
+      );
+
+      if (validItems.length < MIN_REQUIRED_ITEMS) {
+        return res.status(400).json({
+          error: `At least ${MIN_REQUIRED_ITEMS} valid items are required. Found ${validItems.length}.`
+        });
+      }
+
       await connection.beginTransaction();
       const updatedTimestamp = manilacurrentTimestamp;
 
-      // Update study_material_info
+      // Update study_material_info with the valid item count
       await connection.execute(
         `UPDATE study_material_info 
          SET title = ?, tags = ?, total_items = ?, visibility = ?, updated_at = ? 
@@ -158,7 +187,7 @@ const studyMaterialController = {
         [
           title,
           JSON.stringify(tags),
-          totalItems,
+          validItems.length, // Use validated count
           visibility,
           updatedTimestamp,
           studyMaterialId,
@@ -171,8 +200,8 @@ const studyMaterialController = {
         [studyMaterialId]
       );
 
-      // Insert updated items
-      const insertItemPromises = items.map(async (item, index) => {
+      // Insert only valid items
+      const insertItemPromises = validItems.map(async (item, index) => {
         const itemId = nanoid();
         let imageBuffer = null;
 
@@ -190,7 +219,7 @@ const studyMaterialController = {
           [
             studyMaterialId,
             itemId,
-            index + 1,
+            index + 1, // Sequential item numbering
             item.term,
             item.definition,
             imageBuffer,
@@ -215,6 +244,26 @@ const studyMaterialController = {
       }
 
       studyMaterialCache.del(`study_material_${studyMaterialId}`);
+      // Also invalidate any keys that might contain this study material
+      const allKeys = studyMaterialCache.keys();
+      allKeys.forEach((key) => {
+        if (key.includes(studyMaterialId)) {
+          studyMaterialCache.del(key);
+        }
+      });
+
+      // Emit socket event for update
+      const io = getIO();
+      io.emit('studyMaterialUpdated', {
+        studyMaterialId,
+        title,
+        tags,
+        totalItems,
+        visibility,
+        createdBy: creatorInfo[0]?.created_by,
+        createdById: creatorInfo[0]?.created_by_id,
+        updatedAt: updatedTimestamp
+      });
 
       res.status(200).json({
         message: "Study material updated successfully",
@@ -389,6 +438,7 @@ const studyMaterialController = {
       const cachedData = studyMaterialCache.get(cacheKey);
 
       if (cachedData) {
+        res.set('Cache-Control', 'private, max-age=300'); // 5 minutes browser cache
         return res.status(200).json(cachedData);
       }
 
@@ -431,6 +481,7 @@ const studyMaterialController = {
       // Cache the result
       studyMaterialCache.set(cacheKey, result, 300); // 5 minutes cache
 
+      res.set('Cache-Control', 'private, max-age=300'); // 5 minutes browser cache
       res.status(200).json(result);
     } catch (error) {
       console.error("Error fetching study material:", error);
@@ -1276,6 +1327,7 @@ const studyMaterialController = {
       const cachedInfo = studyMaterialCache.get(cacheKey);
 
       if (cachedInfo) {
+        res.set('Cache-Control', 'private, max-age=300'); // 5 minutes browser cache
         return res.json({
           success: true,
           data: cachedInfo,
@@ -1302,6 +1354,7 @@ const studyMaterialController = {
       // Store in cache for future requests
       studyMaterialCache.set(cacheKey, result[0], 600); // Cache for 10 minutes
 
+      res.set('Cache-Control', 'private, max-age=300'); // 5 minutes browser cache
       return res.json({
         success: true,
         data: result[0],

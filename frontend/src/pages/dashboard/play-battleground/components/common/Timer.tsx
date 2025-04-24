@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import clockTimePressured from "/clockTimePressured.png";
 import ScoreStreakAnimation from "./ScoreStreakAnimation";
 
 interface TimerProps {
@@ -94,7 +93,7 @@ const Timer: React.FC<TimerProps> = ({
         <div className="fixed bottom-0 left-0 w-full">
           <div className="absolute left-12 bottom-8 flex items-center gap-2">
             <img
-              src={clockTimePressured}
+              src={`${import.meta.env.BASE_URL}clockTimePressured.png`}
               alt="Timer"
               className={`w-6 h-6 ${isCriticalTime ? "animate-pulse" : ""}`}
             />

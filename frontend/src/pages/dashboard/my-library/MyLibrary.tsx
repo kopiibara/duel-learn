@@ -15,7 +15,8 @@ import Filter from "../../../components/Filter";
 import { useUser } from "../../../contexts/UserContext";
 import { StudyMaterial } from "../../../types/studyMaterialObject";
 import NoStudyMaterial from "/images/noStudyMaterial.svg";
-import RefreshIcon from "@mui/icons-material/Refresh"; // Add this import
+import RefreshIcon from "@mui/icons-material/Refresh";
+import { cacheService } from "../../../services/CacheService";
 
 const MyLibraryPage = () => {
   const { user } = useUser();
@@ -73,25 +74,18 @@ const MyLibraryPage = () => {
     async (force = false) => {
       if (!created_by) return;
 
-      const now = Date.now();
-      // Extend cache time from 9 minutes to 15 minutes to reduce unnecessary calls
-      const needsRefresh =
-        force || now - lastUserMaterialsFetch.current > 900000; // 15 minutes
-
-      if (!needsRefresh && cachedUserMaterials.current.length > 0) {
-        console.log("Using cached user materials");
-        setCards(cachedUserMaterials.current);
-        return cachedUserMaterials.current;
-      }
-
-      // Don't fetch if already in progress (prevent duplicate requests)
-      if (isBackgroundRefreshing && !force) {
-        return cachedUserMaterials.current;
+      const cacheKey = `study_materials_${created_by}`;
+      if (!force) {
+        const cachedData = cacheService.get<StudyMaterial[]>(cacheKey);
+        if (cachedData) {
+          console.log("Using cached user materials");
+          setCards(cachedData);
+          return cachedData;
+        }
       }
 
       try {
-        // Use the timestamp parameter to signal the backend to skip its cache when forced
-        const queryParam = force ? `?timestamp=${now}` : "";
+        const queryParam = force ? `?timestamp=${Date.now()}` : "";
         const response = await fetch(
           `${
             import.meta.env.VITE_BACKEND_URL
@@ -111,11 +105,9 @@ const MyLibraryPage = () => {
         }
 
         const data = await response.json();
-        console.log("Fetched study materials:", data.length);
 
         // Update cache with new data
-        cachedUserMaterials.current = data;
-        lastUserMaterialsFetch.current = now;
+        cacheService.set(cacheKey, data);
 
         // Update state
         setCards(data);
@@ -126,7 +118,7 @@ const MyLibraryPage = () => {
         return data;
       } catch (error) {
         console.error("Error fetching study materials:", error);
-        return cachedUserMaterials.current;
+        return [];
       }
     },
     [created_by, isBackgroundRefreshing, showTemporaryUpdateLabel]
@@ -517,7 +509,7 @@ const MyLibraryPage = () => {
                   ]}
                   value={filter}
                   onChange={setFilter}
-                  hoverOpen={false} // Disable hover on mobile
+                  hoverOpen
                 />
                 <Filter
                   menuItems={[
@@ -528,7 +520,7 @@ const MyLibraryPage = () => {
                   ]}
                   value={sort}
                   onChange={setSort}
-                  hoverOpen={false} // Disable hover on mobile
+                  hoverOpen
                 />
               </Stack>
             </Stack>

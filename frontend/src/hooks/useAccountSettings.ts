@@ -15,6 +15,7 @@ import useUpdateUserDetailsApi from "./api.hooks/useUpdateUserDetailsApi";
 import { useUser } from "../contexts/UserContext";
 import { useFormik } from "formik";
 import * as Yup from "yup";
+import { clearProfileCache } from "../pages/dashboard/profile/ProfileHeader";
 
 const useAccountSettings = () => {
   const { user, setUser } = useUser();
@@ -188,6 +189,9 @@ const useAccountSettings = () => {
         setUser(updatedUserData);
         localStorage.setItem("userData", JSON.stringify(updatedUserData));
         sessionStorage.setItem("userData", JSON.stringify(updatedUserData));
+
+        // Add this line to clear the profile cache
+        clearProfileCache();
 
         // Add this after successful user update
         if (changedFields.username) {

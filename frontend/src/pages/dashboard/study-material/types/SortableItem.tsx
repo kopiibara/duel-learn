@@ -8,6 +8,7 @@ export function SortableItem({
   item,
   deleteItem,
   updateItem,
+  isError = false, // Make sure it's in the props
 }: SortableItemProps) {
   const {
     attributes,
@@ -38,6 +39,7 @@ export function SortableItem({
         updateItem={updateItem}
         dragHandleProps={dragHandleProps}
         isDragging={isDragging}
+        isError={isError}
       />
     </div>
   );
