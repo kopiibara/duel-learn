@@ -170,6 +170,7 @@ export default function PvpBattle() {
   const incorrectSfxRef = useRef<HTMLAudioElement | null>(null);
   const decreaseHealthSoundRef = useRef<HTMLAudioElement | null>(null);
   const healthAttackSoundRef = useRef<HTMLAudioElement | null>(null);
+  const healRegenSoundRef = useRef<HTMLAudioElement | null>(null);
 
   // Game state
   const [timeLeft, setTimeLeft] = useState(25);
@@ -1088,6 +1089,18 @@ export default function PvpBattle() {
           .play()
           .catch((err) => console.error("Error playing sound:", err));
       }
+    } else if (playerHealth > prevPlayerHealth) {
+      // Player health increased - play heal regen sound
+      if (healRegenSoundRef.current) {
+        healRegenSoundRef.current.currentTime = 0;
+        console.log(
+          "Playing heal regen sound with volume:",
+          healRegenSoundRef.current.volume
+        );
+        healRegenSoundRef.current
+          .play()
+          .catch((err) => console.error("Error playing sound:", err));
+      }
     }
 
     if (opponentHealth < prevOpponentHealth) {
@@ -1099,6 +1112,18 @@ export default function PvpBattle() {
           healthAttackSoundRef.current.volume
         );
         healthAttackSoundRef.current
+          .play()
+          .catch((err) => console.error("Error playing sound:", err));
+      }
+    } else if (opponentHealth > prevOpponentHealth) {
+      // Opponent health increased - also play heal regen sound
+      if (healRegenSoundRef.current) {
+        healRegenSoundRef.current.currentTime = 0;
+        console.log(
+          "Playing heal regen sound for opponent with volume:",
+          healRegenSoundRef.current.volume
+        );
+        healRegenSoundRef.current
           .play()
           .catch((err) => console.error("Error playing sound:", err));
       }
@@ -2273,6 +2298,12 @@ export default function PvpBattle() {
           preload="auto"
         />
 
+        <audio
+          ref={healRegenSoundRef}
+          src="/GameBattle/healthSfx/healRegen.mp3"
+          preload="auto"
+        />
+
         {/* Character animation manager - Hide when modals are active */}
         {!shouldHideGameUI() && (
           <CharacterAnimationManager
@@ -2577,6 +2608,7 @@ export default function PvpBattle() {
             incorrectSfxRef={incorrectSfxRef}
             decreaseHealthSoundRef={decreaseHealthSoundRef}
             healthAttackSoundRef={healthAttackSoundRef}
+            healRegenSoundRef={healRegenSoundRef}
             masterVolume={masterVolume}
             musicVolume={musicVolume}
             soundEffectsVolume={soundEffectsVolume}

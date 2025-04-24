@@ -30,13 +30,20 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
     const [loading, setLoading] = useState(false);
     const [previousHealth, setPreviousHealth] = useState(health);
     const [isHit, setIsHit] = useState(false);
+    const [isHealing, setIsHealing] = useState(false);
 
     // Update previous health when health changes
     useEffect(() => {
         if (health < previousHealth) {
             setIsHit(true);
+            setIsHealing(false);
             // Reset hit state after animation
             setTimeout(() => setIsHit(false), 500);
+        } else if (health > previousHealth) {
+            setIsHealing(true);
+            setIsHit(false);
+            // Reset healing state after animation
+            setTimeout(() => setIsHealing(false), 1000);
         }
         setPreviousHealth(health);
     }, [health]);
@@ -133,16 +140,28 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
             animate={isHit ? {
                 x: [0, -5, 5, -5, 5, 0],
                 transition: { duration: 0.5 }
+            } : isHealing ? {
+                y: [0, -2, 0, -2, 0],
+                transition: { duration: 0.5 }
             } : {}}
         >
             {!isRightAligned && renderAvatar()}
             <div className={`flex flex-col gap-1 ${isRightAligned ? 'items-end' : ''}`}>
-                <div className={`text-xs sm:text-sm ${poisonEffectActive ? 'text-green-400 font-semibold' : 'text-white'}`}>
+                <div className={`text-xs sm:text-sm ${poisonEffectActive ? 'text-green-400 font-semibold' : isHealing ? 'text-green-400 font-semibold' : 'text-white'}`}>
                     {poisonEffectActive ? (
                         <motion.span
                             animate={{
                                 textShadow: ["0 0 0px #4ade80", "0 0 8px #4ade80", "0 0 0px #4ade80"],
                                 transition: { duration: 2, repeat: Infinity }
+                            }}
+                        >
+                            {name}
+                        </motion.span>
+                    ) : isHealing ? (
+                        <motion.span
+                            animate={{
+                                textShadow: ["0 0 0px #4ade80", "0 0 8px #4ade80", "0 0 0px #4ade80"],
+                                transition: { duration: 1, repeat: 2 }
                             }}
                         >
                             {name}
@@ -153,15 +172,16 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
                     <AnimatePresence mode="wait">
                         <motion.span
                             key={health}
-                            initial={{ y: -20, opacity: 0, color: isHit ? "#ff0000" : "#ffffff" }}
+                            initial={{ y: -20, opacity: 0, color: isHit ? "#ff0000" : isHealing ? "#10b981" : "#ffffff" }}
                             animate={{
                                 y: 0,
                                 opacity: 1,
-                                color: poisonEffectActive ? "#4ade80" : "#ffffff",
-                                textShadow: poisonEffectActive ? ["0 0 0px #4ade80", "0 0 5px #4ade80", "0 0 0px #4ade80"] : "none",
-                                transition: poisonEffectActive ? {
+                                color: poisonEffectActive ? "#4ade80" : isHealing ? "#10b981" : "#ffffff",
+                                textShadow: poisonEffectActive ? ["0 0 0px #4ade80", "0 0 5px #4ade80", "0 0 0px #4ade80"] :
+                                    isHealing ? ["0 0 0px #10b981", "0 0 5px #10b981", "0 0 0px #10b981"] : "none",
+                                transition: poisonEffectActive || isHealing ? {
                                     duration: 2,
-                                    repeat: Infinity,
+                                    repeat: poisonEffectActive ? Infinity : 0,
                                     color: { duration: 0.3 }
                                 } : { duration: 0.3 }
                             }}
@@ -171,20 +191,23 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
                             {health} HP
                         </motion.span>
                     </AnimatePresence>
-                    <span className={`text-[10px] sm:text-xs ${poisonEffectActive ? 'text-green-700' : 'text-gray-500'}`}>/{maxHealth}</span>
+                    <span className={`text-[10px] sm:text-xs ${poisonEffectActive ? 'text-green-700' : isHealing ? 'text-green-700' : 'text-gray-500'}`}>/{maxHealth}</span>
                 </div>
-                <div className={`w-20 sm:w-36 md:w-48 lg:w-64 h-2 lg:h-2.5 bg-gray-900 rounded-full overflow-hidden ${poisonEffectActive ? 'border border-green-400' : ''}`}>
+                <div className={`w-20 sm:w-36 md:w-48 lg:w-64 h-2 lg:h-2.5 bg-gray-900 rounded-full overflow-hidden ${poisonEffectActive ? 'border border-green-400' : isHealing ? 'border border-green-500' : ''}`}>
                     <motion.div
                         className={`h-full ${poisonEffectActive ? 'bg-green-500' : 'bg-purple-600'} rounded-full`}
                         initial={{ width: `${(previousHealth / maxHealth) * 100}%` }}
                         animate={{
                             width: `${(health / maxHealth) * 100}%`,
-                            backgroundColor: isHit ? "#ff0000" : (poisonEffectActive ? "#4ade80" : "#9333ea"),
-                            boxShadow: poisonEffectActive ? ["inset 0 0 0px #4ade80", "inset 0 0 8px #fff", "inset 0 0 0px #4ade80"] : "none",
+                            backgroundColor: isHit ? "#ff0000" : (isHealing ? "#10b981" : poisonEffectActive ? "#4ade80" : "#9333ea"),
+                            boxShadow: poisonEffectActive ? ["inset 0 0 0px #4ade80", "inset 0 0 8px #fff", "inset 0 0 0px #4ade80"] :
+                                isHealing ? ["inset 0 0 0px #10b981", "inset 0 0 12px #fff", "inset 0 0 0px #10b981"] : "none",
                             transition: {
                                 width: { duration: 0.3, ease: "easeOut" },
                                 backgroundColor: { duration: 0.3 },
-                                boxShadow: poisonEffectActive ? { duration: 2, repeat: Infinity } : { duration: 0 }
+                                boxShadow: (poisonEffectActive || isHealing) ?
+                                    { duration: poisonEffectActive ? 2 : 1, repeat: poisonEffectActive ? Infinity : 2 } :
+                                    { duration: 0 }
                             }
                         }}
                     />
@@ -196,6 +219,10 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
                             backgroundColor: ["#ffffff", "#d9ffcc", "#ffffff"],
                             boxShadow: ["0 0 0px #4ade80", "0 0 5px #4ade80", "0 0 0px #4ade80"],
                             transition: { duration: 2, repeat: Infinity }
+                        } : isHealing ? {
+                            backgroundColor: ["#ffffff", "#d9ffcc", "#ffffff"],
+                            boxShadow: ["0 0 0px #10b981", "0 0 5px #10b981", "0 0 0px #10b981"],
+                            transition: { duration: 1, repeat: 2 }
                         } : {}}
                     ></motion.div>
                     {poisonEffectActive && (
