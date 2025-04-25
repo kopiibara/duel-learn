@@ -177,6 +177,14 @@ export default function PvpBattle() {
   const selectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
   const noSelectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
 
+  // Add specific QuickDraw sound effects
+  const quickDrawUserSoundRef = useRef<HTMLAudioElement | null>(null);
+  const quickDrawEnemySoundRef = useRef<HTMLAudioElement | null>(null);
+
+  // Time Manipulation sounds
+  const timeManipulationActivateSoundRef = useRef<HTMLAudioElement | null>(null);
+  const timeManipulationEffectSoundRef = useRef<HTMLAudioElement | null>(null);
+
   // Game state
   const [timeLeft, setTimeLeft] = useState(25);
   const [currentQuestionNumber, setCurrentQuestionNumber] = useState(1);
@@ -214,6 +222,13 @@ export default function PvpBattle() {
     useState(false);
   const [playerPickingIntroComplete, setPlayerPickingIntroComplete] =
     useState(false);
+
+  // Use these state variables for tracking QuickDraw effects
+  const [showOpponentQuickDrawMessage, setShowOpponentQuickDrawMessage] = useState(false);
+  const [currentQuickDrawEffectId, setCurrentQuickDrawEffectId] = useState<string | null>(null);
+
+  // Add state for visual Quick Draw effect animation
+  const [showQuickDrawEffect, setShowQuickDrawEffect] = useState(false);
 
   // Attack animation states
   const [showAttackAnimation, setShowAttackAnimation] = useState(false);
@@ -313,9 +328,15 @@ export default function PvpBattle() {
   // Add state for Time Manipulation effect display
   const [showTimeManipulationEffect, setShowTimeManipulationEffect] = useState(false);
 
-  // Add new audio references for Time Manipulation sounds
-  const timeManipulationActivateSoundRef = useRef<HTMLAudioElement | null>(null);
-  const timeManipulationEffectSoundRef = useRef<HTMLAudioElement | null>(null);
+  // Add this state variable with the other state variables near the top of the component
+  const [hasShownOpponentQuickDrawEffect, setHasShownOpponentQuickDrawEffect] = useState(false);
+
+  // Add this state declaration at the top of the component with other state variables
+  const [processedQuickDrawEffects, setProcessedQuickDrawEffects] = useState<Set<string>>(new Set());
+
+  // Add this new state variable near the other QuickDraw state variables
+  const [showOpponentQuickDrawMessageMinimized, setShowOpponentQuickDrawMessageMinimized] = useState(false);
+  const [opponentQuickDrawMinimizedOpacity, setOpponentQuickDrawMinimizedOpacity] = useState(100);
 
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
@@ -766,23 +787,35 @@ export default function PvpBattle() {
               }
             );
 
-            // Then update the session to switch turns
-            const turnResponse = await axios.put(
-              `${import.meta.env.VITE_BACKEND_URL
-              }/api/gameplay/battle/update-session`,
-              {
-                lobby_code: lobbyCode,
-                current_turn: isHost ? guestId : hostId, // Switch to the other player
-              }
-            );
+            // Check if Quick Draw card was used (normal-2)
+            const isQuickDrawUsed =
+              selectedCardId === "normal-2" &&
+              isCorrect &&
+              response.data.data.card_effect &&
+              response.data.data.card_effect.type === "normal-2";
 
-            if (turnResponse.data.success) {
-              console.log("Turn successfully switched to opponent");
-            } else {
-              console.error(
-                "Failed to switch turn:",
-                turnResponse.data.message
+            // Only switch turns if Quick Draw wasn't used
+            if (!isQuickDrawUsed) {
+              // Then update the session to switch turns
+              const turnResponse = await axios.put(
+                `${import.meta.env.VITE_BACKEND_URL
+                }/api/gameplay/battle/update-session`,
+                {
+                  lobby_code: lobbyCode,
+                  current_turn: isHost ? guestId : hostId, // Switch to the other player
+                }
               );
+
+              if (turnResponse.data.success) {
+                console.log("Turn successfully switched to opponent");
+              } else {
+                console.error(
+                  "Failed to switch turn:",
+                  turnResponse.data.message
+                );
+              }
+            } else {
+              console.log("Quick Draw card used - keeping turn with current player");
             }
 
             if (response.data.success) {
@@ -796,20 +829,31 @@ export default function PvpBattle() {
                   response.data.data.card_effect.type === "normal-2" &&
                   isCorrect
                 ) {
-                  // Show notification for Quick Draw card effect
-                  const messageElement = document.createElement("div");
-                  messageElement.className =
-                    "fixed inset-0 flex items-center justify-center z-50";
-                  messageElement.innerHTML = `
-                    <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                      Quick Draw Card: You get another turn!
-                    </div>
-                  `;
-                  document.body.appendChild(messageElement);
+                  // Show visual effect for Quick Draw instead of text notification
+                  setShowQuickDrawEffect(true);
 
-                  // Remove the message after 2 seconds
+                  // Generate a unique effect ID for this player's Quick Draw with timestamp
+                  const timestamp = Date.now().toString();
+                  const effectId = `player-quick-draw-${battleState?.session_uuid || 'unknown'}`;
+
+                  // Store current effect ID
+                  setCurrentQuickDrawEffectId(effectId);
+
+                  // Also track this in our persistent storage
+                  markEffectAsShown(effectId, timestamp);
+
+                  // Play QuickDraw user sound effect
+                  if (quickDrawUserSoundRef.current) {
+                    quickDrawUserSoundRef.current.currentTime = 0;
+                    quickDrawUserSoundRef.current.volume = (soundEffectsVolume / 100) * (masterVolume / 100);
+                    quickDrawUserSoundRef.current.play().catch(err =>
+                      console.error("Error playing QuickDraw user sound:", err)
+                    );
+                  }
+
+                  // Show the effect
                   setTimeout(() => {
-                    document.body.removeChild(messageElement);
+                    setShowQuickDrawEffect(false);
                   }, 2000);
                 } else if (
                   response.data.data.card_effect.type === "normal-1" &&
@@ -1441,9 +1485,95 @@ export default function PvpBattle() {
           const isCurrentPlayerTurn =
             sessionData.current_turn === currentUserId;
 
+          // Check for opponent Quick Draw card
+          try {
+            const roundResponse = await axios.get<{ success: boolean, data: any }>(
+              `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${sessionData.session_uuid}`
+            );
+
+            if (roundResponse.data.success && roundResponse.data.data) {
+              const roundData = roundResponse.data.data;
+
+              // Check if opponent used Quick Draw card
+              const opponentType = isHost ? 'guest' : 'host';
+              const opponentCardEffect = roundData[`${opponentType}_card_effect`];
+              const opponentCard = roundData[`${opponentType}_card`];
+
+              if (
+                opponentCard === 'normal-2' &&
+                opponentCardEffect &&
+                typeof opponentCardEffect === 'string' &&
+                !isCurrentPlayerTurn // Only show if it's not my turn (opponent used it)
+              ) {
+                try {
+                  const parsedEffect = JSON.parse(opponentCardEffect);
+                  if (
+                    parsedEffect &&
+                    parsedEffect.type === 'normal-2' &&
+                    parsedEffect.effect === 'double_turn'
+                  ) {
+                    // Get the applied timestamp - this is crucial for distinguishing different uses
+                    const appliedTimestamp = parsedEffect.applied_at || Date.now().toString();
+
+                    // Create a unique effect ID for this effect - including sessionID and player
+                    const effectId = `qd-${sessionData.session_uuid}-${opponentType}`;
+
+                    // Check if this specific effect use has been shown before
+                    if (!hasEffectBeenShown(effectId, appliedTimestamp) && !showOpponentQuickDrawMessage) {
+                      console.log(`Showing new QuickDraw effect: ${effectId} at ${appliedTimestamp}`);
+
+                      // Mark this specific effect use as shown immediately
+                      markEffectAsShown(effectId, appliedTimestamp);
+
+                      // Play opponent QuickDraw sound effect
+                      if (quickDrawEnemySoundRef.current) {
+                        quickDrawEnemySoundRef.current.currentTime = 0;
+                        quickDrawEnemySoundRef.current.volume = (soundEffectsVolume / 100) * (masterVolume / 100);
+                        quickDrawEnemySoundRef.current.play().catch(err =>
+                          console.error("Error playing QuickDraw enemy sound:", err)
+                        );
+                      }
+
+                      // Show the visual effect centered
+                      setShowOpponentQuickDrawMessage(true);
+                      setShowOpponentQuickDrawMessageMinimized(false);
+
+                      // After 2 seconds, minimize the effect to the bottom instead of hiding it
+                      setTimeout(() => {
+                        setShowOpponentQuickDrawMessageMinimized(true);
+                        setOpponentQuickDrawMinimizedOpacity(100);
+
+                        // After another 2 seconds, fade out the minimized notification
+                        setTimeout(() => {
+                          setOpponentQuickDrawMinimizedOpacity(0);
+                        }, 2000);
+                      }, 2000);
+                    } else if (showOpponentQuickDrawMessageMinimized && hasEffectBeenShown(effectId, appliedTimestamp)) {
+                      // If the effect is already minimized and we poll again, keep it visible
+                      console.log(`QuickDraw effect already showing minimized: ${effectId} at ${appliedTimestamp}`);
+                    } else {
+                      console.log(`Skipping already shown QuickDraw effect: ${effectId} at ${appliedTimestamp}`);
+                    }
+                  }
+                } catch (e) {
+                  console.error('Error parsing opponent card effect:', e);
+                }
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching round data for Quick Draw check:', error);
+          }
+
           // If turn has changed
           if (isCurrentPlayerTurn !== isMyTurn) {
             console.log(`Turn changed: ${isMyTurn} → ${isCurrentPlayerTurn}`);
+
+            // If it's now the player's turn, QuickDraw effect has ended, hide notifications
+            if (isCurrentPlayerTurn && (showOpponentQuickDrawMessage || showOpponentQuickDrawMessageMinimized)) {
+              console.log('Turn changed to player - hiding QuickDraw effect');
+              setShowOpponentQuickDrawMessage(false);
+              setShowOpponentQuickDrawMessageMinimized(false);
+            }
 
             // Update UI accordingly
             setIsMyTurn(isCurrentPlayerTurn);
@@ -1485,6 +1615,11 @@ export default function PvpBattle() {
     lobbyCode,
     currentUserId,
     isMyTurn,
+    hasShownOpponentQuickDrawEffect,
+    processedQuickDrawEffects,
+    currentQuickDrawEffectId,
+    showOpponentQuickDrawMessage,
+    showOpponentQuickDrawMessageMinimized
   ]);
 
   // Timer effect
@@ -2239,6 +2374,108 @@ export default function PvpBattle() {
     return showVictoryModal || showEarlyLeaveModal;
   };
 
+  // Add this effect to reset the flag when a new game starts or when effects change significantly
+  useEffect(() => {
+    // Reset the flag when the effect is no longer showing
+    if (!showOpponentQuickDrawMessage) {
+      setHasShownOpponentQuickDrawEffect(false);
+    }
+  }, [showOpponentQuickDrawMessage]); // Only depend on the message visibility
+
+  // Add this useEffect to load processed effects from sessionStorage on component mount
+  useEffect(() => {
+    const storedEffects = sessionStorage.getItem("shown_quick_draw_effects");
+    if (storedEffects) {
+      try {
+        const parsedEffects = JSON.parse(storedEffects);
+        setProcessedQuickDrawEffects(new Set(parsedEffects));
+      } catch (e) {
+        console.error("Error parsing stored QuickDraw effects:", e);
+        // Reset if there's an error
+        sessionStorage.removeItem("shown_quick_draw_effects");
+      }
+    }
+    // Return void or a cleanup function
+  }, []);
+
+  // Function to check if a QuickDraw effect has already been shown
+  const hasEffectBeenShown = (effectId: string, appliedAt: number | string): boolean => {
+    try {
+      // Get shown effects from sessionStorage
+      const shownEffects = sessionStorage.getItem('shown_quick_draw_effects');
+      if (shownEffects) {
+        const parsedEffects = JSON.parse(shownEffects) as { id: string, timestamp: number | string }[];
+
+        // Check if we have this exact effect with same timestamp
+        return parsedEffects.some(effect =>
+          effect.id === effectId && effect.timestamp === appliedAt
+        );
+      }
+      return false;
+    } catch (e) {
+      console.error('Error checking if effect has been shown:', e);
+      return false;
+    }
+  };
+
+  // Function to mark a QuickDraw effect as already shown
+  const markEffectAsShown = (effectId: string, appliedAt: number | string): void => {
+    try {
+      // Get current shown effects
+      const shownEffects = sessionStorage.getItem('shown_quick_draw_effects');
+      let parsedEffects: { id: string, timestamp: number | string }[] = [];
+
+      if (shownEffects) {
+        parsedEffects = JSON.parse(shownEffects);
+      }
+
+      // Add current effect ID with timestamp if not already in the list
+      const exists = parsedEffects.some(effect =>
+        effect.id === effectId && effect.timestamp === appliedAt
+      );
+
+      if (!exists) {
+        parsedEffects.push({
+          id: effectId,
+          timestamp: appliedAt
+        });
+        sessionStorage.setItem('shown_quick_draw_effects', JSON.stringify(parsedEffects));
+      }
+    } catch (e) {
+      console.error('Error marking effect as shown:', e);
+    }
+  };
+
+  // Add this useEffect to initialize the sessionStorage format if needed
+  useEffect(() => {
+    // Initialize the effects storage with the new format if it doesn't exist
+    const shownEffects = sessionStorage.getItem('shown_quick_draw_effects');
+
+    if (!shownEffects) {
+      // Create empty array with the new format
+      sessionStorage.setItem('shown_quick_draw_effects', JSON.stringify([]));
+    } else {
+      try {
+        // Check if we need to migrate from old format (array of strings)
+        const parsed = JSON.parse(shownEffects);
+
+        if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+          // Old format detected, convert to new format
+          const newFormat = parsed.map((id: string) => ({
+            id,
+            timestamp: 'migrated'
+          }));
+          sessionStorage.setItem('shown_quick_draw_effects', JSON.stringify(newFormat));
+          console.log('Migrated QuickDraw effects to new format', newFormat);
+        }
+      } catch (e) {
+        console.error('Error checking QuickDraw effects format:', e);
+        // Reset if there's an error
+        sessionStorage.setItem('shown_quick_draw_effects', JSON.stringify([]));
+      }
+    }
+  }, []);
+
   return (
     <>
       <DocumentHead
@@ -2324,6 +2561,18 @@ export default function PvpBattle() {
         <audio
           ref={noSelectedCardSoundRef}
           src="/GameBattle/noSelectedCard.mp3"
+          preload="auto"
+        />
+
+        {/* Add QuickDraw specific audio elements */}
+        <audio
+          ref={quickDrawUserSoundRef}
+          src="/GameBattle/QuickDrawCardSfx/QuickDrawUser.mp3"
+          preload="auto"
+        />
+        <audio
+          ref={quickDrawEnemySoundRef}
+          src="/GameBattle/QuickDrawCardSfx/QuickDrawEnemy.mp3"
           preload="auto"
         />
 
@@ -2650,6 +2899,8 @@ export default function PvpBattle() {
             noSelectedCardSoundRef={noSelectedCardSoundRef}
             timeManipulationActivateSoundRef={timeManipulationActivateSoundRef}
             timeManipulationEffectSoundRef={timeManipulationEffectSoundRef}
+            quickDrawUserSoundRef={quickDrawUserSoundRef}
+            quickDrawEnemySoundRef={quickDrawEnemySoundRef}
             masterVolume={masterVolume}
             musicVolume={musicVolume}
             soundEffectsVolume={soundEffectsVolume}
@@ -2732,6 +2983,101 @@ export default function PvpBattle() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Time Manipulation effect */}
+      {showTimeManipulationEffect && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+          <img
+            src="/GameBattle/TimeManipulationEffect.png"
+            alt="Time Manipulation Effect"
+            className="w-full h-full object-cover opacity-40"
+          />
+        </div>
+      )}
+
+      {/* Quick Draw visual effect */}
+      {showQuickDrawEffect && (
+        <div className="absolute inset-0 flex items-center justify-center z-[100]">
+          {/* Magical background with radial gradient */}
+          <div className="absolute inset-0 bg-gradient-radial from-amber-500/40 via-amber-600/30 to-transparent backdrop-blur-sm animate-pulse"></div>
+
+          {/* Card display */}
+          <div className="relative flex flex-col items-center z-[101]">
+            <div className="relative w-64 h-80">
+              {/* Card with glow and float animation */}
+              <img
+                src="/GameBattle/NormalCardQuickDraw.png"
+                alt="Quick Draw"
+                className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(255,215,0,0.7)] animate-float rounded-lg"
+              />
+
+              {/* Magic sparkles */}
+              <div className="absolute inset-0 bg-[url('/effects/magic-sparkles.png')] bg-contain bg-no-repeat bg-center opacity-70 animate-magic-sparkle"></div>
+            </div>
+
+            {/* EXTRA TURN text banner */}
+            <div className="mt-4 bg-gradient-to-r from-amber-500 to-yellow-400 px-8 py-3 rounded-xl shadow-lg transform scale-110">
+              <h2 className="text-3xl font-extrabold text-white tracking-wider animate-pulse-slow">EXTRA TURN!</h2>
+            </div>
+
+            {/* Energy circles */}
+            <div className="absolute inset-0 -z-10">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full border-4 border-amber-400/30 animate-ping-slow"></div>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full border-4 border-amber-500/40 animate-ping-slow delay-300"></div>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full border-4 border-amber-600/50 animate-ping-slow delay-600"></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Opponent's Quick Draw notification - centered version */}
+      {showOpponentQuickDrawMessage && !showOpponentQuickDrawMessageMinimized && (
+        <div className="absolute inset-0 flex items-center justify-center z-[100]">
+          {/* Dark/red background to indicate negative effect */}
+          <div className="absolute inset-0 bg-gradient-radial from-red-700/50 via-red-900/40 to-black/80 backdrop-blur-sm animate-pulse"></div>
+
+          {/* Card display */}
+          <div className="relative flex flex-col items-center z-[101]">
+            <div className="relative w-64 h-80">
+              {/* Card with normal display (no red tint) */}
+              <img
+                src="/GameBattle/NormalCardQuickDraw.png"
+                alt="Quick Draw"
+                className="w-full h-full object-contain rounded-lg"
+              />
+            </div>
+
+            {/* TURN SKIPPED text banner */}
+            <div className="mt-4 bg-gradient-to-r from-red-700 to-red-500 px-8 py-3 rounded-xl shadow-lg transform scale-110">
+              <h2 className="text-3xl font-extrabold text-white tracking-wider animate-pulse-slow">TURN SKIPPED!</h2>
+            </div>
+
+            {/* Restraining circles */}
+            <div className="absolute inset-0 -z-10">
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full border-4 border-red-500/30 animate-ping-slow"></div>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full border-4 border-red-600/40 animate-ping-slow delay-300"></div>
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full border-4 border-red-700/50 animate-ping-slow delay-600"></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Opponent's Quick Draw notification - minimized version at bottom */}
+      {showOpponentQuickDrawMessage && showOpponentQuickDrawMessageMinimized && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[90] transition-all duration-1000">
+          <div
+            className="bg-gradient-to-r from-red-700 to-red-500 px-6 py-2 rounded-xl shadow-lg flex items-center gap-3 animate-pulse-slow transition-opacity duration-1000"
+            style={{ opacity: opponentQuickDrawMinimizedOpacity / 100 }}
+          >
+            <img
+              src="/GameBattle/NormalCardQuickDraw.png"
+              alt="Quick Draw"
+              className="w-10 h-10 object-contain rounded"
+            />
+            <h2 className="text-xl font-bold text-white tracking-wider">TURN SKIPPED!</h2>
+          </div>
+        </div>
+      )}
     </>
   );
 }

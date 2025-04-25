@@ -106,6 +106,9 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   const [timeManipulationEffect, setTimeManipulationEffect] = useState<CardEffect | null>(null);
   const [showTimeEffect, setShowTimeEffect] = useState(false);
 
+  // Add reference for the identification input
+  const identificationInputRef = useRef<HTMLInputElement>(null);
+
   // Add ref for Time Manipulation effect sound
   const timeManipulationEffectSoundRefInternal = useRef<HTMLAudioElement | null>(null);
 
@@ -541,6 +544,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
                     }
                   }}
                   disabled={hasAnswered}
+                  ref={identificationInputRef}
                 />
                 {hasAnswered && !isCorrect && (
                   <div className="mt-2 text-green-500 text-center">
@@ -549,11 +553,11 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
                 )}
                 {!hasAnswered && (
                   <button
-                    onClick={(e) =>
-                      handleAnswerSubmit(
-                        (e.currentTarget.previousElementSibling?.querySelector("input") as HTMLInputElement).value
-                      )
-                    }
+                    onClick={() => {
+                      if (identificationInputRef.current) {
+                        handleAnswerSubmit(identificationInputRef.current.value);
+                      }
+                    }}
                     className="mt-7 w-full px-6 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors text-lg font-medium"
                   >
                     Submit Answer
