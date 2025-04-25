@@ -149,6 +149,9 @@ interface UpdateRoundResponse {
   data?: any;
 }
 
+// Add these imports at the top of the file after other imports
+import { motion, AnimatePresence } from "framer-motion";
+
 /**
  * PvpBattle component - Main battle screen for player vs player mode
  */
@@ -306,6 +309,9 @@ export default function PvpBattle() {
   // Add a new state for early leave modal near other modal states
   const [showEarlyLeaveModal, setShowEarlyLeaveModal] =
     useState<boolean>(false);
+
+  // Add state for Time Manipulation effect display
+  const [showTimeManipulationEffect, setShowTimeManipulationEffect] = useState(false);
 
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
@@ -805,23 +811,19 @@ export default function PvpBattle() {
                   response.data.data.card_effect.type === "normal-1" &&
                   isCorrect
                 ) {
-                  // Show notification for Time Manipulation card effect
-                  const messageElement = document.createElement("div");
-                  messageElement.className =
-                    "fixed inset-0 flex items-center justify-center z-50";
-                  const reductionPercent =
-                    response.data.data.card_effect.reduction_percent || 30;
-                  messageElement.innerHTML = `
-                    <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                      Time Manipulation Card: Opponent's time will be reduced by ${reductionPercent}%!
-                    </div>
-                  `;
-                  document.body.appendChild(messageElement);
+                  // Replace the text notification with visual effect
+                  setShowTimeManipulationEffect(true);
 
-                  // Remove the message after 2 seconds
+                  // Hide the effect after 3 seconds
                   setTimeout(() => {
-                    document.body.removeChild(messageElement);
-                  }, 2000);
+                    setShowTimeManipulationEffect(false);
+                  }, 3000);
+
+                  // Play a time warp sound if available
+                  if (correctSfxRef.current) {
+                    correctSfxRef.current.volume = soundEffectsVolume;
+                    correctSfxRef.current.play().catch(err => console.error("Error playing time manipulation sound:", err));
+                  }
                 } else if (
                   response.data.data.card_effect.type === "epic-1" &&
                   isCorrect
@@ -2509,7 +2511,7 @@ export default function PvpBattle() {
             onViewReport={handleViewEarlyLeaveReport}
             currentUserId={currentUserId}
             sessionUuid={battleState?.session_uuid}
-            opponentName={opponentName}
+            opponentName={opponentName || "Opponent"}
             soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
           />
 
@@ -2636,6 +2638,79 @@ export default function PvpBattle() {
           />
         </div>
       </div>
+
+      {/* Time Manipulation Effect - displays when player activates the card */}
+      <AnimatePresence>
+        {showTimeManipulationEffect && (
+          <motion.div
+            className="fixed inset-0 z-50 pointer-events-none"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            {/* Background overlay with clock-themed effect */}
+            <div className="absolute inset-0 bg-indigo-900/30 backdrop-blur-sm"></div>
+
+            {/* Time slow-down visual effect */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              {/* Central clock face */}
+              <motion.div
+                className="w-60 h-60 rounded-full border-4 border-purple-400/80 flex items-center justify-center"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 3, ease: "linear" }}
+              >
+                {/* Clock hands */}
+                <motion.div
+                  className="absolute h-24 w-1 bg-purple-300 origin-bottom"
+                  initial={{ rotate: 0 }}
+                  animate={{ rotate: 720 }}
+                  transition={{ duration: 3 }}
+                ></motion.div>
+                <motion.div
+                  className="absolute h-16 w-1 bg-purple-100 origin-bottom"
+                  initial={{ rotate: 0 }}
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 3 }}
+                ></motion.div>
+              </motion.div>
+
+              {/* Radiating circles */}
+              <motion.div
+                className="absolute w-80 h-80 rounded-full border-2 border-purple-300/50"
+                animate={{ scale: [1, 1.5], opacity: [1, 0] }}
+                transition={{ duration: 2, repeat: 1, repeatType: "loop" }}
+              ></motion.div>
+              <motion.div
+                className="absolute w-100 h-100 rounded-full border border-purple-500/20"
+                animate={{ scale: [1, 2], opacity: [1, 0] }}
+                transition={{ duration: 3, repeat: 1, repeatType: "loop" }}
+              ></motion.div>
+            </div>
+
+            {/* Minimal text indicator */}
+            <div className="absolute bottom-20 left-0 right-0 flex justify-center">
+              <motion.div
+                className="bg-purple-900/80 px-6 py-3 rounded-full border border-purple-500"
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                <motion.div
+                  className="text-purple-200 font-bold text-lg flex items-center gap-2"
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 1.5, repeat: 1 }}
+                >
+                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span>Time Manipulation Activated</span>
+                </motion.div>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </>
   );
 }

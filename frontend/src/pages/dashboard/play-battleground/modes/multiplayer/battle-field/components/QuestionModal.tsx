@@ -4,6 +4,7 @@ import axios from "axios";
 import { Question } from "../../../../types";
 import { BattleState } from '../BattleState';
 import { BattleRoundData } from '../PvpBattle';
+import { motion, AnimatePresence } from "framer-motion";
 
 /**
  * TIME MANIPULATION VISUAL INDICATORS:
@@ -99,6 +100,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   const [shownQuestionIdsState, setShownQuestionIds] = useState<Set<string>>(new Set());
   const [hasTimeManipulation, setHasTimeManipulation] = useState(false);
   const [timeManipulationEffect, setTimeManipulationEffect] = useState<CardEffect | null>(null);
+  const [showTimeEffect, setShowTimeEffect] = useState(false);
 
   // Initialize shownQuestionIds from round data when component mounts
   useEffect(() => {
@@ -303,30 +305,19 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
               setHasTimeManipulation(true);
               setTimeManipulationEffect(effect);
 
-              // Show notification about time manipulation
-              const messageElement = document.createElement("div");
-              messageElement.className = "fixed inset-0 flex items-center justify-center z-50";
-              const reductionPercent = effect.reduction_percent || 30;
-              const originalTime = getTimeLimit();
-              const reducedTime = Math.max(effect.min_time || 5, originalTime * (1 - reductionPercent / 100));
-
-              messageElement.innerHTML = `
-                <div class="bg-purple-900/80 text-white py-6 px-10 rounded-lg text-2xl font-bold shadow-lg border-2 border-purple-500/50 flex flex-col items-center">
-                  <div class="text-3xl mb-3 text-purple-300">Time Manipulation!</div>
-                  <div class="flex items-center gap-4">
-                    <span class="line-through text-gray-400">${originalTime}s</span>
-                    <span class="text-4xl text-yellow-300">→</span>
-                    <span class="text-yellow-300">${reducedTime.toFixed(1)}s</span>
-                  </div>
-                  <div class="mt-2 text-lg">Your time has been reduced by ${reductionPercent}%</div>
-                </div>
-              `;
-              document.body.appendChild(messageElement);
-
-              // Remove the message after 2.5 seconds
+              // Show the visual effect instead of text notification
+              setShowTimeEffect(true);
               setTimeout(() => {
-                document.body.removeChild(messageElement);
-              }, 2500);
+                setShowTimeEffect(false);
+              }, 3000);
+
+              // Play a sound effect if available
+              // This assumes you have a sound effect ref passed as prop
+              if (playCorrectSound) {
+                setTimeout(() => {
+                  playCorrectSound();
+                }, 200);
+              }
 
               // Mark the effect as used
               await axios.post(
@@ -338,7 +329,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
                 }
               );
 
-              console.log(`Time manipulation effect consumed, time reduced by ${reductionPercent}%`);
+              console.log(`Time manipulation effect consumed, time reduced by ${effect.reduction_percent || 30}%`);
             } else {
               setHasTimeManipulation(false);
               setTimeManipulationEffect(null);
@@ -351,7 +342,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
 
       checkForTimeManipulation();
     }
-  }, [isOpen, battleState?.session_uuid, isHost]);
+  }, [isOpen, battleState?.session_uuid, isHost, playCorrectSound]);
 
   // Modify the getTimeLimit function to apply time reduction
   const getTimeLimit = () => {
@@ -462,9 +453,9 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   if (!isOpen || !currentQuestion) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
+    <div className="fixed inset-0 flex items-center justify-center z-50 question-modal">
       {isGeneratingAI ? (
-        <div className="bg-black/50 p-8 rounded-lg text-white text-center">
+        <div className="bg-black/50 p-8 rounded-lg text-white text-center game-overlay">
           <div className="animate-spin w-8 h-8 border-4 border-white border-t-transparent rounded-full mx-auto mb-4"></div>
           <p>Generating questions...</p>
         </div>
@@ -556,16 +547,16 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
           </div>
         </div>
       ) : (
-        <div className="bg-black/50 p-8 rounded-lg text-white text-center">
+        <div className="bg-black/50 p-8 rounded-lg text-white text-center game-overlay">
           <p>Waiting for questions...</p>
         </div>
       )}
 
       {/* Progress Bar */}
-      <div className="fixed bottom-0 left-0 right-0 w-full h-1.5 bg-gray-700/50 overflow-hidden z-[9999]">
+      <div className="fixed bottom-0 left-0 right-0 w-full h-1.5 bg-gray-700/50 overflow-hidden z-[9999] game-overlay">
         <div
           className={`h-full ${hasTimeManipulation
-            ? "bg-purple-500"
+            ? "bg-red-500"
             : timeRemaining && timeRemaining <= 3
               ? "bg-red-500"
               : "bg-white"}`}
@@ -576,26 +567,111 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
         />
       </div>
 
-      {/* Time Manipulation Indicator */}
+      {/* Time Manipulation Effect Animation */}
+      <AnimatePresence>
+        {showTimeEffect && (
+          <motion.div
+            className="fixed inset-0 z-[100] pointer-events-none animation-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            {/* Background overlay with clock-themed effect */}
+            <div className="absolute inset-0 bg-indigo-900/30 backdrop-blur-[2px]"></div>
+
+            {/* Central clock effect */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              {/* Clock face */}
+              <motion.div
+                className="w-52 h-52 rounded-full border-4 border-red-400/80 flex items-center justify-center"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 3, ease: "linear" }}
+              >
+                {/* Clock hands */}
+                <motion.div
+                  className="absolute h-20 w-1.5 bg-red-300 origin-bottom"
+                  initial={{ rotate: 0 }}
+                  animate={{ rotate: 1080 }}
+                  transition={{ duration: 3 }}
+                ></motion.div>
+                <motion.div
+                  className="absolute h-14 w-1.5 bg-red-100 origin-bottom"
+                  initial={{ rotate: 0 }}
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1 }}
+                ></motion.div>
+              </motion.div>
+
+              {/* Radiating warning circles */}
+              <motion.div
+                className="absolute w-72 h-72 rounded-full border-2 border-red-300/50"
+                animate={{ scale: [1, 1.5], opacity: [1, 0] }}
+                transition={{ duration: 2, repeat: 1, repeatType: "loop" }}
+              ></motion.div>
+              <motion.div
+                className="absolute w-96 h-96 rounded-full border border-red-500/20"
+                animate={{ scale: [1, 2], opacity: [1, 0] }}
+                transition={{ duration: 3, repeat: 1, repeatType: "loop" }}
+              ></motion.div>
+            </div>
+
+            {/* Minimal indicator */}
+            <div className="absolute top-20 left-0 right-0 flex justify-center">
+              <motion.div
+                className="bg-red-900/60 px-5 py-2 rounded-full flex items-center gap-2 border border-red-500"
+                animate={{ y: [0, -10, 0], opacity: [0, 1, 1] }}
+                transition={{ duration: 1, delay: 0.5 }}
+              >
+                <svg className="w-6 h-6 text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <motion.span
+                  className="text-red-200 font-bold"
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: 1 }}
+                >
+                  TIME REDUCED!
+                </motion.span>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Replace the text-heavy Time Manipulation indicators with a subtle visual indicator */}
       {hasTimeManipulation && (
         <>
-          {/* Timer display with time manipulation indicator */}
-          <div className="fixed top-4 left-4 bg-purple-900/80 text-yellow-300 py-2 px-4 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50 animate-pulse">
-            Time: {timeRemaining?.toFixed(1)}s
-            <span className="block text-sm text-red-300">reduced -{timeManipulationEffect?.reduction_percent || 30}%</span>
-          </div>
-
-          {/* Notification badge */}
-          <div className="fixed top-4 right-4 bg-purple-900/80 text-white py-2 px-4 rounded-lg text-lg font-bold shadow-lg border-2 border-purple-500/50">
-            Time Manipulation Active!
-            <span className="block text-sm text-yellow-300">-{timeManipulationEffect?.reduction_percent || 30}% time</span>
-          </div>
+          {/* Cleaner timer display with time manipulation indicator */}
+          <motion.div
+            className="fixed top-4 left-4 bg-purple-900/70 text-yellow-300 py-2 px-4 rounded-lg shadow-lg border border-purple-500/50 game-overlay"
+            initial={{ x: -50, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ duration: 0.5 }}
+          >
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-xl font-bold">{timeRemaining?.toFixed(1)}s</span>
+            </div>
+            <motion.div
+              className="h-1 w-full bg-red-500/50 mt-1 rounded-full overflow-hidden"
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            >
+              <motion.div
+                className="h-full bg-red-500"
+                style={{ width: `${(timeRemaining / getTimeLimit()) * 100}%` }}
+              ></motion.div>
+            </motion.div>
+          </motion.div>
         </>
       )}
 
       {/* Result Overlay */}
       {showResult && (
-        <div className="fixed inset-0 flex items-center justify-center z-[60]">
+        <div className="fixed inset-0 flex items-center justify-center z-[60] animation-overlay">
           <div className={`flex flex-col items-center justify-center ${isCorrect
             ? 'text-green-400 animate-result-appear'
             : 'text-red-400 animate-result-appear'

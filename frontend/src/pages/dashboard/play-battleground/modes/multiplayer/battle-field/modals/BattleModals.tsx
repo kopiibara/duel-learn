@@ -28,6 +28,46 @@ interface EarlyLeaveModalProps {
   soundEffectsVolume?: number;
 }
 
+// Helper function to stop all game sounds and effects
+const stopAllGameEffects = () => {
+  // Stop all audio elements in the game
+  document.querySelectorAll('audio').forEach(audio => {
+    audio.pause();
+    audio.currentTime = 0;
+  });
+
+  // Hide any flashcards or question modals
+  const questionModals = document.querySelectorAll('.question-modal');
+  questionModals.forEach(modal => {
+    if (modal instanceof HTMLElement) {
+      modal.style.display = 'none';
+    }
+  });
+
+  // Hide any card selection UI
+  const cardSelections = document.querySelectorAll('.card-selection');
+  cardSelections.forEach(selection => {
+    if (selection instanceof HTMLElement) {
+      selection.style.display = 'none';
+    }
+  });
+
+  // Remove any animations or overlays
+  const overlays = document.querySelectorAll('.game-overlay, .animation-overlay');
+  overlays.forEach(overlay => {
+    if (overlay instanceof HTMLElement) {
+      overlay.style.display = 'none';
+    }
+  });
+
+  // Stop any framer-motion animations by removing elements with data-framer-motion attributes
+  document.querySelectorAll('[data-framer-exit-animation], [data-framer-motion]').forEach(el => {
+    if (el instanceof HTMLElement) {
+      el.style.display = 'none';
+    }
+  });
+};
+
 export const VictoryModal: React.FC<VictoryModalProps> = ({
   isOpen,
   onClose,
@@ -43,6 +83,14 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   const [rewardsClaimed, setRewardsClaimed] = useState(false);
   const victorySoundRef = useRef<HTMLAudioElement | null>(null);
   const defeatSoundRef = useRef<HTMLAudioElement | null>(null);
+
+  // Stop all game effects when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      // Stop all ongoing game animations, sounds, and UI elements
+      stopAllGameEffects();
+    }
+  }, [isOpen]);
 
   // Add effect to claim rewards when modal opens
   useEffect(() => {
@@ -114,6 +162,10 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   // Effect to play the appropriate sound effect when modal opens
   useEffect(() => {
     if (isOpen) {
+      // First stop any existing audio
+      stopAllGameEffects();
+
+      // Then play our victory/defeat sound
       if (isVictory) {
         if (victorySoundRef.current) {
           victorySoundRef.current.volume = soundEffectsVolume;
@@ -137,7 +189,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[1000]">
       {/* Audio elements */}
       <audio
         ref={victorySoundRef}
@@ -210,6 +262,14 @@ export const EarlyLeaveModal: React.FC<EarlyLeaveModalProps> = ({
   const [rewardsClaimed, setRewardsClaimed] = useState(false);
   const leftGameSoundRef = useRef<HTMLAudioElement | null>(null);
 
+  // Stop all game effects when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      // Stop all ongoing game animations, sounds, and UI elements
+      stopAllGameEffects();
+    }
+  }, [isOpen]);
+
   // Effect to claim the early leave rewards
   useEffect(() => {
     const claimEarlyLeaveRewards = async () => {
@@ -251,6 +311,10 @@ export const EarlyLeaveModal: React.FC<EarlyLeaveModalProps> = ({
   // Effect to play the left game sound when modal opens
   useEffect(() => {
     if (isOpen) {
+      // First stop any existing audio
+      stopAllGameEffects();
+
+      // Then play our left game sound
       if (leftGameSoundRef.current) {
         leftGameSoundRef.current.volume = soundEffectsVolume;
         leftGameSoundRef.current.currentTime = 0;
@@ -264,7 +328,7 @@ export const EarlyLeaveModal: React.FC<EarlyLeaveModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[1000]">
       {/* Audio element */}
       <audio
         ref={leftGameSoundRef}

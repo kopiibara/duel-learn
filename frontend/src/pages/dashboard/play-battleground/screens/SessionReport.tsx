@@ -42,9 +42,9 @@ const StatisticBox = ({
   icon,
   customIcon,
 }: StatisticProps & { icon?: string; customIcon?: React.ReactNode }) => (
-  <div 
+  <div
     className="w-[200px] h-[170px] rounded-[0.8rem] flex flex-col items-center justify-center flex-shrink-0"
-    style={{ 
+    style={{
       backgroundColor: "#1C1827",
       border: "1px solid #6F658D"
     }}
@@ -52,12 +52,12 @@ const StatisticBox = ({
     <div className="flex flex-col items-center gap-2">
       {customIcon ? (
         <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center mb-1" style={{ color: "#4D18E8" }}>
-          {React.cloneElement(customIcon as React.ReactElement, { 
-            style: { 
-              width: '32px', 
+          {React.cloneElement(customIcon as React.ReactElement, {
+            style: {
+              width: '32px',
               height: '32px',
               color: "#4D18E8"
-            } 
+            }
           })}
         </span>
       ) : (
@@ -187,7 +187,7 @@ const SessionReport = () => {
               />
             </div>
           </div>
-          
+
           <div className="flex flex-col items-center gap-2 mt-6">
             <h1 className="text-white text-[38px] font-bold">
               {earlyEnd ? "Almost there..." : "Session Complete"}

@@ -1064,7 +1064,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   }, [isMyTurn, onCardSelected]);
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120 card-selection">
       {/* Audio elements for card animations */}
       <audio
         ref={flipCardSoundRef}
@@ -1181,7 +1181,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
       {/* Only show turn indicator when it's NOT the player's turn */}
       {!isMyTurn && (
-        <div className="absolute inset-0 flex items-center top-[100px] justify-center z-20">
+        <div className="absolute inset-0 flex items-center top-[100px] justify-center z-20 game-overlay">
           <div className="text-white text-3xl font-bold animate-pulse">
             {`${opponentName}'s turn`}
           </div>
@@ -1193,7 +1193,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
           <AnimatePresence onExitComplete={handleBackCardExitComplete}>
             {showBackCard && (
               <motion.div
-                className="w-[280px] h-[380px] overflow-hidden shadow-lg shadow-purple-500/30"
+                className="w-[280px] h-[380px] overflow-hidden shadow-lg shadow-purple-500/30 animation-overlay"
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -1213,7 +1213,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
           {/* Timer display when it's the player's turn and options are shown */}
           {showCardOptions && backCardExitComplete && (
-            <div className="absolute top-[100px] text-white text-2xl font-bold">
+            <div className="absolute top-[100px] text-white text-2xl font-bold game-overlay">
               Time remaining:{" "}
               <span
                 className={selectionTimer <= 3 ? "text-red-500" : "text-white"}
@@ -1317,7 +1317,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
       {/* Show notification if cards are blocked */}
       {hasCardBlocking && blockedCardCount > 0 && isMyTurn && (
-        <div className="absolute top-[100px] text-red-400 text-xl font-semibold">
+        <div className="absolute top-[100px] text-red-400 text-xl font-semibold game-overlay">
           {blockedCardCount === 1
             ? "Your opponent used Answer Shield: 1 card has been blocked!"
             : `Your opponent used Answer Shield: ${blockedCardCount} cards have been blocked!`}
@@ -1326,7 +1326,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
       {/* Show notification if mind control is active */}
       {hasMindControl && mindControlActive && isMyTurn && (
-        <div className="absolute top-[100px] text-red-400 text-xl font-semibold">
+        <div className="absolute top-[100px] text-red-400 text-xl font-semibold game-overlay">
           Mind Control: Your opponent has prevented you from using cards this
           turn!
         </div>
