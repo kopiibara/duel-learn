@@ -17,16 +17,20 @@ import { StudyMaterial } from "../../../types/studyMaterialObject";
 import NoStudyMaterial from "/images/noStudyMaterial.svg";
 import RefreshIcon from "@mui/icons-material/Refresh";
 import { cacheService } from "../../../services/CacheService";
+import { useLocation } from "react-router-dom";
 
 const MyLibraryPage = () => {
   const { user } = useUser();
+  const location = useLocation();
   const created_by = user?.username;
   const firebase_uid = user?.firebase_uid;
   const [cards, setCards] = useState<StudyMaterial[]>([]);
   const [bookmarkedCards, setBookmarkedCards] = useState<StudyMaterial[]>([]);
   const [filteredCards, setFilteredCards] = useState<StudyMaterial[]>([]);
   const [count, setCount] = useState<number>(0);
-  const [filter, setFilter] = useState<string | number>("all");
+  const [filter, setFilter] = useState<string | number>(
+    location.state?.showArchived ? "archive" : "all"
+  );
   const [sort, setSort] = useState<string | number>("most recent");
   const [isLoading, setIsLoading] = useState(true);
   const [previousCardCount, setPreviousCardCount] = useState(3);
@@ -112,6 +116,9 @@ const MyLibraryPage = () => {
         // Update state
         setCards(data);
         setLastUpdated(new Date());
+        // Update the lastUserMaterialsFetch timestamp
+        lastUserMaterialsFetch.current = Date.now();
+
         if (!isBackgroundRefreshing) {
           showTemporaryUpdateLabel();
         }
@@ -269,6 +276,23 @@ const MyLibraryPage = () => {
     cards.length,
   ]);
 
+  // Check for navigation state parameters
+  useEffect(() => {
+    if (location.state?.forceRefresh) {
+      // Force refresh the data
+      fetchStudyMaterials(true);
+      fetchBookmarkedStudyMaterials(true);
+
+      // Set filter to archive if requested
+      if (location.state?.showArchived) {
+        setFilter("archive");
+      }
+
+      // Clear the state to prevent repeated refreshes
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state, fetchStudyMaterials, fetchBookmarkedStudyMaterials]);
+
   // Handle manual refresh request from child components or refresh button
   const handleRefresh = useCallback(() => {
     console.log("Manual refresh requested");
@@ -280,6 +304,9 @@ const MyLibraryPage = () => {
     ]).finally(() => {
       setIsLoading(false);
       setLastUpdated(new Date());
+      // Make sure both timestamps are updated
+      lastUserMaterialsFetch.current = Date.now();
+      lastBookmarksFetch.current = Date.now();
       showTemporaryUpdateLabel();
     });
   }, [fetchStudyMaterials, fetchBookmarkedStudyMaterials]);

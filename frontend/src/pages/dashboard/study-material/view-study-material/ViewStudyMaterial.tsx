@@ -1,5 +1,13 @@
 import { useState, useEffect } from "react";
-import { Box, Stack, Typography, Button, Chip, Divider } from "@mui/material";
+import {
+  Box,
+  Stack,
+  Typography,
+  Button,
+  Chip,
+  Divider,
+  Tooltip,
+} from "@mui/material";
 import { useParams, useNavigate } from "react-router-dom";
 import { Item, StudyMaterial } from "../../../../types/studyMaterialObject";
 import SummaryPage from "./SummaryPage";
@@ -111,13 +119,16 @@ const ViewStudyMaterial = () => {
     if (!studyMaterial) return;
 
     // Transform items to match the format expected by CreateStudyMaterial
-    const transformedItems = studyMaterial.items.map((item, index) => ({
-      id: index, // Using index as id
-      term: item.term || "",
-      definition: item.definition || "",
-      image: item.image || null,
-      item_number: item.item_number || "",
-    }));
+    const transformedItems = studyMaterial.items
+      .map((item, index) => ({
+        id: index, // Using index as id
+        term: item.term || "",
+        definition: item.definition || "",
+        image: item.image || null,
+        item_number:
+          typeof item.item_number === "number" ? item.item_number : index + 1, // Ensure it's a number
+      }))
+      .sort((a, b) => a.item_number - b.item_number); // Sort by item_number
 
     // Navigate to create page with study material data
     navigate("/dashboard/study-material/create", {
@@ -402,26 +413,28 @@ const ViewStudyMaterial = () => {
                   Edit
                 </Button>
               )}
-              <Button
-                variant="outlined"
-                onClick={handleClick}
-                sx={{
-                  alignItems: "center",
-                  borderColor: "#E2DDF3",
-                  color: "#E2DDF3",
-                  height: "fit-content",
-                  borderRadius: "0.8rem",
-                  padding: "0.4rem 1rem",
-                  minWidth: { xs: "40px", sm: "auto" },
-                  fontSize: "0.9rem",
-                  transition: "all 0.3s ease",
-                  "&:hover": {
-                    transform: "scale(1.05)",
-                  },
-                }}
-              >
-                <MoreIcon />
-              </Button>
+              <Tooltip title="More Options" arrow>
+                <Button
+                  variant="outlined"
+                  onClick={handleClick}
+                  sx={{
+                    alignItems: "center",
+                    borderColor: "#E2DDF3",
+                    color: "#E2DDF3",
+                    height: "fit-content",
+                    borderRadius: "0.8rem",
+                    padding: "0.4rem 1rem",
+                    minWidth: { xs: "40px", sm: "auto" },
+                    fontSize: "0.9rem",
+                    transition: "all 0.3s ease-in-out",
+                    "&:hover": {
+                      transform: "scale(1.05)",
+                    },
+                  }}
+                >
+                  <MoreIcon />
+                </Button>
+              </Tooltip>
             </Stack>
           </Stack>
 
@@ -482,7 +495,6 @@ const ViewStudyMaterial = () => {
                   onClick={() => setSelected(label)}
                   sx={{
                     borderRadius: "0.8rem",
-                    padding: "0.5rem 1rem",
                     transition: "all 0.3s ease-in-out",
                     color: selected === label ? "#E2DDF3" : "#3B354D",
                     backgroundColor:
@@ -490,7 +502,7 @@ const ViewStudyMaterial = () => {
                     "&:hover": {
                       backgroundColor: "#3B354D",
                       color: "#E2DDF3",
-                      transform: "scale(1.05)",
+                      transform: "translateY(-3px)",
                     },
                     whiteSpace: "nowrap",
                   }}

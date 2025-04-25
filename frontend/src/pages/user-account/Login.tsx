@@ -19,7 +19,6 @@ import VisibilityOffRoundedIcon from "@mui/icons-material/VisibilityOffRounded";
 import VisibilityRoundedIcon from "@mui/icons-material/VisibilityRounded";
 import { useStoreUser } from "../../hooks/api.hooks/useStoreUser";
 import { setAuthToken } from "../../api/apiClient";
-import GeneralLoadingScreen from "../../components/LoadingScreen";
 
 const Login = () => {
   const { user, loadUserData } = useUser();
@@ -32,6 +31,8 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const { storeUser } = useStoreUser();
   const [submitError, setSubmitError] = useState("");
+  // Add a separate loading state specifically for the Google button
+  const [googleButtonLoading, setGoogleButtonLoading] = useState(false);
 
   // Handle auth errors
   useEffect(() => {
@@ -47,6 +48,20 @@ const Login = () => {
       navigate("/dashboard/welcome");
     }
   }, [user, navigate]);
+
+  // Global error handler to prevent getting stuck in loading state
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      // If still loading after 15 seconds, reset loading state
+      if (loading) {
+        console.warn("Login process timed out - resetting loading state");
+        setLoading(false);
+        setSubmitError("Login process timed out. Please try again.");
+      }
+    }, 15000);
+
+    return () => clearTimeout(timeoutId);
+  }, [loading]);
 
   const togglePassword = () => {
     setShowPassword(!showPassword);
@@ -236,13 +251,15 @@ const Login = () => {
         } catch (loginError: any) {
           console.error("Error during login user data loading:", loginError);
 
+          // Add this global error handler to catch any unhandled navigation failures
+          setLoading(false); // <-- Add this line to ensure loading state is reset
+
           // Check for specific error messages
           if (loginError.message && loginError.message.includes("not found")) {
             // The user exists in Firebase but not in our database yet
             setSubmitError(
               "Your account exists but needs to be set up. Please complete registration."
             );
-            setLoading(true);
             setTimeout(() => {
               navigate("/verify-email", { state: { token } });
             }, 2000);
@@ -251,7 +268,6 @@ const Login = () => {
             setSubmitError(
               loginError.message || "An error occurred during login"
             );
-            setLoading(false);
           }
         }
       } catch (error) {
@@ -263,12 +279,17 @@ const Login = () => {
 
   const googleSubmit = async () => {
     try {
-      setLoading(true); // Add loading state at the beginning of the function
+      // Use button-specific loading state instead of the full page loading
+      setGoogleButtonLoading(true);
+
       const account_type = "free";
       const authResult = await handleGoogleAuth(account_type);
 
       // Load user data using updated UserContext method
       const userData = await loadUserData(authResult.userData.uid);
+
+      // Only now set the full page loading before navigation
+      setLoading(true);
 
       if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
@@ -282,7 +303,12 @@ const Login = () => {
       }
     } catch (error) {
       handleError(error);
-      setLoading(false); // Make sure to turn off loading state if there's an error
+      setGoogleButtonLoading(false); // Make sure to turn off button loading state if there's an error
+    } finally {
+      // If there was an error and we never went to the next screen, ensure button loading is reset
+      setTimeout(() => {
+        if (googleButtonLoading) setGoogleButtonLoading(false);
+      }, 5000);
     }
   };
 
@@ -424,13 +450,72 @@ const Login = () => {
           <button
             className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-[0.8rem] flex items-center justify-center hover:bg-[#1A1426] transition-colors"
             onClick={googleSubmit}
+            disabled={googleButtonLoading} // Disable the button while loading
           >
-            <img
-              src="/google-logo.png"
-              className="w-5 h-5 mr-3"
-              alt="Google Icon"
-            />
-            Log in with Google
+            {googleButtonLoading ? (
+              // Show a spinner with Google colors when loading
+              <div className="flex items-center">
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  {/* Google-colored spinner */}
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="#E8E8E8"
+                    strokeWidth="2"
+                  ></circle>
+
+                  {/* Blue segment (Google blue) */}
+                  <path
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    stroke="#4285F4"
+                    d="M12 2a10 10 0 0 1 10 10"
+                  ></path>
+
+                  {/* Red segment (Google red) */}
+                  <path
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    stroke="#EA4335"
+                    d="M22 12a10 10 0 0 1-5 8.66"
+                  ></path>
+
+                  {/* Yellow segment (Google yellow) */}
+                  <path
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    stroke="#FBBC05"
+                    d="M17 20.66A10 10 0 0 1 7 20.66"
+                  ></path>
+
+                  {/* Green segment (Google green) */}
+                  <path
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    stroke="#34A853"
+                    d="M7 20.66A10 10 0 0 1 2 12"
+                  ></path>
+                </svg>
+                Signing in...
+              </div>
+            ) : (
+              // Show regular button content when not loading
+              <>
+                <img
+                  src="/google-logo.png"
+                  className="w-5 h-5 mr-3"
+                  alt="Google Icon"
+                />
+                Log in with Google
+              </>
+            )}
           </button>
 
           {/* Footer */}

@@ -145,6 +145,8 @@ const CreateStudyMaterial = () => {
   const [tagsError, setTagsError] = useState(false);
   const [itemsError, setItemsError] = useState(false);
   const [emptyItemIds, setEmptyItemIds] = useState<number[]>([]);
+  const [emptyTerms, setEmptyTerms] = useState<number[]>([]);
+  const [emptyDefinitions, setEmptyDefinitions] = useState<number[]>([]);
 
   // Flatten all subjects from topics
   const allSubjects = topics
@@ -371,6 +373,8 @@ const CreateStudyMaterial = () => {
     setTagsError(false);
     setItemsError(false);
     setEmptyItemIds([]);
+    setEmptyTerms([]);
+    setEmptyDefinitions([]);
 
     // Track if validation passes
     let isValid = true;
@@ -398,46 +402,45 @@ const CreateStudyMaterial = () => {
       (item) => item.term.trim() !== "" && item.definition.trim() !== ""
     );
 
-    const emptyItems = items.filter(
-      (item) => item.term.trim() === "" || item.definition.trim() === ""
+    const emptyTermItems = items.filter(
+      (item) => !item.term || item.term.trim() === ""
+    );
+    const emptyDefItems = items.filter(
+      (item) => !item.definition || item.definition.trim() === ""
     );
 
-    // Get IDs of empty items for highlighting
-    const emptyIds = emptyItems.map((item) => item.id);
-    setEmptyItemIds(emptyIds);
+    // Get IDs of items with empty fields
+    const termIds = emptyTermItems.map((item) => item.id);
+    const defIds = emptyDefItems.map((item) => item.id);
+    const allEmptyIds = [...new Set([...termIds, ...defIds])];
 
-    if (validItems.length < MIN_REQUIRED_ITEMS) {
-      // Only set itemsError if we actually don't have enough items in total
-      // This will highlight the "Add New Item" button
-      if (items.length < MIN_REQUIRED_ITEMS) {
-        setItemsError(true);
-      }
+    setEmptyTerms(termIds);
+    setEmptyDefinitions(defIds);
+    setEmptyItemIds(allEmptyIds);
 
-      // Custom message based on whether we have enough items total but some are empty
-      if (items.length >= MIN_REQUIRED_ITEMS && emptyItems.length > 0) {
-        handleShowSnackbar(
-          `Please complete the highlighted items. (${validItems.length}/${MIN_REQUIRED_ITEMS} valid items)`
+    if (allEmptyIds.length > 0) {
+      handleShowSnackbar(`All items must have both term and definition.`);
+
+      // Focus the first empty item
+      if (allEmptyIds.length > 0) {
+        const firstEmptyItemElement = document.getElementById(
+          `item-${allEmptyIds[0]}`
         );
-
-        // Set the first empty item as the focus target
-        if (emptyItems.length > 0 && !firstErrorElement) {
-          const firstEmptyItemElement = document.getElementById(
-            `item-${emptyItems[0].id}`
-          );
-          if (firstEmptyItemElement) {
-            firstErrorElement = firstEmptyItemElement;
-          }
-        }
-      } else {
-        handleShowSnackbar(
-          `At least ${MIN_REQUIRED_ITEMS} complete items are required. You currently have ${validItems.length} valid items.`
-        );
-
-        // Focus the "Add New Item" button if we don't have enough items
-        if (!firstErrorElement) {
-          // Add an id to the button for direct targeting
-          const addItemButton = document.getElementById("add-new-item-button");
-          firstErrorElement = addItemButton;
+        if (firstEmptyItemElement) {
+          firstErrorElement = firstEmptyItemElement;
+          setTimeout(() => {
+            firstEmptyItemElement.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            firstEmptyItemElement.focus();
+            firstEmptyItemElement.classList.add("error-highlight-animation");
+            setTimeout(() => {
+              firstEmptyItemElement.classList.remove(
+                "error-highlight-animation"
+              );
+            }, 1500);
+          }, 100);
         }
       }
 
@@ -1814,6 +1817,10 @@ const CreateStudyMaterial = () => {
                               handleUpdateItem(item.id, field, value)
                             }
                             isError={emptyItemIds.includes(item.id)}
+                            isTermError={emptyTerms.includes(item.id)}
+                            isDefinitionError={emptyDefinitions.includes(
+                              item.id
+                            )}
                             key={item.id}
                           />
                         </motion.div>

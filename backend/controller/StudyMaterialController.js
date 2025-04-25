@@ -56,6 +56,27 @@ const studyMaterialController = {
         return res.status(400).json({ error: "At least one tag is required." });
       }
 
+      // Add validation for item content
+      if (!items || !Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ error: "At least one item is required." });
+      }
+
+      // Check for empty terms or definitions
+      const invalidItems = items.filter(
+        item => !item.term || item.term.trim() === '' || !item.definition || item.definition.trim() === ''
+      );
+
+      if (invalidItems.length > 0) {
+        return res.status(400).json({
+          error: "All items must have both term and definition fields completed.",
+          invalidItems: invalidItems.map((item, index) => ({
+            index,
+            term: !!item.term && item.term.trim() !== '',
+            definition: !!item.definition && item.definition.trim() !== ''
+          }))
+        });
+      }
+
       const currentTimestamp = manilacurrentTimestamp;
 
       await connection.beginTransaction();
@@ -161,14 +182,30 @@ const studyMaterialController = {
         return res.status(400).json({ error: "At least one tag is required." });
       }
 
-      // Add validation for minimum items
-      const MIN_REQUIRED_ITEMS = 10; // Should match frontend requirement
+      // Check for empty terms or definitions
+      const invalidItems = items.filter(
+        item => !item.term || item.term.trim() === '' || !item.definition || item.definition.trim() === ''
+      );
+
+      if (invalidItems.length > 0) {
+        return res.status(400).json({
+          error: "All items must have both term and definition fields completed.",
+          invalidItems: invalidItems.map((item, index) => ({
+            index,
+            term: !!item.term && item.term.trim() !== '',
+            definition: !!item.definition && item.definition.trim() !== ''
+          }))
+        });
+      }
 
       // Filter out empty items (match frontend validation)
       const validItems = items.filter(item =>
         item.term && item.term.trim() !== "" &&
         item.definition && item.definition.trim() !== ""
       );
+
+      // Add validation for minimum items
+      const MIN_REQUIRED_ITEMS = 10; // Should match frontend requirement
 
       if (validItems.length < MIN_REQUIRED_ITEMS) {
         return res.status(400).json({

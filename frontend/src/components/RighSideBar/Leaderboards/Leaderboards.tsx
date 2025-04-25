@@ -17,6 +17,7 @@ import { useMediaQuery, useTheme } from "@mui/material";
 import { LeaderboardPlayer } from "../../../types/leaderboardObject";
 import { Friend } from "../../../contexts/UserContext";
 import ProfileModal from "../../modals/ProfileModal";
+import cauldronGif from "/General/Cauldron.gif";
 
 const Leaderboards = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -228,9 +229,18 @@ const Leaderboards = () => {
           <hr className="border-t-2 border-[#3B354D] mb-2 sm:mb-4 rounded-full" />
 
           {loading ? (
-            <div className="flex justify-center items-center h-32 sm:h-60">
-              <CircularProgress size={isMobile ? 24 : 40} />
-            </div>
+            <Box
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              py={1}
+            >
+              <img
+                src={cauldronGif}
+                alt="Loading..."
+                style={{ width: "8rem", height: "auto" }}
+              />
+            </Box>
           ) : error ? (
             <div className="text-center text-red-500 text-xs sm:text-sm py-2 sm:py-4">
               {error}
