@@ -11,6 +11,7 @@ import axios from "axios";
 import { useUser } from "../../../contexts/UserContext";
 import AutoHideSnackbar from "../../../components/ErrorsSnackbar";
 import CancelSubscription from "../../../components/premium/CancelSubscription";
+import cauldronGif from "/General/Cauldron.gif"; // Import the loading GIF
 
 const Shop = () => {
   const navigate = useNavigate();
@@ -114,8 +115,15 @@ const Shop = () => {
   const handleIncrement = () => {
     if (selectedItem) {
       const ownedCount = ownedItems[selectedItem.item_code] || 0;
-      if (quantity < 5 - ownedCount) {
-        setQuantity(quantity + 1);
+      const newQuantity = quantity + 1;
+      // Check both the ownership limit and if user has enough coins for the increased quantity
+      if (
+        newQuantity <= 5 - ownedCount &&
+        userCoins >= selectedItem.item_price * newQuantity
+      ) {
+        setQuantity(newQuantity);
+      } else if (userCoins < selectedItem.item_price * newQuantity) {
+        showSnackbar("You don't have enough coins for this quantity.");
       }
     }
   };
@@ -318,7 +326,7 @@ const Shop = () => {
   return (
     <PageTransition>
       <DocumentHead title="Shop | Duel Learn" />
-      <div className="h-full w-full text-white pb-6">
+      <div className="h-full w-full items-center text-white pb-6">
         {/* Premium section with responsive adjustments */}
         {!isPremium && (
           <div
@@ -383,8 +391,13 @@ const Shop = () => {
 
         {/* Loading state */}
         {loading && (
-          <div className="flex justify-center items-center h-64">
-            <p className="text-xl">Loading shop items...</p>
+          <div className="flex flex-col gap-1 justify-center items-center ">
+            <img
+              src={cauldronGif}
+              alt="Loading..."
+              style={{ width: "12rem", height: "auto" }}
+            />
+            <p className="text-lg text-[#9F9BAE]">Loading Shop items...</p>
           </div>
         )}
 

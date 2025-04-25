@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { pool } from '../config/db.js';
+import getCurrentManilaTimestamp from '../utils/CurrentTimestamp.js';
 
 dotenv.config();
 
@@ -13,7 +14,6 @@ const ManaController = {
             const connection = await pool.getConnection();
             await connection.beginTransaction();
 
-            const manaCost = 10; // Cost of mana for the action
 
             try {
                 // Check if user has enough mana within the transaction
@@ -28,10 +28,10 @@ const ManaController = {
                     return res.status(400).json({ error: 'Insufficient mana' });
                 }
 
-                // Update mana (reduce by 10)
+                // Update mana (reduce by 10) and update the last_mana_update timestamp
                 await connection.query(
-                    `UPDATE user_info SET mana = ? WHERE firebase_uid = ?`,
-                    [manaCost, firebase_uid]
+                    `UPDATE user_info SET mana = mana - 10, last_mana_update = ? WHERE firebase_uid = ?`,
+                    [getCurrentManilaTimestamp(), firebase_uid]
                 );
 
                 // Get updated mana value
@@ -62,6 +62,8 @@ const ManaController = {
         try {
             const { firebase_uid } = req.body;
 
+            const now = new Date();
+
             // Get user's current mana and last update time
             const [userData] = await pool.query(
                 "SELECT mana, last_mana_update, max_mana FROM user_info WHERE firebase_uid = ?",
@@ -73,7 +75,6 @@ const ManaController = {
             }
 
             const { mana, last_mana_update, max_mana = 200 } = userData[0];
-            const now = new Date();
             const lastUpdate = last_mana_update ? new Date(last_mana_update) : new Date(now - 3600000); // Default to 1 hour ago if null
 
             // Calculate elapsed time in minutes
@@ -107,6 +108,8 @@ const ManaController = {
         try {
             const { firebase_uid } = req.params;
 
+            const now = new Date();
+
             // Get user's current mana and last update time
             const [userData] = await pool.query(
                 "SELECT mana, last_mana_update, max_mana FROM user_info WHERE firebase_uid = ?",
@@ -118,7 +121,6 @@ const ManaController = {
             }
 
             const { mana, last_mana_update, max_mana = 200 } = userData[0];
-            const now = new Date();
             const lastUpdate = last_mana_update ? new Date(last_mana_update) : new Date(now - 3600000);
 
             // Calculate elapsed time in minutes
