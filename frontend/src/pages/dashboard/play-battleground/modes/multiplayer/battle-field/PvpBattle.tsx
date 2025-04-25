@@ -29,7 +29,7 @@ import CardSelection from "./components/CardSelection";
 // Import consolidated components
 import { useBattle } from "./hooks/useBattle";
 import { WaitingOverlay, LoadingOverlay } from "./overlays/BattleOverlays";
-import { VictoryModal, EarlyLeaveModal } from "./modals/BattleModals";
+import { VictoryModal, EarlyLeaveModal, TieGameModal } from "./modals/BattleModals";
 import CharacterAnimationManager from "./components/CharacterAnimationManager";
 import GameStartAnimation from "./components/GameStartAnimation";
 import GuestWaitingForRandomization from "./components/GuestWaitingForRandomization";
@@ -349,6 +349,9 @@ export default function PvpBattle() {
   // Add a state for tracking the last time poison was applied
   const [lastPoisonApplication, setLastPoisonApplication] = useState(0);
 
+  // Add state for tie game modal
+  const [showTieGameModal, setShowTieGameModal] = useState(false);
+
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
     lobbyCode,
@@ -486,11 +489,21 @@ export default function PvpBattle() {
       totalItems,
     });
 
-    // Determine winner based on health
-    const isPlayerWinner = playerHealth > opponentHealth;
-    setVictoryMessage(isPlayerWinner ? "You Won!" : "You Lost!");
-    setShowVictoryModal(true);
-    setShowCards(false);
+    // Check for tie game first when health is equal
+    if (playerHealth === opponentHealth) {
+      console.log("Tie game detected! Both players have equal health:", playerHealth);
+      setShowTieGameModal(true);
+      setShowCards(false);
+    }
+    // Then check for normal win conditions
+    else {
+      // Determine winner based on health
+      const isPlayerWinner = playerHealth > opponentHealth;
+      setVictoryMessage(isPlayerWinner ? "You Won!" : "You Lost!");
+      setShowVictoryModal(true);
+      setShowCards(false);
+    }
+
     setGameStarted(false);
 
     // Clear card selection data from sessionStorage
@@ -1717,8 +1730,19 @@ export default function PvpBattle() {
             setPlayerHealth(scores.host_health);
             setOpponentHealth(scores.guest_health);
 
+            // Check for tie game conditions first
+            if (scores.host_health === scores.guest_health && (scores.host_health <= 0 || scores.guest_health <= 0)) {
+              console.log("Tie game detected in health polling. Both players have equal health:", scores.host_health);
+              setShowTieGameModal(true);
+              setShowCards(false); // Hide cards when game ends
+              // Clear card selection data from sessionStorage
+              sessionStorage.removeItem("battle_cards");
+              sessionStorage.removeItem("battle_last_selected_index");
+              sessionStorage.removeItem("battle_turn_count");
+              sessionStorage.removeItem("battle_is_first_turn");
+            }
             // Check for victory/defeat conditions
-            if (scores.host_health <= 0) {
+            else if (scores.host_health <= 0) {
               console.log("Host health <= 0, showing defeat modal");
               setVictoryMessage("You Lost!");
               setShowVictoryModal(true);
@@ -1750,8 +1774,19 @@ export default function PvpBattle() {
             setPlayerHealth(scores.guest_health);
             setOpponentHealth(scores.host_health);
 
+            // Check for tie game conditions first
+            if (scores.guest_health === scores.host_health && (scores.guest_health <= 0 || scores.host_health <= 0)) {
+              console.log("Tie game detected in health polling. Both players have equal health:", scores.guest_health);
+              setShowTieGameModal(true);
+              setShowCards(false); // Hide cards when game ends
+              // Clear card selection data from sessionStorage
+              sessionStorage.removeItem("battle_cards");
+              sessionStorage.removeItem("battle_last_selected_index");
+              sessionStorage.removeItem("battle_turn_count");
+              sessionStorage.removeItem("battle_is_first_turn");
+            }
             // Check for victory/defeat conditions
-            if (scores.guest_health <= 0) {
+            else if (scores.guest_health <= 0) {
               console.log("Guest health <= 0, showing defeat modal");
               setVictoryMessage("You Lost!");
               setShowVictoryModal(true);
@@ -1801,8 +1836,21 @@ export default function PvpBattle() {
 
   // Add a separate effect to ensure victory modal stays visible
   useEffect(() => {
-    if (playerHealth <= 0 || opponentHealth <= 0) {
-      const isPlayerWinner = playerHealth > 0 && opponentHealth <= 0;
+    // Check for tie game when both players have the same health
+    if (playerHealth === opponentHealth && (playerHealth <= 0 || opponentHealth <= 0)) {
+      console.log("Tie game detected! Both players have equal health:", playerHealth);
+      setShowTieGameModal(true);
+      setShowCards(false);
+
+      // Clear card selection data from sessionStorage
+      sessionStorage.removeItem("battle_cards");
+      sessionStorage.removeItem("battle_last_selected_index");
+      sessionStorage.removeItem("battle_turn_count");
+      sessionStorage.removeItem("battle_is_first_turn");
+    }
+    // Check for normal game end conditions
+    else if (playerHealth <= 0 || opponentHealth <= 0) {
+      const isPlayerWinner = playerHealth > opponentHealth;
       setVictoryMessage(isPlayerWinner ? "You Won!" : "You Lost!");
       setShowVictoryModal(true);
       setShowCards(false);
@@ -2056,8 +2104,10 @@ export default function PvpBattle() {
       .toString()
       .padStart(2, "0")}`;
 
-    // Determine if player is winner
-    const isWinner = playerHealth > opponentHealth;
+    // Determine if game is a tie
+    const isTie = playerHealth === opponentHealth;
+    // Determine if player is winner (only if not a tie)
+    const isWinner = !isTie && playerHealth > opponentHealth;
 
     const [hostMultiplier, guestMultiplier] = await Promise.all([
       fetchUserRewardMultiplier(hostId),
@@ -2253,12 +2303,17 @@ export default function PvpBattle() {
           playerName,
           opponentName,
           isWinner,
+          isTie, // Add tie game flag
           sessionUuid: battleState?.session_uuid,
           hostId,
           guestId,
           isHost,
-          earnedXP: isHost ? hostRewards.xp : guestRewards.xp,
-          earnedCoins: isHost ? hostRewards.coins : guestRewards.coins,
+          earnedXP: isHost
+            ? hostRewards.xp
+            : guestRewards.xp,
+          earnedCoins: isHost
+            ? hostRewards.coins
+            : guestRewards.coins,
         },
       });
       console.log("Host Rewards:", hostRewards);
@@ -2506,11 +2561,22 @@ export default function PvpBattle() {
           // Check if we've reached or exceeded the total questions
           if (questionCountFromDB >= totalItems) {
             console.log("Question limit reached, ending game");
-            // Determine winner based on health
-            const isPlayerWinner = playerHealth > opponentHealth;
-            setVictoryMessage(isPlayerWinner ? "You Won!" : "You Lost!");
-            setShowVictoryModal(true);
-            setShowCards(false);
+
+            // Check for tie game first when health is equal
+            if (playerHealth === opponentHealth) {
+              console.log("Tie game detected at question limit! Both players have equal health:", playerHealth);
+              setShowTieGameModal(true);
+              setShowCards(false);
+            }
+            // Then check for normal win conditions
+            else {
+              // Determine winner based on health
+              const isPlayerWinner = playerHealth > opponentHealth;
+              setVictoryMessage(isPlayerWinner ? "You Won!" : "You Lost!");
+              setShowVictoryModal(true);
+              setShowCards(false);
+            }
+
             setGameStarted(false);
             return;
           }
@@ -3061,6 +3127,57 @@ export default function PvpBattle() {
     }
   }, [currentTurnNumber, battleState?.session_uuid, isHost]);
 
+  // Add a handler for TieGameModal
+  const handleTieGameConfirm = () => {
+    // Close tie game modal
+    setShowTieGameModal(false);
+    // Return to the dashboard
+    navigate("/dashboard/home");
+  };
+
+  // Add a handler for viewing the tie game session report
+  const handleViewTieGameReport = async () => {
+    // Calculate time spent
+    const endTime = new Date();
+    const startTime = battleStartTime || new Date();
+    const timeDiffMs = endTime.getTime() - startTime.getTime();
+    const minutes = Math.floor(timeDiffMs / 60000);
+    const seconds = Math.floor((timeDiffMs % 60000) / 1000);
+    const timeSpent = `${minutes.toString().padStart(2, "0")}:${seconds
+      .toString()
+      .padStart(2, "0")}`;
+
+    // Navigate to session report with tie game flag
+    navigate("/dashboard/pvp-battle/session-report", {
+      state: {
+        timeSpent,
+        correctCount: battleStats.correctAnswers,
+        incorrectCount: battleStats.incorrectAnswers,
+        mode: "pvp",
+        material: {
+          id: studyMaterialId,
+          title: "Study Material",
+          description: "Study Material Description",
+          difficulty: difficultyMode || "Average",
+          category: "General"
+        },
+        highestStreak: battleStats.highestStreak,
+        playerHealth,
+        opponentHealth,
+        playerName,
+        opponentName,
+        isWinner: false, // Neither player is a winner in a tie
+        isTie: true, // New flag for tie games
+        sessionUuid: battleState?.session_uuid,
+        hostId,
+        guestId,
+        isHost,
+        earnedXP: 30, // Fixed reward for tie games
+        earnedCoins: 2, // Fixed reward for tie games
+      },
+    });
+  };
+
   return (
     <>
       <DocumentHead
@@ -3400,6 +3517,17 @@ export default function PvpBattle() {
             soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
           />
 
+          {/* Tie Game Modal - Always show */}
+          <TieGameModal
+            isOpen={showTieGameModal}
+            onClose={handleTieGameConfirm}
+            onViewReport={handleViewTieGameReport}
+            currentUserId={currentUserId}
+            sessionUuid={battleState?.session_uuid}
+            playerHealth={playerHealth}
+            soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
+          />
+
           {/* Question Modal */}
           <QuestionModal
             isOpen={showQuestionModal}
@@ -3705,7 +3833,6 @@ export default function PvpBattle() {
           </div>
         </div>
       )}
-
 
     </>
   );
