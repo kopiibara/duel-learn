@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react"; // Add useRef import
+import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Alert, Snackbar } from "@mui/material"; // Import Snackbar and Alert from MUI
 import "./../../styles/setupques.css";
@@ -31,9 +31,6 @@ const SetUpTimeQuestion: React.FC = () => {
   const [timeLimit, setTimeLimit] = useState(10);
   const [openManaAlert, setOpenManaAlert] = useState(false); // State for the mana points alert
 
-  // Add this ref to track if we've already started the process
-  const isProcessingRef = useRef(false);
-
   const handleSliderChange = (_event: Event, newValue: number | number[]) => {
     setTimeLimit(newValue as number);
   };
@@ -50,78 +47,48 @@ const SetUpTimeQuestion: React.FC = () => {
     });
   };
 
-  // Handle Start Learning button click with debounce protection
+  // Handle Start Learning button click
   const handleStartLearning = async () => {
-    // If already processing, return early to prevent double calls
-    if (isProcessingRef.current) {
-      console.log("Already processing request, preventing duplicate");
-      return;
-    }
-
-    // Set processing flag to true
-    isProcessingRef.current = true;
-    const transactionId = Date.now() + Math.floor(Math.random() * 1000);
-    console.log(`Starting transaction ${transactionId}`);
-
-    try {
-      // Skip mana check for premium users
-      if (!isPremium && manaPoints < manaCost) {
-        setOpenManaAlert(true);
-        isProcessingRef.current = false; // Reset flag on error
-      } else {
+    // Skip mana check for premium users
+    if (!isPremium && manaPoints < manaCost) {
+      setOpenManaAlert(true);
+    } else {
+      try {
         // Only reduce mana for non-premium users
         if (!isPremium) {
-          console.log(
-            `Transaction ${transactionId}: Reducing mana points: ${manaCost}`
-          );
-
           // Call the API to reduce mana
           const response = await axios.post(
             `${import.meta.env.VITE_BACKEND_URL}/api/mana/reduce`,
             {
               firebase_uid: user?.firebase_uid,
-              manaCost: manaCost,
-              transactionId: transactionId,
             }
-          );
-
-          console.log(
-            `Transaction ${transactionId}: Mana API response:`,
-            response.data
           );
 
           if (response.status === 200) {
             // Properly update user data using the context method
             updateUser({ mana: response.data.mana });
-            console.log(
-              `Transaction ${transactionId}: Mana reduced to:`,
-              response.data.mana
-            );
+            console.log("Mana reduced to:", response.data.mana);
           }
         }
 
-        // Use setTimeout to avoid navigation race conditions
-        setTimeout(() => {
-          console.log(
-            `Transaction ${transactionId}: Navigating with time limit:`,
-            timeLimit
-          );
-          navigate("/dashboard/study/time-pressured-mode", {
-            state: {
-              mode: "Time Pressured",
-              material,
-              selectedTypes,
-              timeLimit: timeLimit,
-            },
-          });
-        }, 100);
+        console.log(
+          "Starting learning with time limit:",
+          timeLimit,
+          "seconds."
+        );
+
+        navigate("/dashboard/study/time-pressured-mode", {
+          state: {
+            mode: "Time Pressured",
+            material,
+            selectedTypes,
+            timeLimit: timeLimit,
+          },
+        });
+      } catch (error) {
+        console.error("Error reducing mana:", error);
+        setOpenManaAlert(true);
       }
-    } catch (error) {
-      console.error(`Transaction ${transactionId}: Error:`, error);
-      setOpenManaAlert(true);
-    } finally {
-      // Always reset in finally block to ensure it happens
-      isProcessingRef.current = false;
     }
   };
 
@@ -272,16 +239,7 @@ const SetUpTimeQuestion: React.FC = () => {
 
                 {/* Start Learning Button */}
                 <button
-                  onClick={() => {
-                    // Move everything in here to absolutely prevent any React quirks
-                    if (isProcessingRef.current) {
-                      console.log(
-                        "Already processing - button handler ignored"
-                      );
-                      return;
-                    }
-                    handleStartLearning();
-                  }}
+                  onClick={handleStartLearning}
                   className="mt-8 sm:mt-10 w-full max-w-[250px] mx-auto sm:max-w-[300px] md:max-w-[350px] py-2 sm:py-3 border-2 border-black text-black rounded-lg text-md sm:text-lg shadow-lg hover:bg-purple-700 hover:text-white hover:border-transparent flex items-center justify-center"
                 >
                   {renderButtonText()}

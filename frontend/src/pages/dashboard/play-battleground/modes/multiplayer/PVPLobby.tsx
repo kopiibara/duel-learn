@@ -425,12 +425,11 @@ const PVPLobby: React.FC = () => {
             guestManaDeductedRef.current = true;
 
             try {
-              // Deduct mana points for guest - NOW WITH EXPLICIT MANACOST
+              // Deduct mana points for guest
               const manaResponse = await axios.post(
                 `${import.meta.env.VITE_BACKEND_URL}/api/mana/reduce`,
                 {
                   firebase_uid: user.firebase_uid,
-                  manaCost: requiredMana, // Pass the manaCost explicitly
                 }
               );
 
@@ -504,7 +503,7 @@ const PVPLobby: React.FC = () => {
     requiredMana,
   ]);
 
-  // Update the handleBattleStart function for host mana deduction
+  // Update the handleBattleStart function
   const handleBattleStart = async () => {
     // For host: only allow battle start if guest is ready
     if (!isCurrentUserGuest) {
@@ -525,6 +524,8 @@ const PVPLobby: React.FC = () => {
         return;
       }
 
+      // Ban check removed from here since we check on component mount
+
       setBattleStartLoading(true);
 
       try {
@@ -533,12 +534,11 @@ const PVPLobby: React.FC = () => {
           // Mark as deducted immediately to prevent race conditions
           hostManaDeductedRef.current = true;
 
-          // First deduct mana points - NOW WITH EXPLICIT MANACOST
+          // First deduct mana points
           const manaResponse = await axios.post(
             `${import.meta.env.VITE_BACKEND_URL}/api/mana/reduce`,
             {
               firebase_uid: user.firebase_uid,
-              manaCost: requiredMana, // Pass the manaCost explicitly
             }
           );
 

@@ -80,7 +80,6 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   const [isCurrentAnswerCorrect, setIsCurrentAnswerCorrect] = useState<
     boolean | null
   >(null);
-  const [manaAlreadyDeducted, setManaAlreadyDeducted] = useState(false); // Add this state to track mana deduction attempts
 
   // 3. Then useRef declarations
   const previousTimerRef = React.useRef<number | null>(null);
@@ -627,31 +626,6 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
       }
     }
   }, [questionTimer]);
-
-  // Deduct mana when the game starts
-  useEffect(() => {
-    const deductMana = async () => {
-      if (!manaAlreadyDeducted) {
-        setManaAlreadyDeducted(true); // Set this immediately to prevent race conditions
-
-        try {
-          const manaResponse = await axios.post(
-            `${import.meta.env.VITE_BACKEND_URL}/api/mana/reduce`,
-            {
-              firebase_uid: user.firebase_uid,
-            }
-          );
-
-          // Handle response...
-        } catch (error) {
-          setManaAlreadyDeducted(false); // Reset the flag if there's an error
-          console.error("Error reducing mana:", error);
-        }
-      }
-    };
-
-    deductMana();
-  }, [manaAlreadyDeducted, user.firebase_uid]);
 
   // Update handleAnswerSubmit to play sounds
   const handleAnswerSubmit = (answer: string) => {
