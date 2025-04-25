@@ -3,66 +3,113 @@ import { pool } from '../config/db.js';
 
 dotenv.config();
 
+// Simple in-memory transaction cache
+const recentTransactions = new Map();
+
+// Add timeout to clean up old transactions (5 minutes)
+const TRANSACTION_CACHE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
 const ManaController = {
 
     userManaReduction: async (req, res) => {
         try {
-            const { firebase_uid, manaCost = 10 } = req.body;  // Default to 10 if not provided
+            const { firebase_uid, manaCost = 10, transactionId = Date.now() } = req.body;
+
+            // Check for duplicate transaction within short timeframe
+            const transactionKey = `${firebase_uid}-${transactionId}`;
+            if (recentTransactions.has(transactionKey)) {
+                console.log(`[${transactionId}] Duplicate transaction detected for ${firebase_uid}`);
+
+                // Return the previously calculated result to avoid database interaction
+                const previousResult = recentTransactions.get(transactionKey);
+                return res.status(200).json({
+                    success: true,
+                    mana: previousResult.mana,
+                    duplicate: true
+                });
+            }
+
+            console.log(`[${transactionId}] Starting mana reduction for ${firebase_uid}, amount: ${manaCost}`);
 
             // Start a transaction for atomic operation
             const connection = await pool.getConnection();
             await connection.beginTransaction();
 
             try {
-                // Check if user has enough mana within the transaction
-                const [userInfo] = await connection.query(
+                // First, log the mana before update for debugging
+                const [beforeUpdate] = await connection.query(
                     "SELECT mana, account_type FROM user_info WHERE firebase_uid = ?",
                     [firebase_uid]
                 );
 
-                if (!userInfo.length) {
+                if (!beforeUpdate.length) {
+                    console.log(`[${transactionId}] User not found: ${firebase_uid}`);
                     await connection.rollback();
                     connection.release();
                     return res.status(404).json({ error: 'User not found' });
                 }
 
-                // Check if user is premium - skip mana check if premium
-                if (userInfo[0].account_type !== 'premium') {
+                const originalMana = beforeUpdate[0].mana;
+                console.log(`[${transactionId}] Original mana: ${originalMana}`);
+
+                // Check if user is premium - skip mana deduction if premium
+                if (beforeUpdate[0].account_type !== 'premium') {
                     // Check if user has enough mana
-                    if (userInfo[0].mana < manaCost) {
+                    if (originalMana < manaCost) {
+                        console.log(`[${transactionId}] Insufficient mana: ${originalMana} < ${manaCost}`);
                         await connection.rollback();
                         connection.release();
                         return res.status(400).json({ error: 'Insufficient mana' });
                     }
 
                     // Update mana using the value from the frontend
+                    console.log(`[${transactionId}] Reducing mana by ${manaCost}`);
                     await connection.query(
                         `UPDATE user_info SET mana = mana - ? WHERE firebase_uid = ?`,
                         [manaCost, firebase_uid]
                     );
+                } else {
+                    console.log(`[${transactionId}] User is premium, skipping mana deduction`);
                 }
 
                 // Get updated mana value
-                const [updatedInfo] = await connection.query(
+                const [afterUpdate] = await connection.query(
                     "SELECT mana FROM user_info WHERE firebase_uid = ?",
                     [firebase_uid]
                 );
 
+                const updatedMana = afterUpdate[0].mana;
+                console.log(`[${transactionId}] Updated mana: ${updatedMana}`);
+
                 await connection.commit();
                 connection.release();
 
-                res.status(200).json({
+                console.log(`[${transactionId}] Transaction complete: ${originalMana} → ${updatedMana}`);
+
+                // Store transaction result before returning
+                recentTransactions.set(transactionKey, {
+                    mana: updatedMana,
+                    timestamp: Date.now()
+                });
+
+                // Set timeout to remove this transaction from cache
+                setTimeout(() => {
+                    recentTransactions.delete(transactionKey);
+                }, TRANSACTION_CACHE_TIMEOUT);
+
+                return res.status(200).json({
                     success: true,
-                    mana: updatedInfo[0].mana
+                    mana: updatedMana
                 });
             } catch (error) {
+                console.error(`[${transactionId}] Transaction error:`, error);
                 await connection.rollback();
                 connection.release();
                 throw error;
             }
         } catch (error) {
             console.error('Error reducing mana:', error);
-            res.status(500).json({ error: 'Internal server error' });
+            return res.status(500).json({ error: 'Internal server error' });
         }
     },
 

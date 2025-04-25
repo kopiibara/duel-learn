@@ -38,7 +38,19 @@ const StatsNProfile = () => {
   const updateManaStatus = async () => {
     if (!user?.firebase_uid) return;
 
+    // Add a timestamp check to prevent frequent API calls
+    const lastUpdate = localStorage.getItem("lastManaStatusUpdate");
+    const now = Date.now();
+
+    if (lastUpdate && now - parseInt(lastUpdate) < 30000) {
+      // Skip if last update was less than 30 seconds ago
+      return;
+    }
+
     try {
+      // Store update timestamp
+      localStorage.setItem("lastManaStatusUpdate", now.toString());
+
       // Use getManaDetails endpoint instead of basic mana endpoint
       const response = await axios.get(
         `${import.meta.env.VITE_BACKEND_URL}/api/mana/details/${
