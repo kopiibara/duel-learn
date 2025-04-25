@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import ErrorsSnackbar from "../../../../components/ErrorsSnackbar";
 import Filter from "../../../../components/Filter";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import CloseRoundedIcon from "@mui/icons-material/HighlightOffRounded";
 
 const style = {
@@ -44,6 +44,11 @@ export default function ShareLink({
   const [visibility, setVisibility] = useState<string>(
     studyMaterialVisibility.toString()
   );
+
+  useEffect(() => {
+    setVisibility(studyMaterialVisibility.toString());
+  }, [studyMaterialVisibility]);
+
   const [snackbarMessage, setSnackbarMessage] = useState<string>(
     "Link copied to clipboard!"
   );

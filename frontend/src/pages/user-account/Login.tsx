@@ -297,9 +297,13 @@ const Login = () => {
           navigate("/dashboard/welcome");
         }, 1500);
       } else if (userData && !userData.email_verified) {
-        navigate("/verify-email", { state: { token: authResult.token } });
+        setTimeout(() => {
+          navigate("/verify-email", { state: { token: authResult.token } });
+        }, 1000);
       } else {
-        navigate("/dashboard/home");
+        setTimeout(() => {
+          navigate("/dashboard/home");
+        }, 1000);
       }
     } catch (error) {
       handleError(error);
