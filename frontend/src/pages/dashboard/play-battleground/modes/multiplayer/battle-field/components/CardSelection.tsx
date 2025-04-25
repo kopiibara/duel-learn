@@ -28,6 +28,8 @@ export interface CardSelectionProps {
   onCardSelected: (cardId: string) => void;
   difficultyMode?: string | null;
   soundEffectsVolume?: number; // Add sound effect volume prop
+  answerShieldDamagedSoundRef?: React.RefObject<HTMLAudioElement>; // Add prop for Answer Shield Damaged sound
+  masterVolume?: number; // Add master volume prop
 }
 
 /**
@@ -41,6 +43,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   onCardSelected,
   difficultyMode = "average",
   soundEffectsVolume = 0.7, // Default to 0.7 if not provided
+  answerShieldDamagedSoundRef,
+  masterVolume = 1.0,
 }) => {
   const [showBackCard, setShowBackCard] = useState(true);
   const [showCardOptions, setShowCardOptions] = useState(false);
@@ -194,7 +198,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         name: "Poison Type",
         type: "Rare Power Card",
         description:
-          "It gives the enemy a poison type effect that last 3 rounds",
+          "It gives the enemy a poison type effect that lasts 3 turns (counting both players' turns)",
         image: RareCardPoisonType,
       },
     ],
@@ -567,7 +571,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     if (noSelectedCardSoundRef.current) {
       noSelectedCardSoundRef.current.currentTime = 0;
       noSelectedCardSoundRef.current.volume = soundEffectsVolume;
-      noSelectedCardSoundRef.current
+      noSelectedCardSoundRef
+        .current
         .play()
         .catch(err => console.error("Error playing no selected card sound:", err));
     }
@@ -577,8 +582,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     messageElement.className =
       "fixed inset-0 flex items-center justify-center z-50";
     messageElement.innerHTML = `
-            <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                No card selected! Proceeding to question...
+            <div class="bg-gray-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-gray-500/50 animate-pulse-border">
+                Cards Locked! Your opponent used Mind Control...
             </div>
         `;
     document.body.appendChild(messageElement);
@@ -924,20 +929,98 @@ const CardSelection: React.FC<CardSelectionProps> = ({
               setVisibleCardIndices(indicesToShow);
 
               // Show notification about blocked cards
-              const messageElement = document.createElement("div");
-              messageElement.className =
-                "fixed inset-0 flex items-center justify-center z-50";
-              messageElement.innerHTML = `
-                                <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                                    Answer Shield: ${response.data.data.cards_blocked} of your cards have been blocked!
-                                </div>
-                            `;
-              document.body.appendChild(messageElement);
+              const blockingAnimationContainer = document.createElement("div");
+              blockingAnimationContainer.className = "fixed inset-0 z-[100] pointer-events-none flex items-center justify-center";
 
-              // Remove the message after 2 seconds
+              // Play Answer Shield damaged sound effect
+              if (answerShieldDamagedSoundRef?.current) {
+                const calculatedVolume = (soundEffectsVolume / masterVolume);
+                answerShieldDamagedSoundRef.current.volume = calculatedVolume;
+                answerShieldDamagedSoundRef.current.currentTime = 0;
+                answerShieldDamagedSoundRef.current.play().catch(err =>
+                  console.error("Error playing Answer Shield damaged sound:", err)
+                );
+              }
+
+              blockingAnimationContainer.innerHTML = `
+                <div class="relative">
+                  <!-- Fullscreen backdrop gradient -->
+                  <div class="fixed inset-0 bg-gradient-to-b from-red-900/30 to-red-500/10 backdrop-blur-[2px]"></div>
+                  
+                  <!-- Shield hit animation -->
+                  <div class="absolute inset-0 bg-red-500/30 rounded-full blur-xl animate-pulse-slow" style="width: 350px; height: 350px; top: 50%; left: 50%; transform: translate(-50%, -50%)"></div>
+                  
+                  <!-- Broken shield visual -->
+                  <div class="absolute" style="width: 300px; height: 300px; top: 50%; left: 50%; transform: translate(-50%, -50%)">
+                    <div class="absolute inset-0 flex items-center justify-center">
+                      <div class="w-60 h-60 rounded-full border-8 border-red-400/80 bg-gradient-to-br from-red-500/40 to-red-600/20 flex items-center justify-center">
+                        <!-- Shield fracture animation -->
+                        <div class="absolute w-full h-full overflow-hidden">
+                          <div class="absolute bg-red-400/30 h-1 w-full top-1/2 left-0 transform -translate-y-1/2 animate-expand-x" style="animation-duration: 0.8s"></div>
+                          <div class="absolute bg-red-400/30 w-1 h-full top-0 left-1/2 transform -translate-x-1/2 animate-expand-y" style="animation-duration: 0.8s"></div>
+                          <div class="absolute bg-red-400/30 h-1 w-full top-1/4 left-0 transform -translate-y-1/2 animate-expand-x" style="animation-delay: 0.2s; animation-duration: 0.7s"></div>
+                          <div class="absolute bg-red-400/30 h-1 w-full top-3/4 left-0 transform -translate-y-1/2 animate-expand-x" style="animation-delay: 0.3s; animation-duration: 0.7s"></div>
+                        </div>
+                        
+                        <!-- Broken shield icon -->
+                        <div class="relative">
+                          <img src="/GameBattle/EpicCardAnswerShield.png" alt="Shield" class="w-32 h-32 object-contain opacity-70 drop-shadow-[0_0_15px_rgba(239,68,68,0.7)]" />
+                          <!-- Cracks overlay with animation -->
+                          <div class="absolute inset-0 flex items-center justify-center">
+                            <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" 
+                                 class="stroke-white drop-shadow-[0_0_5px_rgba(255,255,255,0.7)]" stroke-width="3">
+                              <path d="M50 20 L40 55 L60 40 L30 70 L45 50 L20 80" stroke-linecap="round" 
+                                    class="animate-draw-line" style="animation-duration: 1.2s; stroke-dasharray: 150; stroke-dashoffset: 150;" />
+                              <path d="M50 20 L70 60 L50 45 L80 75" stroke-linecap="round" 
+                                    class="animate-draw-line" style="animation-duration: 1s; animation-delay: 0.3s; stroke-dasharray: 120; stroke-dashoffset: 120;" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Blocked cards effect with animation -->
+                    <div class="absolute inset-0">
+                      ${Array(response.data.data.cards_blocked).fill(0).map((_, i) => `
+                        <div class="absolute rounded-lg bg-gradient-to-br from-white/90 to-gray-200/90 w-16 h-24 shadow-xl animate-fade-slide-in"
+                             style="top: calc(50% - 48px); left: calc(50% + ${(i - 0.5) * 30}px); transform: translateX(-50%) rotate(${(i - 1) * 15}deg); animation-delay: ${0.3 + i * 0.2}s;">
+                          <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="relative">
+                              <svg class="w-12 h-12 text-red-500 animate-pulse drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2.5" />
+                                <path d="M7 7 L17 17 M7 17 L17 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+                              </svg>
+                              <!-- Red flash effect -->
+                              <div class="absolute inset-0 bg-red-500/50 rounded-full animate-flash-fade" style="animation-delay: ${0.5 + i * 0.2}s"></div>
+                            </div>
+                          </div>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                  
+                  <!-- Text indicator -->
+                  <div class="absolute top-[68%] left-1/2 -translate-x-1/2 bg-gradient-to-r from-red-900/90 to-red-700/90 px-8 py-4 rounded-xl border-2 border-red-400/70 shadow-[0_0_15px_rgba(239,68,68,0.5)]">
+                    <p class="text-red-100 font-bold text-2xl text-center tracking-wider">
+                      ${response.data.data.cards_blocked === 1 ?
+                  "CARD BLOCKED!" :
+                  `${response.data.data.cards_blocked} CARDS BLOCKED!`}
+                    </p>
+                    <p class="text-red-200 text-center text-sm mt-1">Your opponent activated Answer Shield</p>
+                  </div>
+                </div>
+              `;
+
+              document.body.appendChild(blockingAnimationContainer);
+
+              // Remove the animation after 3 seconds with fade out
               setTimeout(() => {
-                document.body.removeChild(messageElement);
-              }, 2000);
+                blockingAnimationContainer.style.transition = "opacity 0.5s";
+                blockingAnimationContainer.style.opacity = "0";
+                setTimeout(() => {
+                  document.body.removeChild(blockingAnimationContainer);
+                }, 500);
+              }, 3000);
 
               // Mark the blocking effect as used
               if (
@@ -1005,21 +1088,108 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             if (response.data.data.has_mind_control_effect) {
               setMindControlActive(true);
 
-              // Show notification about mind control
-              const messageElement = document.createElement("div");
-              messageElement.className =
-                "fixed inset-0 flex items-center justify-center z-50";
-              messageElement.innerHTML = `
-                                <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                                    Mind Control: You cannot select a card this turn!
-                                </div>
-                            `;
-              document.body.appendChild(messageElement);
+              // Show visually impressive mind control effect
+              const mindControlAnimationContainer = document.createElement('div');
+              mindControlAnimationContainer.className = `
+                fixed top-0 left-0 w-full h-full
+                bg-gray-900 bg-opacity-30
+                flex items-center justify-center
+                z-50
+                animate-mindControlFade
+              `;
 
-              // Remove the message after 2 seconds
+              mindControlAnimationContainer.innerHTML = `
+                <div class="relative w-full h-full flex items-center justify-center">
+                  <!-- Removed backdrop with gradient -->
+                  
+                  <!-- Cards being blocked visualization -->
+                  <div class="absolute flex items-center justify-center gap-4 z-10">
+                    ${Array(3).fill(0).map((_, i) => `
+                      <div class="relative">
+                        <!-- Card -->
+                        <div class="w-44 h-56 bg-gradient-to-b from-gray-800 to-gray-700 rounded-lg transform ${i === 0 ? 'rotate-[-8deg]' : i === 1 ? 'rotate-[0deg]' : 'rotate-[8deg]'
+                } shadow-xl border border-gray-600">
+                          <!-- Card content suggestion -->
+                          <div class="absolute inset-2 rounded bg-gray-700 flex flex-col items-center justify-center p-2">
+                            <div class="w-full h-28 bg-gray-600 mb-2 rounded-sm"></div>
+                            <div class="w-full h-4 bg-gray-600 rounded-sm mb-1"></div>
+                            <div class="w-3/4 h-4 bg-gray-600 rounded-sm mb-1"></div>
+                            <div class="w-full h-10 bg-gray-600 rounded-sm"></div>
+                          </div>
+                          
+                          <!-- Lock overlay -->
+                          <div class="absolute inset-0 bg-gray-900/50 rounded-lg flex items-center justify-center backdrop-blur-[2px]">
+                            <svg class="w-16 h-16 text-purple-200 animate-pulse" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M18 11H6C4.89543 11 4 11.8954 4 13V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V13C20 11.8954 19.1046 11 18 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                              <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                              <circle cx="12" cy="16" r="1" fill="currentColor"/>
+                            </svg>
+                          </div>
+                          
+                          <!-- Purple energy outline pulse -->
+                          <div class="absolute inset-0 rounded-lg border-2 border-purple-500 animate-pulse-border"></div>
+                        </div>
+                        
+                        <!-- X mark over card -->
+                        <div class="absolute inset-0 flex items-center justify-center">
+                          <svg class="w-28 h-28 text-red-500 animate-pulse-opacity" style="animation-delay: ${i * 0.2}s;" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M18 6L6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M6 6L18 18" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                  
+                  <!-- Mind control text indicator -->
+                  <div class="absolute bottom-1/3 left-1/2 -translate-x-1/2 translate-y-16 bg-purple-900 px-8 py-4 rounded-lg border border-purple-500 shadow-lg z-20">
+                    <div className="flex items-center gap-3 mb-1">
+                      <svg class="w-6 h-6 text-purple-300" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 11H6C4.89543 11 4 11.8954 4 13V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V13C20 11.8954 19.1046 11 18 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      <h2 class="text-purple-100 font-bold text-xl">CARDS LOCKED</h2>
+                    </div>
+                    <p class="text-purple-200 text-center text-sm">Your opponent used Mind Control</p>
+                  </div>
+                </div>
+              `;
+
+              // Add CSS for the animations if they don't exist
+              if (!document.getElementById('mind-control-animations')) {
+                const styleElement = document.createElement('style');
+                styleElement.id = 'mind-control-animations';
+                styleElement.textContent = `
+                  @keyframes pulse-opacity {
+                    0%, 100% { opacity: 0.7; }
+                    50% { opacity: 1; }
+                  }
+                  @keyframes pulse-border {
+                    0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+                    50% { box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.4); }
+                  }
+                  
+                  .animate-pulse-opacity {
+                    animation: pulse-opacity 2s ease-in-out infinite;
+                  }
+                  .animate-pulse-border {
+                    animation: pulse-border 2s ease-in-out infinite;
+                  }
+                `;
+                document.head.appendChild(styleElement);
+              }
+
+              // Add the animation to the document
+              document.body.appendChild(mindControlAnimationContainer);
+
+              // Remove the animation after 3.5 seconds with fade out
               setTimeout(() => {
-                document.body.removeChild(messageElement);
-              }, 2000);
+                mindControlAnimationContainer.style.transition = "opacity 0.5s";
+                mindControlAnimationContainer.style.opacity = "0";
+                setTimeout(() => {
+                  document.body.removeChild(mindControlAnimationContainer);
+                }, 500);
+              }, 3500);
 
               // Mark the mind control effect as used
               if (
@@ -1046,7 +1216,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                   onCardSelected("no-card-selected");
                   setShowCardOptions(false);
                   setTimerActive(false);
-                }, 3000);
+                }, 4000); // Increased to 4 seconds to allow the animation to complete
               }
             }
           }
@@ -1064,7 +1234,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   }, [isMyTurn, onCardSelected]);
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-120 card-selection">
       {/* Audio elements for card animations */}
       <audio
         ref={flipCardSoundRef}
@@ -1181,7 +1351,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
       {/* Only show turn indicator when it's NOT the player's turn */}
       {!isMyTurn && (
-        <div className="absolute inset-0 flex items-center top-[100px] justify-center z-20">
+        <div className="absolute inset-0 flex items-center top-[100px] justify-center z-20 game-overlay">
           <div className="text-white text-3xl font-bold animate-pulse">
             {`${opponentName}'s turn`}
           </div>
@@ -1193,7 +1363,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
           <AnimatePresence onExitComplete={handleBackCardExitComplete}>
             {showBackCard && (
               <motion.div
-                className="w-[280px] h-[380px] overflow-hidden shadow-lg shadow-purple-500/30"
+                className="w-[280px] h-[380px] overflow-hidden shadow-lg shadow-purple-500/30 animation-overlay"
                 initial={{ scale: 0.5, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -1213,7 +1383,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
           {/* Timer display when it's the player's turn and options are shown */}
           {showCardOptions && backCardExitComplete && (
-            <div className="absolute top-[100px] text-white text-2xl font-bold">
+            <div className="absolute top-[140px] text-white text-2xl font-bold game-overlay">
               Time remaining:{" "}
               <span
                 className={selectionTimer <= 3 ? "text-red-500" : "text-white"}
@@ -1301,14 +1471,23 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             </div>
           )}
 
-          {/* Show information about mind control if active */}
+          {/* Show enhanced information about mind control if active */}
           {mindControlActive && showCardOptions && (
             <div className="flex flex-col items-center gap-4">
-              <div className="bg-yellow-600 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-yellow-500/50">
-                Mind Control Active: Cannot select a card!
-              </div>
-              <div className="text-white text-lg">
-                Opponent used Mind Control - proceeding without a card...
+              <div className="relative w-72 h-20 overflow-hidden">
+                <div className="absolute inset-0 bg-gray-900/70 rounded-lg border border-purple-500 shadow-lg flex items-center justify-center">
+                  {/* Content */}
+                  <div className="flex items-center gap-3 p-3">
+                    <svg className="w-10 h-10 text-purple-300" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M18 11H6C4.89543 11 4 11.8954 4 13V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V13C20 11.8954 19.1046 11 18 11Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <div>
+                      <h3 className="text-purple-100 font-bold">CARDS LOCKED</h3>
+                      <p className="text-purple-200 text-sm">Auto-proceeding without a card</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1317,18 +1496,25 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
       {/* Show notification if cards are blocked */}
       {hasCardBlocking && blockedCardCount > 0 && isMyTurn && (
-        <div className="absolute top-[100px] text-red-400 text-xl font-semibold">
+        <div className="absolute top-[170px] text-red-400 text-xl font-semibold game-overlay">
           {blockedCardCount === 1
             ? "Your opponent used Answer Shield: 1 card has been blocked!"
             : `Your opponent used Answer Shield: ${blockedCardCount} cards have been blocked!`}
         </div>
       )}
 
-      {/* Show notification if mind control is active */}
+      {/* Enhanced notification if mind control is active */}
       {hasMindControl && mindControlActive && isMyTurn && (
-        <div className="absolute top-[100px] text-red-400 text-xl font-semibold">
-          Mind Control: Your opponent has prevented you from using cards this
-          turn!
+        <div className="absolute top-[100px] flex items-center justify-center game-overlay">
+          <div className="bg-gray-900/70 rounded-lg border border-purple-500 px-4 py-2 shadow-lg">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 mr-2 text-purple-300" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 11H6C4.89543 11 4 11.8954 4 13V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V13C20 11.8954 19.1046 11 18 11Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="text-purple-200 text-sm font-semibold">Cards Locked</span>
+            </div>
+          </div>
         </div>
       )}
     </div>
