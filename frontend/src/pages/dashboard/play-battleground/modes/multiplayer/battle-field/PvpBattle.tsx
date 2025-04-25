@@ -271,6 +271,8 @@ export default function PvpBattle() {
   const [opponentPoisonEffectActive, setOpponentPoisonEffectActive] =
     useState(false);
   const [poisonTurnsRemaining, setPoisonTurnsRemaining] = useState(0);
+  const [playerEffects, setPlayerEffects] = useState<any[]>([]);
+  const [opponentEffects, setOpponentEffects] = useState<any[]>([]);
 
   // Battle statistics tracking
   const [battleStats, setBattleStats] = useState({
@@ -343,6 +345,9 @@ export default function PvpBattle() {
   // Add this new state variable near the other QuickDraw state variables
   const [showOpponentQuickDrawMessageMinimized, setShowOpponentQuickDrawMessageMinimized] = useState(false);
   const [opponentQuickDrawMinimizedOpacity, setOpponentQuickDrawMinimizedOpacity] = useState(100);
+
+  // Add a state for tracking the last time poison was applied
+  const [lastPoisonApplication, setLastPoisonApplication] = useState(0);
 
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
@@ -1069,8 +1074,18 @@ export default function PvpBattle() {
                   messageElement.className =
                     "fixed inset-0 flex items-center justify-center z-50";
                   messageElement.innerHTML = `
-                    <div class="bg-gray-800/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-gray-500/50 animate-pulse-border">
-                      Poison Type Card: Opponent takes 10 initial damage plus 5 damage for 3 turns!
+                    <div class="bg-gradient-to-r from-purple-900 to-fuchsia-800 text-white py-4 px-8 rounded-lg shadow-lg border border-purple-400 animate-pulse-slow">
+                      <div class="flex items-center space-x-3">
+                        <svg class="h-6 w-6 text-fuchsia-300 animate-spin-slow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 2L20 7L20 17L12 22L4 17L4 7L12 2Z" />
+                        </svg>
+                        <p class="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-200 to-purple-200">
+                          <span class="text-fuchsia-300">Witch's Curse:</span> Initial 10 damage plus 5 damage for 3 turns
+                        </p>
+                        <svg class="h-6 w-6 text-fuchsia-300 animate-spin-slow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M12 2L20 7L20 17L12 22L4 17L4 7L12 2Z" />
+                        </svg>
+                      </div>
                     </div>
                   `;
                   document.body.appendChild(messageElement);
@@ -1111,7 +1126,7 @@ export default function PvpBattle() {
                           ${Array(3).fill(0).map((_, i) => `
                             <div class="relative">
                               <!-- Card -->
-                              <div class="w-40 h-56 bg-gradient-to-b from-gray-800 to-gray-700 rounded-lg transform ${i === 0 ? 'rotate-[-5deg]' : i === 1 ? 'rotate-[0deg]' : 'rotate-[5deg]'
+                              <div class="w-40 h-56 bg-gradient-to-b from-gray-800 to-gray-700 rounded-lg transform ${i === 0 ? 'rotate-[-5deg]' : i === 1 ? 'rotate-[0deg]' : 'rotate-[5deg]'} shadow-xl border border-gray-600">
                     } shadow-xl border border-gray-600">
                                 <!-- Card content -->
                                 <div class="absolute inset-2 rounded bg-gray-700 flex flex-col items-center justify-center p-2">
@@ -1573,7 +1588,7 @@ export default function PvpBattle() {
 
   // Handle poison effects and health updates
   useEffect(() => {
-    const checkAndApplyPoisonEffects = async () => {
+    const pollHealthAndScores = async () => {
       if (!battleState?.session_uuid) return;
 
       // Health updates are polled every 1 second for more responsive health bar updates
@@ -1609,37 +1624,10 @@ export default function PvpBattle() {
               }/${opponentType}`
             );
 
-            // Check if player has active poison effects
-            if (playerResponse.data.success) {
-              const playerEffects = playerResponse.data.data?.effects || [];
-              const hasPlayerPoisonEffect = playerEffects.some(
-                (effect) =>
-                  effect.effect === "poison" && effect.turns_remaining > 0
-              );
-              setPoisonEffectActive(hasPlayerPoisonEffect);
-
-              console.log(
-                `Player poison status: ${hasPlayerPoisonEffect ? "POISONED" : "NOT POISONED"
-                }`
-              );
-            }
-
-            // Log opponent's poison effects for debugging
-            if (opponentResponse.data.success) {
-              const opponentEffects = opponentResponse.data.data?.effects || [];
-              const hasOpponentPoisonEffect = opponentEffects.some(
-                (effect) =>
-                  effect.effect === "poison" && effect.turns_remaining > 0
-              );
-
-              setOpponentPoisonEffectActive(hasOpponentPoisonEffect);
-              console.log(
-                `Opponent poison status: ${hasOpponentPoisonEffect ? "POISONED" : "NOT POISONED"
-                }`
-              );
-            }
+            // We're using our new implementation instead of this one for poison effects
+            // Only keep this code for other card effects if needed in the future
           } catch (error) {
-            console.error("Error checking poison effects:", error);
+            console.error("Error checking card effects:", error);
           }
         }
 
@@ -1805,8 +1793,8 @@ export default function PvpBattle() {
     };
 
     // Poll for battle scores more frequently (every 1 second instead of 2)
-    const scoresPollInterval = setInterval(checkAndApplyPoisonEffects, 1000);
-    checkAndApplyPoisonEffects(); // Initial fetch
+    const scoresPollInterval = setInterval(pollHealthAndScores, 1000);
+    pollHealthAndScores(); // Initial fetch
 
     return () => clearInterval(scoresPollInterval);
   }, [battleState?.session_uuid, isHost]);
@@ -2919,6 +2907,160 @@ export default function PvpBattle() {
     return (specificVolume / 100) * (masterVolume / 100);
   };
 
+  // Inside the checkTurn useEffect: apply poison when turns change
+  useEffect(() => {
+    const checkTurn = async () => {
+      // Skip if session is not available
+      if (!battleState?.session_uuid) return;
+
+      try {
+        // Get the current battle session
+        const response = await axios.get<BattleSessionResponse>(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session/${battleState.session_uuid}`
+        );
+
+        if (response.data.success) {
+          const sessionData = response.data.data;
+
+          if (sessionData) {
+            // Current user ID from session data
+            const currentUserId = isHost ? hostId : guestId;
+
+            // Log current state
+            console.log("checkTurn: ", {
+              sessionData,
+              hostId,
+              guestId,
+              current_turn: sessionData.current_turn,
+              isHost,
+              currentUserId,
+            });
+
+            // Check if it's the current player's turn
+            const isCurrentPlayerTurn =
+              sessionData.current_turn === currentUserId;
+
+            // Apply poison effects when a turn change is detected
+            if (isCurrentPlayerTurn !== isMyTurn) {
+              console.log(`Turn changed: ${isMyTurn} → ${isCurrentPlayerTurn}`);
+
+              // Increment turn counter on EVERY turn change (both players' turns count)
+              // This makes the poison effect last for 3 total turns combined
+              setCurrentTurnNumber(prev => prev + 1);
+              console.log(`Turn number incremented to: ${currentTurnNumber + 1}`);
+
+              // Play turn change sounds
+              if (isCurrentPlayerTurn) {
+                const yourTurnSound = new Audio("/GameBattle/YourTurn.mp3");
+                yourTurnSound.volume =
+                  calculateActualVolume(soundEffectsVolume);
+                yourTurnSound.play();
+              }
+
+              // Set state for whose turn it is
+              setIsMyTurn(isCurrentPlayerTurn);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error checking turn:", error);
+      }
+    };
+
+    // Set interval to check turn (every 2 seconds)
+    const turnCheckInterval = setInterval(checkTurn, 2000);
+
+    // Initial check
+    checkTurn();
+
+    // Clean up interval
+    return () => clearInterval(turnCheckInterval);
+  }, [battleState, isHost, isMyTurn, soundEffectsVolume, hostId, guestId]);
+
+  // Check for poison effects and apply damage when the turn changes
+  useEffect(() => {
+    const checkAndApplyPoisonEffects = async () => {
+      if (!battleState?.session_uuid) return;
+
+      try {
+        // Apply poison effects to the current player regardless of whose turn it is
+        const playerType = isHost ? 'host' : 'guest';
+
+        // First check if the player has an active poison effect (to keep UI visible)
+        const effectsResponse = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/card-effects/${battleState.session_uuid}/${playerType}`
+        );
+
+        // Check if player has active poison effects and update UI state
+        if (effectsResponse.data.success) {
+          const playerEffects = effectsResponse.data.data?.effects || [];
+          const hasPlayerPoisonEffect = playerEffects.some(
+            (effect) => effect.effect === "poison" && effect.turns_remaining > 0
+          );
+
+          // Keep poison effect UI active as long as there's an active poison effect
+          setPoisonEffectActive(hasPlayerPoisonEffect);
+
+          // Set player effects for reference (might be used in UI)
+          setPlayerEffects(playerEffects.filter(e => e.effect === "poison" && e.turns_remaining > 0));
+
+          console.log(
+            `Player poison status: ${hasPlayerPoisonEffect ? "POISONED" : "NOT POISONED"}, ` +
+            `remaining turns: ${hasPlayerPoisonEffect && playerEffects.length > 0 ?
+              playerEffects.find(e => e.effect === "poison")?.turns_remaining : 'N/A'}`
+          );
+        }
+
+        // Now apply poison damage if there is any
+        const response = await axios.post(
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/apply-poison-effects`,
+          {
+            session_uuid: battleState.session_uuid,
+            player_type: playerType,
+            current_turn_number: currentTurnNumber
+          }
+        );
+
+        if (response.data.success && response.data.data.poison_damage_applied > 0) {
+          console.log(`Applied ${response.data.data.poison_damage_applied} poison damage on turn ${currentTurnNumber}`);
+
+          // Update local health state from the response data
+          if (response.data.data.updated_scores) {
+            if (isHost) {
+              setPlayerHealth(response.data.data.updated_scores.host_health);
+            } else {
+              setPlayerHealth(response.data.data.updated_scores.guest_health);
+            }
+          }
+
+          // Show poison damage notification
+          const damage = response.data.data.poison_damage_applied;
+
+          const messageElement = document.createElement('div');
+          messageElement.className = 'fixed inset-0 flex items-center justify-center z-50';
+          messageElement.innerHTML = `
+            <div class="bg-green-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-green-500/50">
+              Poison Effect: You took ${damage} poison damage!
+            </div>
+          `;
+          document.body.appendChild(messageElement);
+
+          // Remove the message after 2 seconds but keep the poison UI active
+          setTimeout(() => {
+            document.body.removeChild(messageElement);
+          }, 2000);
+        }
+      } catch (error) {
+        console.error("Error applying poison effects:", error);
+      }
+    };
+
+    // Check for poison effects on EVERY turn change (after the first turn)
+    if (currentTurnNumber > 0) {
+      checkAndApplyPoisonEffects();
+    }
+  }, [currentTurnNumber, battleState?.session_uuid, isHost]);
+
   return (
     <>
       <DocumentHead
@@ -3295,66 +3437,7 @@ export default function PvpBattle() {
           {/* Session Report */}
           {showSessionReport && <PvpSessionReport />}
 
-          {/* Poison effect indicator */}
-          {poisonEffectActive &&
-            !showVictoryModal &&
-            shouldShowBattleInterface() && (
-              <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
-                <div className="absolute inset-0 bg-green-500/20 animate-pulse"></div>
-              </div>
-            )}
-          {/* Poison effect overlay - Fullscreen effect */}
-          {poisonEffectActive &&
-            shouldShowBattleInterface() &&
-            !shouldHideGameUI() && (
-              <div className="fixed inset-0 z-[5] pointer-events-none overflow-hidden">
-                <div className="absolute inset-0 bg-purple-900/30"></div>
-                <div className="absolute inset-0 bg-gradient-to-t from-green-900/10 to-purple-800/10"></div>
-
-                {/* Floating particles */}
-                <div className="particle-container">
-                  {Array.from({ length: 20 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`absolute w-2 h-2 rounded-full bg-green-400/60 animate-pulse`}
-                      style={{
-                        left: `${Math.random() * 100}%`,
-                        top: `${Math.random() * 100}%`,
-                        animationDuration: `${5 + Math.random() * 10}s`,
-                        animationDelay: `${Math.random() * 5}s`,
-                        boxShadow: "0 0 8px 2px rgba(74, 222, 128, 0.4)",
-                      }}
-                    />
-                  ))}
-                  {Array.from({ length: 15 }).map((_, i) => (
-                    <div
-                      key={i + 20}
-                      className={`absolute w-3 h-3 rotate-45 bg-purple-500/50 animate-pulse`}
-                      style={{
-                        left: `${Math.random() * 100}%`,
-                        top: `${Math.random() * 100}%`,
-                        animationDuration: `${8 + Math.random() * 15}s`,
-                        animationDelay: `${Math.random() * 5}s`,
-                        boxShadow: "0 0 12px 3px rgba(139, 92, 246, 0.4)",
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-          {/* Poison effect notification */}
-          {poisonEffectActive &&
-            shouldShowBattleInterface() &&
-            !shouldHideGameUI() && (
-              <div className="fixed bottom-20 left-0 right-0 flex justify-center pointer-events-none z-40">
-                <div className="bg-purple-800 text-white py-4 px-8 rounded-lg shadow-lg border-2 border-purple-500">
-                  <p className="text-xl font-bold">
-                    Poison Effect: You are taking 5 damage per turn!
-                  </p>
-                </div>
-              </div>
-            )}
+          {/* Old poison effect UI elements removed - using the new simple green overlay implementation instead */}
 
           {/* Sound Settings Modal */}
           <SoundSettingsModal
@@ -3391,6 +3474,67 @@ export default function PvpBattle() {
             mindControlActivateSoundRef={mindControlActivateSoundRef}
             mindControlEffectSoundRef={mindControlEffectSoundRef}
           />
+
+          {/* Poison effect indicator */}
+          {poisonEffectActive && shouldShowBattleInterface() && !shouldHideGameUI() && (
+            <div className="fixed inset-0 z-[100] pointer-events-none overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-t from-purple-900/10 to-fuchsia-800/10"></div>
+
+              {/* Floating particles */}
+              <div className="particle-container">
+                {Array.from({ length: 20 }).map((_, i) => (
+                  <div
+                    key={i}
+                    className={`absolute w-2 h-2 rounded-full bg-fuchsia-400/60 animate-twinkle`}
+                    style={{
+                      left: `${Math.random() * 100}%`,
+                      top: `${Math.random() * 100}%`,
+                      animationDuration: `${5 + Math.random() * 10}s`,
+                      animationDelay: `${Math.random() * 5}s`,
+                      boxShadow: "0 0 8px 2px rgba(255, 105, 180, 0.4)",
+                    }}
+                  />
+                ))}
+                {Array.from({ length: 15 }).map((_, i) => (
+                  <div
+                    key={i + 20}
+                    className={`absolute w-3 h-3 rotate-45 bg-purple-500/50 animate-float`}
+                    style={{
+                      left: `${Math.random() * 100}%`,
+                      top: `${Math.random() * 100}%`,
+                      animationDuration: `${8 + Math.random() * 15}s`,
+                      animationDelay: `${Math.random() * 5}s`,
+                      boxShadow: "0 0 12px 3px rgba(139, 92, 246, 0.4)",
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Poison effect notification */}
+          {poisonEffectActive && shouldShowBattleInterface() && !shouldHideGameUI() && (
+            <div className="fixed bottom-20 left-0 right-0 flex justify-center pointer-events-none z-40">
+              <div className="bg-gradient-to-r from-purple-900 to-fuchsia-800 text-white py-4 px-8 rounded-lg shadow-lg border border-purple-400 animate-pulse-slow">
+                <div className="flex items-center space-x-3">
+                  <svg className="h-6 w-6 text-fuchsia-300 animate-spin-slow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2L20 7L20 17L12 22L4 17L4 7L12 2Z" />
+                  </svg>
+                  <div className="flex flex-col">
+                    <p className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-200 to-purple-200">
+                      <span className="text-fuchsia-300">Witch's Curse:</span> Dark magic drains 5 health each turn
+                    </p>
+                    <p className="text-sm text-fuchsia-200">
+                      <span className="font-bold">Effect ends in:</span> <span className="text-yellow-300 font-bold text-md">{playerEffects.length > 0 ? playerEffects[0].turns_remaining : 3} {playerEffects.length > 0 && playerEffects[0].turns_remaining === 1 ? 'turn' : 'turns'}</span>
+                    </p>
+                  </div>
+                  <svg className="h-6 w-6 text-fuchsia-300 animate-spin-slow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2L20 7L20 17L12 22L4 17L4 7L12 2Z" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

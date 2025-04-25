@@ -198,7 +198,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         name: "Poison Type",
         type: "Rare Power Card",
         description:
-          "It gives the enemy a poison type effect that last 3 rounds",
+          "It gives the enemy a poison type effect that lasts 3 turns (counting both players' turns)",
         image: RareCardPoisonType,
       },
     ],
@@ -239,7 +239,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       },
       rare: {
         total: 55,
-        distribution: { "Mind Control": 45, "Poison Type": 10 },
+        distribution: { "Mind Control": 10, "Poison Type": 45 },
       },
     },
   };

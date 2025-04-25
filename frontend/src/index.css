@@ -265,3 +265,25 @@ input:not(:-webkit-autofill) {
 .bg-gradient-radial {
   background-image: radial-gradient(var(--tw-gradient-stops));
 }
+
+/* Witch themed poison effect animations */
+@keyframes float {
+  0% { transform: translateY(0) rotate(0deg); }
+  33% { transform: translateY(-15px) rotate(5deg); }
+  66% { transform: translateY(5px) rotate(-5deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+
+@keyframes twinkle {
+  0% { opacity: 0.2; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0.2; transform: scale(0.8); }
+}
+
+.animate-float {
+  animation: float 8s ease-in-out infinite;
+}
+
+.animate-twinkle {
+  animation: twinkle 1.5s ease-in-out infinite;
+}
