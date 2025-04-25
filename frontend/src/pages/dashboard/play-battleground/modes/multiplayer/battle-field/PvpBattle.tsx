@@ -313,6 +313,10 @@ export default function PvpBattle() {
   // Add state for Time Manipulation effect display
   const [showTimeManipulationEffect, setShowTimeManipulationEffect] = useState(false);
 
+  // Add new audio references for Time Manipulation sounds
+  const timeManipulationActivateSoundRef = useRef<HTMLAudioElement | null>(null);
+  const timeManipulationEffectSoundRef = useRef<HTMLAudioElement | null>(null);
+
   // Use the Battle hooks
   const { handleLeaveBattle, isEndingBattle, setIsEndingBattle } = useBattle({
     lobbyCode,
@@ -814,16 +818,19 @@ export default function PvpBattle() {
                   // Replace the text notification with visual effect
                   setShowTimeManipulationEffect(true);
 
+                  // Play Time Manipulation activation sound
+                  if (timeManipulationActivateSoundRef.current) {
+                    timeManipulationActivateSoundRef.current.volume = (soundEffectsVolume / 100) * (masterVolume / 100);
+                    timeManipulationActivateSoundRef.current.currentTime = 0;
+                    timeManipulationActivateSoundRef.current.play().catch(err =>
+                      console.error("Error playing time manipulation activation sound:", err)
+                    );
+                  }
+
                   // Hide the effect after 3 seconds
                   setTimeout(() => {
                     setShowTimeManipulationEffect(false);
                   }, 3000);
-
-                  // Play a time warp sound if available
-                  if (correctSfxRef.current) {
-                    correctSfxRef.current.volume = soundEffectsVolume;
-                    correctSfxRef.current.play().catch(err => console.error("Error playing time manipulation sound:", err));
-                  }
                 } else if (
                   response.data.data.card_effect.type === "epic-1" &&
                   isCorrect
@@ -2320,6 +2327,18 @@ export default function PvpBattle() {
           preload="auto"
         />
 
+        {/* Add Time Manipulation audio elements */}
+        <audio
+          ref={timeManipulationActivateSoundRef}
+          src="/GameBattle/TimeManipulationCardSFx/TimeManipulationActivateSfx.mp3"
+          preload="auto"
+        />
+        <audio
+          ref={timeManipulationEffectSoundRef}
+          src="/GameBattle/TimeManipulationCardSFx/TimeManipulationEffectSfx.mp3"
+          preload="auto"
+        />
+
         {/* Character animation manager - Hide when modals are active */}
         {!shouldHideGameUI() && (
           <CharacterAnimationManager
@@ -2515,29 +2534,29 @@ export default function PvpBattle() {
             soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
           />
 
-          {/* Question Modal - Hide when other modals are active */}
-          {!shouldHideGameUI() && shouldShowBattleInterface() && (
-            <QuestionModal
-              isOpen={showQuestionModal}
-              onClose={handleQuestionModalClose}
-              onAnswerSubmit={handleAnswerSubmit}
-              onAnswerSubmitRound={handleAnswerSubmitRound}
-              difficultyMode={difficultyMode}
-              questionTypes={questionTypes}
-              selectedCardId={selectedCardId}
-              aiQuestions={questionGenState.questions}
-              isGeneratingAI={questionGenState.isGenerating}
-              currentQuestionNumber={currentQuestionNumber}
-              totalQuestions={totalItems}
-              onGameEnd={handleGameEnd}
-              shownQuestionIds={shownQuestionIds}
-              playCorrectSound={playRandomCorrectAnswerSound}
-              playIncorrectSound={playRandomIncorrectAnswerSound}
-              soundEffectsVolume={actualSoundEffectsVolume}
-              battleState={battleState}
-              isHost={isHost}
-            />
-          )}
+          {/* Question Modal */}
+          <QuestionModal
+            isOpen={showQuestionModal}
+            onClose={handleQuestionModalClose}
+            onAnswerSubmit={handleAnswerSubmit}
+            onAnswerSubmitRound={handleAnswerSubmitRound}
+            difficultyMode={difficultyMode}
+            questionTypes={questionTypes}
+            selectedCardId={selectedCardId}
+            aiQuestions={questionGenState.questions}
+            isGeneratingAI={questionGenState.isGenerating}
+            shownQuestionIds={shownQuestionIds}
+            currentQuestionNumber={currentQuestionNumber}
+            totalQuestions={totalItems}
+            onGameEnd={handleGameEnd}
+            playCorrectSound={playRandomCorrectAnswerSound}
+            playIncorrectSound={playRandomIncorrectAnswerSound}
+            soundEffectsVolume={soundEffectsVolume}
+            battleState={battleState}
+            isHost={isHost}
+            masterVolume={masterVolume}
+            timeManipulationEffectSoundRef={timeManipulationEffectSoundRef}
+          />
 
           {/* Add Enemy Question Display component - Hide when modals are active */}
           {shouldShowBattleInterface() && !shouldHideGameUI() && (
@@ -2629,6 +2648,8 @@ export default function PvpBattle() {
             healRegenSoundRef={healRegenSoundRef}
             selectedCardSoundRef={selectedCardSoundRef}
             noSelectedCardSoundRef={noSelectedCardSoundRef}
+            timeManipulationActivateSoundRef={timeManipulationActivateSoundRef}
+            timeManipulationEffectSoundRef={timeManipulationEffectSoundRef}
             masterVolume={masterVolume}
             musicVolume={musicVolume}
             soundEffectsVolume={soundEffectsVolume}

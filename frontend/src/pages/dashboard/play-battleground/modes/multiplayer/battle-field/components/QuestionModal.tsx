@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import BattleFlashCard from "./BattleFlashCard";
 import axios from "axios";
 import { Question } from "../../../../types";
@@ -67,6 +67,8 @@ interface QuestionModalProps {
   soundEffectsVolume?: number;
   battleState?: { session_uuid?: string };
   isHost?: boolean;
+  masterVolume?: number;
+  timeManipulationEffectSoundRef?: React.RefObject<HTMLAudioElement>;
 }
 
 const QuestionModal: React.FC<QuestionModalProps> = ({
@@ -85,9 +87,11 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   totalQuestions,
   playCorrectSound,
   playIncorrectSound,
-  soundEffectsVolume,
+  soundEffectsVolume = 0.7,
   battleState,
-  isHost
+  isHost,
+  masterVolume = 100,
+  timeManipulationEffectSoundRef
 }) => {
   const [hasAnswered, setHasAnswered] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -101,6 +105,9 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   const [hasTimeManipulation, setHasTimeManipulation] = useState(false);
   const [timeManipulationEffect, setTimeManipulationEffect] = useState<CardEffect | null>(null);
   const [showTimeEffect, setShowTimeEffect] = useState(false);
+
+  // Add ref for Time Manipulation effect sound
+  const timeManipulationEffectSoundRefInternal = useRef<HTMLAudioElement | null>(null);
 
   // Initialize shownQuestionIds from round data when component mounts
   useEffect(() => {
@@ -311,12 +318,15 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
                 setShowTimeEffect(false);
               }, 3000);
 
-              // Play a sound effect if available
-              // This assumes you have a sound effect ref passed as prop
-              if (playCorrectSound) {
-                setTimeout(() => {
-                  playCorrectSound();
-                }, 200);
+              // Play Time Manipulation effect sound
+              if (timeManipulationEffectSoundRef) {
+                // Calculate volume based on sound settings
+                const calculatedVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
+                timeManipulationEffectSoundRef.current!.volume = calculatedVolume;
+                timeManipulationEffectSoundRef.current!.currentTime = 0;
+                timeManipulationEffectSoundRef.current!.play().catch(err =>
+                  console.error("Error playing time manipulation effect sound:", err)
+                );
               }
 
               // Mark the effect as used
@@ -342,7 +352,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
 
       checkForTimeManipulation();
     }
-  }, [isOpen, battleState?.session_uuid, isHost, playCorrectSound]);
+  }, [isOpen, battleState?.session_uuid, isHost, soundEffectsVolume, masterVolume]);
 
   // Modify the getTimeLimit function to apply time reduction
   const getTimeLimit = () => {
@@ -454,6 +464,13 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 question-modal">
+      {/* Add Time Manipulation effect sound */}
+      <audio
+        ref={timeManipulationEffectSoundRefInternal}
+        src="/GameBattle/TimeManipulationEffectSfx.mp3"
+        preload="auto"
+      />
+
       {isGeneratingAI ? (
         <div className="bg-black/50 p-8 rounded-lg text-white text-center game-overlay">
           <div className="animate-spin w-8 h-8 border-4 border-white border-t-transparent rounded-full mx-auto mb-4"></div>
