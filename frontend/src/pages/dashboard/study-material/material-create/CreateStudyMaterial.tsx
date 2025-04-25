@@ -816,6 +816,18 @@ const CreateStudyMaterial = () => {
   ) => {
     event.preventDefault();
 
+    // Add strict validation at the beginning
+    if (!isPremium && (!user?.tech_pass || user?.tech_pass <= 0)) {
+      handleShowSnackbar(
+        "You need a Tech Pass to use the scanning feature. Purchase Tech Passes from the shop or upgrade to Premium."
+      );
+      // Reset input if using file input
+      if ("target" in event && (event.target as HTMLInputElement).files) {
+        (event.target as HTMLInputElement).value = "";
+      }
+      return;
+    }
+
     // Handle both drag and drop events and file input events
     let newFiles: File[] = [];
 
@@ -824,7 +836,11 @@ const CreateStudyMaterial = () => {
       if (event.dataTransfer.files.length > 0) {
         newFiles = Array.from(event.dataTransfer.files);
       }
-    } else if (event.target.files && event.target.files.length > 0) {
+    } else if (
+      event.target instanceof HTMLInputElement &&
+      event.target.files &&
+      event.target.files.length > 0
+    ) {
       // This is a file input event
       newFiles = Array.from(event.target.files);
     }
@@ -950,6 +966,15 @@ const CreateStudyMaterial = () => {
   const handleProcessFile = async () => {
     if (uploadedFiles.length === 0) {
       handleShowSnackbar("Please upload at least one file");
+      return;
+    }
+
+    // Add strict validation at the beginning
+    if (!isPremium && (!user?.tech_pass || user?.tech_pass <= 0)) {
+      handleShowSnackbar(
+        "You need a Tech Pass to process files. Purchase Tech Passes from the shop or upgrade to Premium."
+      );
+      handleCloseScanModal(); // Close the modal immediately
       return;
     }
 
@@ -1095,12 +1120,12 @@ const CreateStudyMaterial = () => {
 
             if (techPassResponse.ok) {
               const responseData = await techPassResponse.json();
-              // Update the user context with updated tech pass count
+              console.log("PDF tech pass deduction response:", responseData);
+
+              // Update the user context with server-provided count instead of manual calculation
               updateUser({
                 ...user,
-                tech_pass:
-                  responseData.updatedTechPassCount ||
-                  user.tech_pass - techPassesToDeduct,
+                tech_pass: responseData.updatedTechPassCount,
               });
             } else {
               // Try to parse error message from response
@@ -1255,10 +1280,12 @@ const CreateStudyMaterial = () => {
 
               if (techPassResponse.ok) {
                 const responseData = await techPassResponse.json();
-                // Update the user context with updated tech pass count
+                console.log("PDF tech pass deduction response:", responseData);
+
+                // Update the user context with server-provided count instead of manual calculation
                 updateUser({
                   ...user,
-                  tech_pass: user.tech_pass - techPassesToDeduct,
+                  tech_pass: responseData.updatedTechPassCount,
                 });
               } else {
                 // Try to parse error message from response
@@ -2265,7 +2292,16 @@ const CreateStudyMaterial = () => {
               isProcessing ||
               (!isPremium && (!user?.tech_pass || user.tech_pass <= 0))
             }
-            onClick={handleProcessFile}
+            onClick={() => {
+              // Double-check tech pass availability right before processing
+              if (!isPremium && (!user?.tech_pass || user?.tech_pass <= 0)) {
+                handleShowSnackbar(
+                  "You need a Tech Pass to use the scanning feature. Purchase Tech Passes from the shop or upgrade to Premium."
+                );
+                return;
+              }
+              handleProcessFile();
+            }}
             sx={{
               backgroundColor:
                 isPremium || (user?.tech_pass && user.tech_pass > 0)

@@ -7,7 +7,7 @@ const ManaController = {
 
     userManaReduction: async (req, res) => {
         try {
-            const { firebase_uid } = req.body;
+            const { firebase_uid, manaCost } = req.body;  // Default to 10 if not provided
 
             // Start a transaction for atomic operation
             const connection = await pool.getConnection();
@@ -16,21 +16,31 @@ const ManaController = {
             try {
                 // Check if user has enough mana within the transaction
                 const [userInfo] = await connection.query(
-                    "SELECT mana FROM user_info WHERE firebase_uid = ?",
+                    "SELECT mana, account_type FROM user_info WHERE firebase_uid = ?",
                     [firebase_uid]
                 );
 
-                if (!userInfo.length || userInfo[0].mana < 10) {
+                if (!userInfo.length) {
                     await connection.rollback();
                     connection.release();
-                    return res.status(400).json({ error: 'Insufficient mana' });
+                    return res.status(404).json({ error: 'User not found' });
                 }
 
-                // Update mana (reduce by 10)
-                await connection.query(
-                    `UPDATE user_info SET mana = mana - 10 WHERE firebase_uid = ?`,
-                    [firebase_uid]
-                );
+                // Check if user is premium - skip mana check if premium
+                if (userInfo[0].account_type !== 'premium') {
+                    // Check if user has enough mana
+                    if (userInfo[0].mana < manaCost) {
+                        await connection.rollback();
+                        connection.release();
+                        return res.status(400).json({ error: 'Insufficient mana' });
+                    }
+
+                    // Update mana using the value from the frontend
+                    await connection.query(
+                        `UPDATE user_info SET mana = mana - ? WHERE firebase_uid = ?`,
+                        [manaCost, firebase_uid]
+                    );
+                }
 
                 // Get updated mana value
                 const [updatedInfo] = await connection.query(
