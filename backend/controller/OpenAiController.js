@@ -1003,6 +1003,7 @@ Instructions:
 8. Consider the domain context from tags when evaluating accuracy.
 9. Be stricter with domain-specific terminology and concepts.
 10. For missing keywords, provide the complete definition with the keyword added in the correct position.
+11. Should not exceed 200 characters for the response.
 
 Respond with JSON in this exact format:
 {

@@ -745,7 +745,9 @@ const ItemComponent: FC<ItemComponentProps> = ({
                           )}
 
                         {factCheckResult.missingKeywords &&
-                          factCheckResult.missingKeywords.length > 0 && (
+                          factCheckResult.missingKeywords.length > 0 && 
+                          factCheckResult.suggestedAdditions && 
+                          factCheckResult.missingKeywords.some((_, index) => factCheckResult.suggestedAdditions[index]) && (
                             <>
                               <Typography
                                 variant="caption"
@@ -758,17 +760,13 @@ const ItemComponent: FC<ItemComponentProps> = ({
                               >
                                 Missing Crucial Keywords:
                               </Typography>
-                              {factCheckResult.missingKeywords.map(
-                                (keyword, index) => (
+                              {factCheckResult.missingKeywords.map((keyword, index) => (
+                                // Only render if there's a corresponding suggestion
+                                factCheckResult.suggestedAdditions[index] && (
                                   <Box
                                     key={index}
                                     sx={{
-                                      mb:
-                                        index ===
-                                        factCheckResult.missingKeywords.length -
-                                          1
-                                          ? 0
-                                          : 1,
+                                      mb: index === factCheckResult.missingKeywords.length - 1 ? 0 : 1,
                                       p: 1,
                                       bgcolor: "rgba(0,0,0,0.15)",
                                       borderRadius: "4px",
@@ -795,46 +793,34 @@ const ItemComponent: FC<ItemComponentProps> = ({
                                       </Typography>
                                     </Box>
 
-                                    {factCheckResult.suggestedAdditions &&
-                                      factCheckResult.suggestedAdditions[
-                                        index
-                                      ] && (
-                                        <Box
-                                          sx={{
-                                            display: "flex",
-                                            alignItems: "flex-start",
-                                            mb: 0.5,
-                                          }}
-                                        >
-                                          <Typography
-                                            variant="caption"
-                                            sx={{
-                                              color: "#4CAF50",
-                                              flexShrink: 0,
-                                            }}
-                                          >
-                                            Suggested Addition:
-                                          </Typography>
-                                          <Typography
-                                            variant="caption"
-                                            sx={{ color: "#4CAF50", ml: 1 }}
-                                          >
-                                            "
-                                            {
-                                              factCheckResult
-                                                .suggestedAdditions[index]
-                                            }
-                                            "
-                                          </Typography>
-                                        </Box>
-                                      )}
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "flex-start",
+                                        mb: 0.5,
+                                      }}
+                                    >
+                                      <Typography
+                                        variant="caption"
+                                        sx={{
+                                          color: "#4CAF50",
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        Suggested Addition:
+                                      </Typography>
+                                      <Typography
+                                        variant="caption"
+                                        sx={{ color: "#4CAF50", ml: 1 }}
+                                      >
+                                        "{factCheckResult.suggestedAdditions[index]}"
+                                      </Typography>
+                                    </Box>
 
                                     <Button
                                       size="small"
                                       variant="outlined"
-                                      onClick={() =>
-                                        handleApplyMissingKeyword(index)
-                                      }
+                                      onClick={() => handleApplyMissingKeyword(index)}
                                       sx={{
                                         borderColor: "#A38CE6",
                                         color: "#A38CE6",
@@ -846,8 +832,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                                         "&:hover": {
                                           borderColor: "#E2DDF3",
                                           color: "#E2DDF3",
-                                          backgroundColor:
-                                            "rgba(163, 140, 230, 0.08)",
+                                          backgroundColor: "rgba(163, 140, 230, 0.08)",
                                         },
                                       }}
                                     >
@@ -855,7 +840,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
                                     </Button>
                                   </Box>
                                 )
-                              )}
+                              ))}
                             </>
                           )}
 
