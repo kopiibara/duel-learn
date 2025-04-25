@@ -145,7 +145,7 @@ const signUpUser = async (req, res) => {
 
       connection.execute(
         `INSERT INTO user_info (firebase_uid, username, display_picture, level, exp, coins, tech_pass, mana)
-         VALUES (?, ?, ?, ?, ?, ?, ?);`,
+         VALUES (?, ?, ?, ?, ?, ?, ?,?);`,
         [uid, username || "Default Username", null, 1, 0, 300, 3, 200]
       ),
       admin.firestore().collection("users").doc(uid).set({

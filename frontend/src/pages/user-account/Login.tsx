@@ -293,15 +293,15 @@ const Login = () => {
 
       if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
-        setTimeout(() => {
+        return setTimeout(() => {
           navigate("/dashboard/welcome");
-        }, 1500);
+        }, 1000);
       } else if (userData && !userData.email_verified) {
-        setTimeout(() => {
+        return setTimeout(() => {
           navigate("/verify-email", { state: { token: authResult.token } });
         }, 1000);
       } else {
-        setTimeout(() => {
+        return setTimeout(() => {
           navigate("/dashboard/home");
         }, 1000);
       }

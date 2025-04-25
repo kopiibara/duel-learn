@@ -125,7 +125,7 @@ export default function ProfilePopover({
               }}
             >
               <PersonalizationIcon sx={{ mr: 1 }} fontSize="small" />
-              Personalization
+              Preference
             </Button>
 
             <Button
