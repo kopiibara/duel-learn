@@ -168,6 +168,11 @@ export default function PvpBattle() {
   const correctSfxRef = useRef<HTMLAudioElement | null>(null);
   const incorrectAnswerSoundRef = useRef<HTMLAudioElement | null>(null);
   const incorrectSfxRef = useRef<HTMLAudioElement | null>(null);
+  const decreaseHealthSoundRef = useRef<HTMLAudioElement | null>(null);
+  const healthAttackSoundRef = useRef<HTMLAudioElement | null>(null);
+  const healRegenSoundRef = useRef<HTMLAudioElement | null>(null);
+  const selectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
+  const noSelectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
 
   // Game state
   const [timeLeft, setTimeLeft] = useState(25);
@@ -478,8 +483,7 @@ export default function PvpBattle() {
         // Set the appropriate music file
         const musicFile = getMusicFileByDifficulty();
         console.log(
-          `Starting background music: ${musicFile} for difficulty: ${
-            difficultyMode || "unknown"
+          `Starting background music: ${musicFile} for difficulty: ${difficultyMode || "unknown"
           }`
         );
 
@@ -739,8 +743,7 @@ export default function PvpBattle() {
           // Continue with updating the battle round after animation
           try {
             const response = await axios.put(
-              `${
-                import.meta.env.VITE_BACKEND_URL
+              `${import.meta.env.VITE_BACKEND_URL
               }/api/gameplay/battle/update-round`,
               {
                 session_uuid: battleState?.session_uuid,
@@ -755,8 +758,7 @@ export default function PvpBattle() {
 
             // Then update the session to switch turns
             const turnResponse = await axios.put(
-              `${
-                import.meta.env.VITE_BACKEND_URL
+              `${import.meta.env.VITE_BACKEND_URL
               }/api/gameplay/battle/update-session`,
               {
                 lobby_code: lobbyCode,
@@ -928,8 +930,7 @@ export default function PvpBattle() {
           try {
             // First update the round data
             const response = await axios.put(
-              `${
-                import.meta.env.VITE_BACKEND_URL
+              `${import.meta.env.VITE_BACKEND_URL
               }/api/gameplay/battle/update-round`,
               {
                 session_uuid: battleState?.session_uuid,
@@ -959,8 +960,7 @@ export default function PvpBattle() {
 
               // Then update the session to switch turns
               const turnResponse = await axios.put(
-                `${
-                  import.meta.env.VITE_BACKEND_URL
+                `${import.meta.env.VITE_BACKEND_URL
                 }/api/gameplay/battle/update-session`,
                 {
                   lobby_code: lobbyCode,
@@ -1024,8 +1024,7 @@ export default function PvpBattle() {
 
         // Send to the dedicated endpoint
         const response = await axios.put(
-          `${
-            import.meta.env.VITE_BACKEND_URL
+          `${import.meta.env.VITE_BACKEND_URL
           }/api/gameplay/battle/update-question-ids`,
           {
             session_uuid: battleState.session_uuid,
@@ -1076,6 +1075,62 @@ export default function PvpBattle() {
   // and replace with a simpler effect to just track health changes
   useEffect(() => {
     // Update last health values without showing an attack animation
+    const prevPlayerHealth = lastHealthUpdate.player;
+    const prevOpponentHealth = lastHealthUpdate.opponent;
+
+    // Play sound effects when health decreases
+    if (playerHealth < prevPlayerHealth) {
+      // Player health decreased - play decrease health sound
+      if (decreaseHealthSoundRef.current) {
+        decreaseHealthSoundRef.current.currentTime = 0;
+        console.log(
+          "Playing decrease health sound with volume:",
+          decreaseHealthSoundRef.current.volume
+        );
+        decreaseHealthSoundRef.current
+          .play()
+          .catch((err) => console.error("Error playing sound:", err));
+      }
+    } else if (playerHealth > prevPlayerHealth) {
+      // Player health increased - play heal regen sound
+      if (healRegenSoundRef.current) {
+        healRegenSoundRef.current.currentTime = 0;
+        console.log(
+          "Playing heal regen sound with volume:",
+          healRegenSoundRef.current.volume
+        );
+        healRegenSoundRef.current
+          .play()
+          .catch((err) => console.error("Error playing sound:", err));
+      }
+    }
+
+    if (opponentHealth < prevOpponentHealth) {
+      // Opponent health decreased - play attack sound
+      if (healthAttackSoundRef.current) {
+        healthAttackSoundRef.current.currentTime = 0;
+        console.log(
+          "Playing health attack sound with volume:",
+          healthAttackSoundRef.current.volume
+        );
+        healthAttackSoundRef.current
+          .play()
+          .catch((err) => console.error("Error playing sound:", err));
+      }
+    } else if (opponentHealth > prevOpponentHealth) {
+      // Opponent health increased - also play heal regen sound
+      if (healRegenSoundRef.current) {
+        healRegenSoundRef.current.currentTime = 0;
+        console.log(
+          "Playing heal regen sound for opponent with volume:",
+          healRegenSoundRef.current.volume
+        );
+        healRegenSoundRef.current
+          .play()
+          .catch((err) => console.error("Error playing sound:", err));
+      }
+    }
+
     setLastHealthUpdate({
       player: playerHealth,
       opponent: opponentHealth,
@@ -1091,15 +1146,13 @@ export default function PvpBattle() {
       try {
         // Get battle scores
         const scoresResponse = await axios.get<BattleScoresResponse>(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${
-            battleState.session_uuid
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${battleState.session_uuid
           }`
         );
 
         // Get round data
         const roundResponse = await axios.get<BattleRoundResponse>(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${
-            battleState.session_uuid
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${battleState.session_uuid
           }`
         );
 
@@ -1109,20 +1162,16 @@ export default function PvpBattle() {
             // Get active effects for the current player
             const playerType = isHost ? "host" : "guest";
             const playerResponse = await axios.get(
-              `${
-                import.meta.env.VITE_BACKEND_URL
-              }/api/gameplay/battle/card-effects/${
-                battleState.session_uuid
+              `${import.meta.env.VITE_BACKEND_URL
+              }/api/gameplay/battle/card-effects/${battleState.session_uuid
               }/${playerType}`
             );
 
             // Get active effects for the opponent
             const opponentType = isHost ? "guest" : "host";
             const opponentResponse = await axios.get(
-              `${
-                import.meta.env.VITE_BACKEND_URL
-              }/api/gameplay/battle/card-effects/${
-                battleState.session_uuid
+              `${import.meta.env.VITE_BACKEND_URL
+              }/api/gameplay/battle/card-effects/${battleState.session_uuid
               }/${opponentType}`
             );
 
@@ -1136,8 +1185,7 @@ export default function PvpBattle() {
               setPoisonEffectActive(hasPlayerPoisonEffect);
 
               console.log(
-                `Player poison status: ${
-                  hasPlayerPoisonEffect ? "POISONED" : "NOT POISONED"
+                `Player poison status: ${hasPlayerPoisonEffect ? "POISONED" : "NOT POISONED"
                 }`
               );
             }
@@ -1152,8 +1200,7 @@ export default function PvpBattle() {
 
               setOpponentPoisonEffectActive(hasOpponentPoisonEffect);
               console.log(
-                `Opponent poison status: ${
-                  hasOpponentPoisonEffect ? "POISONED" : "NOT POISONED"
+                `Opponent poison status: ${hasOpponentPoisonEffect ? "POISONED" : "NOT POISONED"
                 }`
               );
             }
@@ -1356,8 +1403,7 @@ export default function PvpBattle() {
       try {
         // Get the latest session state
         const { data } = await axios.get<BattleSessionResponse>(
-          `${
-            import.meta.env.VITE_BACKEND_URL
+          `${import.meta.env.VITE_BACKEND_URL
           }/api/gameplay/battle/session-state/${lobbyCode}`
         );
 
@@ -1518,15 +1564,15 @@ export default function PvpBattle() {
           ? hostId
           : guestId
         : isWinner
-        ? guestId
-        : hostId;
+          ? guestId
+          : hostId;
       const loserId = isHost
         ? isWinner
           ? guestId
           : hostId
         : isWinner
-        ? hostId
-        : guestId;
+          ? hostId
+          : guestId;
 
       // NEW: Check if loser has an active Fortune Coin
       let loserHasActiveFortuneCoin = false;
@@ -1534,8 +1580,7 @@ export default function PvpBattle() {
 
       try {
         const fortuneCoinResponse = await axios.get(
-          `${
-            import.meta.env.VITE_BACKEND_URL
+          `${import.meta.env.VITE_BACKEND_URL
           }/api/shop/user-active-items/${loserId}/ITEM004FC`
         );
 
@@ -1602,8 +1647,8 @@ export default function PvpBattle() {
             ? updatedWinStreak
             : 0
           : !isWinner
-          ? updatedWinStreak
-          : 0,
+            ? updatedWinStreak
+            : 0,
         false, // Premium status
         hostMultiplier, // Apply host's reward multiplier
         "host" // Specify player role
@@ -1618,8 +1663,8 @@ export default function PvpBattle() {
             ? updatedWinStreak
             : 0
           : !isWinner
-          ? updatedWinStreak
-          : 0,
+            ? updatedWinStreak
+            : 0,
         false, // Premium status
         guestMultiplier, // Apply guest's reward multiplier
         "guest" // Specify player role
@@ -1664,8 +1709,7 @@ export default function PvpBattle() {
           };
 
           const { data } = await axios.post<SessionReportResponse>(
-            `${
-              import.meta.env.VITE_BACKEND_URL
+            `${import.meta.env.VITE_BACKEND_URL
             }/api/gameplay/battle/save-session-report`,
             sessionReportPayload
           );
@@ -1743,8 +1787,7 @@ export default function PvpBattle() {
 
       try {
         const { data } = await axios.get<BattleSessionResponse>(
-          `${
-            import.meta.env.VITE_BACKEND_URL
+          `${import.meta.env.VITE_BACKEND_URL
           }/api/gameplay/battle/session-with-material/${lobbyCode}`
         );
 
@@ -1764,8 +1807,7 @@ export default function PvpBattle() {
             try {
               const { data: studyMaterialData } =
                 await axios.get<StudyMaterialInfoResponse>(
-                  `${
-                    import.meta.env.VITE_BACKEND_URL
+                  `${import.meta.env.VITE_BACKEND_URL
                   }/api/study-material/info/${data.data.study_material_id}`
                 );
 
@@ -1826,8 +1868,7 @@ export default function PvpBattle() {
           dispatchQuestionGen({ type: "START_GENERATION" });
 
           const { data } = await axios.post<GenerateQuestionsResponse>(
-            `${
-              import.meta.env.VITE_BACKEND_URL
+            `${import.meta.env.VITE_BACKEND_URL
             }/api/gameplay/battle/generate-questions`,
             {
               session_uuid: battleState.session_uuid,
@@ -1934,8 +1975,7 @@ export default function PvpBattle() {
       const fetchRoundData = async () => {
         try {
           const response = await axios.get<BattleRoundResponse>(
-            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${
-              battleState.session_uuid
+            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${battleState.session_uuid
             }`
           );
 
@@ -2197,8 +2237,8 @@ export default function PvpBattle() {
           !gameStarted
             ? "PvP Mode | Duel Learn"
             : isMyTurn
-            ? "Your Turn | Duel Learn"
-            : `${opponentName}'s Turn | Duel Learn`
+              ? "Your Turn | Duel Learn"
+              : `${opponentName}'s Turn | Duel Learn`
         }
       />
       <div
@@ -2214,6 +2254,12 @@ export default function PvpBattle() {
         <audio
           ref={attackSoundRef}
           src="/GameBattle/magical-twinkle-242245.mp3"
+          preload="auto"
+        />
+
+        <audio
+          ref={healthAttackSoundRef}
+          src="/GameBattle/healthSfx/attackHealth.mp3"
           preload="auto"
         />
 
@@ -2245,6 +2291,30 @@ export default function PvpBattle() {
         <audio
           ref={incorrectSfxRef}
           src="/GameBattle/incorrectSfx.mp3"
+          preload="auto"
+        />
+
+        <audio
+          ref={decreaseHealthSoundRef}
+          src="/GameBattle/healthSfx/decreaseHealth.mp3"
+          preload="auto"
+        />
+
+        <audio
+          ref={healRegenSoundRef}
+          src="/GameBattle/healthSfx/healRegen.mp3"
+          preload="auto"
+        />
+
+        <audio
+          ref={selectedCardSoundRef}
+          src="/GameBattle/selectedCard.mp3"
+          preload="auto"
+        />
+
+        <audio
+          ref={noSelectedCardSoundRef}
+          src="/GameBattle/noSelectedCard.mp3"
           preload="auto"
         />
 
@@ -2402,7 +2472,7 @@ export default function PvpBattle() {
                   playerName={playerName}
                   onCardSelected={handleCardSelected}
                   difficultyMode={difficultyMode}
-                  soundEffectsVolume={actualSoundEffectsVolume}
+                  soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
                 />
               </div>
             )}
@@ -2429,6 +2499,7 @@ export default function PvpBattle() {
             playerHealth={playerHealth}
             opponentHealth={opponentHealth}
             earlyEnd={earlyEnd}
+            soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
           />
 
           {/* Early Leave Modal - Always show */}
@@ -2439,6 +2510,7 @@ export default function PvpBattle() {
             currentUserId={currentUserId}
             sessionUuid={battleState?.session_uuid}
             opponentName={opponentName}
+            soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
           />
 
           {/* Question Modal - Hide when other modals are active */}
@@ -2550,6 +2622,11 @@ export default function PvpBattle() {
             incorrectAnswerSoundRef={incorrectAnswerSoundRef}
             correctSfxRef={correctSfxRef}
             incorrectSfxRef={incorrectSfxRef}
+            decreaseHealthSoundRef={decreaseHealthSoundRef}
+            healthAttackSoundRef={healthAttackSoundRef}
+            healRegenSoundRef={healRegenSoundRef}
+            selectedCardSoundRef={selectedCardSoundRef}
+            noSelectedCardSoundRef={noSelectedCardSoundRef}
             masterVolume={masterVolume}
             musicVolume={musicVolume}
             soundEffectsVolume={soundEffectsVolume}

@@ -65,6 +65,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     playIncorrectAnswerSound,
     playTimePressuredAudio,
     pauseAudio,
+    activeAudio,
   } = useAudio();
 
   // 2. Then declare all useState hooks
@@ -80,6 +81,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   const [isCurrentAnswerCorrect, setIsCurrentAnswerCorrect] = useState<
     boolean | null
   >(null);
+  const [isAudioInitialized, setIsAudioInitialized] = useState(false);
 
   // 3. Then useRef declarations
   const previousTimerRef = React.useRef<number | null>(null);
@@ -183,9 +185,34 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     };
   }, [normalizedMode, pauseAudio, playTimePressuredAudio]);
 
+  // Initialize audio after questions are loaded
+  useEffect(() => {
+    const initializeAudio = async () => {
+      if (aiQuestions.length > 0 && !isAudioInitialized) {
+        try {
+          await playTimePressuredAudio(30);
+          setIsAudioInitialized(true);
+        } catch (error) {
+          console.error("Error initializing time pressured audio:", error);
+          setTimeout(() => {
+            setIsAudioInitialized(false);
+          }, 1000);
+        }
+      }
+    };
+    initializeAudio();
+  }, [aiQuestions.length, playTimePressuredAudio, isAudioInitialized]);
+
+  // Cleanup audio when component unmounts
+  useEffect(() => {
+    return () => {
+      setIsAudioInitialized(false);
+    };
+  }, []);
+
+  // Generate AI questions
   useEffect(() => {
     const generateAIQuestions = async () => {
-      // Skip if we already have questions
       if (aiQuestions.length > 0) {
         setIsGeneratingAI(false);
         return;
@@ -506,6 +533,31 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     }
   }, [questionTimer, playTimePressuredAudio]);
 
+  // Handle speed-up music based on timer
+  useEffect(() => {
+    if (questionTimer !== null) {
+      const isSpeedUpThreshold = questionTimer <= 5;
+
+      if (isSpeedUpThreshold) {
+        if (backgroundMusicRef.current) {
+          backgroundMusicRef.current.pause();
+        }
+        if (speedUpMusicRef.current) {
+          speedUpMusicRef.current.play().catch(console.error);
+        }
+      } else {
+        if (speedUpMusicRef.current) {
+          speedUpMusicRef.current.pause();
+          speedUpMusicRef.current.currentTime = 0;
+        }
+        if (backgroundMusicRef.current) {
+          backgroundMusicRef.current.play().catch(console.error);
+        }
+      }
+    }
+  }, [questionTimer]);
+
+  // Save session when game ends
   useEffect(() => {
     const saveSession = async () => {
       if (
@@ -537,95 +589,6 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
     highestStreak,
     hasSessionSaved,
   ]);
-
-  // Initialize and manage audio
-  useEffect(() => {
-    // Configure audio elements
-    if (backgroundMusicRef.current) {
-      backgroundMusicRef.current.src = "/sounds-sfx/time-pressured-mode.mp3";
-      backgroundMusicRef.current.loop = true;
-      const actualMusicVolume = (musicVolume / 100) * (masterVolume / 100);
-      backgroundMusicRef.current.volume = actualMusicVolume;
-    }
-
-    if (speedUpMusicRef.current) {
-      speedUpMusicRef.current.src = "/sounds-sfx/time-pressured-speed-up.mp3";
-      speedUpMusicRef.current.loop = true;
-      const actualMusicVolume = (musicVolume / 100) * (masterVolume / 100);
-      speedUpMusicRef.current.volume = actualMusicVolume;
-    }
-
-    const soundEffects = [
-      { ref: correctAnswerSoundRef, src: "/sounds-sfx/right-answer.mp3" },
-      { ref: incorrectAnswerSoundRef, src: "/sounds-sfx/wrong-answer.mp3" },
-      { ref: sessionIncompleteRef, src: "/sounds-sfx/session-incomplete.wav" },
-      {
-        ref: sessionCompleteRef,
-        src: "/sounds-sfx/session_report_completed.mp3",
-      },
-    ];
-
-    // Configure sound effects
-    soundEffects.forEach(({ ref, src }) => {
-      if (ref.current) {
-        ref.current.src = src;
-        const actualVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
-        ref.current.volume = actualVolume;
-      }
-    });
-
-    // Start playing background music
-    if (backgroundMusicRef.current) {
-      backgroundMusicRef.current.play().catch((error) => {
-        console.log("Audio autoplay was prevented:", error);
-      });
-    }
-
-    // Cleanup function
-    return () => {
-      const allRefs = [
-        backgroundMusicRef,
-        speedUpMusicRef,
-        correctAnswerSoundRef,
-        incorrectAnswerSoundRef,
-        sessionIncompleteRef,
-        sessionCompleteRef,
-      ];
-
-      allRefs.forEach((ref) => {
-        if (ref.current) {
-          ref.current.pause();
-          ref.current.currentTime = 0;
-        }
-      });
-    };
-  }, [masterVolume, musicVolume, soundEffectsVolume]);
-
-  // Handle speed-up music based on timer
-  useEffect(() => {
-    if (questionTimer !== null) {
-      const isSpeedUpThreshold = questionTimer <= 5;
-
-      if (isSpeedUpThreshold) {
-        // Switch to speed-up music
-        if (backgroundMusicRef.current) {
-          backgroundMusicRef.current.pause();
-        }
-        if (speedUpMusicRef.current) {
-          speedUpMusicRef.current.play().catch(console.error);
-        }
-      } else {
-        // Switch back to normal music
-        if (speedUpMusicRef.current) {
-          speedUpMusicRef.current.pause();
-          speedUpMusicRef.current.currentTime = 0;
-        }
-        if (backgroundMusicRef.current) {
-          backgroundMusicRef.current.play().catch(console.error);
-        }
-      }
-    }
-  }, [questionTimer]);
 
   // Update handleAnswerSubmit to play sounds
   const handleAnswerSubmit = (answer: string) => {
@@ -684,11 +647,11 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
       currentQuestion.isCorrect = isAnswerCorrect;
     }
 
-    // Play appropriate sound
-    if (isAnswerCorrect && correctAnswerSoundRef.current) {
-      correctAnswerSoundRef.current.play();
-    } else if (!isAnswerCorrect && incorrectAnswerSoundRef.current) {
-      incorrectAnswerSoundRef.current.play();
+    // Play appropriate sound using context functions
+    if (isAnswerCorrect) {
+      playCorrectAnswerSound();
+    } else {
+      playIncorrectAnswerSound();
     }
 
     // Call the original handler
@@ -706,7 +669,7 @@ const TimePressuredMode: React.FC<TimePressuredModeProps> = ({
   if (isGeneratingAI) {
     return (
       <GeneralLoadingScreen
-        text="Generating Questions"
+        text="Loading Questions"
         mode="Time Pressured Mode"
         isLoading={isGeneratingAI}
       />

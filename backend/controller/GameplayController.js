@@ -2588,4 +2588,74 @@ export const getEnemyAnsweringQuestion = async (req, res) => {
     }
 };
 
+/**
+ * Deduct XP from users who leave the game early
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+export const deductLeaverXP = async (req, res) => {
+    const { firebase_uid } = req.body;
+    const XP_PENALTY = 100; // Fixed penalty for leaving early
+
+    try {
+        const connection = await pool.getConnection();
+
+        try {
+            await connection.beginTransaction();
+
+            // First, get the current XP
+            const [userInfo] = await connection.query(
+                "SELECT exp FROM user_info WHERE firebase_uid = ?",
+                [firebase_uid]
+            );
+
+            if (userInfo.length === 0) {
+                await connection.rollback();
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found"
+                });
+            }
+
+            const currentExp = userInfo[0].exp || 0;
+
+            // Ensure XP doesn't go below zero
+            const newExp = Math.max(0, currentExp - XP_PENALTY);
+
+            console.log(`Deducting XP for early leaver ${firebase_uid}: ${currentExp} -> ${newExp} (penalty: ${XP_PENALTY})`);
+
+            // Update the user's XP
+            await connection.query(
+                "UPDATE user_info SET exp = ? WHERE firebase_uid = ?",
+                [newExp, firebase_uid]
+            );
+
+            await connection.commit();
+
+            return res.status(200).json({
+                success: true,
+                message: "XP penalty applied successfully",
+                data: {
+                    firebase_uid,
+                    previous_exp: currentExp,
+                    new_exp: newExp,
+                    penalty: XP_PENALTY
+                }
+            });
+        } catch (error) {
+            await connection.rollback();
+            throw error;
+        } finally {
+            connection.release();
+        }
+    } catch (error) {
+        console.error("Error applying XP penalty:", error);
+        res.status(500).json({
+            success: false,
+            message: "Error applying XP penalty",
+            error: error.message
+        });
+    }
+};
+
 

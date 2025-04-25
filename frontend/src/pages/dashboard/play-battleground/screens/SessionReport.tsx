@@ -1,15 +1,21 @@
 import { Button } from "@mui/material";
-import SessionComplete from "/General/SessionComplete.png";
-import CharacterImage from "/General/session-complete.png"; // Import character image
+import CharacterImage from "/GameBattle/session-complete.png"; // Import character image
 import ClockIcon from "/clock.png";
 import ManaIcon from "/ManaIcon.png";
 import { useNavigate, useLocation, Navigate } from "react-router-dom";
 import AutoConfettiAnimation from "../../../../pages/dashboard/play-battleground/components/common/AutoConfettiAnimation";
 import { useAudio } from "../../../../contexts/AudioContext"; // Import the useAudio hook
 import { useEffect, useState } from "react"; // Add useState
+import React from 'react';
 import axios from "axios"; // Import axios for API calls
 import SessionIncomplete from "/GameBattle/session-incomplete.png"; // Import session-incomplete image
-import AlmostThere from "/GameBattle/almost-there.png";
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+import CancelOutlinedIcon from '@mui/icons-material/CancelOutlined';
+import LocalFireDepartmentIcon from '@mui/icons-material/LocalFireDepartment';
+import StarsIcon from '@mui/icons-material/Stars';
+import RemoveCircleRoundedIcon from '@mui/icons-material/RemoveCircleRounded';
+import TimerRoundedIcon from '@mui/icons-material/TimerRounded';
+import FlareRoundedIcon from '@mui/icons-material/FlareRounded';
 
 interface SessionReportProps {
   timeSpent: string;
@@ -34,15 +40,36 @@ const StatisticBox = ({
   label,
   value,
   icon,
-}: StatisticProps & { icon: string }) => (
-  <div className="backdrop-blur-sm px-10 py-10 rounded-[0.8rem] border-2 w-[660px] border-[#3B354D] flex justify-between items-center">
-    <div className="flex items-center gap-2">
-      <img src={icon} alt="" className="w-5 h-5 mb-1 mr-3" />
-      <div className="text-base mb-1 text-white uppercase tracking-wider">
+  customIcon,
+}: StatisticProps & { icon?: string; customIcon?: React.ReactNode }) => (
+  <div 
+    className="w-[200px] h-[170px] rounded-[0.8rem] flex flex-col items-center justify-center flex-shrink-0"
+    style={{ 
+      backgroundColor: "#1C1827",
+      border: "1px solid #6F658D"
+    }}
+  >
+    <div className="flex flex-col items-center gap-2">
+      {customIcon ? (
+        <span className="flex-shrink-0 w-8 h-8 flex items-center justify-center mb-1" style={{ color: "#4D18E8" }}>
+          {React.cloneElement(customIcon as React.ReactElement, { 
+            style: { 
+              width: '32px', 
+              height: '32px',
+              color: "#4D18E8"
+            } 
+          })}
+        </span>
+      ) : (
+        <img src={icon} alt="" className="w-8 h-8 flex-shrink-0 object-contain mb-1" style={{ filter: "invert(16%) sepia(97%) saturate(3868%) hue-rotate(257deg) brightness(89%) contrast(103%)" }} />
+      )}
+      <div className="text-[13px] text-white uppercase tracking-wider text-center">
         {label}
       </div>
     </div>
-    <div className="text-base font-bold text-white mt-1">{value}</div>
+    <div className="text-[28px] font-bold text-white mt-3">
+      {value}
+    </div>
   </div>
 );
 
@@ -139,84 +166,101 @@ const SessionReport = () => {
 
   return (
     <div
-      style={{ overflow: "auto", height: "80vh" }}
-      className="min-h-screen flex items-center justify-center"
+      style={{ overflow: "auto", height: "100vh" }}
+      className="min-h-screen flex items-center justify-center py-4"
     >
       {!earlyEnd && <AutoConfettiAnimation />}
-      <div className="w-full max-w-[800px ] space-y-8 text-center mb-[500px]  max-h-screen">
+      <div className="w-full max-w-[800px] flex flex-col items-center">
         {/* Session Complete Banner and Character */}
         <div className="flex flex-col items-center">
-          <div className="relative inline-block mx-auto mt-[360px]">
-            <img
-              src={earlyEnd ? AlmostThere : SessionComplete}
-              alt={earlyEnd ? "ALMOST THERE" : "SESSION COMPLETE"}
-              className="relative z-10 w-[554px] h-[96px]"
-            />
-          </div>
-
           {/* Character Image */}
-          <div className="flex justify-center mt-12">
-            <img
-              src={earlyEnd ? SessionIncomplete : CharacterImage}
-              alt={
-                earlyEnd
-                  ? "Session incomplete character"
-                  : "Session complete character"
-              }
-              className="w-[673px] h-[348px] object-contain"
-            />
+          <div className="flex justify-center w-full">
+            <div className="flex justify-center w-[800px]">
+              <img
+                src={earlyEnd ? SessionIncomplete : CharacterImage}
+                alt={
+                  earlyEnd
+                    ? "Session incomplete character"
+                    : "Session complete character"
+                }
+                className="w-full max-w-[400px] h-auto object-contain"
+              />
+            </div>
+          </div>
+          
+          <div className="flex flex-col items-center gap-2 mt-6">
+            <h1 className="text-white text-[38px] font-bold">
+              {earlyEnd ? "Almost there..." : "Session Complete"}
+            </h1>
+            <p className="text-[20px]" style={{ color: "#6F658D" }}>
+              {earlyEnd ? "Try a little harder next time!" : "Way to go, magician!"}
+            </p>
           </div>
         </div>
 
-        <div className="backdrop-blur-sm p-8 mt-[8px] mb-[-20px] rounded-[0.8rem]">
-          <div className="flex flex-col mt-3 gap-4 items-center rounded-[0.8rem]">
-            <StatisticBox
-              label="EARNED XP"
-              value={`${earnedXP} XP`}
-              icon={ManaIcon}
-            />
-            <StatisticBox
-              label="TOTAL TIME"
-              value={timeSpent}
-              icon={ClockIcon}
-            />
+        <div className="mt-6">
+          <div className="flex gap-4 justify-center w-full max-w-[1200px] mx-auto">
+            <div className="flex-shrink-0">
+              <StatisticBox
+                label="EARNED XP"
+                value={`${earnedXP} XP`}
+                customIcon={<FlareRoundedIcon />}
+              />
+            </div>
+            <div className="flex-shrink-0">
+              <StatisticBox
+                label="TOTAL TIME"
+                value={timeSpent}
+                customIcon={<TimerRoundedIcon />}
+              />
+            </div>
             {mode === "Peaceful" ? (
               <>
-                <StatisticBox
-                  label="MASTERED"
-                  value={adjustedMasteredCount}
-                  icon={ManaIcon}
-                />
-                <StatisticBox
-                  label="UNMASTERED"
-                  value={adjustedUnmasteredCount}
-                  icon={ManaIcon}
-                />
+                <div className="flex-shrink-0">
+                  <StatisticBox
+                    label="MASTERED"
+                    value={adjustedMasteredCount}
+                    customIcon={<StarsIcon />}
+                  />
+                </div>
+                <div className="flex-shrink-0">
+                  <StatisticBox
+                    label="UNMASTERED"
+                    value={adjustedUnmasteredCount}
+                    customIcon={<RemoveCircleRoundedIcon />}
+                  />
+                </div>
               </>
             ) : (
               <>
-                <StatisticBox
-                  label="HIGHEST STREAK"
-                  value={`${highestStreak}x`}
-                  icon={ManaIcon}
-                />
-                <StatisticBox
-                  label="CORRECT ANSWERS"
-                  value={correctCount}
-                  icon={ManaIcon}
-                />
-                <StatisticBox
-                  label="INCORRECT ANSWERS"
-                  value={incorrectCount}
-                  icon={ManaIcon}
-                />
+                <div className="flex-shrink-0">
+                  <StatisticBox
+                    label="HIGHEST STREAK"
+                    value={`${highestStreak}x`}
+                    customIcon={<LocalFireDepartmentIcon />}
+                  />
+                </div>
+                <div className="flex-shrink-0">
+                  <StatisticBox
+                    label="CORRECT ANSWERS"
+                    value={correctCount}
+                    customIcon={<CheckCircleOutlineIcon />}
+                  />
+                </div>
+                <div className="flex-shrink-0">
+                  <StatisticBox
+                    label="INCORRECT ANSWERS"
+                    value={incorrectCount}
+                    customIcon={<CancelOutlinedIcon />}
+                  />
+                </div>
               </>
             )}
           </div>
         </div>
 
         {/* Buttons */}
-        <div className="flex gap-4 justify-center pb-10">
+        <div className="flex gap-4 justify-center mt-12">
           <Button
             sx={{
               px: 4,
@@ -248,7 +292,7 @@ const SessionReport = () => {
               },
             }}
             onClick={() => {
-              pauseAudio(); // Stop audio when navigating back to home
+              pauseAudio();
               navigate("/dashboard/home");
             }}
           >
