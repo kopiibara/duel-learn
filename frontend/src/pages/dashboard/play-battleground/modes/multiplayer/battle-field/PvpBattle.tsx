@@ -174,9 +174,10 @@ export default function PvpBattle() {
   const decreaseHealthSoundRef = useRef<HTMLAudioElement | null>(null);
   const healthAttackSoundRef = useRef<HTMLAudioElement | null>(null);
   const healRegenSoundRef = useRef<HTMLAudioElement | null>(null);
+  const regenerationSfxRef = useRef<HTMLAudioElement | null>(null);
   const selectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
   const noSelectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
- 
+
   const quickDrawUserSoundRef = useRef<HTMLAudioElement | null>(null);
   const quickDrawEnemySoundRef = useRef<HTMLAudioElement | null>(null);
   const victorySoundRef = useRef<HTMLAudioElement | null>(null);
@@ -961,18 +962,67 @@ export default function PvpBattle() {
                   response.data.data.card_effect.type === "epic-2" &&
                   isCorrect
                 ) {
-                  // Show notification for Regeneration card effect
-                  const messageElement = document.createElement("div");
-                  messageElement.className =
-                    "fixed inset-0 flex items-center justify-center z-50";
-                  const healthAmount =
-                    response.data.data.card_effect.health_amount || 10;
-                  messageElement.innerHTML = `
-                    <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                      Regeneration Card: Your health increased by ${healthAmount} HP!
+                  // Create more visually appealing regeneration animation
+                  const regenerationEffectContainer = document.createElement("div");
+                  regenerationEffectContainer.className = "fixed inset-0 z-[100] pointer-events-none flex items-center justify-center";
+
+                  // Play heal regeneration sound effect
+                  if (healRegenSoundRef.current) {
+                    healRegenSoundRef.current.currentTime = 0;
+                    healRegenSoundRef.current.volume = (soundEffectsVolume / 100) * (masterVolume / 100);
+                    healRegenSoundRef.current.play().catch(err =>
+                      console.error("Error playing heal regeneration sound:", err)
+                    );
+                  }
+
+                  const healthAmount = response.data.data.card_effect.health_amount || 10;
+
+                  // Create more visually appealing regeneration animation
+                  regenerationEffectContainer.innerHTML = `
+                    <div class="relative w-full h-full">
+                      <!-- Simple, subtle healing backdrop with gradient -->
+                      <div class="fixed inset-0 bg-gradient-to-t from-green-800/10 via-green-500/5 to-transparent"></div>
+                      
+                      <!-- Centered healing amount indicator with simple design -->
+                      <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20">
+                        <div class="animate-pop-in" style="animation-duration: 0.5s">
+                          <div class="bg-green-900/20 backdrop-blur-sm px-10 py-5 rounded-xl border border-green-400/20 shadow-[0_0_20px_rgba(134,239,172,0.2)]">
+                            <div class="text-green-300 text-8xl font-bold flex items-center animate-pulse-slow text-center drop-shadow-[0_0_10px_rgba(134,239,172,0.7)]">
+                              <span class="text-8xl mr-2">+</span>${healthAmount}<span class="text-4xl ml-2">HP</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Minimal floating healing particles -->
+                      <div class="fixed inset-0 overflow-hidden pointer-events-none">
+                        ${Array.from({ length: 10 }).map((_, i) => `
+                          <div class="absolute text-2xl font-bold text-green-300/60 animate-float-up-slow" 
+                               style="left: ${10 + Math.random() * 80}%; bottom: -5%; animation-delay: ${Math.random() * 2}s; animation-duration: ${3 + Math.random() * 2}s;">
+                            <span class="drop-shadow-[0_0_3px_rgba(134,239,172,0.5)]">+</span>
+                          </div>
+                        `).join('')}
+                      </div>
                     </div>
                   `;
-                  document.body.appendChild(messageElement);
+
+                  // Play regeneration sound effect
+                  if (regenerationSfxRef.current) {
+                    console.log("Attempting to play regeneration sound effect");
+                    const calculatedVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
+                    regenerationSfxRef.current.volume = calculatedVolume;
+                    console.log("RegenerationSfx volume set to:", calculatedVolume);
+                    regenerationSfxRef.current.currentTime = 0;
+                    regenerationSfxRef.current.play().then(() => {
+                      console.log("RegenerationSfx playing successfully");
+                    }).catch(err => {
+                      console.error("Error playing regeneration sfx sound:", err);
+                    });
+                  } else {
+                    console.error("RegenerationSfx reference is null");
+                  }
+
+                  document.body.appendChild(regenerationEffectContainer);
 
                   // Update health locally if we can
                   if (isHost) {
@@ -985,10 +1035,31 @@ export default function PvpBattle() {
                     );
                   }
 
-                  // Remove the message after 2 seconds
+                  // Store effect data to track for opponent notification
+                  try {
+                    // Create a unique regeneration effect ID
+                    const regenerationEffectId = `regeneration-${battleState?.session_uuid}-${playerType}-${Date.now()}`;
+                    const timestamp = Date.now();
+
+                    // Only show notification if this specific effect hasn't been shown before
+                    if (!hasEffectBeenShown(regenerationEffectId, timestamp)) {
+                      // Mark this effect as shown
+                      markEffectAsShown(regenerationEffectId, timestamp);
+
+                      console.log(`Marked regeneration effect as shown: ${regenerationEffectId}`);
+                    }
+                  } catch (e) {
+                    console.error("Error storing regeneration effect data:", e);
+                  }
+
+                  // Remove the animation after 3 seconds with fade out
                   setTimeout(() => {
-                    document.body.removeChild(messageElement);
-                  }, 2000);
+                    regenerationEffectContainer.style.transition = "opacity 0.8s";
+                    regenerationEffectContainer.style.opacity = "0";
+                    setTimeout(() => {
+                      document.body.removeChild(regenerationEffectContainer);
+                    }, 800);
+                  }, 3000);
                 } else if (
                   response.data.data.card_effect.type === "rare-2" &&
                   isCorrect
@@ -1252,6 +1323,105 @@ export default function PvpBattle() {
       opponent: opponentHealth,
     });
   }, [playerHealth, opponentHealth]);
+
+  // Monitor opponent health to show regeneration notification
+  useEffect(() => {
+    // Check if opponent health increased (regeneration effect)
+    if (lastHealthUpdate && opponentHealth > lastHealthUpdate.opponent) {
+      console.log("Opponent health increased, showing regeneration notification");
+
+      // Create a sleek notification for opponent's regeneration
+      const opponentRegenerationNotification = document.createElement("div");
+      opponentRegenerationNotification.className = "fixed bottom-5 right-5 z-50 pointer-events-none";
+
+      // Calculate how much health was gained
+      const healthGained = opponentHealth - lastHealthUpdate.opponent;
+
+      // Create modern notification design with enhanced visuals
+      opponentRegenerationNotification.innerHTML = `
+        <div class="animate-slide-in-right" style="animation-duration: 0.5s">
+          <div class="bg-gradient-to-r from-green-900/90 to-green-700/90 rounded-lg shadow-xl border-l-4 border-green-400 overflow-hidden max-w-sm w-full">
+            <div class="flex p-3">
+              <!-- Left side with icon -->
+              <div class="mr-3 flex-shrink-0">
+                <div class="relative">
+                  <div class="w-9 h-9 rounded-full bg-green-800/80 flex items-center justify-center">
+                    <div class="absolute w-full h-full rounded-full bg-green-500/30 animate-ping-slow" style="animation-duration: 1.5s"></div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Right side with content -->
+              <div class="flex-1">
+                <div class="flex justify-between items-center">
+                  <div class="flex items-center">
+                    <h3 class="text-sm font-bold text-green-300">Regeneration</h3>
+                    <div class="ml-2 flex">
+                      ${Array.from({ length: 3 }).map((_, i) => `
+                        <div class="text-base text-green-400 font-bold animate-float-up-mini" 
+                            style="animation-delay: ${i * 0.2}s; margin-right: -3px;">+</div>
+                      `).join('')}
+                    </div>
+                  </div>
+                  <div class="flex shrink-0 ml-2">
+                    <div class="inline-flex items-center justify-center h-6 w-6 rounded-full bg-green-600 text-green-200 text-xs font-bold">
+                      +${healthGained}
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Combined health info and heart rate in one row -->
+                <div class="flex items-center mt-1">
+                  <p class="text-xs text-green-200">
+                    <span class="font-medium">Opponent</span> recovered health
+                  </p>
+                  
+                  <!-- Visual heart rate line -->
+                  <div class="ml-2 h-2 w-24 relative flex-shrink-0">
+                    <svg viewBox="0 0 100 10" class="w-full h-full text-green-500/60">
+                      <path d="M0,5 L10,5 C12,5 13,2 15,2 C17,2 18,8 20,8 C22,8 23,5 25,5 L30,5 C32,5 33,1 35,1 C37,1 38,9 40,9 C42,9 43,5 45,5 L50,5 C52,5 53,2 55,2 C57,2 58,8 60,8 C62,8 63,5 65,5 L70,5 C72,5 73,1 75,1 C77,1 78,9 80,9 C82,9 83,5 85,5 L90,5 C92,5 93,2 95,2 C97,2 98,8 100,8" 
+                        fill="none" stroke="currentColor" stroke-width="1" class="animate-heart-rate"/>
+                    </svg>
+                  </div>
+                </div>
+                
+                <!-- Timing indicator bar -->
+                <div class="h-1 w-full bg-green-800 mt-1.5 rounded-full overflow-hidden">
+                  <div class="h-full bg-green-400 animate-shrink-width" style="animation-duration: 5s;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(opponentRegenerationNotification);
+
+      // Play heal sound effect for opponent regeneration (at lower volume)
+      if (healRegenSoundRef.current) {
+        healRegenSoundRef.current.currentTime = 0;
+        // Play at lower volume for opponent effect
+        const lowerVolume = ((soundEffectsVolume / 100) * (masterVolume / 100)) * 0.5;
+        healRegenSoundRef.current.volume = lowerVolume;
+        healRegenSoundRef.current.play().catch(err =>
+          console.error("Error playing opponent heal regeneration sound:", err)
+        );
+      }
+
+      // Remove the notification after animation completes
+      setTimeout(() => {
+        if (opponentRegenerationNotification.firstChild instanceof HTMLElement) {
+          opponentRegenerationNotification.firstChild.classList.replace('animate-slide-in-right', 'animate-slide-out-right');
+        }
+        setTimeout(() => {
+          document.body.removeChild(opponentRegenerationNotification);
+        }, 500);
+      }, 5000);
+    }
+  }, [opponentHealth, lastHealthUpdate, soundEffectsVolume, masterVolume]);
 
   // Handle poison effects and health updates
   useEffect(() => {
@@ -2616,6 +2786,12 @@ export default function PvpBattle() {
         />
 
         <audio
+          ref={regenerationSfxRef}
+          src="/GameBattle/healthSfx/RegenerationSfx.wav"
+          preload="auto"
+        />
+
+        <audio
           ref={selectedCardSoundRef}
           src="/GameBattle/selectedCard.mp3"
           preload="auto"
@@ -2972,6 +3148,7 @@ export default function PvpBattle() {
             decreaseHealthSoundRef={decreaseHealthSoundRef}
             healthAttackSoundRef={healthAttackSoundRef}
             healRegenSoundRef={healRegenSoundRef}
+            regenerationSfxRef={regenerationSfxRef}
             selectedCardSoundRef={selectedCardSoundRef}
             noSelectedCardSoundRef={noSelectedCardSoundRef}
             timeManipulationActivateSoundRef={timeManipulationActivateSoundRef}

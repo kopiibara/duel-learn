@@ -235,7 +235,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       },
       epic: {
         total: 60,
-        distribution: { "Answer Shield": 50, Regeneration: 10 },
+        distribution: { "Answer Shield": 10, Regeneration: 50 },
       },
       rare: {
         total: 5,
