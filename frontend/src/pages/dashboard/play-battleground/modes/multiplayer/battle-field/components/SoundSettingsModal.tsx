@@ -23,6 +23,8 @@ interface SoundSettingsModalProps {
     quickDrawEnemySoundRef?: React.RefObject<HTMLAudioElement>;
     answerShieldActivatedSoundRef?: React.RefObject<HTMLAudioElement>;
     answerShieldDamagedSoundRef?: React.RefObject<HTMLAudioElement>;
+    mindControlActivateSoundRef?: React.RefObject<HTMLAudioElement>;
+    mindControlEffectSoundRef?: React.RefObject<HTMLAudioElement>;
     victorySoundRef?: React.RefObject<HTMLAudioElement>;
     defeatSoundRef?: React.RefObject<HTMLAudioElement>;
     leftGameSoundRef?: React.RefObject<HTMLAudioElement>;
@@ -56,6 +58,8 @@ export default function SoundSettingsModal({
     quickDrawEnemySoundRef,
     answerShieldActivatedSoundRef,
     answerShieldDamagedSoundRef,
+    mindControlActivateSoundRef,
+    mindControlEffectSoundRef,
     victorySoundRef,
     defeatSoundRef,
     leftGameSoundRef,
@@ -114,6 +118,8 @@ export default function SoundSettingsModal({
             { name: "quickDrawEnemySound", ref: quickDrawEnemySoundRef?.current },
             { name: "answerShieldActivatedSound", ref: answerShieldActivatedSoundRef?.current },
             { name: "answerShieldDamagedSound", ref: answerShieldDamagedSoundRef?.current },
+            { name: "mindControlActivateSound", ref: mindControlActivateSoundRef?.current },
+            { name: "mindControlEffectSound", ref: mindControlEffectSoundRef?.current },
             { name: "victorySound", ref: victorySoundRef?.current },
             { name: "defeatSound", ref: defeatSoundRef?.current },
             { name: "leftGameSound", ref: leftGameSoundRef?.current }
@@ -141,7 +147,7 @@ export default function SoundSettingsModal({
             music: musicVolume,
             effects: soundEffectsVolume
         }));
-    }, [masterVolume, musicVolume, soundEffectsVolume, backgroundMusicRef, attackSoundRef, correctAnswerSoundRef, incorrectAnswerSoundRef, correctSfxRef, incorrectSfxRef, decreaseHealthSoundRef, healthAttackSoundRef, healRegenSoundRef, regenerationSfxRef, selectedCardSoundRef, noSelectedCardSoundRef, timeManipulationActivateSoundRef, timeManipulationEffectSoundRef, quickDrawUserSoundRef, quickDrawEnemySoundRef, answerShieldActivatedSoundRef, answerShieldDamagedSoundRef, victorySoundRef, defeatSoundRef, leftGameSoundRef]);
+    }, [masterVolume, musicVolume, soundEffectsVolume, backgroundMusicRef, attackSoundRef, correctAnswerSoundRef, incorrectAnswerSoundRef, correctSfxRef, incorrectSfxRef, decreaseHealthSoundRef, healthAttackSoundRef, healRegenSoundRef, regenerationSfxRef, selectedCardSoundRef, noSelectedCardSoundRef, timeManipulationActivateSoundRef, timeManipulationEffectSoundRef, quickDrawUserSoundRef, quickDrawEnemySoundRef, answerShieldActivatedSoundRef, answerShieldDamagedSoundRef, mindControlActivateSoundRef, mindControlEffectSoundRef, victorySoundRef, defeatSoundRef, leftGameSoundRef]);
 
     // Load saved volume settings from localStorage on initial render
     useEffect(() => {

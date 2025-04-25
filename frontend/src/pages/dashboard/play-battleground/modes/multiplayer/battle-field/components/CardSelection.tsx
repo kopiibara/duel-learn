@@ -228,7 +228,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       rare: { total: 0, distribution: { "Mind Control": 0, "Poison Type": 0 } },
     },
     hard: {
-      basic: 70,
+      basic: 20,
       normal: {
         total: 15,
         distribution: { "Time Manipulation": 8, "Quick Draw": 8 },
@@ -238,8 +238,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         distribution: { "Answer Shield": 5, Regeneration: 5 },
       },
       rare: {
-        total: 5,
-        distribution: { "Mind Control": 2.5, "Poison Type": 2.5 },
+        total: 55,
+        distribution: { "Mind Control": 45, "Poison Type": 10 },
       },
     },
   };
@@ -582,8 +582,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     messageElement.className =
       "fixed inset-0 flex items-center justify-center z-50";
     messageElement.innerHTML = `
-            <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                No card selected! Proceeding to question...
+            <div class="bg-gray-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-gray-500/50 animate-pulse-border">
+                Cards Locked! Your opponent used Mind Control...
             </div>
         `;
     document.body.appendChild(messageElement);
@@ -1088,21 +1088,108 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             if (response.data.data.has_mind_control_effect) {
               setMindControlActive(true);
 
-              // Show notification about mind control
-              const messageElement = document.createElement("div");
-              messageElement.className =
-                "fixed inset-0 flex items-center justify-center z-50";
-              messageElement.innerHTML = `
-                                <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                                    Mind Control: You cannot select a card this turn!
-                                </div>
-                            `;
-              document.body.appendChild(messageElement);
+              // Show visually impressive mind control effect
+              const mindControlAnimationContainer = document.createElement('div');
+              mindControlAnimationContainer.className = `
+                fixed top-0 left-0 w-full h-full
+                bg-gray-900 bg-opacity-30
+                flex items-center justify-center
+                z-50
+                animate-mindControlFade
+              `;
 
-              // Remove the message after 2 seconds
+              mindControlAnimationContainer.innerHTML = `
+                <div class="relative w-full h-full flex items-center justify-center">
+                  <!-- Removed backdrop with gradient -->
+                  
+                  <!-- Cards being blocked visualization -->
+                  <div class="absolute flex items-center justify-center gap-4 z-10">
+                    ${Array(3).fill(0).map((_, i) => `
+                      <div class="relative">
+                        <!-- Card -->
+                        <div class="w-44 h-56 bg-gradient-to-b from-gray-800 to-gray-700 rounded-lg transform ${i === 0 ? 'rotate-[-8deg]' : i === 1 ? 'rotate-[0deg]' : 'rotate-[8deg]'
+                } shadow-xl border border-gray-600">
+                          <!-- Card content suggestion -->
+                          <div class="absolute inset-2 rounded bg-gray-700 flex flex-col items-center justify-center p-2">
+                            <div class="w-full h-28 bg-gray-600 mb-2 rounded-sm"></div>
+                            <div class="w-full h-4 bg-gray-600 rounded-sm mb-1"></div>
+                            <div class="w-3/4 h-4 bg-gray-600 rounded-sm mb-1"></div>
+                            <div class="w-full h-10 bg-gray-600 rounded-sm"></div>
+                          </div>
+                          
+                          <!-- Lock overlay -->
+                          <div class="absolute inset-0 bg-gray-900/50 rounded-lg flex items-center justify-center backdrop-blur-[2px]">
+                            <svg class="w-16 h-16 text-purple-200 animate-pulse" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M18 11H6C4.89543 11 4 11.8954 4 13V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V13C20 11.8954 19.1046 11 18 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                              <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                              <circle cx="12" cy="16" r="1" fill="currentColor"/>
+                            </svg>
+                          </div>
+                          
+                          <!-- Purple energy outline pulse -->
+                          <div class="absolute inset-0 rounded-lg border-2 border-purple-500 animate-pulse-border"></div>
+                        </div>
+                        
+                        <!-- X mark over card -->
+                        <div class="absolute inset-0 flex items-center justify-center">
+                          <svg class="w-28 h-28 text-red-500 animate-pulse-opacity" style="animation-delay: ${i * 0.2}s;" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M18 6L6 18" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M6 6L18 18" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                          </svg>
+                        </div>
+                      </div>
+                    `).join('')}
+                  </div>
+                  
+                  <!-- Mind control text indicator -->
+                  <div class="absolute bottom-1/3 left-1/2 -translate-x-1/2 translate-y-16 bg-purple-900 px-8 py-4 rounded-lg border border-purple-500 shadow-lg z-20">
+                    <div className="flex items-center gap-3 mb-1">
+                      <svg class="w-6 h-6 text-purple-300" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 11H6C4.89543 11 4 11.8954 4 13V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V13C20 11.8954 19.1046 11 18 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                      <h2 class="text-purple-100 font-bold text-xl">CARDS LOCKED</h2>
+                    </div>
+                    <p class="text-purple-200 text-center text-sm">Your opponent used Mind Control</p>
+                  </div>
+                </div>
+              `;
+
+              // Add CSS for the animations if they don't exist
+              if (!document.getElementById('mind-control-animations')) {
+                const styleElement = document.createElement('style');
+                styleElement.id = 'mind-control-animations';
+                styleElement.textContent = `
+                  @keyframes pulse-opacity {
+                    0%, 100% { opacity: 0.7; }
+                    50% { opacity: 1; }
+                  }
+                  @keyframes pulse-border {
+                    0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+                    50% { box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.4); }
+                  }
+                  
+                  .animate-pulse-opacity {
+                    animation: pulse-opacity 2s ease-in-out infinite;
+                  }
+                  .animate-pulse-border {
+                    animation: pulse-border 2s ease-in-out infinite;
+                  }
+                `;
+                document.head.appendChild(styleElement);
+              }
+
+              // Add the animation to the document
+              document.body.appendChild(mindControlAnimationContainer);
+
+              // Remove the animation after 3.5 seconds with fade out
               setTimeout(() => {
-                document.body.removeChild(messageElement);
-              }, 2000);
+                mindControlAnimationContainer.style.transition = "opacity 0.5s";
+                mindControlAnimationContainer.style.opacity = "0";
+                setTimeout(() => {
+                  document.body.removeChild(mindControlAnimationContainer);
+                }, 500);
+              }, 3500);
 
               // Mark the mind control effect as used
               if (
@@ -1129,7 +1216,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
                   onCardSelected("no-card-selected");
                   setShowCardOptions(false);
                   setTimerActive(false);
-                }, 3000);
+                }, 4000); // Increased to 4 seconds to allow the animation to complete
               }
             }
           }
@@ -1384,14 +1471,23 @@ const CardSelection: React.FC<CardSelectionProps> = ({
             </div>
           )}
 
-          {/* Show information about mind control if active */}
+          {/* Show enhanced information about mind control if active */}
           {mindControlActive && showCardOptions && (
             <div className="flex flex-col items-center gap-4">
-              <div className="bg-yellow-600 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-yellow-500/50">
-                Mind Control Active: Cannot select a card!
-              </div>
-              <div className="text-white text-lg">
-                Opponent used Mind Control - proceeding without a card...
+              <div className="relative w-72 h-20 overflow-hidden">
+                <div className="absolute inset-0 bg-gray-900/70 rounded-lg border border-purple-500 shadow-lg flex items-center justify-center">
+                  {/* Content */}
+                  <div className="flex items-center gap-3 p-3">
+                    <svg className="w-10 h-10 text-purple-300" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M18 11H6C4.89543 11 4 11.8954 4 13V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V13C20 11.8954 19.1046 11 18 11Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                    <div>
+                      <h3 className="text-purple-100 font-bold">CARDS LOCKED</h3>
+                      <p className="text-purple-200 text-sm">Auto-proceeding without a card</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -1407,11 +1503,18 @@ const CardSelection: React.FC<CardSelectionProps> = ({
         </div>
       )}
 
-      {/* Show notification if mind control is active */}
+      {/* Enhanced notification if mind control is active */}
       {hasMindControl && mindControlActive && isMyTurn && (
-        <div className="absolute top-[100px] text-red-400 text-xl font-semibold game-overlay">
-          Mind Control: Your opponent has prevented you from using cards this
-          turn!
+        <div className="absolute top-[100px] flex items-center justify-center game-overlay">
+          <div className="bg-gray-900/70 rounded-lg border border-purple-500 px-4 py-2 shadow-lg">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 mr-2 text-purple-300" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 11H6C4.89543 11 4 11.8954 4 13V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V13C20 11.8954 19.1046 11 18 11Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span className="text-purple-200 text-sm font-semibold">Cards Locked</span>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -165,27 +165,27 @@ export default function PvpBattle() {
   const [, forceUpdate] = useReducer((x) => x + 1, 0);
 
   // Audio refs
-  const backgroundMusicRef = useRef<HTMLAudioElement | null>(null);
-  const attackSoundRef = useRef<HTMLAudioElement | null>(null);
-  const correctAnswerSoundRef = useRef<HTMLAudioElement | null>(null);
-  const correctSfxRef = useRef<HTMLAudioElement | null>(null);
-  const incorrectAnswerSoundRef = useRef<HTMLAudioElement | null>(null);
-  const incorrectSfxRef = useRef<HTMLAudioElement | null>(null);
-  const decreaseHealthSoundRef = useRef<HTMLAudioElement | null>(null);
-  const healthAttackSoundRef = useRef<HTMLAudioElement | null>(null);
-  const healRegenSoundRef = useRef<HTMLAudioElement | null>(null);
-  const regenerationSfxRef = useRef<HTMLAudioElement | null>(null);
-  const selectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
-  const noSelectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
-
+  const backgroundMusicRef = useRef<HTMLAudioElement>(null);
+  const attackSoundRef = useRef<HTMLAudioElement>(null);
+  const correctAnswerSoundRef = useRef<HTMLAudioElement>(null);
+  const incorrectAnswerSoundRef = useRef<HTMLAudioElement>(null);
+  const correctSfxRef = useRef<HTMLAudioElement>(null);
+  const incorrectSfxRef = useRef<HTMLAudioElement>(null);
+  const decreaseHealthSoundRef = useRef<HTMLAudioElement>(null);
+  const healthAttackSoundRef = useRef<HTMLAudioElement>(null);
+  const healRegenSoundRef = useRef<HTMLAudioElement>(null);
+  const regenerationSfxRef = useRef<HTMLAudioElement>(null);
+  const selectedCardSoundRef = useRef<HTMLAudioElement>(null);
+  const noSelectedCardSoundRef = useRef<HTMLAudioElement>(null);
+  const answerShieldActivatedSoundRef = useRef<HTMLAudioElement>(null);
+  const answerShieldDamagedSoundRef = useRef<HTMLAudioElement>(null);
+  const mindControlActivateSoundRef = useRef<HTMLAudioElement>(null);
+  const mindControlEffectSoundRef = useRef<HTMLAudioElement>(null);
+  const victorySoundRef = useRef<HTMLAudioElement>(null);
+  const defeatSoundRef = useRef<HTMLAudioElement>(null);
+  const leftGameSoundRef = useRef<HTMLAudioElement>(null);
   const quickDrawUserSoundRef = useRef<HTMLAudioElement | null>(null);
   const quickDrawEnemySoundRef = useRef<HTMLAudioElement | null>(null);
-  const victorySoundRef = useRef<HTMLAudioElement | null>(null);
-  const defeatSoundRef = useRef<HTMLAudioElement | null>(null);
-  const leftGameSoundRef = useRef<HTMLAudioElement | null>(null);
-  // Add new Answer Shield sound refs
-  const answerShieldActivatedSoundRef = useRef<HTMLAudioElement | null>(null);
-  const answerShieldDamagedSoundRef = useRef<HTMLAudioElement | null>(null);
 
   // Time Manipulation sounds
   const timeManipulationActivateSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -1069,7 +1069,7 @@ export default function PvpBattle() {
                   messageElement.className =
                     "fixed inset-0 flex items-center justify-center z-50";
                   messageElement.innerHTML = `
-                    <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
+                    <div class="bg-gray-800/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-gray-500/50 animate-pulse-border">
                       Poison Type Card: Opponent takes 10 initial damage plus 5 damage for 3 turns!
                     </div>
                   `;
@@ -1079,6 +1079,154 @@ export default function PvpBattle() {
                   setTimeout(() => {
                     document.body.removeChild(messageElement);
                   }, 2000);
+                } else if (
+                  response.data.data.card_effect.type === "rare-1" &&
+                  isCorrect
+                ) {
+                  // Create card locking effect for the player who used it
+                  const mindControlEffectContainer = document.createElement("div");
+                  mindControlEffectContainer.className = "fixed inset-0 z-[100] pointer-events-none flex items-center justify-center";
+
+                  mindControlEffectContainer.innerHTML = `
+                    <div class="relative w-full h-full flex items-center justify-center">
+                      <!-- Removed backdrop with gradient -->
+                      
+                      <!-- Main centered content -->
+                      <div class="relative flex flex-col items-center z-10">
+                        <!-- Enemy avatar at top -->
+                        <div class="mb-6">
+                          <div class="w-16 h-16 bg-gray-800 rounded-full overflow-hidden border-2 border-purple-500 flex items-center justify-center">
+                            <svg class="w-10 h-10 text-gray-500" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M12 14.5C8.66 14.5 6 11.84 6 8.5C6 5.16 8.66 2.5 12 2.5C15.34 2.5 18 5.16 18 8.5C18 11.84 15.34 14.5 12 14.5Z" fill="currentColor" opacity="0.5" />
+                              <path d="M20.5 22.5H3.5C2.4 22.5 1.5 21.6 1.5 20.5C1.5 15.8 5.3 12 10 12H14C18.7 12 22.5 15.8 22.5 20.5C22.5 21.6 21.6 22.5 20.5 22.5Z" fill="currentColor" opacity="0.5" />
+                            </svg>
+                          </div>
+                          <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded shadow-md">
+                            OPPONENT
+                          </div>
+                        </div>
+                        
+                        <!-- Cards being locked - centered -->
+                        <div class="flex items-center justify-center gap-3 mb-12">
+                          ${Array(3).fill(0).map((_, i) => `
+                            <div class="relative">
+                              <!-- Card -->
+                              <div class="w-40 h-56 bg-gradient-to-b from-gray-800 to-gray-700 rounded-lg transform ${i === 0 ? 'rotate-[-5deg]' : i === 1 ? 'rotate-[0deg]' : 'rotate-[5deg]'
+                    } shadow-xl border border-gray-600">
+                                <!-- Card content -->
+                                <div class="absolute inset-2 rounded bg-gray-700 flex flex-col items-center justify-center p-2">
+                                  <div class="w-full h-24 bg-gray-600 mb-2 rounded-sm"></div>
+                                  <div class="w-full h-3 bg-gray-600 rounded-sm mb-1"></div>
+                                  <div class="w-3/4 h-3 bg-gray-600 rounded-sm mb-1"></div>
+                                  <div class="w-full h-8 bg-gray-600 rounded-sm"></div>
+                                </div>
+                              </div>
+                              
+                              <!-- Lock overlay with animation -->
+                              <div class="absolute inset-0 bg-purple-900/70 rounded-lg flex items-center justify-center backdrop-blur-[2px] animate-fade-in" style="animation-delay: ${i * 0.2}s;">
+                                <svg class="w-16 h-16 text-purple-200 animate-bounce-slow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                  <path d="M18 11H6C4.89543 11 4 11.8954 4 13V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V13C20 11.8954 19.1046 11 18 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                  <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                  <circle cx="12" cy="16" r="1" fill="currentColor"/>
+                                </svg>
+                              </div>
+                              
+                              <!-- Purple energy outline -->
+                              <div class="absolute inset-0 rounded-lg border-2 border-purple-500 animate-pulse-border"></div>
+                            </div>
+                          `).join('')}
+                        </div>
+                        
+                        <!-- Animated mind control connection -->
+                        <div class="w-0.5 h-16 bg-gradient-to-b from-purple-500 to-purple-700 my-3 animate-grow-height"></div>
+                        
+                        <!-- Player section -->
+                        <div class="relative">
+                          <!-- Player avatar -->
+                          <div class="w-16 h-16 bg-gray-800 rounded-full border-2 border-gray-400 shadow-lg overflow-hidden flex items-center justify-center">
+                            <svg class="w-10 h-10 text-gray-200" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                              <path d="M18 11H6C4.89543 11 4 11.8954 4 13V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V13C20 11.8954 19.1046 11 18 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                              <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                          </div>
+                          
+                          <!-- Radiating energy pulse -->
+                          <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="w-20 h-20 rounded-full border border-gray-500/60 animate-ping-slow"></div>
+                            <div class="w-28 h-28 rounded-full border border-gray-500/40 animate-ping-slow" style="animation-delay: 0.3s"></div>
+                          </div>
+                          
+                          <!-- YOU label -->
+                          <div class="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-gray-700 text-white text-xs font-bold px-2 py-0.5 rounded shadow-md">
+                            YOU
+                          </div>
+                        </div>
+                        
+                        <!-- Success text indicator -->
+                        <div class="mt-6 bg-gray-800 px-6 py-3 rounded-lg border border-gray-500 shadow-lg text-center">
+                          <p class="text-gray-100 font-bold text-xl">MIND CONTROL ACTIVATED</p>
+                          <p class="text-gray-200 text-sm mt-1">Opponent's cards have been locked</p>
+                        </div>
+                      </div>
+                    </div>
+                  `;
+
+                  // Add CSS for the additional animations
+                  if (!document.getElementById('mind-control-player-animations')) {
+                    const styleElement = document.createElement('style');
+                    styleElement.id = 'mind-control-player-animations';
+                    styleElement.textContent = `
+                      @keyframes pulse-border {
+                        0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+                        50% { box-shadow: 0 0 0 4px rgba(168, 85, 247, 0.4); }
+                      }
+                      @keyframes bounce-slow {
+                        0%, 100% { transform: translateY(0); }
+                        50% { transform: translateY(-5px); }
+                      }
+                      @keyframes ping-slow {
+                        0% { transform: scale(1); opacity: 1; }
+                        75%, 100% { transform: scale(1.5); opacity: 0; }
+                      }
+                      @keyframes fade-in {
+                        from { opacity: 0; }
+                        to { opacity: 1; }
+                      }
+                      @keyframes grow-height {
+                        from { height: 0; opacity: 0; }
+                        to { height: 16rem; opacity: 1; }
+                      }
+                      
+                      .animate-pulse-border {
+                        animation: pulse-border 2s ease-in-out infinite;
+                      }
+                      .animate-bounce-slow {
+                        animation: bounce-slow 2s ease-in-out infinite;
+                      }
+                      .animate-ping-slow {
+                        animation: ping-slow 2s ease-in-out infinite;
+                      }
+                      .animate-fade-in {
+                        animation: fade-in 0.5s ease-in-out forwards;
+                        opacity: 0;
+                      }
+                      .animate-grow-height {
+                        animation: grow-height 1s ease-out forwards;
+                      }
+                    `;
+                    document.head.appendChild(styleElement);
+                  }
+
+                  document.body.appendChild(mindControlEffectContainer);
+
+                  // Remove the animation after 4 seconds with fade out
+                  setTimeout(() => {
+                    mindControlEffectContainer.style.transition = "opacity 0.8s";
+                    mindControlEffectContainer.style.opacity = "0";
+                    setTimeout(() => {
+                      document.body.removeChild(mindControlEffectContainer);
+                    }, 800);
+                  }, 4000);
                 }
               }
 
@@ -2709,6 +2857,68 @@ export default function PvpBattle() {
     }
   }, []);
 
+  // Initialize all sound refs once the component mounts
+  useEffect(() => {
+    // ... existing code ...
+
+    // Initialize Mind Control sounds
+    if (mindControlActivateSoundRef.current) {
+      mindControlActivateSoundRef.current.src = "/GameBattle/MindControl.wav";
+      mindControlActivateSoundRef.current.volume = calculateActualVolume(soundEffectsVolume);
+      mindControlActivateSoundRef.current.preload = "auto";
+    }
+
+    if (mindControlEffectSoundRef.current) {
+      mindControlEffectSoundRef.current.src = "/GameBattle/MindControl.wav";
+      mindControlEffectSoundRef.current.volume = calculateActualVolume(soundEffectsVolume);
+      mindControlEffectSoundRef.current.preload = "auto";
+    }
+
+    // ... existing code ...
+  }, []);
+
+  const checkForMindControl = async () => {
+    // ... existing code ...
+
+    // Play Mind Control activation sound
+    if (mindControlActivateSoundRef.current) {
+      mindControlActivateSoundRef.current.currentTime = 0;
+      mindControlActivateSoundRef.current.play().catch(error => {
+        console.error("Error playing mind control activate sound:", error);
+      });
+    }
+
+    // ... existing code inside your overlay/modal display logic ...
+
+    // Play the ongoing effect sound when the mind control is active
+    if (mindControlEffectSoundRef.current) {
+      mindControlEffectSoundRef.current.currentTime = 0;
+      mindControlEffectSoundRef.current.play().catch(error => {
+        console.error("Error playing mind control effect sound:", error);
+      });
+    }
+
+    // ... existing code ...
+
+    // Set a duration for the mind control effect (for example, 8 seconds)
+    const effectDuration = 8000;
+
+    // Optional: Stop the mind control effect sound when the effect ends
+    setTimeout(() => {
+      if (mindControlEffectSoundRef.current) {
+        mindControlEffectSoundRef.current.pause();
+        mindControlEffectSoundRef.current.currentTime = 0;
+      }
+    }, effectDuration);
+
+    // ... existing code ...
+  };
+
+  // Calculate actual volume with master volume applied
+  const calculateActualVolume = (specificVolume: number): number => {
+    return (specificVolume / 100) * (masterVolume / 100);
+  };
+
   return (
     <>
       <DocumentHead
@@ -2836,6 +3046,18 @@ export default function PvpBattle() {
         <audio
           ref={answerShieldDamagedSoundRef}
           src="/GameBattle/AnswerShieldSfx/AnswerShieldDamagedSfx.mp3"
+          preload="auto"
+        />
+
+        {/* Add Mind Control audio elements */}
+        <audio
+          ref={mindControlActivateSoundRef}
+          src="/GameBattle/MindControl.wav"
+          preload="auto"
+        />
+        <audio
+          ref={mindControlEffectSoundRef}
+          src="/GameBattle/MindControl.wav"
           preload="auto"
         />
 
@@ -3166,6 +3388,8 @@ export default function PvpBattle() {
             victorySoundRef={victorySoundRef}
             defeatSoundRef={defeatSoundRef}
             leftGameSoundRef={leftGameSoundRef}
+            mindControlActivateSoundRef={mindControlActivateSoundRef}
+            mindControlEffectSoundRef={mindControlEffectSoundRef}
           />
         </div>
       </div>
@@ -3337,6 +3561,8 @@ export default function PvpBattle() {
           </div>
         </div>
       )}
+
+
     </>
   );
 }

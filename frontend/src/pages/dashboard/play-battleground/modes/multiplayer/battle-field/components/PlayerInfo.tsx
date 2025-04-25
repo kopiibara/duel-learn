@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import PoisonatedEffect from "/GameBattle/PoisonatedEffect.png"
-import DefaultProfilePic from "/General/profile-picture/DefaultUnknownPic.png"
+import DefaultProfilePic from "/profile-picture/cat-default.png"
 import { BattleState } from "../BattleState";
 
 export interface PlayerInfoProps {
