@@ -879,21 +879,69 @@ export default function PvpBattle() {
                   response.data.data.card_effect.type === "epic-1" &&
                   isCorrect
                 ) {
-                  // Show notification for Answer Shield card effect
-                  const messageElement = document.createElement("div");
-                  messageElement.className =
-                    "fixed inset-0 flex items-center justify-center z-50";
-                  messageElement.innerHTML = `
-                    <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                      Answer Shield Card: Opponent's next card selection will be blocked!
+                  // Create container for Answer Shield animation
+                  const shieldEffectContainer = document.createElement("div");
+                  shieldEffectContainer.className = "fixed inset-0 z-[100] pointer-events-none flex items-center justify-center";
+
+                  // Create advanced shield animation
+                  shieldEffectContainer.innerHTML = `
+                    <div class="relative">
+                      <!-- Fullscreen backdrop gradient -->
+                      <div class="fixed inset-0 bg-gradient-to-b from-blue-900/30 to-blue-500/10 backdrop-blur-[2px]"></div>
+                      
+                      <!-- Shield glow background -->
+                      <div class="absolute inset-0 bg-blue-500/30 rounded-full blur-xl animate-pulse-slow" style="width: 350px; height: 350px; top: 50%; left: 50%; transform: translate(-50%, -50%)"></div>
+                      
+                      <!-- Shield main element -->
+                      <div class="absolute" style="width: 300px; height: 300px; top: 50%; left: 50%; transform: translate(-50%, -50%)">
+                        <!-- Shield inner circle with ripple effect -->
+                        <div class="absolute inset-0 flex items-center justify-center">
+                          <div class="w-60 h-60 rounded-full border-8 border-blue-400/80 bg-gradient-to-br from-blue-500/40 to-blue-600/20 flex items-center justify-center animate-pulse">
+                            <img src="/GameBattle/EpicCardAnswerShield.png" alt="Shield" class="w-32 h-32 object-contain animate-bounce-gentle drop-shadow-[0_0_15px_rgba(59,130,246,0.7)]" />
+                          </div>
+                        </div>
+                        
+                        <!-- Orbiting particles -->
+                        <div class="absolute w-full h-full animate-spin-slow" style="animation-duration: 8s">
+                          <div class="absolute top-0 left-1/2 -translate-x-1/2 w-5 h-5 bg-blue-300 rounded-full blur-[2px]"></div>
+                          <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-5 h-5 bg-blue-300 rounded-full blur-[2px]"></div>
+                        </div>
+                        <div class="absolute w-full h-full animate-spin-slow" style="animation-duration: 8s; animation-direction: reverse">
+                          <div class="absolute top-1/2 left-0 -translate-y-1/2 w-5 h-5 bg-blue-300 rounded-full blur-[2px]"></div>
+                          <div class="absolute top-1/2 right-0 -translate-y-1/2 w-5 h-5 bg-blue-300 rounded-full blur-[2px]"></div>
+                        </div>
+                        
+                        <!-- Diagonal orbiting particles -->
+                        <div class="absolute w-full h-full animate-spin-slow" style="animation-duration: 6s; transform: rotate(45deg)">
+                          <div class="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-200 rounded-full blur-[1px]"></div>
+                          <div class="absolute bottom-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-blue-200 rounded-full blur-[1px]"></div>
+                        </div>
+                        
+                        <!-- Radiating circles -->
+                        <div class="absolute inset-0 flex items-center justify-center">
+                          <div class="absolute w-72 h-72 border-4 border-blue-400/40 rounded-full animate-ping" style="animation-duration: 2s"></div>
+                          <div class="absolute w-80 h-80 border-2 border-blue-300/30 rounded-full animate-ping" style="animation-duration: 2.5s"></div>
+                        </div>
+                      </div>
+                      
+                      <!-- Text indicator -->
+                      <div class="absolute top-[68%] left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-900/90 to-blue-700/90 px-8 py-4 rounded-xl border-2 border-blue-400/70 shadow-[0_0_15px_rgba(59,130,246,0.5)]">
+                        <p class="text-blue-100 font-bold text-2xl text-center tracking-wider">ANSWER SHIELD ACTIVATED!</p>
+                        <p class="text-blue-200 text-center text-sm mt-1">Opponent's next card blocked</p>
+                      </div>
                     </div>
                   `;
-                  document.body.appendChild(messageElement);
 
-                  // Remove the message after 2 seconds
+                  document.body.appendChild(shieldEffectContainer);
+
+                  // Remove the animation after 3 seconds with fade out
                   setTimeout(() => {
-                    document.body.removeChild(messageElement);
-                  }, 2000);
+                    shieldEffectContainer.style.transition = "opacity 0.5s";
+                    shieldEffectContainer.style.opacity = "0";
+                    setTimeout(() => {
+                      document.body.removeChild(shieldEffectContainer);
+                    }, 500);
+                  }, 3000);
                 } else if (
                   response.data.data.card_effect.type === "epic-2" &&
                   isCorrect

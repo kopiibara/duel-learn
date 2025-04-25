@@ -224,14 +224,14 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       rare: { total: 0, distribution: { "Mind Control": 0, "Poison Type": 0 } },
     },
     hard: {
-      basic: 70,
+      basic: 20,
       normal: {
         total: 15,
-        distribution: { "Time Manipulation": 8, "Quick Draw": 8 },
+        distribution: { "Time Manipulation": 8, "Quick Draw": 7 },
       },
       epic: {
-        total: 10,
-        distribution: { "Answer Shield": 5, Regeneration: 5 },
+        total: 60,
+        distribution: { "Answer Shield": 50, Regeneration: 10 },
       },
       rare: {
         total: 5,
@@ -567,7 +567,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
     if (noSelectedCardSoundRef.current) {
       noSelectedCardSoundRef.current.currentTime = 0;
       noSelectedCardSoundRef.current.volume = soundEffectsVolume;
-      noSelectedCardSoundRef.current
+      noSelectedCardSoundRef
+        .current
         .play()
         .catch(err => console.error("Error playing no selected card sound:", err));
     }
@@ -924,20 +925,88 @@ const CardSelection: React.FC<CardSelectionProps> = ({
               setVisibleCardIndices(indicesToShow);
 
               // Show notification about blocked cards
-              const messageElement = document.createElement("div");
-              messageElement.className =
-                "fixed inset-0 flex items-center justify-center z-50";
-              messageElement.innerHTML = `
-                                <div class="bg-purple-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-purple-500/50">
-                                    Answer Shield: ${response.data.data.cards_blocked} of your cards have been blocked!
-                                </div>
-                            `;
-              document.body.appendChild(messageElement);
+              const blockingAnimationContainer = document.createElement("div");
+              blockingAnimationContainer.className = "fixed inset-0 z-[100] pointer-events-none flex items-center justify-center";
 
-              // Remove the message after 2 seconds
+              blockingAnimationContainer.innerHTML = `
+                <div class="relative">
+                  <!-- Fullscreen backdrop gradient -->
+                  <div class="fixed inset-0 bg-gradient-to-b from-red-900/30 to-red-500/10 backdrop-blur-[2px]"></div>
+                  
+                  <!-- Shield hit animation -->
+                  <div class="absolute inset-0 bg-red-500/30 rounded-full blur-xl animate-pulse-slow" style="width: 350px; height: 350px; top: 50%; left: 50%; transform: translate(-50%, -50%)"></div>
+                  
+                  <!-- Broken shield visual -->
+                  <div class="absolute" style="width: 300px; height: 300px; top: 50%; left: 50%; transform: translate(-50%, -50%)">
+                    <div class="absolute inset-0 flex items-center justify-center">
+                      <div class="w-60 h-60 rounded-full border-8 border-red-400/80 bg-gradient-to-br from-red-500/40 to-red-600/20 flex items-center justify-center">
+                        <!-- Shield fracture animation -->
+                        <div class="absolute w-full h-full overflow-hidden">
+                          <div class="absolute bg-red-400/30 h-1 w-full top-1/2 left-0 transform -translate-y-1/2 animate-expand-x" style="animation-duration: 0.8s"></div>
+                          <div class="absolute bg-red-400/30 w-1 h-full top-0 left-1/2 transform -translate-x-1/2 animate-expand-y" style="animation-duration: 0.8s"></div>
+                          <div class="absolute bg-red-400/30 h-1 w-full top-1/4 left-0 transform -translate-y-1/2 animate-expand-x" style="animation-delay: 0.2s; animation-duration: 0.7s"></div>
+                          <div class="absolute bg-red-400/30 h-1 w-full top-3/4 left-0 transform -translate-y-1/2 animate-expand-x" style="animation-delay: 0.3s; animation-duration: 0.7s"></div>
+                        </div>
+                        
+                        <!-- Broken shield icon -->
+                        <div class="relative">
+                          <img src="/GameBattle/EpicCardAnswerShield.png" alt="Shield" class="w-32 h-32 object-contain opacity-70 drop-shadow-[0_0_15px_rgba(239,68,68,0.7)]" />
+                          <!-- Cracks overlay with animation -->
+                          <div class="absolute inset-0 flex items-center justify-center">
+                            <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" 
+                                 class="stroke-white drop-shadow-[0_0_5px_rgba(255,255,255,0.7)]" stroke-width="3">
+                              <path d="M50 20 L40 55 L60 40 L30 70 L45 50 L20 80" stroke-linecap="round" 
+                                    class="animate-draw-line" style="animation-duration: 1.2s; stroke-dasharray: 150; stroke-dashoffset: 150;" />
+                              <path d="M50 20 L70 60 L50 45 L80 75" stroke-linecap="round" 
+                                    class="animate-draw-line" style="animation-duration: 1s; animation-delay: 0.3s; stroke-dasharray: 120; stroke-dashoffset: 120;" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Blocked cards effect with animation -->
+                    <div class="absolute inset-0">
+                      ${Array(response.data.data.cards_blocked).fill(0).map((_, i) => `
+                        <div class="absolute rounded-lg bg-gradient-to-br from-white/90 to-gray-200/90 w-16 h-24 shadow-xl animate-fade-slide-in"
+                             style="top: calc(50% - 48px); left: calc(50% + ${(i - 0.5) * 30}px); transform: translateX(-50%) rotate(${(i - 1) * 15}deg); animation-delay: ${0.3 + i * 0.2}s;">
+                          <div class="absolute inset-0 flex items-center justify-center">
+                            <div class="relative">
+                              <svg class="w-12 h-12 text-red-500 animate-pulse drop-shadow-[0_0_8px_rgba(239,68,68,0.5)]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2.5" />
+                                <path d="M7 7 L17 17 M7 17 L17 7" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" />
+                              </svg>
+                              <!-- Red flash effect -->
+                              <div class="absolute inset-0 bg-red-500/50 rounded-full animate-flash-fade" style="animation-delay: ${0.5 + i * 0.2}s"></div>
+                            </div>
+                          </div>
+                        </div>
+                      `).join('')}
+                    </div>
+                  </div>
+                  
+                  <!-- Text indicator -->
+                  <div class="absolute top-[68%] left-1/2 -translate-x-1/2 bg-gradient-to-r from-red-900/90 to-red-700/90 px-8 py-4 rounded-xl border-2 border-red-400/70 shadow-[0_0_15px_rgba(239,68,68,0.5)]">
+                    <p class="text-red-100 font-bold text-2xl text-center tracking-wider">
+                      ${response.data.data.cards_blocked === 1 ?
+                  "CARD BLOCKED!" :
+                  `${response.data.data.cards_blocked} CARDS BLOCKED!`}
+                    </p>
+                    <p class="text-red-200 text-center text-sm mt-1">Your opponent activated Answer Shield</p>
+                  </div>
+                </div>
+              `;
+
+              document.body.appendChild(blockingAnimationContainer);
+
+              // Remove the animation after 3 seconds with fade out
               setTimeout(() => {
-                document.body.removeChild(messageElement);
-              }, 2000);
+                blockingAnimationContainer.style.transition = "opacity 0.5s";
+                blockingAnimationContainer.style.opacity = "0";
+                setTimeout(() => {
+                  document.body.removeChild(blockingAnimationContainer);
+                }, 500);
+              }, 3000);
 
               // Mark the blocking effect as used
               if (
@@ -1213,7 +1282,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
           {/* Timer display when it's the player's turn and options are shown */}
           {showCardOptions && backCardExitComplete && (
-            <div className="absolute top-[100px] text-white text-2xl font-bold game-overlay">
+            <div className="absolute top-[140px] text-white text-2xl font-bold game-overlay">
               Time remaining:{" "}
               <span
                 className={selectionTimer <= 3 ? "text-red-500" : "text-white"}
@@ -1317,7 +1386,7 @@ const CardSelection: React.FC<CardSelectionProps> = ({
 
       {/* Show notification if cards are blocked */}
       {hasCardBlocking && blockedCardCount > 0 && isMyTurn && (
-        <div className="absolute top-[100px] text-red-400 text-xl font-semibold game-overlay">
+        <div className="absolute top-[170px] text-red-400 text-xl font-semibold game-overlay">
           {blockedCardCount === 1
             ? "Your opponent used Answer Shield: 1 card has been blocked!"
             : `Your opponent used Answer Shield: ${blockedCardCount} cards have been blocked!`}
