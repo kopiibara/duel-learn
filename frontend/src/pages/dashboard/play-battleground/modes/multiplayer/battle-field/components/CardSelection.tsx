@@ -228,14 +228,14 @@ const CardSelection: React.FC<CardSelectionProps> = ({
       rare: { total: 0, distribution: { "Mind Control": 0, "Poison Type": 0 } },
     },
     hard: {
-      basic: 20,
+      basic: 70,
       normal: {
         total: 15,
-        distribution: { "Time Manipulation": 8, "Quick Draw": 7 },
+        distribution: { "Time Manipulation": 8, "Quick Draw": 8 },
       },
       epic: {
-        total: 60,
-        distribution: { "Answer Shield": 10, Regeneration: 50 },
+        total: 10,
+        distribution: { "Answer Shield": 5, Regeneration: 5 },
       },
       rare: {
         total: 5,
