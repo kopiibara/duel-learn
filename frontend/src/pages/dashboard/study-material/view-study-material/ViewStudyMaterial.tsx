@@ -442,7 +442,7 @@ const ViewStudyMaterial = () => {
             spacing={1}
             direction={{ xs: "column", sm: "row" }}
             alignItems={{ xs: "flex-start", sm: "center" }}
-            sx={{ mt: 2 }}
+            sx={{ pt: 1.5 }}
           >
             <Typography variant="subtitle1" className="text-[#9F9BAE]">
               Tags:
@@ -470,7 +470,7 @@ const ViewStudyMaterial = () => {
               ))}
             </Stack>
           </Stack>
-          <Stack direction="row" alignItems="center" spacing={1} sx={{ mt: 1 }}>
+          <Stack direction="row" alignItems="center" spacing={1}>
             <Typography
               variant="subtitle1"
               className="text-[#3B354D] font-bold"
@@ -486,7 +486,7 @@ const ViewStudyMaterial = () => {
               direction="row"
               spacing={1}
               className="flex items-center"
-              sx={{ overflowX: "auto", p: 1 }}
+              sx={{ overflowX: "auto", pt: 0.5 }}
             >
               {["Overview", "Cards"].map((label) => (
                 <Button

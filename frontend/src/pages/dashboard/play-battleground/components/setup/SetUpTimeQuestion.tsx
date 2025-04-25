@@ -15,6 +15,7 @@ const SetUpTimeQuestion: React.FC = () => {
   const navigate = useNavigate();
   const { user, updateUser } = useUser();
   const manaPoints = user?.mana || 0; // Default to 0 if undefined
+  const isPremium = user?.account_type === "premium"; // Check if user is premium
   const { mode, material, selectedTypes } = location.state || {};
   console.log(
     "Mode:",
@@ -48,42 +49,42 @@ const SetUpTimeQuestion: React.FC = () => {
 
   // Handle Start Learning button click
   const handleStartLearning = async () => {
-    if (manaPoints < manaCost) {
+    // Skip mana check for premium users
+    if (!isPremium && manaPoints < manaCost) {
       setOpenManaAlert(true);
     } else {
       try {
-        // Call the API to reduce mana
-        const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/api/mana/reduce`,
-          {
-            firebase_uid: user?.firebase_uid,
+        // Only reduce mana for non-premium users
+        if (!isPremium) {
+          // Call the API to reduce mana
+          const response = await axios.post(
+            `${import.meta.env.VITE_BACKEND_URL}/api/mana/reduce`,
+            {
+              firebase_uid: user?.firebase_uid,
+            }
+          );
+
+          if (response.status === 200) {
+            // Properly update user data using the context method
+            updateUser({ mana: response.data.mana });
+            console.log("Mana reduced to:", response.data.mana);
           }
+        }
+
+        console.log(
+          "Starting learning with time limit:",
+          timeLimit,
+          "seconds."
         );
 
-        if (response.status === 200) {
-          // Properly update user data using the context method
-          updateUser({ mana: response.data.mana });
-
-          console.log(
-            "Starting learning with time limit:",
-            timeLimit,
-            "seconds."
-          );
-          console.log("Mana reduced to:", response.data.mana);
-
-          navigate("/dashboard/study/time-pressured-mode", {
-            state: {
-              mode: "Time Pressured",
-              material,
-              selectedTypes,
-              timeLimit: timeLimit,
-            },
-          });
-
-          // Trigger mana replenishment in the background
-          // This isn't strictly necessary as getUserMana will handle this automatically next time
-          // But it ensures the replenishment timer starts right away
-        }
+        navigate("/dashboard/study/time-pressured-mode", {
+          state: {
+            mode: "Time Pressured",
+            material,
+            selectedTypes,
+            timeLimit: timeLimit,
+          },
+        });
       } catch (error) {
         console.error("Error reducing mana:", error);
         setOpenManaAlert(true);
@@ -93,6 +94,20 @@ const SetUpTimeQuestion: React.FC = () => {
 
   const handleCloseManaAlert = () => {
     setOpenManaAlert(false); // Close the mana alert when the user acknowledges it
+  };
+
+  // Modify the button text to conditionally show mana cost
+  const renderButtonText = () => {
+    if (isPremium) {
+      return "START LEARNING!";
+    } else {
+      return (
+        <>
+          START LEARNING! -{manaCost}
+          <img src={ManaIcon} alt="Mana" className="w-3 sm:w-4 ml-2" />
+        </>
+      );
+    }
   };
 
   return (
@@ -227,8 +242,7 @@ const SetUpTimeQuestion: React.FC = () => {
                   onClick={handleStartLearning}
                   className="mt-8 sm:mt-10 w-full max-w-[250px] mx-auto sm:max-w-[300px] md:max-w-[350px] py-2 sm:py-3 border-2 border-black text-black rounded-lg text-md sm:text-lg shadow-lg hover:bg-purple-700 hover:text-white hover:border-transparent flex items-center justify-center"
                 >
-                  START LEARNING! -{manaCost}
-                  <img src={ManaIcon} alt="Mana" className="w-3 sm:w-4 ml-2" />
+                  {renderButtonText()}
                 </button>
               </div>
             </div>

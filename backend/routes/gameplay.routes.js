@@ -26,7 +26,8 @@ import {
     generateBattleQuestions,
     claimBattleRewards,
     updateEnemyAnsweringQuestion,
-    getEnemyAnsweringQuestion
+    getEnemyAnsweringQuestion,
+    deductLeaverXP
 } from '../controller/GameplayController.js';
 
 const router = express.Router();
@@ -61,6 +62,9 @@ router.put('/battle/update-scores', updateBattleScores);
 // Win streak routes
 router.get('/battle/win-streak/:firebase_uid', getWinStreak);
 router.put('/battle/win-streak', updateWinStreak);
+
+// XP penalty route for early leavers
+router.put('/battle/deduct-leaver-xp', deductLeaverXP);
 
 // User ban status route
 router.get('/user/ban-status/:firebase_uid', checkUserBanStatus);

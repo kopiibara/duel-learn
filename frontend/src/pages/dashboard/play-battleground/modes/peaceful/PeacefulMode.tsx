@@ -61,7 +61,7 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
 }) => {
   const [isGeneratingAI, setIsGeneratingAI] = useState(true);
   const [aiQuestions, setAiQuestions] = useState<any[]>([]);
-  const { playCorrectAnswerSound, playIncorrectAnswerSound } = useAudio();
+  const { playCorrectAnswerSound, playIncorrectAnswerSound, playPeacefulModeAudio, activeAudio } = useAudio();
   const { user } = useUser();
   const navigate = useNavigate();
 
@@ -108,6 +108,8 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
     }
     return 100;
   });
+
+  const [isAudioInitialized, setIsAudioInitialized] = useState(false);
 
   // Generate AI questions when component mounts
   useEffect(() => {
@@ -896,11 +898,37 @@ const PeacefulMode: React.FC<PeacefulModeProps> = ({
       .padStart(2, "0")}`;
   };
 
+  // Initialize audio after questions are loaded
+  useEffect(() => {
+    if (aiQuestions.length > 0 && !isAudioInitialized) {
+      const initializeAudio = async () => {
+        try {
+          await playPeacefulModeAudio();
+          setIsAudioInitialized(true);
+        } catch (error) {
+          console.error("Error initializing peaceful mode audio:", error);
+          // Retry after a short delay
+          setTimeout(() => {
+            setIsAudioInitialized(false);
+          }, 1000);
+        }
+      };
+      initializeAudio();
+    }
+  }, [aiQuestions.length, playPeacefulModeAudio, isAudioInitialized]);
+
+  // Cleanup audio when component unmounts
+  useEffect(() => {
+    return () => {
+      setIsAudioInitialized(false);
+    };
+  }, []);
+
   // Show loading screen while generating questions
   if (isGeneratingAI) {
     return (
       <GeneralLoadingScreen
-        text="Generating Questions"
+        text="Loading Questions"
         mode="Peaceful Mode"
         isLoading={isGeneratingAI}
       />

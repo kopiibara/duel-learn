@@ -148,6 +148,14 @@ const CreateStudyMaterial = () => {
   const [emptyTerms, setEmptyTerms] = useState<number[]>([]);
   const [emptyDefinitions, setEmptyDefinitions] = useState<number[]>([]);
 
+  // Add this state variable near your other state declarations
+  const [originalState, setOriginalState] = useState<{
+    title: string;
+    tags: string[];
+    items: any[];
+    visibility: string;
+  } | null>(null);
+
   // Flatten all subjects from topics
   const allSubjects = topics
     .flatMap((topic) => topic.subjects.map((subject) => subject.name))
@@ -366,6 +374,68 @@ const CreateStudyMaterial = () => {
     };
   }, []);
 
+  // Modify the existing useEffect that loads study material data
+  useEffect(() => {
+    const fetchStudyMaterial = async () => {
+      if (editMode && studyMaterialId) {
+        try {
+          const response = await fetch(
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/study-material/get-by-study-material-id/${studyMaterialId}`
+          );
+
+          if (!response.ok) {
+            throw new Error("Failed to fetch study material");
+          }
+
+          const data = await response.json();
+          setStudyMaterial(data);
+
+          // Store the original state
+          setOriginalState({
+            title: data.title,
+            tags: data.tags,
+            items: data.items.map((item) => ({
+              term: item.term,
+              definition: item.definition,
+              image: item.image,
+              id: Date.now() + Math.random(), // Temporary ID for comparison
+            })),
+            visibility: data.visibility.toString(),
+          });
+
+          // Check if current user is the creator
+          if (user && user.firebase_uid !== data.created_by_id) {
+            handleShowSnackbar(
+              "You don't have permission to edit this study material"
+            );
+            navigate(`/dashboard/study-material/view/${studyMaterialId}`);
+          }
+        } catch (error) {
+          console.error("Error fetching study material:", error);
+          handleShowSnackbar("Error loading study material");
+          navigate(-1);
+        }
+      } else if (editMode && location.state) {
+        // Store original state from location.state if available
+        setOriginalState({
+          title: location.state.title,
+          tags: location.state.tags,
+          items: location.state.items.map((item) => ({
+            term: item.term,
+            definition: item.definition,
+            image: item.image,
+            id: item.id,
+          })),
+          visibility: location.state.visibility.toString(),
+        });
+      }
+    };
+
+    fetchStudyMaterial();
+  }, [editMode, studyMaterialId, user, navigate]);
+
   // Update the save button handler to highlight specific empty items
   const handleSaveButton = async () => {
     // Reset all error states first
@@ -510,7 +580,39 @@ const CreateStudyMaterial = () => {
       return; // Don't proceed with saving if validation fails
     }
 
-    // Only set isSaving to true if we've passed all validation
+    // Check if we're in edit mode and if anything has changed
+    if (editMode && originalState && isValid) {
+      const hasNoChanges =
+        title === originalState.title &&
+        JSON.stringify(tags.sort()) ===
+          JSON.stringify(originalState.tags.sort()) &&
+        visibility === originalState.visibility &&
+        items.length === originalState.items.length &&
+        items.every((item, index) => {
+          // Find corresponding item in original state
+          const originalItem = originalState.items.find((oi) => {
+            // For original items from API, compare term and definition
+            return oi.term === item.term && oi.definition === item.definition;
+          });
+
+          if (!originalItem) return false;
+
+          // Compare content (ignore ID and item_number which may change)
+          return (
+            item.term.trim() === originalItem.term.trim() &&
+            item.definition.trim() === originalItem.definition.trim()
+          );
+        });
+
+      if (hasNoChanges) {
+        console.log("No changes detected, skipping save operation");
+        // If nothing has changed, just redirect
+        navigate(`/dashboard/study-material/view/${studyMaterialId}`);
+        return;
+      }
+    }
+
+    // Only set isSaving to true if we've passed all validation and changes are detected
     setIsSaving(true);
 
     // Define summary variable outside try block so it's accessible in the main scope
@@ -677,40 +779,6 @@ const CreateStudyMaterial = () => {
       setIsSaving(false);
     }
   };
-  useEffect(() => {
-    const fetchStudyMaterial = async () => {
-      if (editMode && studyMaterialId) {
-        try {
-          const response = await fetch(
-            `${
-              import.meta.env.VITE_BACKEND_URL
-            }/api/study-material/get-by-study-material-id/${studyMaterialId}`
-          );
-
-          if (!response.ok) {
-            throw new Error("Failed to fetch study material");
-          }
-
-          const data = await response.json();
-          setStudyMaterial(data);
-
-          // Check if current user is the creator
-          if (user && user.firebase_uid !== data.created_by_id) {
-            handleShowSnackbar(
-              "You don't have permission to edit this study material"
-            );
-            navigate(`/dashboard/study-material/view/${studyMaterialId}`);
-          }
-        } catch (error) {
-          console.error("Error fetching study material:", error);
-          handleShowSnackbar("Error loading study material");
-          navigate(-1);
-        }
-      }
-    };
-
-    fetchStudyMaterial();
-  }, [editMode, studyMaterialId, user]);
 
   const handleDiscard = () => {
     if (editMode && studyMaterialId) {
@@ -748,6 +816,18 @@ const CreateStudyMaterial = () => {
   ) => {
     event.preventDefault();
 
+    // Add strict validation at the beginning
+    if (!isPremium && (!user?.tech_pass || user?.tech_pass <= 0)) {
+      handleShowSnackbar(
+        "You need a Tech Pass to use the scanning feature. Purchase Tech Passes from the shop or upgrade to Premium."
+      );
+      // Reset input if using file input
+      if ("target" in event && (event.target as HTMLInputElement).files) {
+        (event.target as HTMLInputElement).value = "";
+      }
+      return;
+    }
+
     // Handle both drag and drop events and file input events
     let newFiles: File[] = [];
 
@@ -756,7 +836,11 @@ const CreateStudyMaterial = () => {
       if (event.dataTransfer.files.length > 0) {
         newFiles = Array.from(event.dataTransfer.files);
       }
-    } else if (event.target.files && event.target.files.length > 0) {
+    } else if (
+      event.target instanceof HTMLInputElement &&
+      event.target.files &&
+      event.target.files.length > 0
+    ) {
       // This is a file input event
       newFiles = Array.from(event.target.files);
     }
@@ -882,6 +966,15 @@ const CreateStudyMaterial = () => {
   const handleProcessFile = async () => {
     if (uploadedFiles.length === 0) {
       handleShowSnackbar("Please upload at least one file");
+      return;
+    }
+
+    // Add strict validation at the beginning
+    if (!isPremium && (!user?.tech_pass || user?.tech_pass <= 0)) {
+      handleShowSnackbar(
+        "You need a Tech Pass to process files. Purchase Tech Passes from the shop or upgrade to Premium."
+      );
+      handleCloseScanModal(); // Close the modal immediately
       return;
     }
 
@@ -1027,12 +1120,12 @@ const CreateStudyMaterial = () => {
 
             if (techPassResponse.ok) {
               const responseData = await techPassResponse.json();
-              // Update the user context with updated tech pass count
+              console.log("PDF tech pass deduction response:", responseData);
+
+              // Update the user context with server-provided count instead of manual calculation
               updateUser({
                 ...user,
-                tech_pass:
-                  responseData.updatedTechPassCount ||
-                  user.tech_pass - techPassesToDeduct,
+                tech_pass: responseData.updatedTechPassCount,
               });
             } else {
               // Try to parse error message from response
@@ -1187,10 +1280,12 @@ const CreateStudyMaterial = () => {
 
               if (techPassResponse.ok) {
                 const responseData = await techPassResponse.json();
-                // Update the user context with updated tech pass count
+                console.log("PDF tech pass deduction response:", responseData);
+
+                // Update the user context with server-provided count instead of manual calculation
                 updateUser({
                   ...user,
-                  tech_pass: user.tech_pass - techPassesToDeduct,
+                  tech_pass: responseData.updatedTechPassCount,
                 });
               } else {
                 // Try to parse error message from response
@@ -1857,11 +1952,7 @@ const CreateStudyMaterial = () => {
                   onClick={handleAddItem}
                   className={itemsError ? "error-highlight-animation" : ""}
                 >
-                  Add New Item{" "}
-                  {(itemsError || emptyItemIds.length > 0) &&
-                    `(${
-                      items.length - emptyItemIds.length
-                    }/${MIN_REQUIRED_ITEMS})`}
+                  Add New Item
                 </Button>
               </Stack>
             </Box>
@@ -2197,7 +2288,16 @@ const CreateStudyMaterial = () => {
               isProcessing ||
               (!isPremium && (!user?.tech_pass || user.tech_pass <= 0))
             }
-            onClick={handleProcessFile}
+            onClick={() => {
+              // Double-check tech pass availability right before processing
+              if (!isPremium && (!user?.tech_pass || user?.tech_pass <= 0)) {
+                handleShowSnackbar(
+                  "You need a Tech Pass to use the scanning feature. Purchase Tech Passes from the shop or upgrade to Premium."
+                );
+                return;
+              }
+              handleProcessFile();
+            }}
             sx={{
               backgroundColor:
                 isPremium || (user?.tech_pass && user.tech_pass > 0)
@@ -2290,9 +2390,6 @@ const CreateStudyMaterial = () => {
           <img src={CauldronIcon} alt="" className="w-32 h-auto" />
           <Typography variant="h6" sx={{ color: "#E2DDF3", mb: 1 }}>
             {editMode ? "Updating" : "Saving"} Your Study Material
-          </Typography>
-          <Typography variant="body2" sx={{ color: "#9F9BAE" }}>
-            This may take a moment.
           </Typography>
         </Box>
       </Modal>

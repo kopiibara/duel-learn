@@ -11,6 +11,14 @@ interface SoundSettingsModalProps {
     incorrectAnswerSoundRef: React.RefObject<HTMLAudioElement>;
     correctSfxRef: React.RefObject<HTMLAudioElement>;
     incorrectSfxRef: React.RefObject<HTMLAudioElement>;
+    decreaseHealthSoundRef: React.RefObject<HTMLAudioElement>;
+    healthAttackSoundRef: React.RefObject<HTMLAudioElement>;
+    healRegenSoundRef: React.RefObject<HTMLAudioElement>;
+    selectedCardSoundRef?: React.RefObject<HTMLAudioElement>;
+    noSelectedCardSoundRef?: React.RefObject<HTMLAudioElement>;
+    victorySoundRef?: React.RefObject<HTMLAudioElement>;
+    defeatSoundRef?: React.RefObject<HTMLAudioElement>;
+    leftGameSoundRef?: React.RefObject<HTMLAudioElement>;
     masterVolume: number;
     musicVolume: number;
     soundEffectsVolume: number;
@@ -29,6 +37,14 @@ export default function SoundSettingsModal({
     incorrectAnswerSoundRef,
     correctSfxRef,
     incorrectSfxRef,
+    decreaseHealthSoundRef,
+    healthAttackSoundRef,
+    healRegenSoundRef,
+    selectedCardSoundRef,
+    noSelectedCardSoundRef,
+    victorySoundRef,
+    defeatSoundRef,
+    leftGameSoundRef,
     masterVolume,
     musicVolume,
     soundEffectsVolume,
@@ -71,7 +87,15 @@ export default function SoundSettingsModal({
             { name: "correctAnswerSound", ref: correctAnswerSoundRef.current },
             { name: "incorrectAnswerSound", ref: incorrectAnswerSoundRef.current },
             { name: "correctSfx", ref: correctSfxRef.current },
-            { name: "incorrectSfx", ref: incorrectSfxRef.current }
+            { name: "incorrectSfx", ref: incorrectSfxRef.current },
+            { name: "decreaseHealthSound", ref: decreaseHealthSoundRef.current },
+            { name: "healthAttackSound", ref: healthAttackSoundRef.current },
+            { name: "healRegenSound", ref: healRegenSoundRef.current },
+            { name: "selectedCardSound", ref: selectedCardSoundRef?.current },
+            { name: "noSelectedCardSound", ref: noSelectedCardSoundRef?.current },
+            { name: "victorySound", ref: victorySoundRef?.current },
+            { name: "defeatSound", ref: defeatSoundRef?.current },
+            { name: "leftGameSound", ref: leftGameSoundRef?.current }
         ];
 
         // Update each sound effect volume individually and log for debugging
@@ -96,7 +120,7 @@ export default function SoundSettingsModal({
             music: musicVolume,
             effects: soundEffectsVolume
         }));
-    }, [masterVolume, musicVolume, soundEffectsVolume, backgroundMusicRef, attackSoundRef, correctAnswerSoundRef, incorrectAnswerSoundRef, correctSfxRef, incorrectSfxRef]);
+    }, [masterVolume, musicVolume, soundEffectsVolume, backgroundMusicRef, attackSoundRef, correctAnswerSoundRef, incorrectAnswerSoundRef, correctSfxRef, incorrectSfxRef, decreaseHealthSoundRef, healthAttackSoundRef, healRegenSoundRef, selectedCardSoundRef, noSelectedCardSoundRef, victorySoundRef, defeatSoundRef, leftGameSoundRef]);
 
     // Load saved volume settings from localStorage on initial render
     useEffect(() => {
@@ -119,11 +143,14 @@ export default function SoundSettingsModal({
     // Function to handle leave game confirmation
     const handleLeaveGameClick = () => {
         const confirmLeave = window.confirm(
-            "Are you sure you want to leave the battle? Leaving will count as a defeat for you and a victory for your opponent with minimal rewards."
+            "Are you sure you want to leave the battle? You will lose 100 XP and your win streak will reset to 0. The battle will count as a defeat for you and a victory for your opponent."
         );
 
         if (confirmLeave) {
-            // Just call the passed-in onLeaveGame function
+            // First close the modal
+            onClose();
+
+            // Then call the leave game function
             onLeaveGame();
         }
     };
@@ -198,7 +225,7 @@ export default function SoundSettingsModal({
                             Leave Game
                         </button>
                         <p className="text-xs text-gray-400 mt-2 text-center">
-                            Note: Leaving will count as a defeat for you and your opponent will win.
+                            Note: Leaving will deduct 100 XP, reset your win streak to 0, and count as a defeat.
                         </p>
                     </div>
                 </div>

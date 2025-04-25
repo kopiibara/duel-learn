@@ -168,6 +168,11 @@ export default function PvpBattle() {
   const correctSfxRef = useRef<HTMLAudioElement | null>(null);
   const incorrectAnswerSoundRef = useRef<HTMLAudioElement | null>(null);
   const incorrectSfxRef = useRef<HTMLAudioElement | null>(null);
+  const decreaseHealthSoundRef = useRef<HTMLAudioElement | null>(null);
+  const healthAttackSoundRef = useRef<HTMLAudioElement | null>(null);
+  const healRegenSoundRef = useRef<HTMLAudioElement | null>(null);
+  const selectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
+  const noSelectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
 
   // Game state
   const [timeLeft, setTimeLeft] = useState(25);
@@ -1076,6 +1081,62 @@ export default function PvpBattle() {
   // and replace with a simpler effect to just track health changes
   useEffect(() => {
     // Update last health values without showing an attack animation
+    const prevPlayerHealth = lastHealthUpdate.player;
+    const prevOpponentHealth = lastHealthUpdate.opponent;
+
+    // Play sound effects when health decreases
+    if (playerHealth < prevPlayerHealth) {
+      // Player health decreased - play decrease health sound
+      if (decreaseHealthSoundRef.current) {
+        decreaseHealthSoundRef.current.currentTime = 0;
+        console.log(
+          "Playing decrease health sound with volume:",
+          decreaseHealthSoundRef.current.volume
+        );
+        decreaseHealthSoundRef.current
+          .play()
+          .catch((err) => console.error("Error playing sound:", err));
+      }
+    } else if (playerHealth > prevPlayerHealth) {
+      // Player health increased - play heal regen sound
+      if (healRegenSoundRef.current) {
+        healRegenSoundRef.current.currentTime = 0;
+        console.log(
+          "Playing heal regen sound with volume:",
+          healRegenSoundRef.current.volume
+        );
+        healRegenSoundRef.current
+          .play()
+          .catch((err) => console.error("Error playing sound:", err));
+      }
+    }
+
+    if (opponentHealth < prevOpponentHealth) {
+      // Opponent health decreased - play attack sound
+      if (healthAttackSoundRef.current) {
+        healthAttackSoundRef.current.currentTime = 0;
+        console.log(
+          "Playing health attack sound with volume:",
+          healthAttackSoundRef.current.volume
+        );
+        healthAttackSoundRef.current
+          .play()
+          .catch((err) => console.error("Error playing sound:", err));
+      }
+    } else if (opponentHealth > prevOpponentHealth) {
+      // Opponent health increased - also play heal regen sound
+      if (healRegenSoundRef.current) {
+        healRegenSoundRef.current.currentTime = 0;
+        console.log(
+          "Playing heal regen sound for opponent with volume:",
+          healRegenSoundRef.current.volume
+        );
+        healRegenSoundRef.current
+          .play()
+          .catch((err) => console.error("Error playing sound:", err));
+      }
+    }
+
     setLastHealthUpdate({
       player: playerHealth,
       opponent: opponentHealth,
@@ -2218,6 +2279,12 @@ export default function PvpBattle() {
         />
 
         <audio
+          ref={healthAttackSoundRef}
+          src="/GameBattle/healthSfx/attackHealth.mp3"
+          preload="auto"
+        />
+
+        <audio
           ref={backgroundMusicRef}
           src="/GameBattle/PVPBATTLEBGMUSICAVERAGE.mp3"
           preload="auto"
@@ -2245,6 +2312,30 @@ export default function PvpBattle() {
         <audio
           ref={incorrectSfxRef}
           src="/GameBattle/incorrectSfx.mp3"
+          preload="auto"
+        />
+
+        <audio
+          ref={decreaseHealthSoundRef}
+          src="/GameBattle/healthSfx/decreaseHealth.mp3"
+          preload="auto"
+        />
+
+        <audio
+          ref={healRegenSoundRef}
+          src="/GameBattle/healthSfx/healRegen.mp3"
+          preload="auto"
+        />
+
+        <audio
+          ref={selectedCardSoundRef}
+          src="/GameBattle/selectedCard.mp3"
+          preload="auto"
+        />
+
+        <audio
+          ref={noSelectedCardSoundRef}
+          src="/GameBattle/noSelectedCard.mp3"
           preload="auto"
         />
 
@@ -2402,7 +2493,9 @@ export default function PvpBattle() {
                   playerName={playerName}
                   onCardSelected={handleCardSelected}
                   difficultyMode={difficultyMode}
-                  soundEffectsVolume={actualSoundEffectsVolume}
+                  soundEffectsVolume={
+                    (soundEffectsVolume / 100) * (masterVolume / 100)
+                  }
                 />
               </div>
             )}
@@ -2429,6 +2522,9 @@ export default function PvpBattle() {
             playerHealth={playerHealth}
             opponentHealth={opponentHealth}
             earlyEnd={earlyEnd}
+            soundEffectsVolume={
+              (soundEffectsVolume / 100) * (masterVolume / 100)
+            }
           />
 
           {/* Early Leave Modal - Always show */}
@@ -2439,6 +2535,9 @@ export default function PvpBattle() {
             currentUserId={currentUserId}
             sessionUuid={battleState?.session_uuid}
             opponentName={opponentName}
+            soundEffectsVolume={
+              (soundEffectsVolume / 100) * (masterVolume / 100)
+            }
           />
 
           {/* Question Modal - Hide when other modals are active */}
@@ -2550,6 +2649,11 @@ export default function PvpBattle() {
             incorrectAnswerSoundRef={incorrectAnswerSoundRef}
             correctSfxRef={correctSfxRef}
             incorrectSfxRef={incorrectSfxRef}
+            decreaseHealthSoundRef={decreaseHealthSoundRef}
+            healthAttackSoundRef={healthAttackSoundRef}
+            healRegenSoundRef={healRegenSoundRef}
+            selectedCardSoundRef={selectedCardSoundRef}
+            noSelectedCardSoundRef={noSelectedCardSoundRef}
             masterVolume={masterVolume}
             musicVolume={musicVolume}
             soundEffectsVolume={soundEffectsVolume}

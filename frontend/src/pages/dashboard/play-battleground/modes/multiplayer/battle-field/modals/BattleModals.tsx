@@ -1,5 +1,5 @@
 import { EmojiEvents, CancelOutlined, ExitToApp } from '@mui/icons-material';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 
 // Add the import for rewardCalculator functions
@@ -15,6 +15,7 @@ interface VictoryModalProps {
   playerHealth?: number;
   opponentHealth?: number;
   earlyEnd?: boolean;
+  soundEffectsVolume?: number;
 }
 
 interface EarlyLeaveModalProps {
@@ -24,6 +25,7 @@ interface EarlyLeaveModalProps {
   currentUserId?: string;
   sessionUuid?: string;
   opponentName: string;
+  soundEffectsVolume?: number;
 }
 
 export const VictoryModal: React.FC<VictoryModalProps> = ({
@@ -35,9 +37,12 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   sessionUuid,
   playerHealth = 0,
   opponentHealth = 0,
-  earlyEnd = false
+  earlyEnd = false,
+  soundEffectsVolume = 0.5
 }) => {
   const [rewardsClaimed, setRewardsClaimed] = useState(false);
+  const victorySoundRef = useRef<HTMLAudioElement | null>(null);
+  const defeatSoundRef = useRef<HTMLAudioElement | null>(null);
 
   // Add effect to claim rewards when modal opens
   useEffect(() => {
@@ -106,10 +111,45 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
     }
   }, [isOpen, currentUserId, sessionUuid, isVictory, playerHealth, opponentHealth, rewardsClaimed, earlyEnd]);
 
+  // Effect to play the appropriate sound effect when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (isVictory) {
+        if (victorySoundRef.current) {
+          victorySoundRef.current.volume = soundEffectsVolume;
+          victorySoundRef.current.currentTime = 0;
+          victorySoundRef.current.play().catch(err =>
+            console.error("Error playing victory sound:", err)
+          );
+        }
+      } else {
+        if (defeatSoundRef.current) {
+          defeatSoundRef.current.volume = soundEffectsVolume;
+          defeatSoundRef.current.currentTime = 0;
+          defeatSoundRef.current.play().catch(err =>
+            console.error("Error playing defeat sound:", err)
+          );
+        }
+      }
+    }
+  }, [isOpen, isVictory, soundEffectsVolume]);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+      {/* Audio elements */}
+      <audio
+        ref={victorySoundRef}
+        src="/GameBattle/battleResultModal/VictorySfx.mp3"
+        preload="auto"
+      />
+      <audio
+        ref={defeatSoundRef}
+        src="/GameBattle/battleResultModal/DefeatSfx.mp3"
+        preload="auto"
+      />
+
       <div className={`w-[400px] rounded-2xl p-8 flex flex-col items-center ${isVictory ? 'bg-[#1a1f2e] border-2 border-purple-500/20' : 'bg-[#1a1f2e] border-2 border-red-500/20'
         }`}>
         {/* Icon */}
@@ -164,9 +204,11 @@ export const EarlyLeaveModal: React.FC<EarlyLeaveModalProps> = ({
   onViewReport,
   currentUserId,
   sessionUuid,
-  opponentName
+  opponentName,
+  soundEffectsVolume = 0.5
 }) => {
   const [rewardsClaimed, setRewardsClaimed] = useState(false);
+  const leftGameSoundRef = useRef<HTMLAudioElement | null>(null);
 
   // Effect to claim the early leave rewards
   useEffect(() => {
@@ -206,10 +248,30 @@ export const EarlyLeaveModal: React.FC<EarlyLeaveModalProps> = ({
     }
   }, [isOpen, currentUserId, sessionUuid, rewardsClaimed]);
 
+  // Effect to play the left game sound when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      if (leftGameSoundRef.current) {
+        leftGameSoundRef.current.volume = soundEffectsVolume;
+        leftGameSoundRef.current.currentTime = 0;
+        leftGameSoundRef.current.play().catch(err =>
+          console.error("Error playing left game sound:", err)
+        );
+      }
+    }
+  }, [isOpen, soundEffectsVolume]);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+      {/* Audio element */}
+      <audio
+        ref={leftGameSoundRef}
+        src="/GameBattle/battleResultModal/LeftTheGameEnemySfx.mp3"
+        preload="auto"
+      />
+
       <div className="w-[400px] rounded-2xl p-8 flex flex-col items-center bg-[#1a1f2e] border-2 border-blue-500/20">
         {/* Icon */}
         <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-blue-900/50">

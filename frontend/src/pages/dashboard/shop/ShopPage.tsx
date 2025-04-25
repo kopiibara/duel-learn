@@ -114,8 +114,15 @@ const Shop = () => {
   const handleIncrement = () => {
     if (selectedItem) {
       const ownedCount = ownedItems[selectedItem.item_code] || 0;
-      if (quantity < 5 - ownedCount) {
-        setQuantity(quantity + 1);
+      const newQuantity = quantity + 1;
+      // Check both the ownership limit and if user has enough coins for the increased quantity
+      if (
+        newQuantity <= 5 - ownedCount &&
+        userCoins >= selectedItem.item_price * newQuantity
+      ) {
+        setQuantity(newQuantity);
+      } else if (userCoins < selectedItem.item_price * newQuantity) {
+        showSnackbar("You don't have enough coins for this quantity.");
       }
     }
   };

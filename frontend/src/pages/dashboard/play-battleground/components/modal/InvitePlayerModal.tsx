@@ -184,7 +184,7 @@ const FriendItem: React.FC<FriendItemProps> = ({
           alignItems: "center",
           transition: "all 0.3s ease",
           cursor: isInviteDisabled ? "not-allowed" : "pointer",
-          backgroundColor: isInviteDisabled ? "#2E5428" : "#57A64E",
+          backgroundColor: isInviteDisabled ? "#120F1D" : "#52A647",
           color: isInviteDisabled ? "#A0A0A0" : "white",
           opacity: 1,
           visibility: "visible",
@@ -361,7 +361,7 @@ const InvitePlayerModal: React.FC<InvitePlayerModalProps> = ({
 
         {/* Header */}
         <div className="flex items-center justify-center mb-4">
-          <img src={InviteFriendList} alt="Invite Icon" className="w-16" />
+          <img src="/bunny.png" className="w-16 h-auto" alt="icon" />
         </div>
         <Typography variant="h6" className="text-white text-center mb-4">
           Invite Friends
