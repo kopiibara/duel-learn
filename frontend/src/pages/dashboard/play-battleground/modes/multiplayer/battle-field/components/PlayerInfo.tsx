@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { motion, AnimatePresence } from "framer-motion";
 import PoisonatedEffect from "/GameBattle/PoisonatedEffect.png"
+import DefaultProfilePic from "/General/profile-picture/DefaultUnknownPic.png"
 import { BattleState } from "../BattleState";
 
 export interface PlayerInfoProps {
@@ -116,20 +117,25 @@ const PlayerInfo: React.FC<PlayerInfoProps> = ({
             );
         }
 
-        // Default white square if no profile picture
+        // Default cat profile picture when no profile picture is available
         return (
             <motion.div
-                className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 bg-white rounded-lg ${poisonEffectActive ? 'border-2 border-green-400 shadow-lg shadow-green-500/50' : ''}`}
+                className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 bg-gray-800 rounded-lg overflow-hidden ${poisonEffectActive ? 'border-2 border-green-400 shadow-lg shadow-green-500/50' : ''}`}
                 animate={isHit ? {
                     scale: [1, 1.1, 1],
                     rotate: [0, -5, 5, -5, 5, 0],
-                    backgroundColor: ["#ffffff", "#ff0000", "#ffffff"],
+                    filter: ["brightness(1)", "brightness(1.5)", "brightness(1)"],
                     transition: { duration: 0.5 }
                 } : poisonEffectActive ? {
-                    backgroundColor: ["#ffffff", "#e6ffec", "#ffffff"],
+                    filter: ["brightness(1) hue-rotate(0deg)", "brightness(1.2) hue-rotate(60deg)", "brightness(1) hue-rotate(0deg)"],
                     boxShadow: ["0 0 0 rgba(74, 222, 128, 0.4)", "0 0 10px rgba(74, 222, 128, 0.7)", "0 0 0 rgba(74, 222, 128, 0.4)"],
                     transition: { duration: 2, repeat: Infinity }
                 } : {}}
+                style={{
+                    backgroundImage: `url(${DefaultProfilePic})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                }}
             />
         );
     };
