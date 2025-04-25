@@ -30,6 +30,7 @@ const SignUp = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [googleButtonLoading, setGoogleButtonLoading] = useState(false);
   const { storeUser } = useStoreUser();
   const { handleGoogleAuth, loading: googleLoading } = useGoogleAuth();
   const { loadUserData } = useUser();
@@ -235,6 +236,8 @@ const SignUp = () => {
 
   const handleGoogleSubmit = async () => {
     try {
+      setGoogleButtonLoading(true);
+
       const authResult = await handleGoogleAuth("free");
 
       // Google users are pre-verified, so load user data for them
@@ -243,25 +246,30 @@ const SignUp = () => {
         await loadUserData(authResult.userData.uid);
       }
 
+      setLoading(true);
+
       if (authResult.isNewUser) {
         setSuccessMessage("Account created successfully!");
         setTimeout(() => {
-          setLoading(true);
           navigate("/dashboard/welcome");
-        }, 1500);
+        }, 1000);
       } else {
         setSuccessMessage("Account already exists. Redirecting to login...");
         setTimeout(() => {
-          setLoading(true);
           navigate("/login");
-        }, 1500);
+        }, 1000);
       }
     } catch (error) {
       handleError(error);
+      setGoogleButtonLoading(false);
+    } finally {
+      setTimeout(() => {
+        if (googleButtonLoading) setGoogleButtonLoading(false);
+      }, 1000);
     }
   };
 
-  if (loading || googleLoading) {
+  if (loading) {
     return (
       <PageTransition>
         <LoadingScreen />
@@ -459,13 +467,61 @@ const SignUp = () => {
           <button
             className="w-full border border-[#4D18E8] bg-[#0F0A18] text-white py-3 rounded-[0.8rem] flex items-center justify-center hover:bg-[#1A1426] transition-colors"
             onClick={handleGoogleSubmit}
+            disabled={googleButtonLoading}
           >
-            <img
-              src="/google-logo.png"
-              className="w-5 h-5 mr-3"
-              alt="Google Icon"
-            />
-            Create account with Google
+            {googleButtonLoading ? (
+              <div className="flex items-center">
+                <svg
+                  className="animate-spin -ml-1 mr-3 h-5 w-5"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="#E8E8E8"
+                    strokeWidth="2"
+                  ></circle>
+                  <path
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    stroke="#4285F4"
+                    d="M12 2a10 10 0 0 1 10 10"
+                  ></path>
+                  <path
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    stroke="#EA4335"
+                    d="M22 12a10 10 0 0 1-5 8.66"
+                  ></path>
+                  <path
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    stroke="#FBBC05"
+                    d="M17 20.66A10 10 0 0 1 7 20.66"
+                  ></path>
+                  <path
+                    strokeLinecap="round"
+                    strokeWidth="2"
+                    stroke="#34A853"
+                    d="M7 20.66A10 10 0 0 1 2 12"
+                  ></path>
+                </svg>
+                Signing in...
+              </div>
+            ) : (
+              <>
+                <img
+                  src="/google-logo.png"
+                  className="w-5 h-5 mr-3"
+                  alt="Google Icon"
+                />
+                Create account with Google
+              </>
+            )}
           </button>
 
           <p className="mt-4 text-center text-sm text-[#9F9BAE]">

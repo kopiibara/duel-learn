@@ -308,7 +308,7 @@ export default function AccountSettings() {
                         formik.handleBlur(e);
                         setIsPasswordFocused(false);
                       }}
-                      className="w-full md:w-[800px] h-[47px] px-6 py-5 bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] focus:border-[#4D18E8] transition-colors"
+                      className="w-full md:w-[1000px] h-[47px] px-6 py-5 bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] focus:border-[#4D18E8] transition-colors"
                       style={{ color: isEditing ? "white" : "#6F658D" }}
                     />
                     <button
@@ -349,7 +349,7 @@ export default function AccountSettings() {
                       type={showConfirmPassword ? "text" : "password"}
                       id="confirmPassword"
                       {...formik.getFieldProps("confirmPassword")}
-                      className="w-full md:w-[800px] h-[47px] px-6 py-5 bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] focus:border-[#4D18E8] transition-colors"
+                      className="w-full md:w-[1000px] h-[47px] px-6 py-5 bg-[#3B354D] rounded-[0.8rem] focus:outline-none focus:ring-2 focus:ring-[#4D18E8] focus:border-[#4D18E8] transition-colors"
                       style={{ color: isEditing ? "white" : "#6F658D" }}
                     />
                     <button

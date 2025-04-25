@@ -32,13 +32,20 @@ const YourPickedTopics = () => {
   const cardsToShow = Math.min(maxCardsToShow, cards.length);
 
   // Adjust card width based on number of cards to show
+  // ...existing code...
+
+  // Adjust card width based on number of cards to show
   const cardWidth = isSmallScreen
     ? 100 // Small screen: 100% (full width)
     : cards.length === 1
-    ? 100 // Single card: 60%
+    ? 100 // Single card: 100%
+    : cards.length === 2
+    ? 50 // When there are exactly 2 cards: 50% each to fill width
     : isMediumScreen && cardsToShow === 2
-    ? 100 // Medium screen with 2 cards: 50% each
+    ? 50 // Medium screen with 2 cards: 50% each
     : 100 / maxCardsToShow; // Default distribution
+
+  // ...existing code...
 
   useEffect(() => {
     setIsLoading(true);
