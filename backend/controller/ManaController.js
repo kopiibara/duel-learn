@@ -13,7 +13,6 @@ const ManaController = {
             const connection = await pool.getConnection();
             await connection.beginTransaction();
 
-            const manaCost = 10; // Cost of mana for the action
 
             try {
                 // Check if user has enough mana within the transaction
@@ -28,10 +27,10 @@ const ManaController = {
                     return res.status(400).json({ error: 'Insufficient mana' });
                 }
 
-                // Update mana (reduce by 10)
+                // Update mana (reduce by 10) and update the last_mana_update timestamp
                 await connection.query(
-                    `UPDATE user_info SET mana = ? WHERE firebase_uid = ?`,
-                    [manaCost, firebase_uid]
+                    `UPDATE user_info SET mana = mana - 10, last_mana_update = ? WHERE firebase_uid = ?`,
+                    [new Date(), firebase_uid]
                 );
 
                 // Get updated mana value
