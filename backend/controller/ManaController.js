@@ -7,7 +7,7 @@ const ManaController = {
 
     userManaReduction: async (req, res) => {
         try {
-            const { firebase_uid, manaCost } = req.body;  // Default to 10 if not provided
+            const { firebase_uid, manaCost = 10 } = req.body;  // Default to 10 if not provided
 
             // Start a transaction for atomic operation
             const connection = await pool.getConnection();
