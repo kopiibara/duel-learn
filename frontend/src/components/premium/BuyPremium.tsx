@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import CloseIcon from "@mui/icons-material/HighlightOffRounded";
-
 import Subscription from "./Subscription";
 import PageTransition from "../../styles/PageTransition";
 import PremiumBuyBG from "/premium-page/Payment.png";

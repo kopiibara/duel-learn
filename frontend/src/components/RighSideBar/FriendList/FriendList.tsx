@@ -56,7 +56,7 @@ const FriendList: React.FC = () => {
 
   // Extract friend IDs for status mapping
   const friendIds = useMemo(() => {
-    return localFriendList.map(friend => friend.firebase_uid);
+    return localFriendList.map((friend) => friend.firebase_uid);
   }, [localFriendList]);
 
   // Get status information for all friends
@@ -306,7 +306,7 @@ const FriendList: React.FC = () => {
               <img
                 src={cauldronGif}
                 alt="Loading..."
-                style={{ width: "2.5rem", height: "auto" }}
+                style={{ width: "8rem", height: "auto" }}
               />
             </Box>
           ) : error ? (

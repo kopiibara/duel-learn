@@ -17,6 +17,7 @@ import {
 import DragIndicatorIcon from "@mui/icons-material/DragIndicatorRounded";
 import AddPhotoIcon from "@mui/icons-material/AddPhotoAlternateRounded";
 import DeleteIcon from "@mui/icons-material/DeleteRounded";
+import RemovePhotoIcon from "@mui/icons-material/HighlightOffRounded";
 import VerifiedIcon from "@mui/icons-material/VerifiedOutlined";
 import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
@@ -316,14 +317,14 @@ const ItemComponent: FC<ItemComponentProps> = ({
                   exit={{ opacity: 0, scale: 0.8 }}
                   transition={{ duration: 0.5 }}
                 >
-                  <Box className="relative flex justify-center items-center w-full">
+                  <Box className="relative flex justify-center items-center w-full rounded-[0.8rem]">
                     <img
                       src={previewSrc}
                       alt="Uploaded"
-                      className=" rounded-[0.8rem] max-w-full w-full h-auto max-h-[250px] object-contain"
+                      className=" max-w-full w-full h-auto max-h-[250px] object-contain"
                     />
 
-                    <Tooltip title="Delete Photo" arrow>
+                    <Tooltip title="Remove Photo" placement="top" arrow>
                       <Fab
                         size="small"
                         color="secondary"
@@ -333,11 +334,18 @@ const ItemComponent: FC<ItemComponentProps> = ({
                           position: "absolute",
                           top: "0.5rem",
                           right: "0.5rem",
+                          color: "#3B354D",
                           backgroundColor: "inherit",
-                          "&:hover": { backgroundColor: "#3B354D" },
+                          padding: "0.3rem",
+                          transition: "all 0.3s ease-in-out",
+                          "&:hover": {
+                            backgroundColor: "#080511",
+                            color: "#CD171A",
+                            scale: 1.1,
+                          },
                         }}
                       >
-                        <DeleteIcon />
+                        <RemovePhotoIcon />
                       </Fab>
                     </Tooltip>
                   </Box>
