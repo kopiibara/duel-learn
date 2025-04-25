@@ -176,10 +176,15 @@ export default function PvpBattle() {
   const healRegenSoundRef = useRef<HTMLAudioElement | null>(null);
   const selectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
   const noSelectedCardSoundRef = useRef<HTMLAudioElement | null>(null);
-
-  // Add specific QuickDraw sound effects
+ 
   const quickDrawUserSoundRef = useRef<HTMLAudioElement | null>(null);
   const quickDrawEnemySoundRef = useRef<HTMLAudioElement | null>(null);
+  const victorySoundRef = useRef<HTMLAudioElement | null>(null);
+  const defeatSoundRef = useRef<HTMLAudioElement | null>(null);
+  const leftGameSoundRef = useRef<HTMLAudioElement | null>(null);
+  // Add new Answer Shield sound refs
+  const answerShieldActivatedSoundRef = useRef<HTMLAudioElement | null>(null);
+  const answerShieldDamagedSoundRef = useRef<HTMLAudioElement | null>(null);
 
   // Time Manipulation sounds
   const timeManipulationActivateSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -882,6 +887,16 @@ export default function PvpBattle() {
                   // Create container for Answer Shield animation
                   const shieldEffectContainer = document.createElement("div");
                   shieldEffectContainer.className = "fixed inset-0 z-[100] pointer-events-none flex items-center justify-center";
+
+                  // Play Answer Shield activation sound effect
+                  if (answerShieldActivatedSoundRef.current) {
+                    const calculatedVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
+                    answerShieldActivatedSoundRef.current.volume = calculatedVolume;
+                    answerShieldActivatedSoundRef.current.currentTime = 0;
+                    answerShieldActivatedSoundRef.current.play().catch(err =>
+                      console.error("Error playing Answer Shield activation sound:", err)
+                    );
+                  }
 
                   // Create advanced shield animation
                   shieldEffectContainer.innerHTML = `
@@ -2636,6 +2651,18 @@ export default function PvpBattle() {
           preload="auto"
         />
 
+        {/* Add Answer Shield audio elements */}
+        <audio
+          ref={answerShieldActivatedSoundRef}
+          src="/GameBattle/AnswerShieldSfx/AnswerShieldActivatedSfx.mp3"
+          preload="auto"
+        />
+        <audio
+          ref={answerShieldDamagedSoundRef}
+          src="/GameBattle/AnswerShieldSfx/AnswerShieldDamagedSfx.mp3"
+          preload="auto"
+        />
+
         {/* Character animation manager - Hide when modals are active */}
         {!shouldHideGameUI() && (
           <CharacterAnimationManager
@@ -2791,6 +2818,8 @@ export default function PvpBattle() {
                   onCardSelected={handleCardSelected}
                   difficultyMode={difficultyMode}
                   soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
+                  answerShieldDamagedSoundRef={answerShieldDamagedSoundRef}
+                  masterVolume={masterVolume}
                 />
               </div>
             )}
@@ -2955,6 +2984,11 @@ export default function PvpBattle() {
             setMasterVolume={setMasterVolume}
             setMusicVolume={setMusicVolume}
             setSoundEffectsVolume={setSoundEffectsVolume}
+            answerShieldActivatedSoundRef={answerShieldActivatedSoundRef}
+            answerShieldDamagedSoundRef={answerShieldDamagedSoundRef}
+            victorySoundRef={victorySoundRef}
+            defeatSoundRef={defeatSoundRef}
+            leftGameSoundRef={leftGameSoundRef}
           />
         </div>
       </div>

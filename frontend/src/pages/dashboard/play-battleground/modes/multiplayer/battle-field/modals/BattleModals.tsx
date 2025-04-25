@@ -36,6 +36,15 @@ const stopAllGameEffects = () => {
     audio.currentTime = 0;
   });
 
+  // Specifically target and stop background music
+  const backgroundMusicElements = document.querySelectorAll('[id^="background-music"], [id="pvp-background-music"]');
+  backgroundMusicElements.forEach(element => {
+    if (element instanceof HTMLAudioElement) {
+      element.pause();
+      element.currentTime = 0;
+    }
+  });
+
   // Hide any flashcards or question modals
   const questionModals = document.querySelectorAll('.question-modal');
   questionModals.forEach(modal => {
@@ -164,6 +173,13 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
     if (isOpen) {
       // First stop any existing audio
       stopAllGameEffects();
+
+      // Directly stop the PvP battle background music element if it exists
+      const pvpBackgroundMusic = document.getElementById('pvp-background-music') as HTMLAudioElement;
+      if (pvpBackgroundMusic) {
+        pvpBackgroundMusic.pause();
+        pvpBackgroundMusic.currentTime = 0;
+      }
 
       // Then play our victory/defeat sound
       if (isVictory) {
@@ -313,6 +329,13 @@ export const EarlyLeaveModal: React.FC<EarlyLeaveModalProps> = ({
     if (isOpen) {
       // First stop any existing audio
       stopAllGameEffects();
+
+      // Directly stop the PvP battle background music element if it exists
+      const pvpBackgroundMusic = document.getElementById('pvp-background-music') as HTMLAudioElement;
+      if (pvpBackgroundMusic) {
+        pvpBackgroundMusic.pause();
+        pvpBackgroundMusic.currentTime = 0;
+      }
 
       // Then play our left game sound
       if (leftGameSoundRef.current) {

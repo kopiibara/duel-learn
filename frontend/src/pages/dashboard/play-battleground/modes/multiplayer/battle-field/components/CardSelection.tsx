@@ -28,6 +28,8 @@ export interface CardSelectionProps {
   onCardSelected: (cardId: string) => void;
   difficultyMode?: string | null;
   soundEffectsVolume?: number; // Add sound effect volume prop
+  answerShieldDamagedSoundRef?: React.RefObject<HTMLAudioElement>; // Add prop for Answer Shield Damaged sound
+  masterVolume?: number; // Add master volume prop
 }
 
 /**
@@ -41,6 +43,8 @@ const CardSelection: React.FC<CardSelectionProps> = ({
   onCardSelected,
   difficultyMode = "average",
   soundEffectsVolume = 0.7, // Default to 0.7 if not provided
+  answerShieldDamagedSoundRef,
+  masterVolume = 1.0,
 }) => {
   const [showBackCard, setShowBackCard] = useState(true);
   const [showCardOptions, setShowCardOptions] = useState(false);
@@ -927,6 +931,16 @@ const CardSelection: React.FC<CardSelectionProps> = ({
               // Show notification about blocked cards
               const blockingAnimationContainer = document.createElement("div");
               blockingAnimationContainer.className = "fixed inset-0 z-[100] pointer-events-none flex items-center justify-center";
+
+              // Play Answer Shield damaged sound effect
+              if (answerShieldDamagedSoundRef?.current) {
+                const calculatedVolume = (soundEffectsVolume / masterVolume);
+                answerShieldDamagedSoundRef.current.volume = calculatedVolume;
+                answerShieldDamagedSoundRef.current.currentTime = 0;
+                answerShieldDamagedSoundRef.current.play().catch(err =>
+                  console.error("Error playing Answer Shield damaged sound:", err)
+                );
+              }
 
               blockingAnimationContainer.innerHTML = `
                 <div class="relative">
