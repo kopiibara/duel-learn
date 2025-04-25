@@ -963,7 +963,7 @@ export const OpenAiController = {
   crossReferenceDefinition: async (req, res) => {
     try {
       console.log("Received cross-reference request");
-      const { term, definition } = req.body;
+      const { term, definition, tags } = req.body;
 
       if (!term || !definition) {
         console.log("Missing required parameters");
@@ -983,19 +983,26 @@ export const OpenAiController = {
         });
       }
 
-      console.log(`Cross-referencing term: "${term}" with definition`);
+      console.log(`Cross-referencing term: "${term}" with definition and tags:`, tags);
 
-      const prompt = `Please fact-check this definition for the term "${term}" with a very lenient approach:
+      const prompt = `Please fact-check this definition for the term "${term}" with a very precise approach:
       
 Definition: "${definition}"
+Tags: ${tags ? JSON.stringify(tags) : "[]"}
 
 Instructions:
-1. Be EXTREMELY lenient - focus ONLY on definitively incorrect facts, not style or completeness.
-2. Accept different ways to express a concept as valid.
-3. Only flag individual words or short phrases that are factually wrong (e.g., in "dog is a plant that walks," only flag "plant").
-4. Do not suggest rewriting the entire definition - ONLY identify specific incorrect words and their replacements.
-5. Ignore minor issues, stylistic differences, or incomplete information.
-6. Make sure the definition doesn't include the term itself - if it does, flag this circular reference.
+1. Use the provided tags as context to understand the domain and subject matter.
+2. Be precise in identifying incorrect facts, especially for domain-specific terms.
+3. Pay special attention to crucial keywords that define the term's meaning.
+4. Check for both:
+   - Incorrect words/phrases that need correction
+   - Missing crucial keywords that should be added
+5. Only flag individual words or short phrases that are factually wrong.
+6. Do not suggest rewriting the entire definition - ONLY identify specific issues.
+7. Make sure the definition doesn't include the term itself - if it does, flag this circular reference.
+8. Consider the domain context from tags when evaluating accuracy.
+9. Be stricter with domain-specific terminology and concepts.
+10. For missing keywords, provide the complete definition with the keyword added in the correct position.
 
 Respond with JSON in this exact format:
 {
@@ -1003,20 +1010,26 @@ Respond with JSON in this exact format:
   "accuracyScore": number (0-100),
   "assessment": "brief assessment, mention it's just checking for definitively wrong facts",
   "incorrectParts": ["specific word/phrase that is wrong", "another specific word/phrase"] (empty array if nothing is definitively wrong),
-  "suggestedCorrections": ["replacement for first part", "replacement for second part"] (empty array if nothing to correct)
+  "suggestedCorrections": ["replacement for first part", "replacement for second part"] (empty array if nothing to correct),
+  "missingKeywords": ["crucial missing keyword 1", "crucial missing keyword 2"] (empty array if no crucial keywords are missing),
+  "suggestedAdditions": ["complete definition with first keyword added", "complete definition with second keyword added"] (empty array if no additions needed)
 }
 
 Assessment criteria:
-- "Accurate" (70-100): Definition doesn't contain any definitively incorrect facts
-- "Inaccurate" (<70): Definition contains at least one definitively wrong statement
+- "Accurate" (90-100): Definition is factually correct, includes all crucial keywords, and aligns with domain knowledge
+- "Partially Accurate" (70-89): Definition has minor issues or is missing some crucial keywords but is mostly correct
+- "Inaccurate" (<70): Definition contains significant factual errors or is missing essential keywords
 
 Important: 
 - SPECIFIC WORDS ONLY - Do not flag whole sentences, only the exact words that need changing
 - Different phrasings, styles, or levels of detail are all acceptable
-- Focus only on factual correctness, not completeness
+- Focus on factual correctness and completeness of crucial keywords
 - If the definition is technically incomplete but not wrong, still mark it as accurate
 - If the definition is too vague to assess, set isAccurate to null
-- If the definition contains the term itself (e.g., "A dog is a dog that..."), flag this circular reference`;
+- If the definition contains the term itself (e.g., "A dog is a dog that..."), flag this circular reference
+- Use the tags to understand the domain context and be more precise in fact-checking
+- Pay special attention to identifying missing crucial keywords that are essential to the term's definition
+- For missing keywords, provide the complete definition with the keyword added in the correct position, not just the position instruction`;
 
       console.log("Calling OpenAI for cross-reference assessment");
       const completion = await openai.chat.completions.create({
@@ -1024,12 +1037,11 @@ Important:
         messages: [
           {
             role: "system",
-            content:
-              "You are an extremely lenient fact-checker who only flags definitively incorrect information. You focus on specific words or short phrases that are factually wrong rather than suggesting rewrites. For example, if a definition says 'dog is a plant that walks,' you would only flag the word 'plant' and suggest 'animal' as a replacement. Accept many different ways of expressing concepts and assume the user knows what they're doing unless something is clearly incorrect.",
+            content: "You are a precise fact-checker who uses domain context to identify incorrect information and missing crucial keywords. You focus on specific words or short phrases that are factually wrong and identify essential keywords that are missing. When suggesting additions for missing keywords, provide the complete definition with the keyword added in the correct position, not just the position instruction. For example, if the definition is 'Is the process by plants convert light into chemical energy stored in glucose' and it's missing 'by absorbing carbon dioxide and releasing oxygen', provide the complete definition: 'Is the process by plants convert light into chemical energy stored in glucose by absorbing carbon dioxide and releasing oxygen'.",
           },
           { role: "user", content: prompt },
         ],
-        temperature: 0.2, // Lower temperature for more consistent identification of incorrect parts
+        temperature: 0.2,
       });
 
       const text = completion.choices[0].message.content;

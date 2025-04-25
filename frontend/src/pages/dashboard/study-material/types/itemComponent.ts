@@ -6,6 +6,7 @@ export interface StudyItem {
   term: string;
   definition: string;
   image?: string | File | null;
+  tags?: string[];
 }
 
 export interface DragHandleProps {

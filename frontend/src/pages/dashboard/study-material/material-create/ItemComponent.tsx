@@ -51,6 +51,8 @@ const ItemComponent: FC<ItemComponentProps> = ({
     assessment: string;
     incorrectParts: string[];
     suggestedCorrections: string[];
+    missingKeywords: string[];
+    suggestedAdditions: string[];
   } | null>(null);
   const [showFactCheckDetails, setShowFactCheckDetails] = useState(false);
   const [scanningEffect, setScanningEffect] = useState(false);
@@ -155,6 +157,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
           body: JSON.stringify({
             term: item.term,
             definition: item.definition,
+            tags: item.tags || [], // Add tags to the request
           }),
         }
       );
@@ -212,6 +215,53 @@ const ItemComponent: FC<ItemComponentProps> = ({
 
       // Reset fact check results after applying a correction
       setFactCheckResult(null);
+    }
+  };
+
+  // Apply a missing keyword addition
+  const handleApplyMissingKeyword = (index: number) => {
+    console.log('Applying missing keyword:', {
+      index,
+      factCheckResult,
+      currentDefinition: item.definition
+    });
+
+    if (
+      factCheckResult &&
+      factCheckResult.missingKeywords &&
+      factCheckResult.suggestedAdditions &&
+      index < factCheckResult.missingKeywords.length &&
+      index < factCheckResult.suggestedAdditions.length
+    ) {
+      const suggestion = factCheckResult.suggestedAdditions[index];
+
+      console.log('Processing suggestion:', {
+        suggestion,
+        currentDefinition: item.definition
+      });
+
+      // Use the complete suggested definition directly
+      const newDefinition = suggestion;
+
+      if (newDefinition) {
+        console.log('New definition:', newDefinition);
+        
+        // Update the definition in the parent component
+        updateItem("definition", newDefinition);
+        
+        // Reset fact check results
+        setFactCheckResult(null);
+        setShowFactCheckDetails(false);
+      } else {
+        console.warn('Failed to generate new definition');
+      }
+    } else {
+      console.warn('Invalid fact check result or index:', {
+        hasResult: !!factCheckResult,
+        missingKeywords: factCheckResult?.missingKeywords,
+        suggestedAdditions: factCheckResult?.suggestedAdditions,
+        index
+      });
     }
   };
 
@@ -628,23 +678,139 @@ const ItemComponent: FC<ItemComponentProps> = ({
                                   </Box>
                                 )
                               )}
+                            </>
+                          )}
+
+                        {factCheckResult.missingKeywords &&
+                          factCheckResult.missingKeywords.length > 0 && (
+                            <>
                               <Typography
                                 variant="caption"
                                 sx={{
-                                  color: "#9F9BAE",
+                                  color: "#A38CE6",
                                   display: "block",
-                                  fontStyle: "italic",
-                                  mt: 1,
-                                  fontSize: "0.7rem",
+                                  mt: 2,
+                                  mb: 0.5,
                                 }}
                               >
-                                These suggestions only fix clearly incorrect
-                                parts of your definition. Your original phrasing
-                                and style will be preserved with minimal
-                                changes.
+                                Missing Crucial Keywords:
                               </Typography>
+                              {factCheckResult.missingKeywords.map(
+                                (keyword, index) => (
+                                  <Box
+                                    key={index}
+                                    sx={{
+                                      mb:
+                                        index ===
+                                        factCheckResult.missingKeywords.length -
+                                          1
+                                          ? 0
+                                          : 1,
+                                      p: 1,
+                                      bgcolor: "rgba(0,0,0,0.15)",
+                                      borderRadius: "4px",
+                                    }}
+                                  >
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "flex-start",
+                                        mb: 0.5,
+                                      }}
+                                    >
+                                      <Typography
+                                        variant="caption"
+                                        sx={{ color: "#FF9800", flexShrink: 0 }}
+                                      >
+                                        Missing:
+                                      </Typography>
+                                      <Typography
+                                        variant="caption"
+                                        sx={{ color: "#FF9800", ml: 1 }}
+                                      >
+                                        "{keyword}"
+                                      </Typography>
+                                    </Box>
+
+                                    {factCheckResult.suggestedAdditions &&
+                                      factCheckResult.suggestedAdditions[
+                                        index
+                                      ] && (
+                                        <Box
+                                          sx={{
+                                            display: "flex",
+                                            alignItems: "flex-start",
+                                            mb: 0.5,
+                                          }}
+                                        >
+                                          <Typography
+                                            variant="caption"
+                                            sx={{
+                                              color: "#4CAF50",
+                                              flexShrink: 0,
+                                            }}
+                                          >
+                                            Suggested Addition:
+                                          </Typography>
+                                          <Typography
+                                            variant="caption"
+                                            sx={{ color: "#4CAF50", ml: 1 }}
+                                          >
+                                            "
+                                            {
+                                              factCheckResult
+                                                .suggestedAdditions[index]
+                                            }
+                                            "
+                                          </Typography>
+                                        </Box>
+                                      )}
+
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      onClick={() =>
+                                        handleApplyMissingKeyword(index)
+                                      }
+                                      sx={{
+                                        borderColor: "#A38CE6",
+                                        color: "#A38CE6",
+                                        textTransform: "none",
+                                        fontSize: "0.7rem",
+                                        padding: "0.1rem 0.5rem",
+                                        minHeight: 0,
+                                        mt: 0.5,
+                                        "&:hover": {
+                                          borderColor: "#E2DDF3",
+                                          color: "#E2DDF3",
+                                          backgroundColor:
+                                            "rgba(163, 140, 230, 0.08)",
+                                        },
+                                      }}
+                                    >
+                                      Apply Addition
+                                    </Button>
+                                  </Box>
+                                )
+                              )}
                             </>
                           )}
+
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "#9F9BAE",
+                            display: "block",
+                            fontStyle: "italic",
+                            mt: 1,
+                            fontSize: "0.7rem",
+                          }}
+                        >
+                          These suggestions only fix clearly incorrect parts and
+                          add missing crucial keywords to your definition. Your
+                          original phrasing and style will be preserved with
+                          minimal changes.
+                        </Typography>
                       </Box>
                     </motion.div>
                   )}

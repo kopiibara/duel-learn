@@ -77,7 +77,7 @@ const studyMaterialController = {
         });
       }
 
-      const currentTimestamp = manilacurrentTimestamp;
+      const currentTimestamp = manilacurrentTimestamp();
 
       await connection.beginTransaction();
 
@@ -214,7 +214,7 @@ const studyMaterialController = {
       }
 
       await connection.beginTransaction();
-      const updatedTimestamp = manilacurrentTimestamp;
+      const updatedTimestamp = manilacurrentTimestamp();
 
       // Update study_material_info with the valid item count
       await connection.execute(
