@@ -1952,11 +1952,7 @@ const CreateStudyMaterial = () => {
                   onClick={handleAddItem}
                   className={itemsError ? "error-highlight-animation" : ""}
                 >
-                  Add New Item{" "}
-                  {(itemsError || emptyItemIds.length > 0) &&
-                    `(${
-                      items.length - emptyItemIds.length
-                    }/${MIN_REQUIRED_ITEMS})`}
+                  Add New Item
                 </Button>
               </Stack>
             </Box>
