@@ -103,7 +103,7 @@ export default function TutorialTwo() {
         <div className="flex justify-center items-center w-full mt-10 md:mt-16 z-10">
           <video
             src="/UserOnboarding/useronboarding_stepone.mp4"
-            className="w-full max-w-[801px] h-[297px] rounded-[0.8rem] border-2 border-white"
+            className="w-full max-w-[50vw] h-[40vh] rounded-[0.8rem] border-2 border-white"
             autoPlay
             loop
             muted

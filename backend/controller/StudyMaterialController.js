@@ -1064,7 +1064,7 @@ const studyMaterialController = {
       }
 
       // Get current timestamp - Make sure this is formatted correctly
-      const bookmarked_at = manilacurrentTimestamp; // If this is a function, call it
+      const bookmarked_at = manilacurrentTimestamp(); // If this is a function, call it
 
       // Check if study material exists
       const [studyMaterialRows] = await connection.execute(

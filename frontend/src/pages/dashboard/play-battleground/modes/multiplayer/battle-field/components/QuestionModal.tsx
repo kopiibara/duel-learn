@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from "react";
 import BattleFlashCard from "./BattleFlashCard";
 import axios from "axios";
 import { Question } from "../../../../types";
-import { BattleState } from '../BattleState';
-import { BattleRoundData } from '../PvpBattle';
+import { BattleState } from "../BattleState";
+import { BattleRoundData } from "../PvpBattle";
 import { motion, AnimatePresence } from "framer-motion";
 
 /**
@@ -48,21 +48,14 @@ interface BattleRoundResponse {
   [key: string]: any;
 }
 
-interface QuestionResponse {
-  success: boolean;
-  data: Question[];
-}
-
-interface StoreQuestionResponse {
-  success: boolean;
-  message: string;
-}
-
 interface QuestionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAnswerSubmit: (isCorrect: boolean) => Promise<void>;
-  onAnswerSubmitRound?: (isCorrect: boolean, questionId: string) => Promise<void>;
+  onAnswerSubmitRound?: (
+    isCorrect: boolean,
+    questionId: string
+  ) => Promise<void>;
   difficultyMode: string | null;
   questionTypes: string[];
   selectedCardId: string | null;
@@ -101,7 +94,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   battleState,
   isHost,
   masterVolume = 100,
-  timeManipulationEffectSoundRef
+  timeManipulationEffectSoundRef,
 }) => {
   const [hasAnswered, setHasAnswered] = useState(false);
   const [currentQuestion, setCurrentQuestion] = useState<Question | null>(null);
@@ -111,17 +104,20 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   const [isFlipped, setIsFlipped] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [timerProgress, setTimerProgress] = useState(100);
-  const [shownQuestionIdsState, setShownQuestionIds] = useState<Set<string>>(new Set());
+  const [shownQuestionIdsState, setShownQuestionIds] = useState<Set<string>>(
+    new Set()
+  );
   const [hasTimeManipulation, setHasTimeManipulation] = useState(false);
-  const [timeManipulationEffect, setTimeManipulationEffect] = useState<CardEffect | null>(null);
-  const [termQuestionTypes, setTermQuestionTypes] = useState<Map<string, Set<string>>>(new Map());
+  const [timeManipulationEffect, setTimeManipulationEffect] =
+    useState<CardEffect | null>(null);
   const [showTimeEffect, setShowTimeEffect] = useState(false);
 
   // Add reference for the identification input
   const identificationInputRef = useRef<HTMLInputElement>(null);
 
   // Add ref for Time Manipulation effect sound
-  const timeManipulationEffectSoundRefInternal = useRef<HTMLAudioElement | null>(null);
+  const timeManipulationEffectSoundRefInternal =
+    useRef<HTMLAudioElement | null>(null);
 
   // Initialize shownQuestionIds from round data when component mounts
   useEffect(() => {
@@ -130,7 +126,9 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     const fetchShownQuestionIds = async () => {
       try {
         const response = await axios.get<{ data: BattleRoundData }>(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${battleState.session_uuid}`
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${
+            battleState.session_uuid
+          }`
         );
 
         if (response.data.data.question_ids_done) {
@@ -142,21 +140,29 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
 
             if (Array.isArray(shownIds)) {
               const newSet = new Set(shownIds);
-              if (newSet.size !== shownQuestionIdsState.size ||
-                !Array.from(newSet).every(id => shownQuestionIdsState.has(id))) {
-                console.log('Updating shownQuestionIds from round data:', {
+              if (
+                newSet.size !== shownQuestionIdsState.size ||
+                !Array.from(newSet).every((id) => shownQuestionIdsState.has(id))
+              ) {
+                console.log("Updating shownQuestionIds from round data:", {
                   oldIds: Array.from(shownQuestionIdsState),
-                  newIds: shownIds
+                  newIds: shownIds,
                 });
                 setShownQuestionIds(newSet);
               }
             }
           } catch (error) {
-            console.error('Error parsing question_ids_done from round data:', error);
+            console.error(
+              "Error parsing question_ids_done from round data:",
+              error
+            );
           }
         }
       } catch (error) {
-        console.error('Error fetching shown question IDs from round data:', error);
+        console.error(
+          "Error fetching shown question IDs from round data:",
+          error
+        );
       }
     };
 
@@ -167,12 +173,11 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     return () => clearInterval(interval);
   }, [battleState?.session_uuid, shownQuestionIdsState]);
 
-
   // Reset states when modal closes
   useEffect(() => {
-    console.log('QuestionModal open state changed:', { isOpen });
+    console.log("QuestionModal open state changed:", { isOpen });
     if (!isOpen) {
-      console.log('Resetting modal states');
+      console.log("Resetting modal states");
       setHasAnswered(false);
       setShowResult(false);
       setCurrentQuestion(null);
@@ -187,221 +192,100 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
 
     try {
       await axios.put(
-        `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/update-enemy-question`,
+        `${
+          import.meta.env.VITE_BACKEND_URL
+        }/api/gameplay/battle/update-enemy-question`,
         {
           session_uuid: battleState.session_uuid,
-          player_type: isHost ? 'host' : 'guest',
+          player_type: isHost ? "host" : "guest",
           question_text: questionText,
-          is_on_flashcard: questionText !== '' // Set to true when question is shown, false when empty
+          is_on_flashcard: questionText !== "", // Set to true when question is shown, false when empty
         }
       );
-      console.log('Updated enemy answering question text:', questionText);
+      console.log("Updated enemy answering question text:", questionText);
     } catch (error) {
-      console.error('Error updating enemy answering question:', error);
+      console.error("Error updating enemy answering question:", error);
     }
   };
 
-  // Update effect to use proper types
+  // Update effect to send the current question text when a question is selected
   useEffect(() => {
-    const handleQuestionSelection = async () => {
-      console.log('Question selection effect triggered:', {
-        isOpen,
-        hasCurrentQuestion: !!currentQuestion,
-        isGeneratingAI,
-        aiQuestionsCount: aiQuestions?.length ?? 0,
+    console.log("Question selection effect triggered:", {
+      isOpen,
+      hasCurrentQuestion: !!currentQuestion,
+      isGeneratingAI,
+      aiQuestionsCount: aiQuestions?.length ?? 0,
+      currentQuestionNumber,
+      totalQuestions,
+      shownQuestionIds: Array.from(shownQuestionIdsState),
+    });
+
+    if (
+      isOpen &&
+      !currentQuestion &&
+      !isGeneratingAI &&
+      aiQuestions?.length > 0
+    ) {
+      // Filter out questions that have already been shown
+      const availableQuestions = aiQuestions.filter(
+        (q) => !shownQuestionIdsState.has(q.id)
+      );
+
+      console.log("Available questions:", {
+        total: aiQuestions.length,
+        available: availableQuestions.length,
+        shownIds: Array.from(shownQuestionIdsState),
         currentQuestionNumber,
         totalQuestions,
-        shownQuestionIds: Array.from(shownQuestionIdsState),
-        termQuestionTypesMap: Object.fromEntries(Array.from(termQuestionTypes.entries()).map(
-          ([term, types]) => [term, Array.from(types)]
-        ))
       });
 
-      if (isOpen && !currentQuestion && !isGeneratingAI && aiQuestions?.length > 0) {
-        // Log all available questions for debugging
-        console.log('All questions in aiQuestions:', aiQuestions.map(q => ({
-          id: q.id,
-          type: q.type,
-          question: q.question,
-          answer: q.answer || q.correctAnswer,
-          itemInfo: q.itemInfo
-        })));
-
-        // Filter out questions that have already been shown
-        const availableQuestions = aiQuestions.filter(q => {
-          const term = q.answer || q.correctAnswer;
-          const questionType = q.type;
-          
-          // Check if we've already used this term-question type combination
-          const usedTypes = termQuestionTypes.get(term) || new Set();
-          return !shownQuestionIdsState.has(q.id) && !usedTypes.has(questionType);
-        });
-
-        console.log('Available questions after filtering:', {
-          total: aiQuestions.length,
-          available: availableQuestions.length,
-          shownIds: Array.from(shownQuestionIdsState),
-          currentQuestionNumber,
-          totalQuestions,
-          availableQuestionDetails: availableQuestions.map(q => ({
-            id: q.id,
-            type: q.type,
-            question: q.question,
-            term: q.answer || q.correctAnswer
-          }))
-        });
-
-        if (availableQuestions.length > 0 && currentQuestionNumber < totalQuestions) {
-          // Select a random question from available questions
-          const randomIndex = Math.floor(Math.random() * availableQuestions.length);
-          const selectedQuestion = availableQuestions[randomIndex];
-          
-          // Double check that the selected question hasn't been shown
-          if (!shownQuestionIdsState.has(selectedQuestion.id)) {
-            const term = selectedQuestion.answer || selectedQuestion.correctAnswer;
-            const questionType = selectedQuestion.type;
-
-            console.log('Selected new question:', {
-              id: selectedQuestion.id,
-              question: selectedQuestion.question,
-              type: questionType,
-              term: term,
-              studyMaterialId: selectedQuestion.study_material_id,
-              itemInfo: selectedQuestion.itemInfo
-            });
-            
-            setCurrentQuestion(selectedQuestion);
-
-            // Update term-question type tracking
-            setTermQuestionTypes(prev => {
-              const newMap = new Map(prev);
-              const usedTypes = newMap.get(term) || new Set();
-              usedTypes.add(questionType);
-              newMap.set(term, usedTypes);
-              return newMap;
-            });
-
-            // Mark the question as shown
-            setShownQuestionIds(prev => {
-              const newSet = new Set(prev);
-              newSet.add(selectedQuestion.id);
-              console.log('Updated shown question IDs:', {
-                previous: Array.from(prev),
-                new: Array.from(newSet),
-                added: selectedQuestion.id
-              });
-              return newSet;
-            });
-
-            // Store the question in the database
-            try {
-              // First fetch the study material content data
-              console.log('Fetching study material content data for question:', {
-                study_material_id: selectedQuestion.study_material_id,
-                term: term
-              });
-
-              const contentResponse = await axios.get(
-                `${import.meta.env.VITE_BACKEND_URL}/api/study-material/content/${selectedQuestion.study_material_id}/${encodeURIComponent(term)}`
-              );
-
-              const contentData = contentResponse.data?.data;
-              
-              console.log('Retrieved study material content:', contentData);
-
-              // Now store the question with the content data
-              console.log('Attempting to store question in database:', {
-                study_material_id: selectedQuestion.study_material_id,
-                item_id: contentData?.item_id,
-                item_number: contentData?.item_number,
-                term: contentData?.term,
-                definition: contentData?.definition,
-                question_type: questionType,
-                question: selectedQuestion.question,
-                answer: term,
-                options: selectedQuestion.options
-              });
-
-              const storeResponse = await axios.post<StoreQuestionResponse>(
-                `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/store-questions`,
-                {
-                  study_material_id: selectedQuestion.study_material_id,
-                  questions: [{
-                    id: selectedQuestion.id,
-                    item_id: contentData?.item_id,
-                    item_number: contentData?.item_number,
-                    term: contentData?.term,
-                    definition: contentData?.definition,
-                    type: questionType,
-                    question: selectedQuestion.question,
-                    answer: term,
-                    options: selectedQuestion.options
-                  }],
-                  game_mode: 'pvp'
-                }
-              );
-
-              if (storeResponse.data?.success) {
-                console.log('Successfully stored question in database:', {
-                  question_id: selectedQuestion.id,
-                  item_id: contentData?.item_id,
-                  term: contentData?.term,
-                  type: questionType,
-                  response: storeResponse.data
-                });
-              } else {
-                console.error('Failed to store question:', {
-                  error: storeResponse.data?.message,
-                  question_id: selectedQuestion.id,
-                  response: storeResponse.data
-                });
-              }
-            } catch (storeError) {
-              console.error('Error storing question:', {
-                error: storeError,
-                question_details: {
-                  id: selectedQuestion.id,
-                  type: questionType,
-                  question: selectedQuestion.question,
-                  study_material_id: selectedQuestion.study_material_id,
-                  term: term
-                }
-              });
-            }
-
-            // Send the question text to the backend so the opponent can see what question is being answered
-            updateEnemyAnsweringQuestion(selectedQuestion.question);
-          } else {
-            console.log('Selected question was already shown, trying again:', {
-              question_id: selectedQuestion.id,
-              shown_ids: Array.from(shownQuestionIdsState)
-            });
-            // If the selected question was already shown, try again
-            setCurrentQuestion(null);
-          }
-        } else {
-          console.log('No more questions available or reached total, ending game:', {
-            availableCount: availableQuestions.length,
-            currentNumber: currentQuestionNumber,
-            totalQuestions,
-            termQuestionTypes: Object.fromEntries(Array.from(termQuestionTypes.entries()).map(
-              ([term, types]) => [term, Array.from(types)]
-            ))
+      if (
+        availableQuestions.length > 0 &&
+        currentQuestionNumber < totalQuestions
+      ) {
+        // Select a random question from available questions
+        const randomIndex = Math.floor(
+          Math.random() * availableQuestions.length
+        );
+        const selectedQuestion = availableQuestions[randomIndex];
+        // Double check that the selected question hasn't been shown
+        if (!shownQuestionIdsState.has(selectedQuestion.id)) {
+          console.log("Selected new question:", {
+            id: selectedQuestion.id,
+            question: selectedQuestion.question,
           });
-          onClose();
-          onGameEnd?.();
-        }
-      }
-    };
+          setCurrentQuestion(selectedQuestion);
 
-    handleQuestionSelection();
-  }, [isOpen, aiQuestions, isGeneratingAI, currentQuestion, shownQuestionIds, battleState?.session_uuid, isHost]);
+          // Send the question text to the backend so the opponent can see what question is being answered
+          updateEnemyAnsweringQuestion(selectedQuestion.question);
+        } else {
+          console.log("Selected question was already shown, trying again");
+          // If the selected question was already shown, try again
+          setCurrentQuestion(null);
+        }
+      } else {
+        console.log(
+          "No more questions available or reached total, ending game"
+        );
+        onClose();
+        onGameEnd?.();
+      }
+    }
+  }, [
+    isOpen,
+    aiQuestions,
+    isGeneratingAI,
+    currentQuestion,
+    shownQuestionIds,
+    battleState?.session_uuid,
+    isHost,
+  ]);
 
   // Add effect to clear question when modal closes
   useEffect(() => {
     if (!isOpen && battleState?.session_uuid) {
       // Clear the enemy answering question text when the modal closes
-      updateEnemyAnsweringQuestion('');
+      updateEnemyAnsweringQuestion("");
     }
   }, [isOpen, battleState?.session_uuid]);
 
@@ -411,7 +295,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
 
     const timeLimit = getTimeLimit();
     setTimeRemaining(timeLimit);
-    console.log('Starting timer with limit:', timeLimit);
+    console.log("Starting timer with limit:", timeLimit);
 
     const timer = setInterval(() => {
       setTimeRemaining((prev) => {
@@ -431,7 +315,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
       setTimerProgress((timeRemaining / timeLimit) * 100);
 
       if (timeRemaining <= 0 && !hasAnswered && currentQuestion) {
-        console.log('Time ran out - submitting incorrect answer');
+        console.log("Time ran out - submitting incorrect answer");
         setHasAnswered(true);
         setIsCorrect(false);
         setShowResult(true);
@@ -446,7 +330,14 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
         }, 1500);
       }
     }
-  }, [timeRemaining, hasAnswered, currentQuestion, onAnswerSubmit, onAnswerSubmitRound, onClose]);
+  }, [
+    timeRemaining,
+    hasAnswered,
+    currentQuestion,
+    onAnswerSubmit,
+    onAnswerSubmitRound,
+    onClose,
+  ]);
 
   // Add effect to check for time manipulation when modal opens
   useEffect(() => {
@@ -454,17 +345,23 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
       const checkForTimeManipulation = async () => {
         try {
           // Get player type based on isHost
-          const playerType = isHost ? 'host' : 'guest';
+          const playerType = isHost ? "host" : "guest";
 
           // Check for active card effects
           const response = await axios.get(
-            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/card-effects/${battleState.session_uuid}/${playerType}`
+            `${
+              import.meta.env.VITE_BACKEND_URL
+            }/api/gameplay/battle/card-effects/${
+              battleState.session_uuid
+            }/${playerType}`
           );
 
           if (response.data.success) {
             // Find any time manipulation effects
-            const timeEffects = response.data.data.effects.filter((effect: CardEffect) =>
-              effect.effect === "reduce_time" && !effect.used);
+            const timeEffects = response.data.data.effects.filter(
+              (effect: CardEffect) =>
+                effect.effect === "reduce_time" && !effect.used
+            );
 
             if (timeEffects.length > 0) {
               const effect = timeEffects[0];
@@ -480,25 +377,38 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
               // Play Time Manipulation effect sound
               if (timeManipulationEffectSoundRef) {
                 // Calculate volume based on sound settings
-                const calculatedVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
-                timeManipulationEffectSoundRef.current!.volume = calculatedVolume;
+                const calculatedVolume =
+                  (soundEffectsVolume / 100) * (masterVolume / 100);
+                timeManipulationEffectSoundRef.current!.volume =
+                  calculatedVolume;
                 timeManipulationEffectSoundRef.current!.currentTime = 0;
-                timeManipulationEffectSoundRef.current!.play().catch(err =>
-                  console.error("Error playing time manipulation effect sound:", err)
-                );
+                timeManipulationEffectSoundRef
+                  .current!.play()
+                  .catch((err) =>
+                    console.error(
+                      "Error playing time manipulation effect sound:",
+                      err
+                    )
+                  );
               }
 
               // Mark the effect as used
               await axios.post(
-                `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/consume-card-effect`,
+                `${
+                  import.meta.env.VITE_BACKEND_URL
+                }/api/gameplay/battle/consume-card-effect`,
                 {
                   session_uuid: battleState.session_uuid,
                   player_type: playerType,
-                  effect_type: effect.type
+                  effect_type: effect.type,
                 }
               );
 
-              console.log(`Time manipulation effect consumed, time reduced by ${effect.reduction_percent || 30}%`);
+              console.log(
+                `Time manipulation effect consumed, time reduced by ${
+                  effect.reduction_percent || 30
+                }%`
+              );
             } else {
               setHasTimeManipulation(false);
               setTimeManipulationEffect(null);
@@ -511,11 +421,18 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
 
       checkForTimeManipulation();
     }
-  }, [isOpen, battleState?.session_uuid, isHost, soundEffectsVolume, masterVolume]);
+  }, [
+    isOpen,
+    battleState?.session_uuid,
+    isHost,
+    soundEffectsVolume,
+    masterVolume,
+  ]);
 
   // Modify the getTimeLimit function to apply time reduction
   const getTimeLimit = () => {
-    const difficultyNormalized = difficultyMode?.toLowerCase().trim() || "average";
+    const difficultyNormalized =
+      difficultyMode?.toLowerCase().trim() || "average";
     let timeLimit = 15;
     if (difficultyNormalized.includes("easy")) timeLimit = 20;
     if (difficultyNormalized.includes("hard")) timeLimit = 10;
@@ -525,21 +442,27 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
       const reductionPercent = timeManipulationEffect.reduction_percent || 30;
       const minTime = timeManipulationEffect.min_time || 5;
       timeLimit = Math.max(minTime, timeLimit * (1 - reductionPercent / 100));
-      console.log(`Time limit reduced by ${reductionPercent}% to ${timeLimit}s (min: ${minTime}s)`);
+      console.log(
+        `Time limit reduced by ${reductionPercent}% to ${timeLimit}s (min: ${minTime}s)`
+      );
     }
 
-    console.log('Calculated time limit:', { difficultyMode, timeLimit, hasTimeManipulation });
+    console.log("Calculated time limit:", {
+      difficultyMode,
+      timeLimit,
+      hasTimeManipulation,
+    });
     return timeLimit;
   };
 
   const handleAnswerSubmit = async (answer: string) => {
-    console.log('Answer submitted:', {
+    console.log("Answer submitted:", {
       answer,
       hasCurrentQuestion: !!currentQuestion,
       hasAnswered,
       currentQuestionNumber,
       totalQuestions,
-      currentQuestionId: currentQuestion?.id
+      currentQuestionId: currentQuestion?.id,
     });
 
     if (!currentQuestion || hasAnswered) return;
@@ -548,14 +471,16 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
 
     // For identification questions, the correctAnswer is already properly set
     // from the backend (term is used as correctAnswer)
-    const answerString = String(answer || "").toLowerCase().trim();
+    const answerString = String(answer || "")
+      .toLowerCase()
+      .trim();
     const correctAnswerString = String(correctAnswer).toLowerCase().trim();
     const isAnswerCorrect = answerString === correctAnswerString;
 
-    console.log('Answer evaluation:', {
+    console.log("Answer evaluation:", {
       submitted: answerString,
       correct: correctAnswerString,
-      isCorrect: isAnswerCorrect
+      isCorrect: isAnswerCorrect,
     });
 
     setIsCorrect(isAnswerCorrect);
@@ -571,9 +496,13 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
       playIncorrectSound();
     }
 
-    // Check if this was the last question
-    if (currentQuestionNumber >= totalQuestions - 1) {
-      console.log('Last question answered, ending game after delay');
+    // After submitting the answer, update the shown questions set
+    const newShownSet = new Set(shownQuestionIdsState);
+    newShownSet.add(currentQuestion.id);
+    setShownQuestionIds(newShownSet);
+
+    // Now check if we've reached the total
+    if (newShownSet.size >= totalQuestions) {
       setTimeout(() => {
         if (onAnswerSubmitRound) {
           onAnswerSubmitRound(isAnswerCorrect, currentQuestion.id);
@@ -601,7 +530,8 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     }
 
     const isSelected = selectedAnswer.toLowerCase() === option.toLowerCase();
-    const isCorrectAnswer = option.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
+    const isCorrectAnswer =
+      option.toLowerCase() === currentQuestion.correctAnswer.toLowerCase();
 
     if (isCorrectAnswer) {
       return "bg-green-500 text-white border-2 border-green-600";
@@ -613,7 +543,9 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   };
 
   // Add a function to format options
-  const formatOptions = (options: string[] | { [key: string]: string } | undefined): string[] => {
+  const formatOptions = (
+    options: string[] | { [key: string]: string } | undefined
+  ): string[] => {
     if (!options) return [];
     if (Array.isArray(options)) return options;
     return Object.values(options);
@@ -639,14 +571,21 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
         <div className="p-8 rounded-lg max-w-4xl w-full mx-4 mt-10 relative flex flex-col items-center">
           {/* Question Counter */}
           <div className="mb-4 text-sm text-white">
-            Question {currentQuestionNumber} of {totalQuestions}
+            Question {currentQuestionNumber + 1} of {totalQuestions}
           </div>
 
           <div className="w-full flex justify-center">
             <BattleFlashCard
               question={currentQuestion.question}
-              correctAnswer={currentQuestion.correctAnswer || currentQuestion.answer}
-              type={currentQuestion.type as 'multiple-choice' | 'true-false' | 'identification'}
+              correctAnswer={
+                currentQuestion.correctAnswer || currentQuestion.answer
+              }
+              type={
+                currentQuestion.type as
+                  | "multiple-choice"
+                  | "true-false"
+                  | "identification"
+              }
               disabled={hasAnswered}
             />
           </div>
@@ -655,16 +594,20 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
           <div className="mt-9 w-full">
             {currentQuestion.type === "multiple-choice" && (
               <div className="grid grid-cols-2 gap-4 max-w-3xl mx-auto px-4">
-                {formatOptions(currentQuestion.options).map((option: string, index: number) => (
-                  <button
-                    key={index}
-                    onClick={() => handleAnswerSubmit(option)}
-                    disabled={hasAnswered}
-                    className={`h-[100px] px-6 py-4 rounded-lg text-lg font-medium transition-colors whitespace-normal flex items-center justify-center ${getButtonStyle(option)}`}
-                  >
-                    {option}
-                  </button>
-                ))}
+                {formatOptions(currentQuestion.options).map(
+                  (option: string, index: number) => (
+                    <button
+                      key={index}
+                      onClick={() => handleAnswerSubmit(option)}
+                      disabled={hasAnswered}
+                      className={`h-[100px] px-6 py-4 rounded-lg text-lg font-medium transition-colors whitespace-normal flex items-center justify-center ${getButtonStyle(
+                        option
+                      )}`}
+                    >
+                      {option}
+                    </button>
+                  )
+                )}
               </div>
             )}
 
@@ -675,7 +618,9 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
                     key={option}
                     onClick={() => handleAnswerSubmit(option)}
                     disabled={hasAnswered}
-                    className={`w-[200px] h-[93.33px] px-6 py-4 rounded-lg text-lg font-medium transition-colors flex items-center justify-center ${getButtonStyle(option)}`}
+                    className={`w-[200px] h-[93.33px] px-6 py-4 rounded-lg text-lg font-medium transition-colors flex items-center justify-center ${getButtonStyle(
+                      option
+                    )}`}
                   >
                     {option}
                   </button>
@@ -688,12 +633,13 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
                 <input
                   type="text"
                   placeholder="Type your answer here ..."
-                  className={`w-full h-[90px] px-6 text-lg rounded-lg border-2 bg-[#0f0f0f00] text-white placeholder-gray-400 ${hasAnswered
-                    ? isCorrect
-                      ? "border-green-500 bg-green-500/10"
-                      : "border-red-500 bg-red-500/10"
-                    : "border-[#2C2C2C]"
-                    } outline-none`}
+                  className={`w-full h-[90px] px-6 text-lg rounded-lg border-2 bg-[#0f0f0f00] text-white placeholder-gray-400 ${
+                    hasAnswered
+                      ? isCorrect
+                        ? "border-green-500 bg-green-500/10"
+                        : "border-red-500 bg-red-500/10"
+                      : "border-[#2C2C2C]"
+                  } outline-none`}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !hasAnswered) {
                       handleAnswerSubmit((e.target as HTMLInputElement).value);
@@ -704,14 +650,17 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
                 />
                 {hasAnswered && !isCorrect && (
                   <div className="mt-2 text-green-500 text-center">
-                    Correct answer: {currentQuestion.correctAnswer || currentQuestion.answer}
+                    Correct answer:{" "}
+                    {currentQuestion.correctAnswer || currentQuestion.answer}
                   </div>
                 )}
                 {!hasAnswered && (
                   <button
                     onClick={() => {
                       if (identificationInputRef.current) {
-                        handleAnswerSubmit(identificationInputRef.current.value);
+                        handleAnswerSubmit(
+                          identificationInputRef.current.value
+                        );
                       }
                     }}
                     className="mt-7 w-full px-6 py-3 rounded-lg bg-purple-600 text-white hover:bg-purple-700 transition-colors text-lg font-medium"
@@ -732,11 +681,13 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
       {/* Progress Bar */}
       <div className="fixed bottom-0 left-0 right-0 w-full h-1.5 bg-gray-700/50 overflow-hidden z-[9999] game-overlay">
         <div
-          className={`h-full ${hasTimeManipulation
-            ? "bg-red-500"
-            : timeRemaining && timeRemaining <= 3
+          className={`h-full ${
+            hasTimeManipulation
               ? "bg-red-500"
-              : "bg-white"}`}
+              : timeRemaining && timeRemaining <= 3
+              ? "bg-red-500"
+              : "bg-white"
+          }`}
           style={{
             width: `${timerProgress}%`,
             transition: "all 0.1s linear",
@@ -800,8 +751,18 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
                 animate={{ y: [0, -10, 0], opacity: [0, 1, 1] }}
                 transition={{ duration: 1, delay: 0.5 }}
               >
-                <svg className="w-6 h-6 text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <svg
+                  className="w-6 h-6 text-red-300"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 <motion.span
                   className="text-red-200 font-bold"
@@ -827,10 +788,22 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
             transition={{ duration: 0.5 }}
           >
             <div className="flex items-center gap-2">
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
               </svg>
-              <span className="text-xl font-bold">{timeRemaining?.toFixed(1)}s</span>
+              <span className="text-xl font-bold">
+                {timeRemaining?.toFixed(1)}s
+              </span>
             </div>
             <motion.div
               className="h-1 w-full bg-red-500/50 mt-1 rounded-full overflow-hidden"
@@ -849,28 +822,55 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
       {/* Result Overlay */}
       {showResult && (
         <div className="fixed inset-0 flex items-center justify-center z-[60] animation-overlay">
-          <div className={`flex flex-col items-center justify-center ${isCorrect
-            ? 'text-green-400 animate-result-appear'
-            : 'text-red-400 animate-result-appear'
-            }`}>
-            <div className={`rounded-full p-6 mb-4 ${isCorrect
-              ? 'bg-green-500/20'
-              : 'bg-red-500/20'
-              }`}>
+          <div
+            className={`flex flex-col items-center justify-center ${
+              isCorrect
+                ? "text-green-400 animate-result-appear"
+                : "text-red-400 animate-result-appear"
+            }`}
+          >
+            <div
+              className={`rounded-full p-6 mb-4 ${
+                isCorrect ? "bg-green-500/20" : "bg-red-500/20"
+              }`}
+            >
               {isCorrect ? (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-16 h-16"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={3}
+                    d="M5 13l4 4L19 7"
+                  />
                 </svg>
               ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  className="w-16 h-16"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={3}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               )}
             </div>
-            <div className={`text-6xl font-bold ${isCorrect
-              ? 'text-green-400'
-              : 'text-red-400'
-              } animate-bounce-gentle`}>
+            <div
+              className={`text-6xl font-bold ${
+                isCorrect ? "text-green-400" : "text-red-400"
+              } animate-bounce-gentle`}
+            >
               {isCorrect ? "CORRECT!" : "WRONG!"}
             </div>
           </div>

@@ -2697,4 +2697,3 @@ export const deductLeaverXP = async (req, res) => {
     }
 };
 
-

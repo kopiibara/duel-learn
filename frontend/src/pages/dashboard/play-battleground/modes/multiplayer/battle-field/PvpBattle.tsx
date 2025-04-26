@@ -2786,8 +2786,7 @@ export default function PvpBattle() {
           });
 
           // Check if we've reached or exceeded the total questions
-          // Changed to ensure we play all questions before ending
-          if (questionCountFromDB >= totalItems + 1) {
+          if (questionCountFromDB === totalItems) {
             console.log("Question limit reached, ending game", {
               questionCountFromDB,
               totalItems,
