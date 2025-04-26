@@ -496,13 +496,9 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
       playIncorrectSound();
     }
 
-    // After submitting the answer, update the shown questions set
-    const newShownSet = new Set(shownQuestionIdsState);
-    newShownSet.add(currentQuestion.id);
-    setShownQuestionIds(newShownSet);
-
-    // Now check if we've reached the total
-    if (newShownSet.size >= totalQuestions) {
+    // Check if this was the last question
+    if (currentQuestionNumber >= totalQuestions - 1) {
+      console.log("Last question answered, ending game after delay");
       setTimeout(() => {
         if (onAnswerSubmitRound) {
           onAnswerSubmitRound(isAnswerCorrect, currentQuestion.id);
@@ -571,7 +567,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
         <div className="p-8 rounded-lg max-w-4xl w-full mx-4 mt-10 relative flex flex-col items-center">
           {/* Question Counter */}
           <div className="mb-4 text-sm text-white">
-            Question {currentQuestionNumber + 1} of {totalQuestions}
+            Question {currentQuestionNumber} of {totalQuestions}
           </div>
 
           <div className="w-full flex justify-center">
