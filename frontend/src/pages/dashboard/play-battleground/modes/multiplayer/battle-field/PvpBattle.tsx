@@ -153,11 +153,6 @@ interface UpdateRoundResponse {
   data?: any;
 }
 
-interface ExistingQuestionsResponse {
-  success: boolean;
-  data: Question[];
-}
-
 // Add these imports at the top of the file after other imports
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -2617,16 +2612,7 @@ export default function PvpBattle() {
         questionGenState.questions.length === 0
       ) {
         try {
-          console.log("Starting question generation process...");
           dispatchQuestionGen({ type: "START_GENERATION" });
-
-          // Generate questions using the existing endpoint
-          console.log("Generating questions with params:", {
-            study_material_id: studyMaterialId,
-            difficulty_mode: difficultyMode,
-            question_types: questionTypes,
-            player_type: isHost ? "host" : "guest",
-          });
 
           const { data } = await axios.post<GenerateQuestionsResponse>(
             `${
@@ -2642,38 +2628,6 @@ export default function PvpBattle() {
           );
 
           if (data?.success && data.data) {
-            console.log(`Successfully generated ${data.data.length} questions`);
-
-            // Store the generated questions in the database
-            try {
-              console.log("Storing questions in database...");
-              const storeResponse = await axios.post(
-                `${
-                  import.meta.env.VITE_BACKEND_URL
-                }/api/gameplay/battle/store-questions`,
-                {
-                  study_material_id: studyMaterialId,
-                  questions: data.data,
-                  game_mode: "pvp",
-                }
-              );
-
-              if (storeResponse.data?.success) {
-                console.log("Successfully stored questions in database:", {
-                  count: data.data.length,
-                  study_material_id: studyMaterialId,
-                  game_mode: "pvp",
-                });
-              } else {
-                console.error(
-                  "Failed to store questions:",
-                  storeResponse.data?.message
-                );
-              }
-            } catch (storeError) {
-              console.error("Error storing questions:", storeError);
-            }
-
             dispatchQuestionGen({
               type: "GENERATION_SUCCESS",
               questions: data.data,
@@ -2786,12 +2740,8 @@ export default function PvpBattle() {
           });
 
           // Check if we've reached or exceeded the total questions
-          if (questionCountFromDB === totalItems) {
-            console.log("Question limit reached, ending game", {
-              questionCountFromDB,
-              totalItems,
-              timestamp: new Date().toISOString(),
-            });
+          if (questionCountFromDB >= totalItems) {
+            console.log("Question limit reached, ending game");
 
             // Check for tie game first when health is equal
             if (playerHealth === opponentHealth) {
