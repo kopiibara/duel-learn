@@ -689,6 +689,68 @@ const shopController = {
             console.error("Error using Fortune Coin:", error);
             res.status(500).json({ message: "Error using Fortune Coin" });
         }
+    },
+
+    deductTechPassForCrossReference: async (req, res) => {
+        const { firebase_uid } = req.body;
+
+        try {
+            const connection = await pool.getConnection();
+            await connection.beginTransaction();
+
+            try {
+                // Check if user has enough tech passes in user_info table
+                const [userInfo] = await connection.query(
+                    "SELECT tech_pass FROM user_info WHERE firebase_uid = ?",
+                    [firebase_uid]
+                );
+
+                console.log('User tech pass info:', {
+                    firebase_uid,
+                    userInfo,
+                    techPassCount: userInfo[0]?.tech_pass
+                });
+
+                if (!userInfo.length || userInfo[0].tech_pass < 1) {
+                    await connection.rollback();
+                    connection.release();
+                    return res.status(400).json({
+                        success: false,
+                        message: "Insufficient tech passes",
+                        currentTechPasses: userInfo[0]?.tech_pass || 0
+                    });
+                }
+
+                // Deduct one tech pass from user_info table
+                await connection.query(
+                    "UPDATE user_info SET tech_pass = tech_pass - 1 WHERE firebase_uid = ?",
+                    [firebase_uid]
+                );
+
+                await connection.commit();
+                connection.release();
+
+                // Invalidate cache
+                invalidateShopCaches(firebase_uid);
+
+                res.json({
+                    success: true,
+                    message: "Tech pass deducted successfully",
+                    remainingTechPasses: userInfo[0].tech_pass - 1
+                });
+            } catch (error) {
+                await connection.rollback();
+                connection.release();
+                throw error;
+            }
+        } catch (error) {
+            console.error("Error deducting tech pass:", error);
+            res.status(500).json({
+                success: false,
+                message: "Error deducting tech pass",
+                error: error.message
+            });
+        }
     }
 };
 

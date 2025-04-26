@@ -13,6 +13,10 @@ import {
   useMediaQuery,
   useTheme,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import DragIndicatorIcon from "@mui/icons-material/DragIndicatorRounded";
 import AddPhotoIcon from "@mui/icons-material/AddPhotoAlternateRounded";
@@ -23,6 +27,7 @@ import ErrorOutlineIcon from "@mui/icons-material/ErrorOutline";
 import FactCheckIcon from "@mui/icons-material/FactCheck";
 import { motion, AnimatePresence } from "framer-motion";
 import { ItemComponentProps } from "../types/itemComponent";
+import { useUser } from "../../../../contexts/UserContext"; // Import the useUser hook
 import "./errorHighlight.css";
 
 const MAX_TERM_LENGTH = 50; // Define max term length
@@ -36,6 +41,9 @@ const ItemComponent: FC<ItemComponentProps> = ({
   isDragging,
   isError = false, // Add this line to destructure the prop with default value
 }) => {
+  const { user, updateUser } = useUser();
+  const isPremium = user?.account_type === "premium";
+
   // Add MUI theme and media query to detect mobile view
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -51,6 +59,8 @@ const ItemComponent: FC<ItemComponentProps> = ({
     assessment: string;
     incorrectParts: string[];
     suggestedCorrections: string[];
+    missingKeywords: string[];
+    suggestedAdditions: string[];
   } | null>(null);
   const [showFactCheckDetails, setShowFactCheckDetails] = useState(false);
   const [scanningEffect, setScanningEffect] = useState(false);
@@ -63,6 +73,10 @@ const ItemComponent: FC<ItemComponentProps> = ({
       ? URL.createObjectURL(item.image)
       : null
   );
+
+  const [showConfirmationModal, setShowConfirmationModal] = useState(false);
+  const [isDeductingTechPass, setIsDeductingTechPass] = useState(false);
+
   // Replace your existing resizeTextarea function with this enhanced version:
 
   const resizeTextarea = (textarea: HTMLTextAreaElement) => {
@@ -140,21 +154,59 @@ const ItemComponent: FC<ItemComponentProps> = ({
       return;
     }
 
-    // Set loading state and start scanning effect
-    setIsFactChecking(true);
+    // Show confirmation modal
+    setShowConfirmationModal(true);
+  };
+
+  const handleConfirmFactCheck = async () => {
+    setShowConfirmationModal(false);
+    setIsDeductingTechPass(true);
     setScanningEffect(true);
 
     try {
+      // For premium users, skip tech pass deduction
+      if (!isPremium) {
+        // First, deduct tech pass
+        const deductResponse = await fetch(
+          `${import.meta.env.VITE_BACKEND_URL}/api/shop/deduct-tech-pass`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              firebase_uid: user?.firebase_uid,
+            }),
+          }
+        );
+
+        const deductResult = await deductResponse.json();
+
+        if (!deductResult.success) {
+          throw new Error(
+            deductResult.message === "Insufficient tech passes"
+              ? `You need at least 1 Tech Pass to use this feature. You currently have ${deductResult.currentTechPasses || 0} Tech Passes.`
+              : deductResult.message || "Failed to deduct tech pass"
+          );
+        }
+
+        // Update user's tech pass count
+        if (deductResult.remainingTechPasses !== undefined) {
+          updateUser({
+            ...user,
+            tech_pass: deductResult.remainingTechPasses,
+          });
+        }
+      }
+
+      // Then proceed with fact checking
       const response = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URL
-        }/api/openai/cross-reference-definition`,
+        `${import.meta.env.VITE_BACKEND_URL}/api/openai/cross-reference-definition`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             term: item.term,
             definition: item.definition,
+            tags: item.tags || [],
           }),
         }
       );
@@ -171,11 +223,7 @@ const ItemComponent: FC<ItemComponentProps> = ({
         setScanningEffect(false);
         setIsFactChecking(false);
         // Automatically show details if there are issues
-        if (
-          !data.isAccurate &&
-          data.incorrectParts &&
-          data.incorrectParts.length > 0
-        ) {
+        if (!data.isAccurate && data.incorrectParts && data.incorrectParts.length > 0) {
           setShowFactCheckDetails(true);
         }
       }, 1200);
@@ -186,6 +234,8 @@ const ItemComponent: FC<ItemComponentProps> = ({
       );
       setScanningEffect(false);
       setIsFactChecking(false);
+    } finally {
+      setIsDeductingTechPass(false);
     }
   };
 
@@ -210,8 +260,71 @@ const ItemComponent: FC<ItemComponentProps> = ({
 
       updateItem("definition", newDefinition);
 
+      // Trigger resize after a short delay to ensure the DOM has updated
+      setTimeout(() => {
+        const textarea = document.getElementById('definition') as HTMLTextAreaElement;
+        if (textarea) {
+          resizeTextarea(textarea);
+        }
+      }, 0);
+
       // Reset fact check results after applying a correction
       setFactCheckResult(null);
+    }
+  };
+
+  // Apply a missing keyword addition
+  const handleApplyMissingKeyword = (index: number) => {
+    console.log('Applying missing keyword:', {
+      index,
+      factCheckResult,
+      currentDefinition: item.definition
+    });
+
+    if (
+      factCheckResult &&
+      factCheckResult.missingKeywords &&
+      factCheckResult.suggestedAdditions &&
+      index < factCheckResult.missingKeywords.length &&
+      index < factCheckResult.suggestedAdditions.length
+    ) {
+      const suggestion = factCheckResult.suggestedAdditions[index];
+
+      console.log('Processing suggestion:', {
+        suggestion,
+        currentDefinition: item.definition
+      });
+
+      // Use the complete suggested definition directly
+      const newDefinition = suggestion;
+
+      if (newDefinition) {
+        console.log('New definition:', newDefinition);
+        
+        // Update the definition in the parent component
+        updateItem("definition", newDefinition);
+        
+        // Trigger resize after a short delay to ensure the DOM has updated
+        setTimeout(() => {
+          const textarea = document.getElementById('definition') as HTMLTextAreaElement;
+          if (textarea) {
+            resizeTextarea(textarea);
+          }
+        }, 0);
+        
+        // Reset fact check results
+        setFactCheckResult(null);
+        setShowFactCheckDetails(false);
+      } else {
+        console.warn('Failed to generate new definition');
+      }
+    } else {
+      console.warn('Invalid fact check result or index:', {
+        hasResult: !!factCheckResult,
+        missingKeywords: factCheckResult?.missingKeywords,
+        suggestedAdditions: factCheckResult?.suggestedAdditions,
+        index
+      });
     }
   };
 
@@ -628,23 +741,124 @@ const ItemComponent: FC<ItemComponentProps> = ({
                                   </Box>
                                 )
                               )}
+                            </>
+                          )}
+
+                        {factCheckResult.missingKeywords &&
+                          factCheckResult.missingKeywords.length > 0 && 
+                          factCheckResult.suggestedAdditions && 
+                          factCheckResult.missingKeywords.some((_, index) => factCheckResult.suggestedAdditions[index]) && (
+                            <>
                               <Typography
                                 variant="caption"
                                 sx={{
-                                  color: "#9F9BAE",
+                                  color: "#A38CE6",
                                   display: "block",
-                                  fontStyle: "italic",
-                                  mt: 1,
-                                  fontSize: "0.7rem",
+                                  mt: 2,
+                                  mb: 0.5,
                                 }}
                               >
-                                These suggestions only fix clearly incorrect
-                                parts of your definition. Your original phrasing
-                                and style will be preserved with minimal
-                                changes.
+                                Missing Crucial Keywords:
                               </Typography>
+                              {factCheckResult.missingKeywords.map((keyword, index) => (
+                                // Only render if there's a corresponding suggestion
+                                factCheckResult.suggestedAdditions[index] && (
+                                  <Box
+                                    key={index}
+                                    sx={{
+                                      mb: index === factCheckResult.missingKeywords.length - 1 ? 0 : 1,
+                                      p: 1,
+                                      bgcolor: "rgba(0,0,0,0.15)",
+                                      borderRadius: "4px",
+                                    }}
+                                  >
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "flex-start",
+                                        mb: 0.5,
+                                      }}
+                                    >
+                                      <Typography
+                                        variant="caption"
+                                        sx={{ color: "#FF9800", flexShrink: 0 }}
+                                      >
+                                        Missing:
+                                      </Typography>
+                                      <Typography
+                                        variant="caption"
+                                        sx={{ color: "#FF9800", ml: 1 }}
+                                      >
+                                        "{keyword}"
+                                      </Typography>
+                                    </Box>
+
+                                    <Box
+                                      sx={{
+                                        display: "flex",
+                                        alignItems: "flex-start",
+                                        mb: 0.5,
+                                      }}
+                                    >
+                                      <Typography
+                                        variant="caption"
+                                        sx={{
+                                          color: "#4CAF50",
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        Suggested Addition:
+                                      </Typography>
+                                      <Typography
+                                        variant="caption"
+                                        sx={{ color: "#4CAF50", ml: 1 }}
+                                      >
+                                        "{factCheckResult.suggestedAdditions[index]}"
+                                      </Typography>
+                                    </Box>
+
+                                    <Button
+                                      size="small"
+                                      variant="outlined"
+                                      onClick={() => handleApplyMissingKeyword(index)}
+                                      sx={{
+                                        borderColor: "#A38CE6",
+                                        color: "#A38CE6",
+                                        textTransform: "none",
+                                        fontSize: "0.7rem",
+                                        padding: "0.1rem 0.5rem",
+                                        minHeight: 0,
+                                        mt: 0.5,
+                                        "&:hover": {
+                                          borderColor: "#E2DDF3",
+                                          color: "#E2DDF3",
+                                          backgroundColor: "rgba(163, 140, 230, 0.08)",
+                                        },
+                                      }}
+                                    >
+                                      Apply Addition
+                                    </Button>
+                                  </Box>
+                                )
+                              ))}
                             </>
                           )}
+
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: "#9F9BAE",
+                            display: "block",
+                            fontStyle: "italic",
+                            mt: 1,
+                            fontSize: "0.7rem",
+                          }}
+                        >
+                          These suggestions only fix clearly incorrect parts and
+                          add missing crucial keywords to your definition. Your
+                          original phrasing and style will be preserved with
+                          minimal changes.
+                        </Typography>
                       </Box>
                     </motion.div>
                   )}
@@ -809,6 +1023,49 @@ const ItemComponent: FC<ItemComponentProps> = ({
           </Stack>
         </Stack>
       </Stack>
+
+      {/* Confirmation Modal */}
+      <Dialog
+        open={showConfirmationModal}
+        onClose={() => setShowConfirmationModal(false)}
+        PaperProps={{
+          sx: {
+            bgcolor: "#211D2F",
+            color: "#E2DDF3",
+            borderRadius: "0.8rem",
+          },
+        }}
+      >
+        <DialogTitle>Confirm AI Cross-Reference</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ color: "#9F9BAE" }}>
+            {isPremium
+              ? "This feature is free for Premium users!"
+              : "This action will use 1 Tech Pass to cross-reference your definition with AI. Are you sure you want to proceed?"}
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setShowConfirmationModal(false)}
+            sx={{
+              color: "#9F9BAE",
+              "&:hover": { color: "#E2DDF3" },
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleConfirmFactCheck}
+            disabled={isDeductingTechPass}
+            sx={{
+              color: "#A38CE6",
+              "&:hover": { color: "#E2DDF3" },
+            }}
+          >
+            {isDeductingTechPass ? "Processing..." : "Confirm"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

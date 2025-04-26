@@ -685,12 +685,9 @@ const CreateStudyMaterial = () => {
       try {
         // Transform items to include base64 images and preserve item_number
         // But ONLY include valid items
-        const transformedItems = validItems.map((item, index) => ({
-          id: item.id,
-          term: item.term,
-          definition: item.definition,
-          image: item.image || null,
-          item_number: index + 1, // Recalculate item numbers to be sequential
+        const transformedItems = items.map((item, index) => ({
+          ...item,
+          tags: tags, // Add tags to each item
         }));
 
         const studyMaterial = {
