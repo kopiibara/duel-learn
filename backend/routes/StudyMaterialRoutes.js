@@ -123,4 +123,7 @@ router.get("/image/:itemId", async (req, res) => {
   }
 });
 
+// Get study material content by study_material_id and term
+router.get('/content/:study_material_id/:term', studyMaterialController.getContentByTerm);
+
 export default router;

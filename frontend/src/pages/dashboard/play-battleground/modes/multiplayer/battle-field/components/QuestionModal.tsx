@@ -48,6 +48,16 @@ interface BattleRoundResponse {
   [key: string]: any;
 }
 
+interface QuestionResponse {
+  success: boolean;
+  data: Question[];
+}
+
+interface StoreQuestionResponse {
+  success: boolean;
+  message: string;
+}
+
 interface QuestionModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -104,6 +114,7 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
   const [shownQuestionIdsState, setShownQuestionIds] = useState<Set<string>>(new Set());
   const [hasTimeManipulation, setHasTimeManipulation] = useState(false);
   const [timeManipulationEffect, setTimeManipulationEffect] = useState<CardEffect | null>(null);
+  const [termQuestionTypes, setTermQuestionTypes] = useState<Map<string, Set<string>>>(new Map());
   const [showTimeEffect, setShowTimeEffect] = useState(false);
 
   // Add reference for the identification input
@@ -190,55 +201,200 @@ const QuestionModal: React.FC<QuestionModalProps> = ({
     }
   };
 
-  // Update effect to send the current question text when a question is selected
+  // Update effect to use proper types
   useEffect(() => {
-    console.log('Question selection effect triggered:', {
-      isOpen,
-      hasCurrentQuestion: !!currentQuestion,
-      isGeneratingAI,
-      aiQuestionsCount: aiQuestions?.length ?? 0,
-      currentQuestionNumber,
-      totalQuestions,
-      shownQuestionIds: Array.from(shownQuestionIdsState)
-    });
-
-    if (isOpen && !currentQuestion && !isGeneratingAI && aiQuestions?.length > 0) {
-      // Filter out questions that have already been shown
-      const availableQuestions = aiQuestions.filter(q => !shownQuestionIdsState.has(q.id));
-
-      console.log('Available questions:', {
-        total: aiQuestions.length,
-        available: availableQuestions.length,
-        shownIds: Array.from(shownQuestionIdsState),
+    const handleQuestionSelection = async () => {
+      console.log('Question selection effect triggered:', {
+        isOpen,
+        hasCurrentQuestion: !!currentQuestion,
+        isGeneratingAI,
+        aiQuestionsCount: aiQuestions?.length ?? 0,
         currentQuestionNumber,
-        totalQuestions
+        totalQuestions,
+        shownQuestionIds: Array.from(shownQuestionIdsState),
+        termQuestionTypesMap: Object.fromEntries(Array.from(termQuestionTypes.entries()).map(
+          ([term, types]) => [term, Array.from(types)]
+        ))
       });
 
-      if (availableQuestions.length > 0 && currentQuestionNumber < totalQuestions) {
-        // Select a random question from available questions
-        const randomIndex = Math.floor(Math.random() * availableQuestions.length);
-        const selectedQuestion = availableQuestions[randomIndex];
-        // Double check that the selected question hasn't been shown
-        if (!shownQuestionIdsState.has(selectedQuestion.id)) {
-          console.log('Selected new question:', {
-            id: selectedQuestion.id,
-            question: selectedQuestion.question
-          });
-          setCurrentQuestion(selectedQuestion);
+      if (isOpen && !currentQuestion && !isGeneratingAI && aiQuestions?.length > 0) {
+        // Log all available questions for debugging
+        console.log('All questions in aiQuestions:', aiQuestions.map(q => ({
+          id: q.id,
+          type: q.type,
+          question: q.question,
+          answer: q.answer || q.correctAnswer,
+          itemInfo: q.itemInfo
+        })));
 
-          // Send the question text to the backend so the opponent can see what question is being answered
-          updateEnemyAnsweringQuestion(selectedQuestion.question);
+        // Filter out questions that have already been shown
+        const availableQuestions = aiQuestions.filter(q => {
+          const term = q.answer || q.correctAnswer;
+          const questionType = q.type;
+          
+          // Check if we've already used this term-question type combination
+          const usedTypes = termQuestionTypes.get(term) || new Set();
+          return !shownQuestionIdsState.has(q.id) && !usedTypes.has(questionType);
+        });
+
+        console.log('Available questions after filtering:', {
+          total: aiQuestions.length,
+          available: availableQuestions.length,
+          shownIds: Array.from(shownQuestionIdsState),
+          currentQuestionNumber,
+          totalQuestions,
+          availableQuestionDetails: availableQuestions.map(q => ({
+            id: q.id,
+            type: q.type,
+            question: q.question,
+            term: q.answer || q.correctAnswer
+          }))
+        });
+
+        if (availableQuestions.length > 0 && currentQuestionNumber < totalQuestions) {
+          // Select a random question from available questions
+          const randomIndex = Math.floor(Math.random() * availableQuestions.length);
+          const selectedQuestion = availableQuestions[randomIndex];
+          
+          // Double check that the selected question hasn't been shown
+          if (!shownQuestionIdsState.has(selectedQuestion.id)) {
+            const term = selectedQuestion.answer || selectedQuestion.correctAnswer;
+            const questionType = selectedQuestion.type;
+
+            console.log('Selected new question:', {
+              id: selectedQuestion.id,
+              question: selectedQuestion.question,
+              type: questionType,
+              term: term,
+              studyMaterialId: selectedQuestion.study_material_id,
+              itemInfo: selectedQuestion.itemInfo
+            });
+            
+            setCurrentQuestion(selectedQuestion);
+
+            // Update term-question type tracking
+            setTermQuestionTypes(prev => {
+              const newMap = new Map(prev);
+              const usedTypes = newMap.get(term) || new Set();
+              usedTypes.add(questionType);
+              newMap.set(term, usedTypes);
+              return newMap;
+            });
+
+            // Mark the question as shown
+            setShownQuestionIds(prev => {
+              const newSet = new Set(prev);
+              newSet.add(selectedQuestion.id);
+              console.log('Updated shown question IDs:', {
+                previous: Array.from(prev),
+                new: Array.from(newSet),
+                added: selectedQuestion.id
+              });
+              return newSet;
+            });
+
+            // Store the question in the database
+            try {
+              // First fetch the study material content data
+              console.log('Fetching study material content data for question:', {
+                study_material_id: selectedQuestion.study_material_id,
+                term: term
+              });
+
+              const contentResponse = await axios.get(
+                `${import.meta.env.VITE_BACKEND_URL}/api/study-material/content/${selectedQuestion.study_material_id}/${encodeURIComponent(term)}`
+              );
+
+              const contentData = contentResponse.data?.data;
+              
+              console.log('Retrieved study material content:', contentData);
+
+              // Now store the question with the content data
+              console.log('Attempting to store question in database:', {
+                study_material_id: selectedQuestion.study_material_id,
+                item_id: contentData?.item_id,
+                item_number: contentData?.item_number,
+                term: contentData?.term,
+                definition: contentData?.definition,
+                question_type: questionType,
+                question: selectedQuestion.question,
+                answer: term,
+                options: selectedQuestion.options
+              });
+
+              const storeResponse = await axios.post<StoreQuestionResponse>(
+                `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/store-questions`,
+                {
+                  study_material_id: selectedQuestion.study_material_id,
+                  questions: [{
+                    id: selectedQuestion.id,
+                    item_id: contentData?.item_id,
+                    item_number: contentData?.item_number,
+                    term: contentData?.term,
+                    definition: contentData?.definition,
+                    type: questionType,
+                    question: selectedQuestion.question,
+                    answer: term,
+                    options: selectedQuestion.options
+                  }],
+                  game_mode: 'pvp'
+                }
+              );
+
+              if (storeResponse.data?.success) {
+                console.log('Successfully stored question in database:', {
+                  question_id: selectedQuestion.id,
+                  item_id: contentData?.item_id,
+                  term: contentData?.term,
+                  type: questionType,
+                  response: storeResponse.data
+                });
+              } else {
+                console.error('Failed to store question:', {
+                  error: storeResponse.data?.message,
+                  question_id: selectedQuestion.id,
+                  response: storeResponse.data
+                });
+              }
+            } catch (storeError) {
+              console.error('Error storing question:', {
+                error: storeError,
+                question_details: {
+                  id: selectedQuestion.id,
+                  type: questionType,
+                  question: selectedQuestion.question,
+                  study_material_id: selectedQuestion.study_material_id,
+                  term: term
+                }
+              });
+            }
+
+            // Send the question text to the backend so the opponent can see what question is being answered
+            updateEnemyAnsweringQuestion(selectedQuestion.question);
+          } else {
+            console.log('Selected question was already shown, trying again:', {
+              question_id: selectedQuestion.id,
+              shown_ids: Array.from(shownQuestionIdsState)
+            });
+            // If the selected question was already shown, try again
+            setCurrentQuestion(null);
+          }
         } else {
-          console.log('Selected question was already shown, trying again');
-          // If the selected question was already shown, try again
-          setCurrentQuestion(null);
+          console.log('No more questions available or reached total, ending game:', {
+            availableCount: availableQuestions.length,
+            currentNumber: currentQuestionNumber,
+            totalQuestions,
+            termQuestionTypes: Object.fromEntries(Array.from(termQuestionTypes.entries()).map(
+              ([term, types]) => [term, Array.from(types)]
+            ))
+          });
+          onClose();
+          onGameEnd?.();
         }
-      } else {
-        console.log('No more questions available or reached total, ending game');
-        onClose();
-        onGameEnd?.();
       }
-    }
+    };
+
+    handleQuestionSelection();
   }, [isOpen, aiQuestions, isGeneratingAI, currentQuestion, shownQuestionIds, battleState?.session_uuid, isHost]);
 
   // Add effect to clear question when modal closes

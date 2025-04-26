@@ -1487,6 +1487,46 @@ const studyMaterialController = {
       connection.release();
     }
   },
+
+  // Get study material content by study_material_id and term
+  getContentByTerm: async (req, res) => {
+    try {
+      const { study_material_id, term } = req.params;
+
+      console.log('Fetching study material content:', { study_material_id, term });
+
+      const { pool } = await import('../config/db.js');
+
+      const [rows] = await pool.query(
+        `SELECT item_id, item_number, term, definition 
+         FROM study_material_content 
+         WHERE study_material_id = ? AND term = ?`,
+        [study_material_id, term]
+      );
+
+      if (rows && rows.length > 0) {
+        console.log('Found study material content:', rows[0]);
+        return res.json({
+          success: true,
+          data: rows[0]
+        });
+      }
+
+      console.log('No content found for:', { study_material_id, term });
+      return res.status(404).json({
+        success: false,
+        message: 'Content not found'
+      });
+
+    } catch (error) {
+      console.error('Error fetching study material content:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch study material content',
+        error: error.message
+      });
+    }
+  },
 };
 
 export default studyMaterialController;
