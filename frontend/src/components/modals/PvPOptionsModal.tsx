@@ -312,22 +312,6 @@ const PvPOptionsModal: React.FC<PvPOptionsModalProps> = ({
                 >
                   Create New Lobby
                 </Button>
-                <Button
-                  onClick={handleShowJoinForm}
-                  sx={{
-                    backgroundColor: "#8565E7",
-                    color: "#E2DDF3",
-                    fontWeight: "bold",
-                    padding: "12px 24px",
-                    borderRadius: "0.6rem",
-                    transition: "all 0.3s ease-in-out",
-                    "&:hover": {
-                      backgroundColor: "#4D18E8",
-                    },
-                  }}
-                >
-                  Join Existing Lobby
-                </Button>
               </Stack>
             </>
           ) : (

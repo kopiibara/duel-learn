@@ -1,10 +1,13 @@
-import { EmojiEvents, CancelOutlined, ExitToApp } from '@mui/icons-material';
-import { useState, useEffect, useRef } from 'react';
-import axios from 'axios';
-import { Scale } from 'lucide-react';
+import { EmojiEvents, CancelOutlined, ExitToApp } from "@mui/icons-material";
+import { useState, useEffect, useRef } from "react";
+import axios from "axios";
+import { Scale } from "lucide-react";
 
 // Add the import for rewardCalculator functions
-import { calculateBattleRewards, earlyEndRewards } from '../utils/rewardCalculator';
+import {
+  calculateBattleRewards,
+  earlyEndRewards,
+} from "../utils/rewardCalculator";
 
 interface VictoryModalProps {
   isOpen: boolean;
@@ -42,14 +45,16 @@ interface TieGameModalProps {
 // Helper function to stop all game sounds and effects
 const stopAllGameEffects = () => {
   // Stop all audio elements in the game
-  document.querySelectorAll('audio').forEach(audio => {
+  document.querySelectorAll("audio").forEach((audio) => {
     audio.pause();
     audio.currentTime = 0;
   });
 
   // Specifically target and stop background music
-  const backgroundMusicElements = document.querySelectorAll('[id^="background-music"], [id="pvp-background-music"]');
-  backgroundMusicElements.forEach(element => {
+  const backgroundMusicElements = document.querySelectorAll(
+    '[id^="background-music"], [id="pvp-background-music"]'
+  );
+  backgroundMusicElements.forEach((element) => {
     if (element instanceof HTMLAudioElement) {
       element.pause();
       element.currentTime = 0;
@@ -57,35 +62,39 @@ const stopAllGameEffects = () => {
   });
 
   // Hide any flashcards or question modals
-  const questionModals = document.querySelectorAll('.question-modal');
-  questionModals.forEach(modal => {
+  const questionModals = document.querySelectorAll(".question-modal");
+  questionModals.forEach((modal) => {
     if (modal instanceof HTMLElement) {
-      modal.style.display = 'none';
+      modal.style.display = "none";
     }
   });
 
   // Hide any card selection UI
-  const cardSelections = document.querySelectorAll('.card-selection');
-  cardSelections.forEach(selection => {
+  const cardSelections = document.querySelectorAll(".card-selection");
+  cardSelections.forEach((selection) => {
     if (selection instanceof HTMLElement) {
-      selection.style.display = 'none';
+      selection.style.display = "none";
     }
   });
 
   // Remove any animations or overlays
-  const overlays = document.querySelectorAll('.game-overlay, .animation-overlay');
-  overlays.forEach(overlay => {
+  const overlays = document.querySelectorAll(
+    ".game-overlay, .animation-overlay"
+  );
+  overlays.forEach((overlay) => {
     if (overlay instanceof HTMLElement) {
-      overlay.style.display = 'none';
+      overlay.style.display = "none";
     }
   });
 
   // Stop any framer-motion animations by removing elements with data-framer-motion attributes
-  document.querySelectorAll('[data-framer-exit-animation], [data-framer-motion]').forEach(el => {
-    if (el instanceof HTMLElement) {
-      el.style.display = 'none';
-    }
-  });
+  document
+    .querySelectorAll("[data-framer-exit-animation], [data-framer-motion]")
+    .forEach((el) => {
+      if (el instanceof HTMLElement) {
+        el.style.display = "none";
+      }
+    });
 };
 
 export const VictoryModal: React.FC<VictoryModalProps> = ({
@@ -98,7 +107,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   playerHealth = 0,
   opponentHealth = 0,
   earlyEnd = false,
-  soundEffectsVolume = 0.5
+  soundEffectsVolume = 0.5,
 }) => {
   const [rewardsClaimed, setRewardsClaimed] = useState(false);
   const victorySoundRef = useRef<HTMLAudioElement | null>(null);
@@ -123,10 +132,14 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
       try {
         // Get user's current win streak
         const { data: winStreakData } = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/win-streak/${currentUserId}`
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/battle/win-streak/${currentUserId}`
         );
 
-        const userWinStreak = winStreakData.success ? winStreakData.data.win_streak : 0;
+        const userWinStreak = winStreakData.success
+          ? winStreakData.data.win_streak
+          : 0;
 
         // Calculate rewards based on whether the game ended early
         let rewards;
@@ -150,26 +163,28 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
             opponentHealth,
             userWinStreak,
             xp: rewards.xp,
-            coins: rewards.coins
+            coins: rewards.coins,
           });
         }
 
         // Call the API to claim rewards
         const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/claim-rewards`,
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/battle/claim-rewards`,
           {
             firebase_uid: currentUserId,
             xp_earned: rewards.xp,
             coins_earned: rewards.coins,
             session_uuid: sessionUuid,
-            early_end: earlyEnd
+            early_end: earlyEnd,
           }
         );
 
-        console.log('Battle rewards claimed:', response.data);
+        console.log("Battle rewards claimed:", response.data);
         setRewardsClaimed(true);
       } catch (error) {
-        console.error('Error claiming battle rewards:', error);
+        console.error("Error claiming battle rewards:", error);
       }
     };
 
@@ -177,7 +192,16 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
     if (isOpen) {
       claimBattleRewards();
     }
-  }, [isOpen, currentUserId, sessionUuid, isVictory, playerHealth, opponentHealth, rewardsClaimed, earlyEnd]);
+  }, [
+    isOpen,
+    currentUserId,
+    sessionUuid,
+    isVictory,
+    playerHealth,
+    opponentHealth,
+    rewardsClaimed,
+    earlyEnd,
+  ]);
 
   // Effect to play the appropriate sound effect when modal opens
   useEffect(() => {
@@ -186,7 +210,9 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
       stopAllGameEffects();
 
       // Directly stop the PvP battle background music element if it exists
-      const pvpBackgroundMusic = document.getElementById('pvp-background-music') as HTMLAudioElement;
+      const pvpBackgroundMusic = document.getElementById(
+        "pvp-background-music"
+      ) as HTMLAudioElement;
       if (pvpBackgroundMusic) {
         pvpBackgroundMusic.pause();
         pvpBackgroundMusic.currentTime = 0;
@@ -197,17 +223,17 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
         if (victorySoundRef.current) {
           victorySoundRef.current.volume = soundEffectsVolume;
           victorySoundRef.current.currentTime = 0;
-          victorySoundRef.current.play().catch(err =>
-            console.error("Error playing victory sound:", err)
-          );
+          victorySoundRef.current
+            .play()
+            .catch((err) => console.error("Error playing victory sound:", err));
         }
       } else {
         if (defeatSoundRef.current) {
           defeatSoundRef.current.volume = soundEffectsVolume;
           defeatSoundRef.current.currentTime = 0;
-          defeatSoundRef.current.play().catch(err =>
-            console.error("Error playing defeat sound:", err)
-          );
+          defeatSoundRef.current
+            .play()
+            .catch((err) => console.error("Error playing defeat sound:", err));
         }
       }
     }
@@ -229,11 +255,19 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
         preload="auto"
       />
 
-      <div className={`w-[400px] rounded-2xl p-8 flex flex-col items-center ${isVictory ? 'bg-[#1a1f2e] border-2 border-purple-500/20' : 'bg-[#1a1f2e] border-2 border-red-500/20'
-        }`}>
+      <div
+        className={`w-[400px] rounded-2xl p-8 flex flex-col items-center ${
+          isVictory
+            ? "bg-[#120F1B] border-2 border-purple-500/20"
+            : "bg-[#120F1B] border-2 border-red-500/20"
+        }`}
+      >
         {/* Icon */}
-        <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${isVictory ? 'bg-purple-900/50' : 'bg-red-900/50'
-          }`}>
+        <div
+          className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
+            isVictory ? "bg-purple-900/50" : "bg-red-900/50"
+          }`}
+        >
           {isVictory ? (
             <EmojiEvents className="w-8 h-8 text-purple-400" />
           ) : (
@@ -242,23 +276,31 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
         </div>
 
         {/* Title */}
-        <h2 className={`text-3xl font-bold mb-2 ${isVictory ? 'text-purple-400' : 'text-red-400'
-          }`}>
-          {isVictory ? 'Victory!' : 'Defeat!'}
+        <h2
+          className={`text-3xl font-bold mb-2 ${
+            isVictory ? "text-purple-400" : "text-red-400"
+          }`}
+        >
+          {isVictory ? "Victory!" : "Defeat!"}
         </h2>
 
         {/* Message */}
         <p className="text-white text-lg mb-8">
-          {isVictory ? (earlyEnd ? 'Opponent left the game. You won!' : 'You Won!') : 'You Lost!'}
+          {isVictory
+            ? earlyEnd
+              ? "Opponent left the game. You won!"
+              : "You Won!"
+            : "You Lost!"}
         </p>
 
         {/* Buttons */}
         <button
           onClick={onViewReport}
-          className={`w-full py-3 rounded-lg mb-3 flex items-center justify-center gap-2 ${isVictory
-            ? 'bg-purple-600 hover:bg-purple-700 text-white'
-            : 'bg-red-600 hover:bg-red-700 text-white'
-            }`}
+          className={`w-full py-3 rounded-lg mb-3 flex items-center justify-center gap-2 ${
+            isVictory
+              ? "bg-purple-600 hover:bg-purple-700 text-white"
+              : "bg-red-600 hover:bg-red-700 text-white"
+          }`}
         >
           View Session Report
         </button>
@@ -284,7 +326,7 @@ export const EarlyLeaveModal: React.FC<EarlyLeaveModalProps> = ({
   currentUserId,
   sessionUuid,
   opponentName,
-  soundEffectsVolume = 0.5
+  soundEffectsVolume = 0.5,
 }) => {
   const [rewardsClaimed, setRewardsClaimed] = useState(false);
   const leftGameSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -312,20 +354,22 @@ export const EarlyLeaveModal: React.FC<EarlyLeaveModalProps> = ({
 
         // Call the API to claim rewards
         const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/claim-rewards`,
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/battle/claim-rewards`,
           {
             firebase_uid: currentUserId,
             xp_earned: rewards.xp,
             coins_earned: rewards.coins,
             session_uuid: sessionUuid,
-            early_end: true
+            early_end: true,
           }
         );
 
-        console.log('Early leave rewards claimed:', response.data);
+        console.log("Early leave rewards claimed:", response.data);
         setRewardsClaimed(true);
       } catch (error) {
-        console.error('Error claiming early leave rewards:', error);
+        console.error("Error claiming early leave rewards:", error);
       }
     };
 
@@ -342,7 +386,9 @@ export const EarlyLeaveModal: React.FC<EarlyLeaveModalProps> = ({
       stopAllGameEffects();
 
       // Directly stop the PvP battle background music element if it exists
-      const pvpBackgroundMusic = document.getElementById('pvp-background-music') as HTMLAudioElement;
+      const pvpBackgroundMusic = document.getElementById(
+        "pvp-background-music"
+      ) as HTMLAudioElement;
       if (pvpBackgroundMusic) {
         pvpBackgroundMusic.pause();
         pvpBackgroundMusic.currentTime = 0;
@@ -352,9 +398,9 @@ export const EarlyLeaveModal: React.FC<EarlyLeaveModalProps> = ({
       if (leftGameSoundRef.current) {
         leftGameSoundRef.current.volume = soundEffectsVolume;
         leftGameSoundRef.current.currentTime = 0;
-        leftGameSoundRef.current.play().catch(err =>
-          console.error("Error playing left game sound:", err)
-        );
+        leftGameSoundRef.current
+          .play()
+          .catch((err) => console.error("Error playing left game sound:", err));
       }
     }
   }, [isOpen, soundEffectsVolume]);
@@ -370,7 +416,7 @@ export const EarlyLeaveModal: React.FC<EarlyLeaveModalProps> = ({
         preload="auto"
       />
 
-      <div className="w-[400px] rounded-2xl p-8 flex flex-col items-center bg-[#1a1f2e] border-2 border-blue-500/20">
+      <div className="w-[400px] rounded-2xl p-8 flex flex-col items-center bg-[#120F1B] border-2 border-blue-500/20">
         {/* Icon */}
         <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-blue-900/50">
           <ExitToApp className="w-8 h-8 text-blue-400" />
@@ -419,7 +465,7 @@ export const TieGameModal: React.FC<TieGameModalProps> = ({
   currentUserId,
   sessionUuid,
   playerHealth = 0,
-  soundEffectsVolume = 0.5
+  soundEffectsVolume = 0.5,
 }) => {
   const [rewardsClaimed, setRewardsClaimed] = useState(false);
   const tieSoundRef = useRef<HTMLAudioElement | null>(null);
@@ -444,27 +490,29 @@ export const TieGameModal: React.FC<TieGameModalProps> = ({
         // For tie games, give a moderate reward (less than winning, more than losing)
         const tieRewards = {
           xp: 30,
-          coins: 2
+          coins: 2,
         };
 
         console.log("Tie game rewards:", tieRewards);
 
         // Call the API to claim rewards
         const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/claim-rewards`,
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/battle/claim-rewards`,
           {
             firebase_uid: currentUserId,
             xp_earned: tieRewards.xp,
             coins_earned: tieRewards.coins,
             session_uuid: sessionUuid,
-            tie_game: true
+            tie_game: true,
           }
         );
 
-        console.log('Tie game rewards claimed:', response.data);
+        console.log("Tie game rewards claimed:", response.data);
         setRewardsClaimed(true);
       } catch (error) {
-        console.error('Error claiming tie game rewards:', error);
+        console.error("Error claiming tie game rewards:", error);
       }
     };
 
@@ -481,7 +529,9 @@ export const TieGameModal: React.FC<TieGameModalProps> = ({
       stopAllGameEffects();
 
       // Directly stop the PvP battle background music element if it exists
-      const pvpBackgroundMusic = document.getElementById('pvp-background-music') as HTMLAudioElement;
+      const pvpBackgroundMusic = document.getElementById(
+        "pvp-background-music"
+      ) as HTMLAudioElement;
       if (pvpBackgroundMusic) {
         pvpBackgroundMusic.pause();
         pvpBackgroundMusic.currentTime = 0;
@@ -491,9 +541,9 @@ export const TieGameModal: React.FC<TieGameModalProps> = ({
       if (tieSoundRef.current) {
         tieSoundRef.current.volume = soundEffectsVolume;
         tieSoundRef.current.currentTime = 0;
-        tieSoundRef.current.play().catch(err =>
-          console.error("Error playing tie game sound:", err)
-        );
+        tieSoundRef.current
+          .play()
+          .catch((err) => console.error("Error playing tie game sound:", err));
       }
     }
   }, [isOpen, soundEffectsVolume]);
@@ -509,16 +559,14 @@ export const TieGameModal: React.FC<TieGameModalProps> = ({
         preload="auto"
       />
 
-      <div className="w-[400px] rounded-2xl p-8 flex flex-col items-center bg-[#1a1f2e] border-2 border-yellow-500/20">
+      <div className="w-[400px] rounded-2xl p-8 flex flex-col items-center bg-[#120F1B] border-2 border-yellow-500/20">
         {/* Icon */}
         <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4 bg-yellow-900/50">
           <Scale className="w-8 h-8 text-yellow-400" />
         </div>
 
         {/* Title */}
-        <h2 className="text-3xl font-bold mb-2 text-yellow-400">
-          It's a Tie!
-        </h2>
+        <h2 className="text-3xl font-bold mb-2 text-yellow-400">It's a Tie!</h2>
 
         {/* Message */}
         <p className="text-white text-lg mb-4">

@@ -29,7 +29,11 @@ import CardSelection from "./components/CardSelection";
 // Import consolidated components
 import { useBattle } from "./hooks/useBattle";
 import { WaitingOverlay, LoadingOverlay } from "./overlays/BattleOverlays";
-import { VictoryModal, EarlyLeaveModal, TieGameModal } from "./modals/BattleModals";
+import {
+  VictoryModal,
+  EarlyLeaveModal,
+  TieGameModal,
+} from "./modals/BattleModals";
 import CharacterAnimationManager from "./components/CharacterAnimationManager";
 import GameStartAnimation from "./components/GameStartAnimation";
 import GuestWaitingForRandomization from "./components/GuestWaitingForRandomization";
@@ -188,7 +192,9 @@ export default function PvpBattle() {
   const quickDrawEnemySoundRef = useRef<HTMLAudioElement | null>(null);
 
   // Time Manipulation sounds
-  const timeManipulationActivateSoundRef = useRef<HTMLAudioElement | null>(null);
+  const timeManipulationActivateSoundRef = useRef<HTMLAudioElement | null>(
+    null
+  );
   const timeManipulationEffectSoundRef = useRef<HTMLAudioElement | null>(null);
 
   // Game state
@@ -230,8 +236,11 @@ export default function PvpBattle() {
     useState(false);
 
   // Use these state variables for tracking QuickDraw effects
-  const [showOpponentQuickDrawMessage, setShowOpponentQuickDrawMessage] = useState(false);
-  const [currentQuickDrawEffectId, setCurrentQuickDrawEffectId] = useState<string | null>(null);
+  const [showOpponentQuickDrawMessage, setShowOpponentQuickDrawMessage] =
+    useState(false);
+  const [currentQuickDrawEffectId, setCurrentQuickDrawEffectId] = useState<
+    string | null
+  >(null);
 
   // Add state for visual Quick Draw effect animation
   const [showQuickDrawEffect, setShowQuickDrawEffect] = useState(false);
@@ -334,17 +343,27 @@ export default function PvpBattle() {
     useState<boolean>(false);
 
   // Add state for Time Manipulation effect display
-  const [showTimeManipulationEffect, setShowTimeManipulationEffect] = useState(false);
+  const [showTimeManipulationEffect, setShowTimeManipulationEffect] =
+    useState(false);
 
   // Add this state variable with the other state variables near the top of the component
-  const [hasShownOpponentQuickDrawEffect, setHasShownOpponentQuickDrawEffect] = useState(false);
+  const [hasShownOpponentQuickDrawEffect, setHasShownOpponentQuickDrawEffect] =
+    useState(false);
 
   // Add this state declaration at the top of the component with other state variables
-  const [processedQuickDrawEffects, setProcessedQuickDrawEffects] = useState<Set<string>>(new Set());
+  const [processedQuickDrawEffects, setProcessedQuickDrawEffects] = useState<
+    Set<string>
+  >(new Set());
 
   // Add this new state variable near the other QuickDraw state variables
-  const [showOpponentQuickDrawMessageMinimized, setShowOpponentQuickDrawMessageMinimized] = useState(false);
-  const [opponentQuickDrawMinimizedOpacity, setOpponentQuickDrawMinimizedOpacity] = useState(100);
+  const [
+    showOpponentQuickDrawMessageMinimized,
+    setShowOpponentQuickDrawMessageMinimized,
+  ] = useState(false);
+  const [
+    opponentQuickDrawMinimizedOpacity,
+    setOpponentQuickDrawMinimizedOpacity,
+  ] = useState(100);
 
   // Add a state for tracking the last time poison was applied
   const [lastPoisonApplication, setLastPoisonApplication] = useState(0);
@@ -491,7 +510,10 @@ export default function PvpBattle() {
 
     // Check for tie game first when health is equal
     if (playerHealth === opponentHealth) {
-      console.log("Tie game detected! Both players have equal health:", playerHealth);
+      console.log(
+        "Tie game detected! Both players have equal health:",
+        playerHealth
+      );
       setShowTieGameModal(true);
       setShowCards(false);
     }
@@ -538,7 +560,8 @@ export default function PvpBattle() {
         // Set the appropriate music file
         const musicFile = getMusicFileByDifficulty();
         console.log(
-          `Starting background music: ${musicFile} for difficulty: ${difficultyMode || "unknown"
+          `Starting background music: ${musicFile} for difficulty: ${
+            difficultyMode || "unknown"
           }`
         );
 
@@ -798,7 +821,8 @@ export default function PvpBattle() {
           // Continue with updating the battle round after animation
           try {
             const response = await axios.put(
-              `${import.meta.env.VITE_BACKEND_URL
+              `${
+                import.meta.env.VITE_BACKEND_URL
               }/api/gameplay/battle/update-round`,
               {
                 session_uuid: battleState?.session_uuid,
@@ -822,7 +846,8 @@ export default function PvpBattle() {
             if (!isQuickDrawUsed) {
               // Then update the session to switch turns
               const turnResponse = await axios.put(
-                `${import.meta.env.VITE_BACKEND_URL
+                `${
+                  import.meta.env.VITE_BACKEND_URL
                 }/api/gameplay/battle/update-session`,
                 {
                   lobby_code: lobbyCode,
@@ -839,7 +864,9 @@ export default function PvpBattle() {
                 );
               }
             } else {
-              console.log("Quick Draw card used - keeping turn with current player");
+              console.log(
+                "Quick Draw card used - keeping turn with current player"
+              );
             }
 
             if (response.data.success) {
@@ -858,7 +885,9 @@ export default function PvpBattle() {
 
                   // Generate a unique effect ID for this player's Quick Draw with timestamp
                   const timestamp = Date.now().toString();
-                  const effectId = `player-quick-draw-${battleState?.session_uuid || 'unknown'}`;
+                  const effectId = `player-quick-draw-${
+                    battleState?.session_uuid || "unknown"
+                  }`;
 
                   // Store current effect ID
                   setCurrentQuickDrawEffectId(effectId);
@@ -869,10 +898,16 @@ export default function PvpBattle() {
                   // Play QuickDraw user sound effect
                   if (quickDrawUserSoundRef.current) {
                     quickDrawUserSoundRef.current.currentTime = 0;
-                    quickDrawUserSoundRef.current.volume = (soundEffectsVolume / 100) * (masterVolume / 100);
-                    quickDrawUserSoundRef.current.play().catch(err =>
-                      console.error("Error playing QuickDraw user sound:", err)
-                    );
+                    quickDrawUserSoundRef.current.volume =
+                      (soundEffectsVolume / 100) * (masterVolume / 100);
+                    quickDrawUserSoundRef.current
+                      .play()
+                      .catch((err) =>
+                        console.error(
+                          "Error playing QuickDraw user sound:",
+                          err
+                        )
+                      );
                   }
 
                   // Show the effect
@@ -888,11 +923,17 @@ export default function PvpBattle() {
 
                   // Play Time Manipulation activation sound
                   if (timeManipulationActivateSoundRef.current) {
-                    timeManipulationActivateSoundRef.current.volume = (soundEffectsVolume / 100) * (masterVolume / 100);
+                    timeManipulationActivateSoundRef.current.volume =
+                      (soundEffectsVolume / 100) * (masterVolume / 100);
                     timeManipulationActivateSoundRef.current.currentTime = 0;
-                    timeManipulationActivateSoundRef.current.play().catch(err =>
-                      console.error("Error playing time manipulation activation sound:", err)
-                    );
+                    timeManipulationActivateSoundRef.current
+                      .play()
+                      .catch((err) =>
+                        console.error(
+                          "Error playing time manipulation activation sound:",
+                          err
+                        )
+                      );
                   }
 
                   // Hide the effect after 3 seconds
@@ -905,16 +946,24 @@ export default function PvpBattle() {
                 ) {
                   // Create container for Answer Shield animation
                   const shieldEffectContainer = document.createElement("div");
-                  shieldEffectContainer.className = "fixed inset-0 z-[100] pointer-events-none flex items-center justify-center";
+                  shieldEffectContainer.className =
+                    "fixed inset-0 z-[100] pointer-events-none flex items-center justify-center";
 
                   // Play Answer Shield activation sound effect
                   if (answerShieldActivatedSoundRef.current) {
-                    const calculatedVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
-                    answerShieldActivatedSoundRef.current.volume = calculatedVolume;
+                    const calculatedVolume =
+                      (soundEffectsVolume / 100) * (masterVolume / 100);
+                    answerShieldActivatedSoundRef.current.volume =
+                      calculatedVolume;
                     answerShieldActivatedSoundRef.current.currentTime = 0;
-                    answerShieldActivatedSoundRef.current.play().catch(err =>
-                      console.error("Error playing Answer Shield activation sound:", err)
-                    );
+                    answerShieldActivatedSoundRef.current
+                      .play()
+                      .catch((err) =>
+                        console.error(
+                          "Error playing Answer Shield activation sound:",
+                          err
+                        )
+                      );
                   }
 
                   // Create advanced shield animation
@@ -981,19 +1030,28 @@ export default function PvpBattle() {
                   isCorrect
                 ) {
                   // Create more visually appealing regeneration animation
-                  const regenerationEffectContainer = document.createElement("div");
-                  regenerationEffectContainer.className = "fixed inset-0 z-[100] pointer-events-none flex items-center justify-center";
+                  const regenerationEffectContainer =
+                    document.createElement("div");
+                  regenerationEffectContainer.className =
+                    "fixed inset-0 z-[100] pointer-events-none flex items-center justify-center";
 
                   // Play heal regeneration sound effect
                   if (healRegenSoundRef.current) {
                     healRegenSoundRef.current.currentTime = 0;
-                    healRegenSoundRef.current.volume = (soundEffectsVolume / 100) * (masterVolume / 100);
-                    healRegenSoundRef.current.play().catch(err =>
-                      console.error("Error playing heal regeneration sound:", err)
-                    );
+                    healRegenSoundRef.current.volume =
+                      (soundEffectsVolume / 100) * (masterVolume / 100);
+                    healRegenSoundRef.current
+                      .play()
+                      .catch((err) =>
+                        console.error(
+                          "Error playing heal regeneration sound:",
+                          err
+                        )
+                      );
                   }
 
-                  const healthAmount = response.data.data.card_effect.health_amount || 10;
+                  const healthAmount =
+                    response.data.data.card_effect.health_amount || 10;
 
                   // Create more visually appealing regeneration animation
                   regenerationEffectContainer.innerHTML = `
@@ -1014,12 +1072,20 @@ export default function PvpBattle() {
                       
                       <!-- Minimal floating healing particles -->
                       <div class="fixed inset-0 overflow-hidden pointer-events-none">
-                        ${Array.from({ length: 10 }).map((_, i) => `
+                        ${Array.from({ length: 10 })
+                          .map(
+                            (_, i) => `
                           <div class="absolute text-2xl font-bold text-green-300/60 animate-float-up-slow" 
-                               style="left: ${10 + Math.random() * 80}%; bottom: -5%; animation-delay: ${Math.random() * 2}s; animation-duration: ${3 + Math.random() * 2}s;">
+                               style="left: ${
+                                 10 + Math.random() * 80
+                               }%; bottom: -5%; animation-delay: ${
+                              Math.random() * 2
+                            }s; animation-duration: ${3 + Math.random() * 2}s;">
                             <span class="drop-shadow-[0_0_3px_rgba(134,239,172,0.5)]">+</span>
                           </div>
-                        `).join('')}
+                        `
+                          )
+                          .join("")}
                       </div>
                     </div>
                   `;
@@ -1027,15 +1093,25 @@ export default function PvpBattle() {
                   // Play regeneration sound effect
                   if (regenerationSfxRef.current) {
                     console.log("Attempting to play regeneration sound effect");
-                    const calculatedVolume = (soundEffectsVolume / 100) * (masterVolume / 100);
+                    const calculatedVolume =
+                      (soundEffectsVolume / 100) * (masterVolume / 100);
                     regenerationSfxRef.current.volume = calculatedVolume;
-                    console.log("RegenerationSfx volume set to:", calculatedVolume);
+                    console.log(
+                      "RegenerationSfx volume set to:",
+                      calculatedVolume
+                    );
                     regenerationSfxRef.current.currentTime = 0;
-                    regenerationSfxRef.current.play().then(() => {
-                      console.log("RegenerationSfx playing successfully");
-                    }).catch(err => {
-                      console.error("Error playing regeneration sfx sound:", err);
-                    });
+                    regenerationSfxRef.current
+                      .play()
+                      .then(() => {
+                        console.log("RegenerationSfx playing successfully");
+                      })
+                      .catch((err) => {
+                        console.error(
+                          "Error playing regeneration sfx sound:",
+                          err
+                        );
+                      });
                   } else {
                     console.error("RegenerationSfx reference is null");
                   }
@@ -1056,7 +1132,9 @@ export default function PvpBattle() {
                   // Store effect data to track for opponent notification
                   try {
                     // Create a unique regeneration effect ID
-                    const regenerationEffectId = `regeneration-${battleState?.session_uuid}-${playerType}-${Date.now()}`;
+                    const regenerationEffectId = `regeneration-${
+                      battleState?.session_uuid
+                    }-${playerType}-${Date.now()}`;
                     const timestamp = Date.now();
 
                     // Only show notification if this specific effect hasn't been shown before
@@ -1064,7 +1142,9 @@ export default function PvpBattle() {
                       // Mark this effect as shown
                       markEffectAsShown(regenerationEffectId, timestamp);
 
-                      console.log(`Marked regeneration effect as shown: ${regenerationEffectId}`);
+                      console.log(
+                        `Marked regeneration effect as shown: ${regenerationEffectId}`
+                      );
                     }
                   } catch (e) {
                     console.error("Error storing regeneration effect data:", e);
@@ -1072,7 +1152,8 @@ export default function PvpBattle() {
 
                   // Remove the animation after 3 seconds with fade out
                   setTimeout(() => {
-                    regenerationEffectContainer.style.transition = "opacity 0.8s";
+                    regenerationEffectContainer.style.transition =
+                      "opacity 0.8s";
                     regenerationEffectContainer.style.opacity = "0";
                     setTimeout(() => {
                       document.body.removeChild(regenerationEffectContainer);
@@ -1112,8 +1193,10 @@ export default function PvpBattle() {
                   isCorrect
                 ) {
                   // Create card locking effect for the player who used it
-                  const mindControlEffectContainer = document.createElement("div");
-                  mindControlEffectContainer.className = "fixed inset-0 z-[100] pointer-events-none flex items-center justify-center";
+                  const mindControlEffectContainer =
+                    document.createElement("div");
+                  mindControlEffectContainer.className =
+                    "fixed inset-0 z-[100] pointer-events-none flex items-center justify-center";
 
                   mindControlEffectContainer.innerHTML = `
                     <div class="relative w-full h-full flex items-center justify-center">
@@ -1136,10 +1219,19 @@ export default function PvpBattle() {
                         
                         <!-- Cards being locked - centered -->
                         <div class="flex items-center justify-center gap-3 mb-12">
-                          ${Array(3).fill(0).map((_, i) => `
+                          ${Array(3)
+                            .fill(0)
+                            .map(
+                              (_, i) => `
                             <div class="relative">
                               <!-- Card -->
-                              <div class="w-40 h-56 bg-gradient-to-b from-gray-800 to-gray-700 rounded-lg transform ${i === 0 ? 'rotate-[-5deg]' : i === 1 ? 'rotate-[0deg]' : 'rotate-[5deg]'} shadow-xl border border-gray-600">
+                              <div class="w-40 h-56 bg-gradient-to-b from-gray-800 to-gray-700 rounded-lg transform ${
+                                i === 0
+                                  ? "rotate-[-5deg]"
+                                  : i === 1
+                                  ? "rotate-[0deg]"
+                                  : "rotate-[5deg]"
+                              } shadow-xl border border-gray-600">
                     } shadow-xl border border-gray-600">
                                 <!-- Card content -->
                                 <div class="absolute inset-2 rounded bg-gray-700 flex flex-col items-center justify-center p-2">
@@ -1151,7 +1243,9 @@ export default function PvpBattle() {
                               </div>
                               
                               <!-- Lock overlay with animation -->
-                              <div class="absolute inset-0 bg-purple-900/70 rounded-lg flex items-center justify-center backdrop-blur-[2px] animate-fade-in" style="animation-delay: ${i * 0.2}s;">
+                              <div class="absolute inset-0 bg-purple-900/70 rounded-lg flex items-center justify-center backdrop-blur-[2px] animate-fade-in" style="animation-delay: ${
+                                i * 0.2
+                              }s;">
                                 <svg class="w-16 h-16 text-purple-200 animate-bounce-slow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                   <path d="M18 11H6C4.89543 11 4 11.8954 4 13V19C4 20.1046 4.89543 21 6 21H18C19.1046 21 20 20.1046 20 19V13C20 11.8954 19.1046 11 18 11Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                                   <path d="M7 11V7C7 5.67392 7.52678 4.40215 8.46447 3.46447C9.40215 2.52678 10.6739 2 12 2C13.3261 2 14.5979 2.52678 15.5355 3.46447C16.4732 4.40215 17 5.67392 17 7V11" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1162,7 +1256,9 @@ export default function PvpBattle() {
                               <!-- Purple energy outline -->
                               <div class="absolute inset-0 rounded-lg border-2 border-purple-500 animate-pulse-border"></div>
                             </div>
-                          `).join('')}
+                          `
+                            )
+                            .join("")}
                         </div>
                         
                         <!-- Animated mind control connection -->
@@ -1200,9 +1296,11 @@ export default function PvpBattle() {
                   `;
 
                   // Add CSS for the additional animations
-                  if (!document.getElementById('mind-control-player-animations')) {
-                    const styleElement = document.createElement('style');
-                    styleElement.id = 'mind-control-player-animations';
+                  if (
+                    !document.getElementById("mind-control-player-animations")
+                  ) {
+                    const styleElement = document.createElement("style");
+                    styleElement.id = "mind-control-player-animations";
                     styleElement.textContent = `
                       @keyframes pulse-border {
                         0%, 100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
@@ -1249,7 +1347,8 @@ export default function PvpBattle() {
 
                   // Remove the animation after 4 seconds with fade out
                   setTimeout(() => {
-                    mindControlEffectContainer.style.transition = "opacity 0.8s";
+                    mindControlEffectContainer.style.transition =
+                      "opacity 0.8s";
                     mindControlEffectContainer.style.opacity = "0";
                     setTimeout(() => {
                       document.body.removeChild(mindControlEffectContainer);
@@ -1293,7 +1392,8 @@ export default function PvpBattle() {
           try {
             // First update the round data
             const response = await axios.put(
-              `${import.meta.env.VITE_BACKEND_URL
+              `${
+                import.meta.env.VITE_BACKEND_URL
               }/api/gameplay/battle/update-round`,
               {
                 session_uuid: battleState?.session_uuid,
@@ -1323,7 +1423,8 @@ export default function PvpBattle() {
 
               // Then update the session to switch turns
               const turnResponse = await axios.put(
-                `${import.meta.env.VITE_BACKEND_URL
+                `${
+                  import.meta.env.VITE_BACKEND_URL
                 }/api/gameplay/battle/update-session`,
                 {
                   lobby_code: lobbyCode,
@@ -1387,7 +1488,8 @@ export default function PvpBattle() {
 
         // Send to the dedicated endpoint
         const response = await axios.put(
-          `${import.meta.env.VITE_BACKEND_URL
+          `${
+            import.meta.env.VITE_BACKEND_URL
           }/api/gameplay/battle/update-question-ids`,
           {
             session_uuid: battleState.session_uuid,
@@ -1504,11 +1606,14 @@ export default function PvpBattle() {
   useEffect(() => {
     // Check if opponent health increased (regeneration effect)
     if (lastHealthUpdate && opponentHealth > lastHealthUpdate.opponent) {
-      console.log("Opponent health increased, showing regeneration notification");
+      console.log(
+        "Opponent health increased, showing regeneration notification"
+      );
 
       // Create a sleek notification for opponent's regeneration
       const opponentRegenerationNotification = document.createElement("div");
-      opponentRegenerationNotification.className = "fixed bottom-5 right-5 z-50 pointer-events-none";
+      opponentRegenerationNotification.className =
+        "fixed bottom-5 right-5 z-50 pointer-events-none";
 
       // Calculate how much health was gained
       const healthGained = opponentHealth - lastHealthUpdate.opponent;
@@ -1536,10 +1641,16 @@ export default function PvpBattle() {
                   <div class="flex items-center">
                     <h3 class="text-sm font-bold text-green-300">Regeneration</h3>
                     <div class="ml-2 flex">
-                      ${Array.from({ length: 3 }).map((_, i) => `
+                      ${Array.from({ length: 3 })
+                        .map(
+                          (_, i) => `
                         <div class="text-base text-green-400 font-bold animate-float-up-mini" 
-                            style="animation-delay: ${i * 0.2}s; margin-right: -3px;">+</div>
-                      `).join('')}
+                            style="animation-delay: ${
+                              i * 0.2
+                            }s; margin-right: -3px;">+</div>
+                      `
+                        )
+                        .join("")}
                     </div>
                   </div>
                   <div class="flex shrink-0 ml-2">
@@ -1580,17 +1691,28 @@ export default function PvpBattle() {
       if (healRegenSoundRef.current) {
         healRegenSoundRef.current.currentTime = 0;
         // Play at lower volume for opponent effect
-        const lowerVolume = ((soundEffectsVolume / 100) * (masterVolume / 100)) * 0.5;
+        const lowerVolume =
+          (soundEffectsVolume / 100) * (masterVolume / 100) * 0.5;
         healRegenSoundRef.current.volume = lowerVolume;
-        healRegenSoundRef.current.play().catch(err =>
-          console.error("Error playing opponent heal regeneration sound:", err)
-        );
+        healRegenSoundRef.current
+          .play()
+          .catch((err) =>
+            console.error(
+              "Error playing opponent heal regeneration sound:",
+              err
+            )
+          );
       }
 
       // Remove the notification after animation completes
       setTimeout(() => {
-        if (opponentRegenerationNotification.firstChild instanceof HTMLElement) {
-          opponentRegenerationNotification.firstChild.classList.replace('animate-slide-in-right', 'animate-slide-out-right');
+        if (
+          opponentRegenerationNotification.firstChild instanceof HTMLElement
+        ) {
+          opponentRegenerationNotification.firstChild.classList.replace(
+            "animate-slide-in-right",
+            "animate-slide-out-right"
+          );
         }
         setTimeout(() => {
           document.body.removeChild(opponentRegenerationNotification);
@@ -1608,13 +1730,15 @@ export default function PvpBattle() {
       try {
         // Get battle scores
         const scoresResponse = await axios.get<BattleScoresResponse>(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${battleState.session_uuid
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/scores/${
+            battleState.session_uuid
           }`
         );
 
         // Get round data
         const roundResponse = await axios.get<BattleRoundResponse>(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${battleState.session_uuid
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${
+            battleState.session_uuid
           }`
         );
 
@@ -1624,16 +1748,20 @@ export default function PvpBattle() {
             // Get active effects for the current player
             const playerType = isHost ? "host" : "guest";
             const playerResponse = await axios.get(
-              `${import.meta.env.VITE_BACKEND_URL
-              }/api/gameplay/battle/card-effects/${battleState.session_uuid
+              `${
+                import.meta.env.VITE_BACKEND_URL
+              }/api/gameplay/battle/card-effects/${
+                battleState.session_uuid
               }/${playerType}`
             );
 
             // Get active effects for the opponent
             const opponentType = isHost ? "guest" : "host";
             const opponentResponse = await axios.get(
-              `${import.meta.env.VITE_BACKEND_URL
-              }/api/gameplay/battle/card-effects/${battleState.session_uuid
+              `${
+                import.meta.env.VITE_BACKEND_URL
+              }/api/gameplay/battle/card-effects/${
+                battleState.session_uuid
               }/${opponentType}`
             );
 
@@ -1731,8 +1859,14 @@ export default function PvpBattle() {
             setOpponentHealth(scores.guest_health);
 
             // Check for tie game conditions first
-            if (scores.host_health === scores.guest_health && (scores.host_health <= 0 || scores.guest_health <= 0)) {
-              console.log("Tie game detected in health polling. Both players have equal health:", scores.host_health);
+            if (
+              scores.host_health === scores.guest_health &&
+              (scores.host_health <= 0 || scores.guest_health <= 0)
+            ) {
+              console.log(
+                "Tie game detected in health polling. Both players have equal health:",
+                scores.host_health
+              );
               setShowTieGameModal(true);
               setShowCards(false); // Hide cards when game ends
               // Clear card selection data from sessionStorage
@@ -1775,8 +1909,14 @@ export default function PvpBattle() {
             setOpponentHealth(scores.host_health);
 
             // Check for tie game conditions first
-            if (scores.guest_health === scores.host_health && (scores.guest_health <= 0 || scores.host_health <= 0)) {
-              console.log("Tie game detected in health polling. Both players have equal health:", scores.guest_health);
+            if (
+              scores.guest_health === scores.host_health &&
+              (scores.guest_health <= 0 || scores.host_health <= 0)
+            ) {
+              console.log(
+                "Tie game detected in health polling. Both players have equal health:",
+                scores.guest_health
+              );
               setShowTieGameModal(true);
               setShowCards(false); // Hide cards when game ends
               // Clear card selection data from sessionStorage
@@ -1837,8 +1977,14 @@ export default function PvpBattle() {
   // Add a separate effect to ensure victory modal stays visible
   useEffect(() => {
     // Check for tie game when both players have the same health
-    if (playerHealth === opponentHealth && (playerHealth <= 0 || opponentHealth <= 0)) {
-      console.log("Tie game detected! Both players have equal health:", playerHealth);
+    if (
+      playerHealth === opponentHealth &&
+      (playerHealth <= 0 || opponentHealth <= 0)
+    ) {
+      console.log(
+        "Tie game detected! Both players have equal health:",
+        playerHealth
+      );
       setShowTieGameModal(true);
       setShowCards(false);
 
@@ -1873,7 +2019,8 @@ export default function PvpBattle() {
       try {
         // Get the latest session state
         const { data } = await axios.get<BattleSessionResponse>(
-          `${import.meta.env.VITE_BACKEND_URL
+          `${
+            import.meta.env.VITE_BACKEND_URL
           }/api/gameplay/battle/session-state/${lobbyCode}`
         );
 
@@ -1904,40 +2051,52 @@ export default function PvpBattle() {
 
           // Check for opponent Quick Draw card
           try {
-            const roundResponse = await axios.get<{ success: boolean, data: any }>(
-              `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${sessionData.session_uuid}`
+            const roundResponse = await axios.get<{
+              success: boolean;
+              data: any;
+            }>(
+              `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${
+                sessionData.session_uuid
+              }`
             );
 
             if (roundResponse.data.success && roundResponse.data.data) {
               const roundData = roundResponse.data.data;
 
               // Check if opponent used Quick Draw card
-              const opponentType = isHost ? 'guest' : 'host';
-              const opponentCardEffect = roundData[`${opponentType}_card_effect`];
+              const opponentType = isHost ? "guest" : "host";
+              const opponentCardEffect =
+                roundData[`${opponentType}_card_effect`];
               const opponentCard = roundData[`${opponentType}_card`];
 
               if (
-                opponentCard === 'normal-2' &&
+                opponentCard === "normal-2" &&
                 opponentCardEffect &&
-                typeof opponentCardEffect === 'string' &&
+                typeof opponentCardEffect === "string" &&
                 !isCurrentPlayerTurn // Only show if it's not my turn (opponent used it)
               ) {
                 try {
                   const parsedEffect = JSON.parse(opponentCardEffect);
                   if (
                     parsedEffect &&
-                    parsedEffect.type === 'normal-2' &&
-                    parsedEffect.effect === 'double_turn'
+                    parsedEffect.type === "normal-2" &&
+                    parsedEffect.effect === "double_turn"
                   ) {
                     // Get the applied timestamp - this is crucial for distinguishing different uses
-                    const appliedTimestamp = parsedEffect.applied_at || Date.now().toString();
+                    const appliedTimestamp =
+                      parsedEffect.applied_at || Date.now().toString();
 
                     // Create a unique effect ID for this effect - including sessionID and player
                     const effectId = `qd-${sessionData.session_uuid}-${opponentType}`;
 
                     // Check if this specific effect use has been shown before
-                    if (!hasEffectBeenShown(effectId, appliedTimestamp) && !showOpponentQuickDrawMessage) {
-                      console.log(`Showing new QuickDraw effect: ${effectId} at ${appliedTimestamp}`);
+                    if (
+                      !hasEffectBeenShown(effectId, appliedTimestamp) &&
+                      !showOpponentQuickDrawMessage
+                    ) {
+                      console.log(
+                        `Showing new QuickDraw effect: ${effectId} at ${appliedTimestamp}`
+                      );
 
                       // Mark this specific effect use as shown immediately
                       markEffectAsShown(effectId, appliedTimestamp);
@@ -1945,10 +2104,16 @@ export default function PvpBattle() {
                       // Play opponent QuickDraw sound effect
                       if (quickDrawEnemySoundRef.current) {
                         quickDrawEnemySoundRef.current.currentTime = 0;
-                        quickDrawEnemySoundRef.current.volume = (soundEffectsVolume / 100) * (masterVolume / 100);
-                        quickDrawEnemySoundRef.current.play().catch(err =>
-                          console.error("Error playing QuickDraw enemy sound:", err)
-                        );
+                        quickDrawEnemySoundRef.current.volume =
+                          (soundEffectsVolume / 100) * (masterVolume / 100);
+                        quickDrawEnemySoundRef.current
+                          .play()
+                          .catch((err) =>
+                            console.error(
+                              "Error playing QuickDraw enemy sound:",
+                              err
+                            )
+                          );
                       }
 
                       // Show the visual effect centered
@@ -1965,20 +2130,30 @@ export default function PvpBattle() {
                           setOpponentQuickDrawMinimizedOpacity(0);
                         }, 2000);
                       }, 2000);
-                    } else if (showOpponentQuickDrawMessageMinimized && hasEffectBeenShown(effectId, appliedTimestamp)) {
+                    } else if (
+                      showOpponentQuickDrawMessageMinimized &&
+                      hasEffectBeenShown(effectId, appliedTimestamp)
+                    ) {
                       // If the effect is already minimized and we poll again, keep it visible
-                      console.log(`QuickDraw effect already showing minimized: ${effectId} at ${appliedTimestamp}`);
+                      console.log(
+                        `QuickDraw effect already showing minimized: ${effectId} at ${appliedTimestamp}`
+                      );
                     } else {
-                      console.log(`Skipping already shown QuickDraw effect: ${effectId} at ${appliedTimestamp}`);
+                      console.log(
+                        `Skipping already shown QuickDraw effect: ${effectId} at ${appliedTimestamp}`
+                      );
                     }
                   }
                 } catch (e) {
-                  console.error('Error parsing opponent card effect:', e);
+                  console.error("Error parsing opponent card effect:", e);
                 }
               }
             }
           } catch (error) {
-            console.error('Error fetching round data for Quick Draw check:', error);
+            console.error(
+              "Error fetching round data for Quick Draw check:",
+              error
+            );
           }
 
           // If turn has changed
@@ -1986,8 +2161,12 @@ export default function PvpBattle() {
             console.log(`Turn changed: ${isMyTurn} → ${isCurrentPlayerTurn}`);
 
             // If it's now the player's turn, QuickDraw effect has ended, hide notifications
-            if (isCurrentPlayerTurn && (showOpponentQuickDrawMessage || showOpponentQuickDrawMessageMinimized)) {
-              console.log('Turn changed to player - hiding QuickDraw effect');
+            if (
+              isCurrentPlayerTurn &&
+              (showOpponentQuickDrawMessage ||
+                showOpponentQuickDrawMessageMinimized)
+            ) {
+              console.log("Turn changed to player - hiding QuickDraw effect");
               setShowOpponentQuickDrawMessage(false);
               setShowOpponentQuickDrawMessageMinimized(false);
             }
@@ -2036,7 +2215,7 @@ export default function PvpBattle() {
     processedQuickDrawEffects,
     currentQuickDrawEffectId,
     showOpponentQuickDrawMessage,
-    showOpponentQuickDrawMessageMinimized
+    showOpponentQuickDrawMessageMinimized,
   ]);
 
   // Timer effect
@@ -2127,15 +2306,15 @@ export default function PvpBattle() {
           ? hostId
           : guestId
         : isWinner
-          ? guestId
-          : hostId;
+        ? guestId
+        : hostId;
       const loserId = isHost
         ? isWinner
           ? guestId
           : hostId
         : isWinner
-          ? hostId
-          : guestId;
+        ? hostId
+        : guestId;
 
       // NEW: Check if loser has an active Fortune Coin
       let loserHasActiveFortuneCoin = false;
@@ -2143,7 +2322,8 @@ export default function PvpBattle() {
 
       try {
         const fortuneCoinResponse = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL
+          `${
+            import.meta.env.VITE_BACKEND_URL
           }/api/shop/user-active-items/${loserId}/ITEM004FC`
         );
 
@@ -2210,8 +2390,8 @@ export default function PvpBattle() {
             ? updatedWinStreak
             : 0
           : !isWinner
-            ? updatedWinStreak
-            : 0,
+          ? updatedWinStreak
+          : 0,
         false, // Premium status
         hostMultiplier, // Apply host's reward multiplier
         "host" // Specify player role
@@ -2226,8 +2406,8 @@ export default function PvpBattle() {
             ? updatedWinStreak
             : 0
           : !isWinner
-            ? updatedWinStreak
-            : 0,
+          ? updatedWinStreak
+          : 0,
         false, // Premium status
         guestMultiplier, // Apply guest's reward multiplier
         "guest" // Specify player role
@@ -2272,7 +2452,8 @@ export default function PvpBattle() {
           };
 
           const { data } = await axios.post<SessionReportResponse>(
-            `${import.meta.env.VITE_BACKEND_URL
+            `${
+              import.meta.env.VITE_BACKEND_URL
             }/api/gameplay/battle/save-session-report`,
             sessionReportPayload
           );
@@ -2308,12 +2489,8 @@ export default function PvpBattle() {
           hostId,
           guestId,
           isHost,
-          earnedXP: isHost
-            ? hostRewards.xp
-            : guestRewards.xp,
-          earnedCoins: isHost
-            ? hostRewards.coins
-            : guestRewards.coins,
+          earnedXP: isHost ? hostRewards.xp : guestRewards.xp,
+          earnedCoins: isHost ? hostRewards.coins : guestRewards.coins,
         },
       });
       console.log("Host Rewards:", hostRewards);
@@ -2355,7 +2532,8 @@ export default function PvpBattle() {
 
       try {
         const { data } = await axios.get<BattleSessionResponse>(
-          `${import.meta.env.VITE_BACKEND_URL
+          `${
+            import.meta.env.VITE_BACKEND_URL
           }/api/gameplay/battle/session-with-material/${lobbyCode}`
         );
 
@@ -2375,7 +2553,8 @@ export default function PvpBattle() {
             try {
               const { data: studyMaterialData } =
                 await axios.get<StudyMaterialInfoResponse>(
-                  `${import.meta.env.VITE_BACKEND_URL
+                  `${
+                    import.meta.env.VITE_BACKEND_URL
                   }/api/study-material/info/${data.data.study_material_id}`
                 );
 
@@ -2436,7 +2615,8 @@ export default function PvpBattle() {
           dispatchQuestionGen({ type: "START_GENERATION" });
 
           const { data } = await axios.post<GenerateQuestionsResponse>(
-            `${import.meta.env.VITE_BACKEND_URL
+            `${
+              import.meta.env.VITE_BACKEND_URL
             }/api/gameplay/battle/generate-questions`,
             {
               session_uuid: battleState.session_uuid,
@@ -2543,7 +2723,8 @@ export default function PvpBattle() {
       const fetchRoundData = async () => {
         try {
           const response = await axios.get<BattleRoundResponse>(
-            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${battleState.session_uuid
+            `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/round/${
+              battleState.session_uuid
             }`
           );
 
@@ -2559,12 +2740,20 @@ export default function PvpBattle() {
           });
 
           // Check if we've reached or exceeded the total questions
-          if (questionCountFromDB >= totalItems) {
-            console.log("Question limit reached, ending game");
+          // Changed to exactly match the total number of questions (10)
+          if (questionCountFromDB >= totalItems && questionCountFromDB > 9) {
+            console.log("Question limit reached, ending game", {
+              questionCountFromDB,
+              totalItems,
+              hardcodedMinimum: 10,
+            });
 
             // Check for tie game first when health is equal
             if (playerHealth === opponentHealth) {
-              console.log("Tie game detected at question limit! Both players have equal health:", playerHealth);
+              console.log(
+                "Tie game detected at question limit! Both players have equal health:",
+                playerHealth
+              );
               setShowTieGameModal(true);
               setShowCards(false);
             }
@@ -2834,79 +3023,98 @@ export default function PvpBattle() {
   }, []);
 
   // Function to check if a QuickDraw effect has already been shown
-  const hasEffectBeenShown = (effectId: string, appliedAt: number | string): boolean => {
+  const hasEffectBeenShown = (
+    effectId: string,
+    appliedAt: number | string
+  ): boolean => {
     try {
       // Get shown effects from sessionStorage
-      const shownEffects = sessionStorage.getItem('shown_quick_draw_effects');
+      const shownEffects = sessionStorage.getItem("shown_quick_draw_effects");
       if (shownEffects) {
-        const parsedEffects = JSON.parse(shownEffects) as { id: string, timestamp: number | string }[];
+        const parsedEffects = JSON.parse(shownEffects) as {
+          id: string;
+          timestamp: number | string;
+        }[];
 
         // Check if we have this exact effect with same timestamp
-        return parsedEffects.some(effect =>
-          effect.id === effectId && effect.timestamp === appliedAt
+        return parsedEffects.some(
+          (effect) => effect.id === effectId && effect.timestamp === appliedAt
         );
       }
       return false;
     } catch (e) {
-      console.error('Error checking if effect has been shown:', e);
+      console.error("Error checking if effect has been shown:", e);
       return false;
     }
   };
 
   // Function to mark a QuickDraw effect as already shown
-  const markEffectAsShown = (effectId: string, appliedAt: number | string): void => {
+  const markEffectAsShown = (
+    effectId: string,
+    appliedAt: number | string
+  ): void => {
     try {
       // Get current shown effects
-      const shownEffects = sessionStorage.getItem('shown_quick_draw_effects');
-      let parsedEffects: { id: string, timestamp: number | string }[] = [];
+      const shownEffects = sessionStorage.getItem("shown_quick_draw_effects");
+      let parsedEffects: { id: string; timestamp: number | string }[] = [];
 
       if (shownEffects) {
         parsedEffects = JSON.parse(shownEffects);
       }
 
       // Add current effect ID with timestamp if not already in the list
-      const exists = parsedEffects.some(effect =>
-        effect.id === effectId && effect.timestamp === appliedAt
+      const exists = parsedEffects.some(
+        (effect) => effect.id === effectId && effect.timestamp === appliedAt
       );
 
       if (!exists) {
         parsedEffects.push({
           id: effectId,
-          timestamp: appliedAt
+          timestamp: appliedAt,
         });
-        sessionStorage.setItem('shown_quick_draw_effects', JSON.stringify(parsedEffects));
+        sessionStorage.setItem(
+          "shown_quick_draw_effects",
+          JSON.stringify(parsedEffects)
+        );
       }
     } catch (e) {
-      console.error('Error marking effect as shown:', e);
+      console.error("Error marking effect as shown:", e);
     }
   };
 
   // Add this useEffect to initialize the sessionStorage format if needed
   useEffect(() => {
     // Initialize the effects storage with the new format if it doesn't exist
-    const shownEffects = sessionStorage.getItem('shown_quick_draw_effects');
+    const shownEffects = sessionStorage.getItem("shown_quick_draw_effects");
 
     if (!shownEffects) {
       // Create empty array with the new format
-      sessionStorage.setItem('shown_quick_draw_effects', JSON.stringify([]));
+      sessionStorage.setItem("shown_quick_draw_effects", JSON.stringify([]));
     } else {
       try {
         // Check if we need to migrate from old format (array of strings)
         const parsed = JSON.parse(shownEffects);
 
-        if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === 'string') {
+        if (
+          Array.isArray(parsed) &&
+          parsed.length > 0 &&
+          typeof parsed[0] === "string"
+        ) {
           // Old format detected, convert to new format
           const newFormat = parsed.map((id: string) => ({
             id,
-            timestamp: 'migrated'
+            timestamp: "migrated",
           }));
-          sessionStorage.setItem('shown_quick_draw_effects', JSON.stringify(newFormat));
-          console.log('Migrated QuickDraw effects to new format', newFormat);
+          sessionStorage.setItem(
+            "shown_quick_draw_effects",
+            JSON.stringify(newFormat)
+          );
+          console.log("Migrated QuickDraw effects to new format", newFormat);
         }
       } catch (e) {
-        console.error('Error checking QuickDraw effects format:', e);
+        console.error("Error checking QuickDraw effects format:", e);
         // Reset if there's an error
-        sessionStorage.setItem('shown_quick_draw_effects', JSON.stringify([]));
+        sessionStorage.setItem("shown_quick_draw_effects", JSON.stringify([]));
       }
     }
   }, []);
@@ -2918,13 +3126,15 @@ export default function PvpBattle() {
     // Initialize Mind Control sounds
     if (mindControlActivateSoundRef.current) {
       mindControlActivateSoundRef.current.src = "/GameBattle/MindControl.wav";
-      mindControlActivateSoundRef.current.volume = calculateActualVolume(soundEffectsVolume);
+      mindControlActivateSoundRef.current.volume =
+        calculateActualVolume(soundEffectsVolume);
       mindControlActivateSoundRef.current.preload = "auto";
     }
 
     if (mindControlEffectSoundRef.current) {
       mindControlEffectSoundRef.current.src = "/GameBattle/MindControl.wav";
-      mindControlEffectSoundRef.current.volume = calculateActualVolume(soundEffectsVolume);
+      mindControlEffectSoundRef.current.volume =
+        calculateActualVolume(soundEffectsVolume);
       mindControlEffectSoundRef.current.preload = "auto";
     }
 
@@ -2937,7 +3147,7 @@ export default function PvpBattle() {
     // Play Mind Control activation sound
     if (mindControlActivateSoundRef.current) {
       mindControlActivateSoundRef.current.currentTime = 0;
-      mindControlActivateSoundRef.current.play().catch(error => {
+      mindControlActivateSoundRef.current.play().catch((error) => {
         console.error("Error playing mind control activate sound:", error);
       });
     }
@@ -2947,7 +3157,7 @@ export default function PvpBattle() {
     // Play the ongoing effect sound when the mind control is active
     if (mindControlEffectSoundRef.current) {
       mindControlEffectSoundRef.current.currentTime = 0;
-      mindControlEffectSoundRef.current.play().catch(error => {
+      mindControlEffectSoundRef.current.play().catch((error) => {
         console.error("Error playing mind control effect sound:", error);
       });
     }
@@ -2982,7 +3192,9 @@ export default function PvpBattle() {
       try {
         // Get the current battle session
         const response = await axios.get<BattleSessionResponse>(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session/${battleState.session_uuid}`
+          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/session/${
+            battleState.session_uuid
+          }`
         );
 
         if (response.data.success) {
@@ -3012,8 +3224,10 @@ export default function PvpBattle() {
 
               // Increment turn counter on EVERY turn change (both players' turns count)
               // This makes the poison effect last for 3 total turns combined
-              setCurrentTurnNumber(prev => prev + 1);
-              console.log(`Turn number incremented to: ${currentTurnNumber + 1}`);
+              setCurrentTurnNumber((prev) => prev + 1);
+              console.log(
+                `Turn number incremented to: ${currentTurnNumber + 1}`
+              );
 
               // Play turn change sounds
               if (isCurrentPlayerTurn) {
@@ -3050,11 +3264,15 @@ export default function PvpBattle() {
 
       try {
         // Apply poison effects to the current player regardless of whose turn it is
-        const playerType = isHost ? 'host' : 'guest';
+        const playerType = isHost ? "host" : "guest";
 
         // First check if the player has an active poison effect (to keep UI visible)
         const effectsResponse = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/card-effects/${battleState.session_uuid}/${playerType}`
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/battle/card-effects/${
+            battleState.session_uuid
+          }/${playerType}`
         );
 
         // Check if player has active poison effects and update UI state
@@ -3068,27 +3286,44 @@ export default function PvpBattle() {
           setPoisonEffectActive(hasPlayerPoisonEffect);
 
           // Set player effects for reference (might be used in UI)
-          setPlayerEffects(playerEffects.filter(e => e.effect === "poison" && e.turns_remaining > 0));
+          setPlayerEffects(
+            playerEffects.filter(
+              (e) => e.effect === "poison" && e.turns_remaining > 0
+            )
+          );
 
           console.log(
-            `Player poison status: ${hasPlayerPoisonEffect ? "POISONED" : "NOT POISONED"}, ` +
-            `remaining turns: ${hasPlayerPoisonEffect && playerEffects.length > 0 ?
-              playerEffects.find(e => e.effect === "poison")?.turns_remaining : 'N/A'}`
+            `Player poison status: ${
+              hasPlayerPoisonEffect ? "POISONED" : "NOT POISONED"
+            }, ` +
+              `remaining turns: ${
+                hasPlayerPoisonEffect && playerEffects.length > 0
+                  ? playerEffects.find((e) => e.effect === "poison")
+                      ?.turns_remaining
+                  : "N/A"
+              }`
           );
         }
 
         // Now apply poison damage if there is any
         const response = await axios.post(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/apply-poison-effects`,
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/battle/apply-poison-effects`,
           {
             session_uuid: battleState.session_uuid,
             player_type: playerType,
-            current_turn_number: currentTurnNumber
+            current_turn_number: currentTurnNumber,
           }
         );
 
-        if (response.data.success && response.data.data.poison_damage_applied > 0) {
-          console.log(`Applied ${response.data.data.poison_damage_applied} poison damage on turn ${currentTurnNumber}`);
+        if (
+          response.data.success &&
+          response.data.data.poison_damage_applied > 0
+        ) {
+          console.log(
+            `Applied ${response.data.data.poison_damage_applied} poison damage on turn ${currentTurnNumber}`
+          );
 
           // Update local health state from the response data
           if (response.data.data.updated_scores) {
@@ -3102,8 +3337,9 @@ export default function PvpBattle() {
           // Show poison damage notification
           const damage = response.data.data.poison_damage_applied;
 
-          const messageElement = document.createElement('div');
-          messageElement.className = 'fixed inset-0 flex items-center justify-center z-50';
+          const messageElement = document.createElement("div");
+          messageElement.className =
+            "fixed inset-0 flex items-center justify-center z-50";
           messageElement.innerHTML = `
             <div class="bg-green-900/80 text-white py-4 px-8 rounded-lg text-xl font-bold shadow-lg border-2 border-green-500/50">
               Poison Effect: You took ${damage} poison damage!
@@ -3159,7 +3395,7 @@ export default function PvpBattle() {
           title: "Study Material",
           description: "Study Material Description",
           difficulty: difficultyMode || "Average",
-          category: "General"
+          category: "General",
         },
         highestStreak: battleStats.highestStreak,
         playerHealth,
@@ -3185,8 +3421,8 @@ export default function PvpBattle() {
           !gameStarted
             ? "PvP Mode | Duel Learn"
             : isMyTurn
-              ? "Your Turn | Duel Learn"
-              : `${opponentName}'s Turn | Duel Learn`
+            ? "Your Turn | Duel Learn"
+            : `${opponentName}'s Turn | Duel Learn`
         }
       />
       <div
@@ -3474,7 +3710,9 @@ export default function PvpBattle() {
                   playerName={playerName}
                   onCardSelected={handleCardSelected}
                   difficultyMode={difficultyMode}
-                  soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
+                  soundEffectsVolume={
+                    (soundEffectsVolume / 100) * (masterVolume / 100)
+                  }
                   answerShieldDamagedSoundRef={answerShieldDamagedSoundRef}
                   masterVolume={masterVolume}
                 />
@@ -3503,7 +3741,9 @@ export default function PvpBattle() {
             playerHealth={playerHealth}
             opponentHealth={opponentHealth}
             earlyEnd={earlyEnd}
-            soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
+            soundEffectsVolume={
+              (soundEffectsVolume / 100) * (masterVolume / 100)
+            }
           />
 
           {/* Early Leave Modal - Always show */}
@@ -3514,7 +3754,9 @@ export default function PvpBattle() {
             currentUserId={currentUserId}
             sessionUuid={battleState?.session_uuid}
             opponentName={opponentName || "Opponent"}
-            soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
+            soundEffectsVolume={
+              (soundEffectsVolume / 100) * (masterVolume / 100)
+            }
           />
 
           {/* Tie Game Modal - Always show */}
@@ -3525,7 +3767,9 @@ export default function PvpBattle() {
             currentUserId={currentUserId}
             sessionUuid={battleState?.session_uuid}
             playerHealth={playerHealth}
-            soundEffectsVolume={(soundEffectsVolume / 100) * (masterVolume / 100)}
+            soundEffectsVolume={
+              (soundEffectsVolume / 100) * (masterVolume / 100)
+            }
           />
 
           {/* Question Modal */}
@@ -3604,65 +3848,93 @@ export default function PvpBattle() {
           />
 
           {/* Poison effect indicator */}
-          {poisonEffectActive && shouldShowBattleInterface() && !shouldHideGameUI() && (
-            <div className="fixed inset-0 z-[100] pointer-events-none overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-t from-purple-900/10 to-fuchsia-800/10"></div>
+          {poisonEffectActive &&
+            shouldShowBattleInterface() &&
+            !shouldHideGameUI() && (
+              <div className="fixed inset-0 z-[100] pointer-events-none overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-t from-purple-900/10 to-fuchsia-800/10"></div>
 
-              {/* Floating particles */}
-              <div className="particle-container">
-                {Array.from({ length: 20 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className={`absolute w-2 h-2 rounded-full bg-fuchsia-400/60 animate-twinkle`}
-                    style={{
-                      left: `${Math.random() * 100}%`,
-                      top: `${Math.random() * 100}%`,
-                      animationDuration: `${5 + Math.random() * 10}s`,
-                      animationDelay: `${Math.random() * 5}s`,
-                      boxShadow: "0 0 8px 2px rgba(255, 105, 180, 0.4)",
-                    }}
-                  />
-                ))}
-                {Array.from({ length: 15 }).map((_, i) => (
-                  <div
-                    key={i + 20}
-                    className={`absolute w-3 h-3 rotate-45 bg-purple-500/50 animate-float`}
-                    style={{
-                      left: `${Math.random() * 100}%`,
-                      top: `${Math.random() * 100}%`,
-                      animationDuration: `${8 + Math.random() * 15}s`,
-                      animationDelay: `${Math.random() * 5}s`,
-                      boxShadow: "0 0 12px 3px rgba(139, 92, 246, 0.4)",
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Poison effect notification */}
-          {poisonEffectActive && shouldShowBattleInterface() && !shouldHideGameUI() && (
-            <div className="fixed bottom-20 left-0 right-0 flex justify-center pointer-events-none z-40">
-              <div className="bg-gradient-to-r from-purple-900 to-fuchsia-800 text-white py-4 px-8 rounded-lg shadow-lg border border-purple-400 animate-pulse-slow">
-                <div className="flex items-center space-x-3">
-                  <svg className="h-6 w-6 text-fuchsia-300 animate-spin-slow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 2L20 7L20 17L12 22L4 17L4 7L12 2Z" />
-                  </svg>
-                  <div className="flex flex-col">
-                    <p className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-200 to-purple-200">
-                      <span className="text-fuchsia-300">Witch's Curse:</span> Dark magic drains 5 health each turn
-                    </p>
-                    <p className="text-sm text-fuchsia-200">
-                      <span className="font-bold">Effect ends in:</span> <span className="text-yellow-300 font-bold text-md">{playerEffects.length > 0 ? playerEffects[0].turns_remaining : 3} {playerEffects.length > 0 && playerEffects[0].turns_remaining === 1 ? 'turn' : 'turns'}</span>
-                    </p>
-                  </div>
-                  <svg className="h-6 w-6 text-fuchsia-300 animate-spin-slow" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M12 2L20 7L20 17L12 22L4 17L4 7L12 2Z" />
-                  </svg>
+                {/* Floating particles */}
+                <div className="particle-container">
+                  {Array.from({ length: 20 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className={`absolute w-2 h-2 rounded-full bg-fuchsia-400/60 animate-twinkle`}
+                      style={{
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                        animationDuration: `${5 + Math.random() * 10}s`,
+                        animationDelay: `${Math.random() * 5}s`,
+                        boxShadow: "0 0 8px 2px rgba(255, 105, 180, 0.4)",
+                      }}
+                    />
+                  ))}
+                  {Array.from({ length: 15 }).map((_, i) => (
+                    <div
+                      key={i + 20}
+                      className={`absolute w-3 h-3 rotate-45 bg-purple-500/50 animate-float`}
+                      style={{
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                        animationDuration: `${8 + Math.random() * 15}s`,
+                        animationDelay: `${Math.random() * 5}s`,
+                        boxShadow: "0 0 12px 3px rgba(139, 92, 246, 0.4)",
+                      }}
+                    />
+                  ))}
                 </div>
               </div>
-            </div>
-          )}
+            )}
+
+          {/* Poison effect notification */}
+          {poisonEffectActive &&
+            shouldShowBattleInterface() &&
+            !shouldHideGameUI() && (
+              <div className="fixed bottom-20 left-0 right-0 flex justify-center pointer-events-none z-40">
+                <div className="bg-gradient-to-r from-purple-900 to-fuchsia-800 text-white py-4 px-8 rounded-lg shadow-lg border border-purple-400 animate-pulse-slow">
+                  <div className="flex items-center space-x-3">
+                    <svg
+                      className="h-6 w-6 text-fuchsia-300 animate-spin-slow"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M12 2L20 7L20 17L12 22L4 17L4 7L12 2Z" />
+                    </svg>
+                    <div className="flex flex-col">
+                      <p className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-fuchsia-200 to-purple-200">
+                        <span className="text-fuchsia-300">Witch's Curse:</span>{" "}
+                        Dark magic drains 5 health each turn
+                      </p>
+                      <p className="text-sm text-fuchsia-200">
+                        <span className="font-bold">Effect ends in:</span>{" "}
+                        <span className="text-yellow-300 font-bold text-md">
+                          {playerEffects.length > 0
+                            ? playerEffects[0].turns_remaining
+                            : 3}{" "}
+                          {playerEffects.length > 0 &&
+                          playerEffects[0].turns_remaining === 1
+                            ? "turn"
+                            : "turns"}
+                        </span>
+                      </p>
+                    </div>
+                    <svg
+                      className="h-6 w-6 text-fuchsia-300 animate-spin-slow"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path d="M12 2L20 7L20 17L12 22L4 17L4 7L12 2Z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+            )}
         </div>
       </div>
 
@@ -3728,8 +4000,18 @@ export default function PvpBattle() {
                   animate={{ scale: [1, 1.1, 1] }}
                   transition={{ duration: 1.5, repeat: 1 }}
                 >
-                  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg
+                    className="w-6 h-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                   <span>Time Manipulation Activated</span>
                 </motion.div>
@@ -3772,7 +4054,9 @@ export default function PvpBattle() {
 
             {/* EXTRA TURN text banner */}
             <div className="mt-4 bg-gradient-to-r from-amber-500 to-yellow-400 px-8 py-3 rounded-xl shadow-lg transform scale-110">
-              <h2 className="text-3xl font-extrabold text-white tracking-wider animate-pulse-slow">EXTRA TURN!</h2>
+              <h2 className="text-3xl font-extrabold text-white tracking-wider animate-pulse-slow">
+                EXTRA TURN!
+              </h2>
             </div>
 
             {/* Energy circles */}
@@ -3786,54 +4070,59 @@ export default function PvpBattle() {
       )}
 
       {/* Opponent's Quick Draw notification - centered version */}
-      {showOpponentQuickDrawMessage && !showOpponentQuickDrawMessageMinimized && (
-        <div className="absolute inset-0 flex items-center justify-center z-[100]">
-          {/* Dark/red background to indicate negative effect */}
-          <div className="absolute inset-0 bg-gradient-radial from-red-700/50 via-red-900/40 to-black/80 backdrop-blur-sm animate-pulse"></div>
+      {showOpponentQuickDrawMessage &&
+        !showOpponentQuickDrawMessageMinimized && (
+          <div className="absolute inset-0 flex items-center justify-center z-[100]">
+            {/* Dark/red background to indicate negative effect */}
+            <div className="absolute inset-0 bg-gradient-radial from-red-700/50 via-red-900/40 to-black/80 backdrop-blur-sm animate-pulse"></div>
 
-          {/* Card display */}
-          <div className="relative flex flex-col items-center z-[101]">
-            <div className="relative w-64 h-80">
-              {/* Card with normal display (no red tint) */}
+            {/* Card display */}
+            <div className="relative flex flex-col items-center z-[101]">
+              <div className="relative w-64 h-80">
+                {/* Card with normal display (no red tint) */}
+                <img
+                  src="/GameBattle/NormalCardQuickDraw.png"
+                  alt="Quick Draw"
+                  className="w-full h-full object-contain rounded-lg"
+                />
+              </div>
+
+              {/* TURN SKIPPED text banner */}
+              <div className="mt-4 bg-gradient-to-r from-red-700 to-red-500 px-8 py-3 rounded-xl shadow-lg transform scale-110">
+                <h2 className="text-3xl font-extrabold text-white tracking-wider animate-pulse-slow">
+                  TURN SKIPPED!
+                </h2>
+              </div>
+
+              {/* Restraining circles */}
+              <div className="absolute inset-0 -z-10">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full border-4 border-red-500/30 animate-ping-slow"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full border-4 border-red-600/40 animate-ping-slow delay-300"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full border-4 border-red-700/50 animate-ping-slow delay-600"></div>
+              </div>
+            </div>
+          </div>
+        )}
+
+      {/* Opponent's Quick Draw notification - minimized version at bottom */}
+      {showOpponentQuickDrawMessage &&
+        showOpponentQuickDrawMessageMinimized && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[90] transition-all duration-1000">
+            <div
+              className="bg-gradient-to-r from-red-700 to-red-500 px-6 py-2 rounded-xl shadow-lg flex items-center gap-3 animate-pulse-slow transition-opacity duration-1000"
+              style={{ opacity: opponentQuickDrawMinimizedOpacity / 100 }}
+            >
               <img
                 src="/GameBattle/NormalCardQuickDraw.png"
                 alt="Quick Draw"
-                className="w-full h-full object-contain rounded-lg"
+                className="w-10 h-10 object-contain rounded"
               />
-            </div>
-
-            {/* TURN SKIPPED text banner */}
-            <div className="mt-4 bg-gradient-to-r from-red-700 to-red-500 px-8 py-3 rounded-xl shadow-lg transform scale-110">
-              <h2 className="text-3xl font-extrabold text-white tracking-wider animate-pulse-slow">TURN SKIPPED!</h2>
-            </div>
-
-            {/* Restraining circles */}
-            <div className="absolute inset-0 -z-10">
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full border-4 border-red-500/30 animate-ping-slow"></div>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 rounded-full border-4 border-red-600/40 animate-ping-slow delay-300"></div>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full border-4 border-red-700/50 animate-ping-slow delay-600"></div>
+              <h2 className="text-xl font-bold text-white tracking-wider">
+                TURN SKIPPED!
+              </h2>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Opponent's Quick Draw notification - minimized version at bottom */}
-      {showOpponentQuickDrawMessage && showOpponentQuickDrawMessageMinimized && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[90] transition-all duration-1000">
-          <div
-            className="bg-gradient-to-r from-red-700 to-red-500 px-6 py-2 rounded-xl shadow-lg flex items-center gap-3 animate-pulse-slow transition-opacity duration-1000"
-            style={{ opacity: opponentQuickDrawMinimizedOpacity / 100 }}
-          >
-            <img
-              src="/GameBattle/NormalCardQuickDraw.png"
-              alt="Quick Draw"
-              className="w-10 h-10 object-contain rounded"
-            />
-            <h2 className="text-xl font-bold text-white tracking-wider">TURN SKIPPED!</h2>
-          </div>
-        </div>
-      )}
-
+        )}
     </>
   );
 }

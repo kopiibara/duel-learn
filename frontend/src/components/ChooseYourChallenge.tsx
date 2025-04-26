@@ -14,7 +14,11 @@ import PvPOptionsModal from "./modals/PvPOptionsModal";
 import { StudyMaterial } from "../types/studyMaterialObject";
 import { useAudio } from "../contexts/AudioContext";
 import { useLocation, useNavigate } from "react-router-dom";
-import { createNewLobby, joinExistingLobby, navigateToWelcomeScreen } from "../services/pvpLobbyService";
+import {
+  createNewLobby,
+  joinExistingLobby,
+  navigateToWelcomeScreen,
+} from "../services/pvpLobbyService";
 import useManaCheck from "../hooks/useManaCheck";
 import ManaAlertModal from "../pages/dashboard/play-battleground/modes/multiplayer/components/ManaAlertModal";
 
@@ -77,9 +81,15 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
   const isXsScreen = useMediaQuery(theme.breakpoints.down("sm"));
   const { setActiveModeAudio } = useAudio();
   const [modalHistoryStack, setModalHistoryStack] = useState<string[]>([]);
-  
+
   // Initialize mana check hook with PVP requirement (10 mana)
-  const { hasSufficientMana, isManaModalOpen, closeManaModal, currentMana, requiredMana } = useManaCheck(10);
+  const {
+    hasSufficientMana,
+    isManaModalOpen,
+    closeManaModal,
+    currentMana,
+    requiredMana,
+  } = useManaCheck(10);
 
   // Close all modals
   const closeAllModals = () => {
@@ -153,7 +163,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
   const handleModeClick = (mode: string) => {
     setSelectedMode(mode);
     setSelectedTypes(modeToTypesMap[mode as keyof typeof modeToTypesMap] || []);
-    
+
     // Check mana for Time Pressured mode
     if (mode === "Time Pressured") {
       // Check if user has enough mana
@@ -162,17 +172,17 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         return;
       }
     }
-    
-    // If it's PvP mode, check mana before showing options modal
+
+    // If it's PvP mode, check mana and then show material selection directly
     if (mode === "PvP Mode") {
       // Check if user has enough mana
       if (!hasSufficientMana()) {
         // Modal will be shown automatically via the hook
         return;
       }
-      
+
       setIsLobby(true);
-      setPvpOptionsOpen(true);
+      setModalOpen(true); // Open material selection modal directly
       setModalHistoryStack([]);
       return;
     }
@@ -207,7 +217,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
     if (!hasSufficientMana()) {
       return;
     }
-    
+
     setPvpOptionsOpen(false);
     setModalOpen(true);
     // Update history stack to remember we came from pvpOptions
@@ -220,7 +230,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
     if (!hasSufficientMana()) {
       return;
     }
-    
+
     setPvpOptionsOpen(false);
 
     // Use the lobby service for joining
@@ -415,7 +425,7 @@ const ChooseYourChallenge: React.FC<ChooseYourChallengeProps> = ({
         onModeSelect={handleModeSelect}
         selectedTypes={selectedTypes}
       />
-      
+
       {/* Mana Alert Modal */}
       <ManaAlertModal
         isOpen={isManaModalOpen}

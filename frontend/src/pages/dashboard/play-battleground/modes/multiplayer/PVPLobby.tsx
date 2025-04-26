@@ -838,7 +838,10 @@ const PVPLobby: React.FC = () => {
 
     // For guest: notify the host that we've joined and request lobby info
     if (isCurrentUserGuest) {
-      console.log("Guest joining lobby:", lobbyCode);
+      console.group("🎮 Guest requesting lobby info");
+      console.log("Lobby code:", lobbyCode);
+      console.log("Requester ID:", user.firebase_uid);
+      console.groupEnd();
 
       // Send join event via socket
       socket.emit("join_lobby", {
@@ -876,7 +879,9 @@ const PVPLobby: React.FC = () => {
           lobbyCode: lobbyCode,
           requesterId: data.playerId,
           hostId: user.firebase_uid,
-          hostName: user.username,
+          hostName: user.username || "Host", // Add fallback
+          hostPicture: user.display_picture || defaultAvatar, // Use default avatar as fallback
+          hostLevel: user.level || 1, // Ensure level has a fallback
           material: selectedMaterial,
           questionTypes: selectedTypesFinal,
           mode: selectedMode,
@@ -893,9 +898,9 @@ const PVPLobby: React.FC = () => {
           lobbyCode: lobbyCode,
           requesterId: data.requesterId,
           hostId: user.firebase_uid,
-          hostName: user.username,
-          hostPicture: user.display_picture || null,
-          hostLevel: user.level || 1,
+          hostName: user.username || "Host", // Add fallback
+          hostPicture: user.display_picture || defaultAvatar, // Use default avatar as fallback
+          hostLevel: user.level || 1, // Ensure level has a fallback
           material: selectedMaterial,
           questionTypes: selectedTypesFinal,
           mode: selectedMode,
@@ -909,7 +914,13 @@ const PVPLobby: React.FC = () => {
         data.lobbyCode === lobbyCode &&
         data.requesterId === user?.firebase_uid
       ) {
-        console.log("Received lobby info from host:", data);
+        console.group("🎮 Received lobby info from host");
+        console.log("Full data:", data);
+        console.log("Host ID:", data.hostId);
+        console.log("Host Name:", data.hostName);
+        console.log("Host Level:", data.hostLevel);
+        console.log("Host Picture:", data.hostPicture);
+        console.groupEnd();
 
         if (data.material) {
           setSelectedMaterial((prev: StudyMaterial | null) => ({
@@ -926,16 +937,29 @@ const PVPLobby: React.FC = () => {
           setSelectedMode(data.mode);
         }
 
-        // Update host info in players array
+        // Enhanced host player object
         const hostPlayer = {
           firebase_uid: data.hostId,
-          username: data.hostName,
+          username: data.hostName || "Host",
           level: data.hostLevel || 1,
           display_picture: data.hostPicture || defaultAvatar,
         };
 
-        // Update the players array with host info first
-        setPlayers((prevPlayers) => [hostPlayer, ...prevPlayers.slice(1)]);
+        // Log what we're updating to - add more detail to debug
+        console.log("Updating players array with host:", hostPlayer);
+        console.log("Current players array:", players);
+
+        // The key fix - use a functional update with immediate logging:
+        setPlayers((prevPlayers) => {
+          // Create new array with host info in first position
+          const newPlayers = [...prevPlayers];
+          newPlayers[0] = hostPlayer;
+
+          // Log the array we're about to set
+          console.log("New players array after update:", newPlayers);
+
+          return newPlayers;
+        });
       }
     };
 
@@ -1647,9 +1671,6 @@ const PVPLobby: React.FC = () => {
                 )}
               </motion.div>
             </div>
-
-            {/* Lobby Code Section - only visible to host */}
-            {!isCurrentUserGuest && <LobbyCodeDisplay lobbyCode={lobbyCode} />}
 
             {/* Battle Start Button - modified */}
             <BattleControls
