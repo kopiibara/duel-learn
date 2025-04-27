@@ -1,6 +1,7 @@
 import { pool } from '../config/db.js';
 import { OpenAiController } from '../controller/OpenAiController.js';
 import { nanoid } from 'nanoid';
+import { v4 as uuidv4 } from 'uuid';
 
 
 export const endBattle = async (req, res) => {
@@ -931,8 +932,10 @@ export const updateBattleRound = async (req, res) => {
                     initial_damage: 10,  // Initial poison damage
                     damage_per_turn: 5, // Damage each subsequent turn
                     duration: 3,       // Lasts for 3 rounds
-                    turns_remaining: 3, // Track turns remaining
-                    applied_for_turns: [] // Track which turns it's been applied for
+                    turns_remaining: 3, // Track turns remaining (exactly 3 turns)
+                    turn_applied: Date.now(), // Record when it was applied
+                    applied_for_turns: [], // Track which turns it's been applied for
+                    turn_counter: 0 // Starting at 0, will be incremented each turn up to 3
                 };
 
                 // Apply initial poison damage immediately
@@ -944,7 +947,7 @@ export const updateBattleRound = async (req, res) => {
                     [10, session_uuid]
                 );
 
-                console.log(`Card effect: ${player_type} used Poison Type to apply poison damage to ${targetPlayer} for 3 turns`);
+                console.log(`Card effect: ${player_type} used Poison Type to apply poison damage to ${targetPlayer} for exactly 3 turns`);
             }
         }
 
@@ -2069,16 +2072,35 @@ export const applyPoisonEffects = async (req, res) => {
                             const damage = effect.damage_per_turn || 5;
                             poisonDamageApplied += damage;
 
-                            // Update the effect to track that we applied it for this turn
-                            activeCardEffects[i].turns_remaining -= 1;
+                            // Increment turn counter
+                            if (typeof activeCardEffects[i].turn_counter !== 'number') {
+                                activeCardEffects[i].turn_counter = 0;
+                            }
+                            activeCardEffects[i].turn_counter += 1;
 
+                            // Only decrease turns_remaining if this is a new turn
+                            // This ensures we count exactly 3 turns from when it was applied
+                            if (activeCardEffects[i].turn_counter <= 3) {
+                                console.log(`Poison turn ${activeCardEffects[i].turn_counter} of 3 applied to ${player_type}`);
+
+                                // Only set turns_remaining to 0 after the 3rd application
+                                if (activeCardEffects[i].turn_counter >= 3) {
+                                    activeCardEffects[i].turns_remaining = 0;
+                                    console.log(`Poison effect completed all 3 turns, will be removed for ${player_type}`);
+                                } else {
+                                    // Only decrement if we haven't reached 3 turns yet
+                                    activeCardEffects[i].turns_remaining = 3 - activeCardEffects[i].turn_counter;
+                                }
+                            }
+
+                            // Track that we applied it for this turn
                             if (!activeCardEffects[i].applied_for_turns) {
                                 activeCardEffects[i].applied_for_turns = [];
                             }
 
                             activeCardEffects[i].applied_for_turns.push(turnNumber);
 
-                            console.log(`Applied poison damage: ${damage}, turns remaining: ${activeCardEffects[i].turns_remaining}`);
+                            console.log(`Applied poison damage: ${damage}, turns remaining: ${activeCardEffects[i].turns_remaining}, turn count: ${activeCardEffects[i].turn_counter}/3`);
 
                             effectsUpdated = true;
                         } else {
@@ -2086,6 +2108,15 @@ export const applyPoisonEffects = async (req, res) => {
                         }
                     }
                 }
+
+                // Clean up any effects that have expired (turns_remaining <= 0)
+                activeCardEffects = activeCardEffects.filter(effect => {
+                    if (effect.effect === "poison" && effect.turns_remaining <= 0) {
+                        console.log(`Removing expired poison effect targeting ${effect.target}`);
+                        return false;
+                    }
+                    return true;
+                });
 
                 // Apply the accumulated poison damage to the player's health
                 if (poisonDamageApplied > 0) {
@@ -2129,13 +2160,21 @@ export const applyPoisonEffects = async (req, res) => {
             [session_uuid]
         );
 
+        // Get updated effects to send back to client
+        const updatedPoisonEffects = activeCardEffects.filter(e =>
+            e.target === player_type &&
+            e.effect === "poison" &&
+            e.turns_remaining > 0
+        );
+
         res.json({
             success: true,
             message: poisonDamageApplied > 0 ? `Applied ${poisonDamageApplied} poison damage to ${player_type}` : "No poison damage to apply",
             data: {
                 poison_damage_applied: poisonDamageApplied,
                 updated_scores: updatedScores[0] || null,
-                active_poison_effects: poisonEffects.filter(e => e.turns_remaining > 0)
+                active_poison_effects: updatedPoisonEffects,
+                effects: updatedPoisonEffects // For backward compatibility
             }
         });
 
@@ -2657,5 +2696,4 @@ export const deductLeaverXP = async (req, res) => {
         });
     }
 };
-
 

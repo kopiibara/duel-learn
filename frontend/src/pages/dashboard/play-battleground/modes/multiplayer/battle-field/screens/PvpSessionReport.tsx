@@ -9,8 +9,22 @@ import { useAudio } from "../../../../../../../contexts/AudioContext";
 import { useEffect, useState, useRef } from "react";
 import CompleteOrVictory from "/session-reports/CompleteOrVictory.png";
 import IncompleteOrDefeat from "/session-reports/IncompleteOrDefeat.png";
+import TieGameImage from "/session-reports/TieGame.png";
 import axios from "axios";
-import { ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Heart, Sword, Zap, Check, X, Trophy, Award } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ArrowLeft,
+  ArrowRight,
+  Heart,
+  Sword,
+  Zap,
+  Check,
+  X,
+  Trophy,
+  Award,
+  Scale,
+} from "lucide-react";
 
 interface PvpSessionReportProps {
   timeSpent: string;
@@ -26,6 +40,7 @@ interface PvpSessionReportProps {
   playerName: string;
   opponentName: string;
   isWinner: boolean;
+  isTie?: boolean;
   sessionUuid: string;
   hostId?: string;
   guestId?: string;
@@ -51,7 +66,7 @@ interface StatItem {
 
 // Updated icon component that can handle both image and Lucide icons
 const IconDisplay = ({ icon }: { icon: string | React.ReactNode }) => {
-  if (typeof icon === 'string') {
+  if (typeof icon === "string") {
     return <img src={icon} alt="" className="w-6 h-6 text-[#9A88FF]" />;
   }
   return <div className="text-[#9A88FF]">{icon}</div>;
@@ -61,14 +76,14 @@ const StatisticBox = ({
   label,
   value,
   iconSrc = ManaIcon,
-  bonusText
+  bonusText,
 }: StatisticProps) => (
   <div
-    style={{ width: '200px', minWidth: '200px' }}
+    style={{ width: "200px", minWidth: "200px" }}
     className="rounded-[0.8rem] h-[185px] bg-[#1C1827] border border-[#6F658D] flex flex-col items-center p-4"
   >
     <div className="flex items-center justify-center w-full pt-4 mb-3">
-      {typeof iconSrc === 'string' ? (
+      {typeof iconSrc === "string" ? (
         <img src={iconSrc} alt="" className="w-6 h-6 text-[#9A88FF]" />
       ) : (
         <div className="text-[#9A88FF]">{iconSrc}</div>
@@ -111,6 +126,7 @@ const PvpSessionReport = () => {
     playerName,
     opponentName,
     isWinner,
+    isTie = false,
     sessionUuid,
     hostId,
     guestId,
@@ -137,7 +153,9 @@ const PvpSessionReport = () => {
   };
 
   const getBattleResultMessage = () => {
-    if (isWinner) {
+    if (isTie) {
+      return "TIE GAME";
+    } else if (isWinner) {
       return earlyEnd ? "VICTORY" : "VICTORY";
     } else {
       return "DEFEAT";
@@ -149,63 +167,73 @@ const PvpSessionReport = () => {
     {
       label: "EARNED XP",
       value: `${earnedXP} XP`,
-      bonusText: earlyEnd && isWinner
-        ? "Reduced reward"
-        : winStreak > 0 && !earlyEnd ? `+${getXpBonusPoints(winStreak)} from win streak` : undefined
+      bonusText:
+        earlyEnd && isWinner
+          ? "Reduced reward"
+          : winStreak > 0 && !earlyEnd && !isTie
+          ? `+${getXpBonusPoints(winStreak)} from win streak`
+          : undefined,
     },
     {
       label: "EARNED COINS",
       value: `${earnedCoins} Coins`,
-      bonusText: earlyEnd && isWinner
-        ? "Reduced reward"
-        : winStreak > 0 && !earlyEnd ? `+${getBonusPoints(winStreak)} from win streak` : undefined,
-      iconSrc: CoinsIcon
+      bonusText:
+        earlyEnd && isWinner
+          ? "Reduced reward"
+          : winStreak > 0 && !earlyEnd && !isTie
+          ? `+${getBonusPoints(winStreak)} from win streak`
+          : undefined,
+      iconSrc: CoinsIcon,
     },
     {
       label: "YOUR HP",
       value: `${playerHealth} HP`,
-      iconSrc: <Heart className="h-6 w-6" />
+      iconSrc: <Heart className="h-6 w-6" />,
     },
     {
       label: "ENEMY HP",
       value: `${opponentHealth} HP`,
-      iconSrc: <Heart className="h-6 w-6 text-red-500" />
+      iconSrc: <Heart className="h-6 w-6 text-red-500" />,
     },
     {
       label: "HIGHEST STREAK",
       value: `${highestStreak}x`,
-      iconSrc: <Zap className="h-6 w-6" />
-    }
+      iconSrc: <Zap className="h-6 w-6" />,
+    },
   ];
 
   const slide2Stats: StatItem[] = [
     {
       label: "CORRECT",
       value: correctCount,
-      iconSrc: <Check className="h-6 w-6" />
+      iconSrc: <Check className="h-6 w-6" />,
     },
     {
       label: "INCORRECT",
       value: incorrectCount,
-      iconSrc: <X className="h-6 w-6" />
+      iconSrc: <X className="h-6 w-6" />,
     },
     {
       label: "TOTAL TIME",
       value: timeSpent,
-      iconSrc: ClockIcon
+      iconSrc: ClockIcon,
     },
     {
       label: "BATTLE RESULT",
       value: getBattleResultMessage(),
       bonusText: earlyEnd && isWinner ? `${opponentName} left` : undefined,
-      iconSrc: <Sword className="h-6 w-6" />
+      iconSrc: isTie ? (
+        <Scale className="h-6 w-6" />
+      ) : (
+        <Sword className="h-6 w-6" />
+      ),
     },
     {
       label: "WIN STREAK",
       value: `${winStreak}x`,
       bonusText: undefined,
-      iconSrc: <Trophy className="h-6 w-6" />
-    }
+      iconSrc: <Trophy className="h-6 w-6" />,
+    },
   ];
 
   // All slides data
@@ -245,7 +273,8 @@ const PvpSessionReport = () => {
         const userId = isHost ? hostId : guestId;
         if (userId) {
           const response = await axios.get(
-            `${import.meta.env.VITE_BACKEND_URL
+            `${
+              import.meta.env.VITE_BACKEND_URL
             }/api/gameplay/battle/win-streak/${userId}`
           );
           if (response.data.success) {
@@ -260,36 +289,66 @@ const PvpSessionReport = () => {
     fetchWinStreak();
   }, [hostId, guestId, isHost]);
 
+  // Helper function to get the appropriate image and text color based on game result
+  const getResultStyling = () => {
+    if (isTie) {
+      return {
+        image: TieGameImage || CompleteOrVictory, // Fallback to victory image if TieGameImage not available
+        textColor: "text-yellow-400",
+      };
+    } else if (isWinner) {
+      return {
+        image: CompleteOrVictory,
+        textColor: "text-[#FFC93F]",
+      };
+    } else {
+      return {
+        image: IncompleteOrDefeat,
+        textColor: "text-red-400",
+      };
+    }
+  };
+
+  const resultStyling = getResultStyling();
+
   return (
     <div className="min-h-screen flex items-center justify-center">
-      {(!earlyEnd && isWinner) && <AutoConfettiAnimation />}
+      {!earlyEnd && isWinner && !isTie && <AutoConfettiAnimation />}
 
       <div className="w-full max-w-4xl flex flex-col items-center justify-center space-y-8 text-center">
-        {/* Victory/Defeat Image first */}
+        {/* Victory/Defeat/Tie Image first */}
         <div className="flex flex-col items-center">
           {/* Image comes first */}
           <div className="py-4 mb-4">
             <img
-              src={isWinner ? CompleteOrVictory : IncompleteOrDefeat}
-              alt={isWinner ? "Victory" : "Defeat"}
+              src={resultStyling.image}
+              alt={isTie ? "Tie Game" : isWinner ? "Victory" : "Defeat"}
               className="h-[240px] w-auto mx-auto"
             />
           </div>
 
           {/* Title based on battle outcome */}
-          <h1 className="text-4xl mb-4 font-bold flex items-center justify-center text-white">
-            <span className="text-[#FFC93F] mr-3">●</span>
+          <h1
+            className={`text-4xl mb-4 font-bold flex items-center justify-center text-white`}
+          >
+            <span className={resultStyling.textColor + " mr-3"}>●</span>
             <span>
-              {isWinner
-                ? (earlyEnd ? "Session Complete" : "Victory!")
+              {isTie
+                ? "It's a Tie!"
+                : isWinner
+                ? earlyEnd
+                  ? "Session Complete"
+                  : "Victory!"
                 : "Almost there..."}
             </span>
-            <span className="text-[#FFC93F] ml-3">●</span>
+            <span className={resultStyling.textColor + " ml-3"}>●</span>
           </h1>
 
           {/* Subtitle based on battle outcome */}
           <p className="text-xl text-gray-400 mb-3">
-            {isWinner
+            {isTie
+              ? "Both magicians are evenly matched!"
+              : isWinner
               ? "Way to go, magician!"
               : "Try a little harder next time!"}
           </p>
@@ -337,8 +396,9 @@ const PvpSessionReport = () => {
           {Array.from({ length: totalSlides }).map((_, index) => (
             <div
               key={index}
-              className={`w-2 h-2 rounded-full cursor-pointer ${currentSlide === index ? "bg-[#BA54F5]" : "bg-[#5f5f5f]"
-                }`}
+              className={`w-2 h-2 rounded-full cursor-pointer ${
+                currentSlide === index ? "bg-[#BA54F5]" : "bg-[#5f5f5f]"
+              }`}
               onClick={() => setCurrentSlide(index)}
             />
           ))}

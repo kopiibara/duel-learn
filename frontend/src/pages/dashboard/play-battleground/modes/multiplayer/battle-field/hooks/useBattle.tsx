@@ -106,9 +106,11 @@ export function useBattle({
 
         // Also deduct 100 XP as penalty for leaving early
         await axios.put(
-          `${import.meta.env.VITE_BACKEND_URL}/api/gameplay/battle/deduct-leaver-xp`,
+          `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/battle/deduct-leaver-xp`,
           {
-            firebase_uid: currentUserId
+            firebase_uid: currentUserId,
           }
         );
       }
@@ -345,20 +347,23 @@ export function useBattle({
 
         // Determine which endpoint to use based on available identifiers
         if (battleState.session_uuid) {
-          endpoint = `${import.meta.env.VITE_BACKEND_URL
-            }/api/gameplay/battle/end-status/${battleState.session_uuid}`;
+          endpoint = `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/battle/end-status/${battleState.session_uuid}`;
           console.log(
             `Checking battle end status using UUID: ${battleState.session_uuid}`
           );
         } else if (battleState.ID) {
           // If no UUID but we have ID, use that
-          endpoint = `${import.meta.env.VITE_BACKEND_URL
-            }/api/gameplay/battle/end-status-by-id/${battleState.ID}`;
+          endpoint = `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/battle/end-status-by-id/${battleState.ID}`;
           console.log(`Checking battle end status using ID: ${battleState.ID}`);
         } else if (lobbyCode) {
           // Last resort - use lobby code
-          endpoint = `${import.meta.env.VITE_BACKEND_URL
-            }/api/gameplay/battle/end-status-by-lobby/${lobbyCode}`;
+          endpoint = `${
+            import.meta.env.VITE_BACKEND_URL
+          }/api/gameplay/battle/end-status-by-lobby/${lobbyCode}`;
           console.log(
             `Checking battle end status using lobby code: ${lobbyCode}`
           );
@@ -437,7 +442,8 @@ export function useBattle({
           console.log(`Polling battle session state for lobby: ${lobbyCode}`);
 
           const response = await axios.get(
-            `${import.meta.env.VITE_BACKEND_URL
+            `${
+              import.meta.env.VITE_BACKEND_URL
             }/api/gameplay/battle/session-state/${lobbyCode}`
           );
 
@@ -513,7 +519,8 @@ export function useBattle({
                   setGameStarted(true);
 
                   // Determine if it's the guest's turn
-                  const isGuestTurn = sessionState.current_turn === currentUserId;
+                  const isGuestTurn =
+                    sessionState.current_turn === currentUserId;
                   setIsMyTurn(isGuestTurn);
 
                   // Show game start animation
@@ -549,7 +556,8 @@ export function useBattle({
                   if (sessionState.session_uuid) {
                     // Fetch battle round data
                     const { data } = await axios.get(
-                      `${import.meta.env.VITE_BACKEND_URL
+                      `${
+                        import.meta.env.VITE_BACKEND_URL
                       }/api/gameplay/battle/round/${sessionState.session_uuid}`
                     );
 
@@ -630,7 +638,16 @@ export function useBattle({
         clearInterval(pollingIntervalRef.current);
       }
     };
-  }, [lobbyCode, hostId, guestId, isHost, gameStarted, randomizationDone, isMyTurn, currentUserId]);
+  }, [
+    lobbyCode,
+    hostId,
+    guestId,
+    isHost,
+    gameStarted,
+    randomizationDone,
+    isMyTurn,
+    currentUserId,
+  ]);
 
   // Check for battle reload flag when component mounts
   useEffect(() => {

@@ -31,6 +31,7 @@ import Filter from "../../../../components/Filter"; // Adjust the
 import CauldronIcon from "/General/Cauldron.gif";
 import "../../../../styles/custom-scrollbar.css"; // Add this import
 import "./errorHighlight.css";
+import SelectStudyMaterialModal from "../../../../components/modals/SelectStudyMaterialModal";
 
 // Add these imports near the top with your other imports
 import {
@@ -155,6 +156,12 @@ const CreateStudyMaterial = () => {
     items: any[];
     visibility: string;
   } | null>(null);
+
+  // Add these new state variables near your other state declarations
+  const [selectMaterialModalOpen, setSelectMaterialModalOpen] = useState(false);
+  const [newMaterialId, setNewMaterialId] = useState<string | null>(null);
+  const [selectedMode, setSelectedMode] = useState<string>("Peaceful Mode");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
 
   // Flatten all subjects from topics
   const allSubjects = topics
@@ -678,12 +685,9 @@ const CreateStudyMaterial = () => {
       try {
         // Transform items to include base64 images and preserve item_number
         // But ONLY include valid items
-        const transformedItems = validItems.map((item, index) => ({
-          id: item.id,
-          term: item.term,
-          definition: item.definition,
-          image: item.image || null,
-          item_number: index + 1, // Recalculate item numbers to be sequential
+        const transformedItems = items.map((item, index) => ({
+          ...item,
+          tags: tags, // Add tags to each item
         }));
 
         const studyMaterial = {
@@ -754,10 +758,20 @@ const CreateStudyMaterial = () => {
           socket.emit("newStudyMaterial", broadcastData);
         }
 
-        // Navigate to preview page
+        // Store the new material ID in state (but don't open modal)
+        setNewMaterialId(broadcastData.study_material_id);
+
+        // Show success toast/notification
+        handleShowSnackbar("Study material saved successfully!");
+
         navigate(
           `/dashboard/study-material/view/${broadcastData.study_material_id}`
         );
+
+        // Reset the edit mode if needed
+        if (editMode) {
+          editMode(false);
+        }
       } catch (error) {
         console.error(
           editMode
@@ -1420,6 +1434,28 @@ const CreateStudyMaterial = () => {
       }
     }
   }, [title, editMode]);
+
+  // Add these handler functions for the modal
+  const handleMaterialSelect = (material: any) => {
+    // Handle material selection (navigate to game mode, etc.)
+    navigate("/dashboard/welcome-game-mode", {
+      state: {
+        mode: selectedMode,
+        material,
+      },
+    });
+  };
+
+  const handleModeSelect = (mode: string) => {
+    setSelectedMode(mode);
+  };
+
+  const handleCloseModal = () => {
+    setSelectMaterialModalOpen(false);
+    // Reset the newMaterialId when the modal is closed
+    // This ensures it only highlights once per new material
+    setNewMaterialId(null);
+  };
 
   return (
     <>
@@ -2456,6 +2492,17 @@ const CreateStudyMaterial = () => {
           </Button>
         </DialogActions>
       </Dialog>
+      {/* Add the modal component at the bottom of your JSX, before the closing tag */}
+      <SelectStudyMaterialModal
+        open={selectMaterialModalOpen}
+        handleClose={handleCloseModal}
+        mode={selectedMode}
+        isLobby={false}
+        onMaterialSelect={handleMaterialSelect}
+        onModeSelect={handleModeSelect}
+        selectedTypes={selectedTypes}
+        newMaterialId={newMaterialId}
+      />
     </>
   );
 };

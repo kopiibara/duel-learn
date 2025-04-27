@@ -1,6 +1,5 @@
 import { pool } from '../config/db.js';
 import { nanoid } from "nanoid";
-import manilacurrentTimestamp from "../utils/CurrentTimestamp.js";
 
 export const createBattleInvitation = async (req, res) => {
     try {
@@ -191,9 +190,9 @@ export const getInvitationDetails = async (req, res) => {
 
     // Validate required fields
     if (!lobby_code || !sender_id || !receiver_id) {
-        return res.status(400).json({ 
-            success: false, 
-            message: "Missing required parameters" 
+        return res.status(400).json({
+            success: false,
+            message: "Missing required parameters"
         });
     }
 
@@ -215,7 +214,7 @@ export const getInvitationDetails = async (req, res) => {
         }
 
         const invitation = invitations[0];
-        
+
         // Parse the question_types JSON string
         try {
             invitation.question_types = JSON.parse(invitation.question_types);
@@ -231,7 +230,7 @@ export const getInvitationDetails = async (req, res) => {
         console.error("Database Error:", error);
         res.status(500).json({
             success: false,
-            message: "Error fetching invitation details" 
+            message: "Error fetching invitation details"
         });
     } finally {
         connection.release();
@@ -662,12 +661,12 @@ export const getDifficulty = async (req, res) => {
 
 // Create a new battle invitation
 export const createInvitation = async (req, res) => {
-    const { 
-        lobby_code, 
-        sender_id, 
+    const {
+        lobby_code,
+        sender_id,
         sender_username,
         sender_level,
-        receiver_id, 
+        receiver_id,
         receiver_username,
         receiver_level,
         status,
@@ -681,9 +680,9 @@ export const createInvitation = async (req, res) => {
 
     // Validate required fields
     if (!lobby_code || !sender_id || !receiver_id || !sender_username || !receiver_username) {
-        return res.status(400).json({ 
-            success: false, 
-            message: "Missing required fields" 
+        return res.status(400).json({
+            success: false,
+            message: "Missing required fields"
         });
     }
 
@@ -724,14 +723,14 @@ export const createInvitation = async (req, res) => {
                 battle_started, selected_difficulty
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
-                sender_id, 
-                sender_username, 
-                sender_level || 1, 
-                receiver_id, 
-                receiver_username, 
-                receiver_level || 1, 
-                lobby_code, 
-                status || "pending", 
+                sender_id,
+                sender_username,
+                sender_level || 1,
+                receiver_id,
+                receiver_username,
+                receiver_level || 1,
+                lobby_code,
+                status || "pending",
                 questionTypesJson,
                 study_material_title || null,
                 host_ready !== undefined ? host_ready : 1,
@@ -754,9 +753,9 @@ export const createInvitation = async (req, res) => {
         });
     } catch (error) {
         console.error("Database Error:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: "Error creating battle invitation" 
+        res.status(500).json({
+            success: false,
+            message: "Error creating battle invitation"
         });
     } finally {
         connection.release();
@@ -769,17 +768,17 @@ export const updateInvitationStatus = async (req, res) => {
 
     // Validate required fields
     if (!lobby_code || !sender_id || !receiver_id || !status) {
-        return res.status(400).json({ 
-            success: false, 
-            message: "Missing required fields" 
+        return res.status(400).json({
+            success: false,
+            message: "Missing required fields"
         });
     }
 
     // Validate status
     if (!['accepted', 'declined', 'pending', 'expired'].includes(status)) {
-        return res.status(400).json({ 
-            success: false, 
-            message: "Invalid status value" 
+        return res.status(400).json({
+            success: false,
+            message: "Invalid status value"
         });
     }
 
@@ -808,9 +807,9 @@ export const updateInvitationStatus = async (req, res) => {
         });
     } catch (error) {
         console.error("Database Error:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: "Error updating battle invitation status" 
+        res.status(500).json({
+            success: false,
+            message: "Error updating battle invitation status"
         });
     } finally {
         connection.release();
@@ -822,9 +821,9 @@ export const getPendingInvitations = async (req, res) => {
     const { userId } = req.params;
 
     if (!userId) {
-        return res.status(400).json({ 
-            success: false, 
-            message: "User ID is required" 
+        return res.status(400).json({
+            success: false,
+            message: "User ID is required"
         });
     }
 
@@ -865,9 +864,9 @@ export const getPendingInvitations = async (req, res) => {
         });
     } catch (error) {
         console.error("Database Error:", error);
-        res.status(500).json({ 
-            success: false, 
-            message: "Error fetching pending invitations" 
+        res.status(500).json({
+            success: false,
+            message: "Error fetching pending invitations"
         });
     } finally {
         connection.release();

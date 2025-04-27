@@ -14,7 +14,11 @@ import SelectStudyMaterialModal from "./SelectStudyMaterialModal"; // Assuming i
 import PvPOptionsModal from "./PvPOptionsModal"; // Add this import
 import { useAudio } from "../../contexts/AudioContext";
 import { useNavigate } from "react-router-dom";
-import { createNewLobby, joinExistingLobby, navigateToWelcomeScreen } from "../../services/pvpLobbyService";
+import {
+  createNewLobby,
+  joinExistingLobby,
+  navigateToWelcomeScreen,
+} from "../../services/pvpLobbyService";
 import useManaCheck from "../../hooks/useManaCheck";
 import ManaAlertModal from "../../pages/dashboard/play-battleground/modes/multiplayer/components/ManaAlertModal";
 
@@ -58,9 +62,15 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
   const { setActiveModeAudio } = useAudio();
   const [pvpOptionsOpen, setPvpOptionsOpen] = useState<boolean>(false);
   const navigate = useNavigate();
-  
+
   // Initialize mana check hook with PVP requirement (10 mana)
-  const { hasSufficientMana, isManaModalOpen, closeManaModal, currentMana, requiredMana } = useManaCheck(10);
+  const {
+    hasSufficientMana,
+    isManaModalOpen,
+    closeManaModal,
+    currentMana,
+    requiredMana,
+  } = useManaCheck(10);
 
   // Update when the parent open state changes
   useEffect(() => {
@@ -117,7 +127,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
         // Modal will be shown automatically via the hook
         return;
       }
-      
+
       if (preSelectedMaterial) {
         // If we have pre-selected material, call onModeSelect directly
         if (onModeSelect) {
@@ -125,9 +135,9 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
         }
         handleClose();
       } else {
-        // Show PvP options modal
+        // Directly open the study material modal
         setChooseModeOpen(false);
-        setPvpOptionsOpen(true);
+        setModalOpen(true);
       }
       return;
     }
@@ -210,7 +220,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
     if (!hasSufficientMana()) {
       return;
     }
-    
+
     setPvpOptionsOpen(false);
     setModalOpen(true);
   };
@@ -221,7 +231,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
     if (!hasSufficientMana()) {
       return;
     }
-    
+
     setPvpOptionsOpen(false);
 
     // Use the lobby service
@@ -434,7 +444,7 @@ const ChooseModeModal: React.FC<CustomModalProps> = ({
         onModeSelect={handleModeSelect}
         selectedTypes={selectedTypes}
       />
-      
+
       {/* Mana Alert Modal */}
       <ManaAlertModal
         isOpen={isManaModalOpen}

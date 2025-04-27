@@ -77,7 +77,7 @@ const studyMaterialController = {
         });
       }
 
-      const currentTimestamp = manilacurrentTimestamp;
+      const currentTimestamp = manilacurrentTimestamp();
 
       await connection.beginTransaction();
 
@@ -214,7 +214,7 @@ const studyMaterialController = {
       }
 
       await connection.beginTransaction();
-      const updatedTimestamp = manilacurrentTimestamp;
+      const updatedTimestamp = manilacurrentTimestamp();
 
       // Update study_material_info with the valid item count
       await connection.execute(
@@ -1064,7 +1064,7 @@ const studyMaterialController = {
       }
 
       // Get current timestamp - Make sure this is formatted correctly
-      const bookmarked_at = manilacurrentTimestamp; // If this is a function, call it
+      const bookmarked_at = manilacurrentTimestamp(); // If this is a function, call it
 
       // Check if study material exists
       const [studyMaterialRows] = await connection.execute(
@@ -1485,6 +1485,46 @@ const studyMaterialController = {
       res.status(500).json({ error: "Internal server error" });
     } finally {
       connection.release();
+    }
+  },
+
+  // Get study material content by study_material_id and term
+  getContentByTerm: async (req, res) => {
+    try {
+      const { study_material_id, term } = req.params;
+
+      console.log('Fetching study material content:', { study_material_id, term });
+
+      const { pool } = await import('../config/db.js');
+
+      const [rows] = await pool.query(
+        `SELECT item_id, item_number, term, definition 
+         FROM study_material_content 
+         WHERE study_material_id = ? AND term = ?`,
+        [study_material_id, term]
+      );
+
+      if (rows && rows.length > 0) {
+        console.log('Found study material content:', rows[0]);
+        return res.json({
+          success: true,
+          data: rows[0]
+        });
+      }
+
+      console.log('No content found for:', { study_material_id, term });
+      return res.status(404).json({
+        success: false,
+        message: 'Content not found'
+      });
+
+    } catch (error) {
+      console.error('Error fetching study material content:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to fetch study material content',
+        error: error.message
+      });
     }
   },
 };

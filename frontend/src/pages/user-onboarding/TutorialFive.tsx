@@ -29,7 +29,7 @@ export default function TutorialFive() {
 
   const handleClick = (e: React.MouseEvent) => {
     // Check if the click was on the sound button
-    if ((e.target as HTMLElement).closest('button')) {
+    if ((e.target as HTMLElement).closest("button")) {
       return;
     }
 
@@ -107,7 +107,14 @@ export default function TutorialFive() {
 
         {/* Video Section */}
         <div className="flex justify-center items-center w-full mt-10 md:mt-16 z-10">
-          <div className="w-full max-w-[801px] h-[297px] bg-zinc-300 rounded-xl"></div>
+          <video
+            src="/UserOnboarding/useronboarding_stepfour.mp4"
+            className="w-full max-w-[50vw] h-[40vh] rounded-[0.8rem] border-2 border-white"
+            autoPlay
+            loop
+            muted
+            playsInline
+          />
         </div>
 
         {/* Dialogue Box */}
