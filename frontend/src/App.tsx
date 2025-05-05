@@ -16,10 +16,14 @@ import {
 import theme from "./contexts/ThemeContext";
 import "./index.css";
 import { GameStatusProvider } from "./contexts/GameStatusContext";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 
 function App() {
   return (
     <Router>
+      <Analytics />
+      <SpeedInsights />
       <AuthProvider>
         <AuthTokenSynchronizer />
         <UserProvider>
@@ -41,6 +45,7 @@ function App() {
                     <BattleInvitationCenter />
                     <AppRoutes />
                     <GlobalSnackbar />
+
                     <SnackbarConnector />
                   </ThemeProvider>
                 </HelmetProvider>
